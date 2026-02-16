@@ -790,6 +790,135 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         "subscription_status": "active"
     }
 
+# Email/Password Login
+@api_router.post("/auth/login")
+async def login_with_password(request: LoginRequest, response: Response):
+    """Login with email and password"""
+    user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not user.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Please use Google login or reset your password")
+    
+    if not verify_password(request.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if user.get("subscription_status") != "active":
+        raise HTTPException(status_code=403, detail="Subscription not active")
+    
+    # Create session
+    session_token = f"sess_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    session = UserSession(
+        user_id=user["user_id"],
+        session_token=session_token,
+        expires_at=expires_at
+    )
+    session_doc = session.model_dump()
+    session_doc['expires_at'] = session_doc['expires_at'].isoformat()
+    session_doc['created_at'] = session_doc['created_at'].isoformat()
+    await db.user_sessions.insert_one(session_doc)
+    
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60
+    )
+    
+    return {
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "subscription_status": user["subscription_status"]
+    }
+
+# Recover account - for users who paid but didn't complete account creation
+@api_router.post("/auth/recover")
+async def recover_account(request: RecoverAccountRequest, response: Response, http_request: Request):
+    """Recover account for users who have a Stripe subscription but no account"""
+    
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    
+    if existing_user and existing_user.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Account already exists. Please login.")
+    
+    # Check Stripe for active subscription with this email
+    # For now, check if there's a payment record for this email
+    payment_record = await db.payment_transactions.find_one(
+        {"user_email": request.email, "payment_status": "paid"},
+        {"_id": 0}
+    )
+    
+    # Also check payment_success collection
+    payment_success = await db.payment_success.find_one(
+        {"email": request.email},
+        {"_id": 0}
+    )
+    
+    if not payment_record and not payment_success:
+        raise HTTPException(status_code=404, detail="No payment found for this email. Please subscribe first.")
+    
+    # Create or update user
+    if existing_user:
+        user_id = existing_user["user_id"]
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "password_hash": hash_password(request.password),
+                "subscription_status": "active",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        new_user = User(
+            user_id=user_id,
+            email=request.email,
+            auth_provider="email",
+            subscription_status="active"
+        )
+        user_doc = new_user.model_dump()
+        user_doc['password_hash'] = hash_password(request.password)
+        user_doc['created_at'] = user_doc['created_at'].isoformat()
+        user_doc['updated_at'] = user_doc['updated_at'].isoformat()
+        await db.users.insert_one(user_doc)
+    
+    # Create session
+    session_token = f"sess_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    session = UserSession(
+        user_id=user_id,
+        session_token=session_token,
+        expires_at=expires_at
+    )
+    session_doc = session.model_dump()
+    session_doc['expires_at'] = session_doc['expires_at'].isoformat()
+    session_doc['created_at'] = session_doc['created_at'].isoformat()
+    await db.user_sessions.insert_one(session_doc)
+    
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60
+    )
+    
+    return {
+        "user_id": user_id,
+        "email": request.email,
+        "subscription_status": "active",
+        "message": "Account recovered successfully"
+    }
+
 # ==================== TASK ENDPOINTS ====================
 
 @api_router.get("/tasks")
