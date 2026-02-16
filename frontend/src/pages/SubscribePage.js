@@ -15,10 +15,11 @@ const SubscribePage = () => {
   const [checkoutUrl, setCheckoutUrl] = useState(null);
   const linkRef = useRef(null);
 
-  // When checkoutUrl is set, trigger the link click
+  // When checkoutUrl is set, redirect immediately
   useEffect(() => {
-    if (checkoutUrl && linkRef.current) {
-      linkRef.current.click();
+    if (checkoutUrl) {
+      // Direct navigation - most reliable method
+      window.location.href = checkoutUrl;
     }
   }, [checkoutUrl]);
 
