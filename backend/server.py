@@ -1136,11 +1136,15 @@ async def complete_task(request: Request, task_id: str):
 
 @api_router.get("/prospects")
 async def list_prospects(request: Request):
-    """List all prospects for authenticated user"""
+    """List all active prospects for authenticated user (excludes closed/lost)"""
     user = await require_active_subscription(request)
     
+    # Exclude prospects with status "closed" (won) or "lost"
     prospects = await db.prospects.find(
-        {"user_id": user.user_id},
+        {
+            "user_id": user.user_id,
+            "status": {"$nin": ["closed", "lost"]}
+        },
         {"_id": 0}
     ).sort("created_at", -1).to_list(1000)
     
