@@ -1018,6 +1018,58 @@ const SettingsTab = ({ onClose }) => {
         {t('about')}
       </h3>
       <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+        {/* Notifications toggle */}
+        <div 
+          className="settings-row" 
+          onClick={handleToggleNotifications}
+          style={{ cursor: 'pointer' }}
+          data-testid="notifications-toggle"
+        >
+          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span className="label">{t('notifications')}</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px' 
+          }}>
+            {notificationsLoading ? (
+              <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
+            ) : (
+              <>
+                <span style={{ 
+                  fontSize: '14px', 
+                  color: notificationsEnabled ? 'var(--success)' : 'var(--muted)' 
+                }}>
+                  {notificationsEnabled ? t('notificationsOn') : t('notificationsOff')}
+                </span>
+                <div style={{
+                  width: '44px',
+                  height: '26px',
+                  borderRadius: '13px',
+                  background: notificationsEnabled ? 'var(--accent)' : 'var(--surface-2)',
+                  position: 'relative',
+                  transition: 'background 0.2s ease'
+                }}>
+                  <div style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    position: 'absolute',
+                    top: '2px',
+                    left: notificationsEnabled ? '20px' : '2px',
+                    transition: 'left 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}></div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        {/* Version */}
         <div className="settings-row" style={{ borderBottom: 'none' }}>
           <span className="label">{t('version')}</span>
           <span className="value">1.0.0</span>
