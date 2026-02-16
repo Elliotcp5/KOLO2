@@ -517,6 +517,53 @@ async def create_checkout(request: CreateCheckoutRequest, http_request: Request)
     
     return CreateCheckoutResponse(url=session.url, session_id=session.session_id)
 
+# Direct redirect endpoint - works on all browsers including iOS
+@api_router.get("/payments/checkout-redirect")
+async def checkout_redirect(http_request: Request, locale: str = "en", country: str = "US"):
+    """Direct server-side redirect to Stripe checkout - bypasses JavaScript issues"""
+    from starlette.responses import RedirectResponse
+    
+    host_url = str(http_request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    
+    # Get origin from referer or use host
+    referer = http_request.headers.get('referer', '')
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        origin_url = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        origin_url = str(http_request.base_url).rstrip('/')
+    
+    success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin_url}/subscribe"
+    
+    # Get pricing based on country
+    pricing = get_regional_pricing(country)
+    
+    checkout_request = CheckoutSessionRequest(
+        amount=pricing['amount'],
+        currency=pricing['currency'],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "locale": locale,
+            "country": country,
+            "type": "subscription"
+        },
+        payment_methods=['card']
+    )
+    
+    try:
+        session = await stripe_checkout.create_checkout_session(checkout_request)
+        # Direct redirect to Stripe
+        return RedirectResponse(url=session.url, status_code=303)
+    except Exception as e:
+        logger.error(f"Checkout redirect error: {e}")
+        # Redirect back to subscribe page with error
+        return RedirectResponse(url=f"{origin_url}/subscribe?error=payment_failed", status_code=303)
+
 @api_router.get("/payments/status/{session_id}")
 async def get_payment_status(session_id: str, http_request: Request):
     host_url = str(http_request.base_url)
