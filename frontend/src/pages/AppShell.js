@@ -631,6 +631,58 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         <h1 className="text-title" style={{ flex: 1 }}>{prospectData.full_name}</h1>
       </div>
 
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '24px'
+        }}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '320px',
+            width: '100%',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ marginBottom: '12px', fontSize: '18px' }}>
+              {t('confirmStatusChange')}
+            </h3>
+            <p style={{ color: 'var(--muted)', marginBottom: '24px', fontSize: '14px' }}>
+              {t('prospectWillDisappear')}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setPendingStatus(null);
+                }}
+                style={{ flex: 1 }}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                className="btn-primary"
+                onClick={confirmStatusChange}
+                style={{ flex: 1, background: pendingStatus === 'lost' ? '#ef4444' : 'var(--success)' }}
+              >
+                {t('confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact info */}
       <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
