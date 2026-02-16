@@ -662,13 +662,40 @@ async def validate_payment_token(token: str):
     return {"valid": True, "email": token_doc.get("email")}
 
 @api_router.post("/auth/create-account")
-async def create_account_after_payment(request: CreateAccountRequest, response: Response):
+async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
+    # First, try to find payment token in our database
     token_doc = await db.payment_success.find_one(
         {"token": request.payment_token, "used": False},
         {"_id": 0}
     )
     
+    # If not found, check if it's a Stripe session_id and verify directly with Stripe
+    if not token_doc and request.payment_token.startswith("cs_"):
+        try:
+            host_url = str(http_request.base_url)
+            webhook_url = f"{host_url}api/webhook/stripe"
+            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+            status = await stripe_checkout.get_checkout_status(request.payment_token)
+            
+            if status.payment_status == "paid":
+                # Create a token document on the fly
+                token_doc = {
+                    "token": request.payment_token,
+                    "session_id": request.payment_token,
+                    "email": status.metadata.get("email", ""),
+                    "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+                    "used": False
+                }
+                # Store it for future reference
+                await db.payment_success.insert_one({**token_doc, "created_at": datetime.now(timezone.utc).isoformat()})
+            else:
+                raise HTTPException(status_code=400, detail="Payment not completed")
+        except Exception as e:
+            logger.error(f"Stripe verification error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid or used payment token")
+    
     if not token_doc:
+        raise HTTPException(status_code=400, detail="Invalid or used payment token")
         raise HTTPException(status_code=400, detail="Invalid or used payment token")
     
     expires_at = token_doc.get("expires_at")
