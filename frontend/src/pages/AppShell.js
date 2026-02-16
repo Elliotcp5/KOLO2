@@ -752,6 +752,312 @@ const SettingsTab = ({ onClose }) => {
   );
 };
 
+// ==================== TASKS TAB ====================
+const TasksTab = ({ onRefresh }) => {
+  const { t, formatDate } = useLocale();
+  const [tasks, setTasks] = useState([]);
+  const [prospects, setProspects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', dueDate: '', dueTime: '', prospectId: '' });
+  const [creating, setCreating] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      // Fetch all tasks
+      const tasksRes = await fetch(`${API_URL}/api/tasks`, { credentials: 'include' });
+      if (tasksRes.ok) {
+        const data = await tasksRes.json();
+        setTasks(data.tasks || []);
+      }
+      
+      // Fetch prospects for linking
+      const prospectsRes = await fetch(`${API_URL}/api/prospects`, { credentials: 'include' });
+      if (prospectsRes.ok) {
+        const data = await prospectsRes.json();
+        setProspects(data.prospects || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCreateTask = async () => {
+    if (!newTask.title || !newTask.dueDate) return;
+    
+    setCreating(true);
+    try {
+      // Combine date and time
+      let dueDateTime = newTask.dueDate;
+      if (newTask.dueTime) {
+        dueDateTime = `${newTask.dueDate}T${newTask.dueTime}:00`;
+      } else {
+        dueDateTime = `${newTask.dueDate}T09:00:00`;
+      }
+
+      const response = await fetch(`${API_URL}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: newTask.title,
+          due_date: dueDateTime,
+          prospect_id: newTask.prospectId || null
+        })
+      });
+      
+      if (response.ok) {
+        toast.success(t('taskCreated'));
+        setNewTask({ title: '', dueDate: '', dueTime: '', prospectId: '' });
+        setShowAddTask(false);
+        fetchData();
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      toast.error(t('taskError'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCompleteTask = async (taskId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        setTasks(prev => prev.filter(t => t.task_id !== taskId));
+        toast.success(t('taskCompleted'));
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast.error(t('taskError'));
+    }
+  };
+
+  const getProspectName = (prospectId) => {
+    const prospect = prospects.find(p => p.prospect_id === prospectId);
+    return prospect ? prospect.full_name : null;
+  };
+
+  // Group tasks by date
+  const groupedTasks = tasks.reduce((groups, task) => {
+    const date = new Date(task.due_date).toLocaleDateString();
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(task);
+    return groups;
+  }, {});
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h1 className="text-headline" style={{ fontSize: '28px' }}>
+          {t('tasks')}
+        </h1>
+        <button 
+          className="btn-icon"
+          onClick={() => setShowAddTask(true)}
+          data-testid="add-task-button"
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <Plus size={20} style={{ color: 'white' }} />
+        </button>
+      </div>
+
+      {/* Add Task Modal */}
+      {showAddTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'flex-end',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: '20px 20px 0 0',
+            padding: '24px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>{t('newTask')}</h2>
+              <button 
+                onClick={() => setShowAddTask(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input
+                type="text"
+                className="input-dark"
+                placeholder={t('taskTitle')}
+                value={newTask.title}
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                data-testid="task-title-input"
+              />
+              
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('dueDate')} *
+                </label>
+                <input
+                  type="date"
+                  className="input-dark"
+                  value={newTask.dueDate}
+                  onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                  data-testid="task-date-input"
+                />
+              </div>
+              
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('dueTime')}
+                </label>
+                <input
+                  type="time"
+                  className="input-dark"
+                  value={newTask.dueTime}
+                  onChange={(e) => setNewTask({...newTask, dueTime: e.target.value})}
+                  data-testid="task-time-input"
+                />
+              </div>
+
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('selectLead')}
+                </label>
+                <select
+                  className="input-dark"
+                  value={newTask.prospectId}
+                  onChange={(e) => setNewTask({...newTask, prospectId: e.target.value})}
+                  data-testid="task-prospect-select"
+                  style={{ width: '100%' }}
+                >
+                  <option value="">{t('noLeadLinked')}</option>
+                  {prospects.map(p => (
+                    <option key={p.prospect_id} value={p.prospect_id}>
+                      {p.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                className="btn-primary"
+                onClick={handleCreateTask}
+                disabled={!newTask.title || !newTask.dueDate || creating}
+                data-testid="create-task-button"
+                style={{ marginTop: '8px' }}
+              >
+                {creating ? <div className="spinner" style={{ width: '20px', height: '20px' }}></div> : t('addTask')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tasks List */}
+      {tasks.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'var(--surface)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px'
+          }}>
+            <Check size={32} style={{ color: 'var(--success)' }} />
+          </div>
+          <p className="text-muted">{t('noTasks')}</p>
+          <p className="text-muted" style={{ fontSize: '14px' }}>{t('addFirstTask')}</p>
+        </div>
+      ) : (
+        Object.entries(groupedTasks).map(([date, dateTasks]) => (
+          <div key={date} style={{ marginBottom: '24px' }}>
+            <h3 className="text-caption" style={{ marginBottom: '12px' }}>{date}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {dateTasks.map(task => (
+                <div 
+                  key={task.task_id} 
+                  className="card"
+                  style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+                >
+                  <button
+                    onClick={() => handleCompleteTask(task.task_id)}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      border: '2px solid var(--accent)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      marginTop: '2px'
+                    }}
+                    data-testid={`complete-task-${task.task_id}`}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '15px', color: 'var(--text)', marginBottom: '4px' }}>
+                      {task.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                      {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {task.prospect_id && getProspectName(task.prospect_id) && (
+                        <span> • {getProspectName(task.prospect_id)}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
 // ==================== BOTTOM NAVIGATION ====================
 const BottomNav = ({ activeTab, setActiveTab }) => {
   return (
