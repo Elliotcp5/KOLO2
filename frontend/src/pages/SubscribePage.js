@@ -43,8 +43,13 @@ const SubscribePage = () => {
         console.log('Checkout URL received:', data.url);
         
         if (data.url) {
-          // Use replace to avoid back button issues
-          window.location.replace(data.url);
+          // Create a temporary link and click it - works better on iOS
+          const link = document.createElement('a');
+          link.href = data.url;
+          link.setAttribute('target', '_self');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         } else {
           throw new Error('No checkout URL received');
         }
