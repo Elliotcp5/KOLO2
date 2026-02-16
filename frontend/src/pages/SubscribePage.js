@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
@@ -12,9 +12,17 @@ const SubscribePage = () => {
   const { t, formatPrice, country, locale } = useLocale();
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState(null);
+  const linkRef = useRef(null);
+
+  // When checkoutUrl is set, trigger the link click
+  useEffect(() => {
+    if (checkoutUrl && linkRef.current) {
+      linkRef.current.click();
+    }
+  }, [checkoutUrl]);
 
   const handlePayment = async (method) => {
-    // Prevent double clicks
     if (loading) return;
     
     setSelectedMethod(method);
@@ -38,10 +46,7 @@ const SubscribePage = () => {
         const data = await response.json();
         
         if (data.url) {
-          // Force redirect - multiple methods for iOS compatibility
-          setTimeout(() => {
-            window.location.href = data.url;
-          }, 100);
+          setCheckoutUrl(data.url);
         } else {
           throw new Error('No URL');
         }
