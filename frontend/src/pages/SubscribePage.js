@@ -13,7 +13,6 @@ const SubscribePage = () => {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState(null);
-  const linkRef = useRef(null);
 
   // When checkoutUrl is set, redirect immediately
   useEffect(() => {
