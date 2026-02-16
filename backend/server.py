@@ -946,7 +946,7 @@ async def list_tasks(request: Request, include_completed: bool = True):
 
 @api_router.get("/tasks/today")
 async def list_today_tasks(request: Request):
-    """List tasks due today or overdue"""
+    """List tasks due today or overdue (not completed)"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
@@ -954,7 +954,9 @@ async def list_today_tasks(request: Request):
     
     now = datetime.now(timezone.utc)
     end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
+    # Get overdue tasks (before today, not completed) and today's tasks
     tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
@@ -964,8 +966,15 @@ async def list_today_tasks(request: Request):
         {"_id": 0}
     ).sort("due_date", 1).to_list(1000)
     
-    # Enrich tasks with prospect info
+    # Mark tasks as overdue or today
     for task in tasks:
+        task_date = datetime.fromisoformat(task["due_date"].replace('Z', '+00:00'))
+        if task_date.tzinfo is None:
+            task_date = task_date.replace(tzinfo=timezone.utc)
+        task["is_overdue"] = task_date < start_of_today
+        task["is_today"] = start_of_today <= task_date <= end_of_today
+        
+        # Enrich with prospect info
         if task.get("prospect_id"):
             prospect = await db.prospects.find_one(
                 {"prospect_id": task["prospect_id"]},
