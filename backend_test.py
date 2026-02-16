@@ -271,6 +271,18 @@ def main():
     if not result:
         all_tests_passed = False
     
+    # Test critical PWA features - REQUIREMENTS
+    result = tester.test_notifications_subscribe_endpoint()
+    test_results.append(('Push Notifications Subscribe (CRITICAL)', result))
+    if not result:
+        all_tests_passed = False
+    
+    # Test tasks today endpoint (for "Onglet Aujourd'hui" requirement)
+    result = tester.test_tasks_today_endpoint()
+    test_results.append(('Tasks Today Endpoint', result))
+    if not result:
+        all_tests_passed = False
+    
     # Test CORS
     result = tester.test_cors_headers()
     test_results.append(('CORS Headers', result))
