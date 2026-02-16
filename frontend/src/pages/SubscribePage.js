@@ -137,7 +137,7 @@ const SubscribePage = () => {
               </svg>
               <span className="label">{t('applePay')}</span>
               {loading && selectedMethod === 'apple_pay' && <div className="spinner" style={{ width: '20px', height: '20px' }}></div>}
-            </div>
+            </button>
           </div>
 
           {/* Stripe security badge */}
