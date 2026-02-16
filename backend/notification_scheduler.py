@@ -27,13 +27,9 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# VAPID keys for web push
-# These should match the public key in the frontend
-VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', 'your-private-key-here')
-VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
-VAPID_CLAIMS = {
-    "sub": "mailto:contact@trykolo.io"
-}
+# VAPID configuration
+VAPID_PRIVATE_KEY_FILE = os.environ.get('VAPID_PRIVATE_KEY_FILE', '/app/backend/vapid_private.pem')
+VAPID_EMAIL = os.environ.get('VAPID_EMAIL', 'mailto:contact@trykolo.io')
 
 async def get_users_with_tasks_today():
     """Get users who have tasks due today or overdue"""
@@ -76,11 +72,15 @@ async def send_push_notification(subscription: dict, title: str, body: str, url:
             "tag": "kolo-daily-reminder"
         })
         
+        # Read private key from file
+        with open(VAPID_PRIVATE_KEY_FILE, 'r') as f:
+            vapid_private_key = f.read()
+        
         webpush(
             subscription_info=subscription,
             data=payload,
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims=VAPID_CLAIMS
+            vapid_private_key=vapid_private_key,
+            vapid_claims={"sub": VAPID_EMAIL}
         )
         
         logger.info(f"Push notification sent successfully")
@@ -108,12 +108,13 @@ async def send_daily_reminders():
     
     if not user_tasks:
         logger.info("No tasks due today")
-        return
+        return {"sent": 0, "failed": 0, "no_subscription": 0}
     
     logger.info(f"Found {len(user_tasks)} users with tasks today")
     
     sent_count = 0
     failed_count = 0
+    no_sub_count = 0
     
     for user_id, tasks in user_tasks.items():
         # Get push subscription
@@ -121,6 +122,7 @@ async def send_daily_reminders():
         
         if not subscription:
             logger.debug(f"No push subscription for user {user_id}")
+            no_sub_count += 1
             continue
         
         # Build notification message
@@ -143,7 +145,8 @@ async def send_daily_reminders():
         else:
             failed_count += 1
     
-    logger.info(f"Daily reminders complete: {sent_count} sent, {failed_count} failed")
+    logger.info(f"Daily reminders complete: {sent_count} sent, {failed_count} failed, {no_sub_count} no subscription")
+    return {"sent": sent_count, "failed": failed_count, "no_subscription": no_sub_count}
 
 async def check_and_generate_follow_up_tasks():
     """Check for inactive prospects and generate follow-up tasks"""
@@ -206,6 +209,7 @@ async def check_and_generate_follow_up_tasks():
             )
     
     logger.info(f"Generated {tasks_created} follow-up tasks")
+    return {"tasks_created": tasks_created}
 
 async def run_scheduler():
     """Run the scheduler loop"""
@@ -216,7 +220,7 @@ async def run_scheduler():
             # Check current time
             now = datetime.now(timezone.utc)
             
-            # Run at 8:00 AM UTC (9:00 AM Paris time)
+            # Run at 8:00 AM UTC (9:00 AM Paris time in winter, 10:00 AM in summer)
             target_hour = 8
             
             if now.hour == target_hour and now.minute < 5:
@@ -241,16 +245,18 @@ async def run_scheduler():
 async def run_once():
     """Run the notification job once (for testing or manual trigger)"""
     logger.info("Running notification job (manual trigger)...")
-    await check_and_generate_follow_up_tasks()
-    await send_daily_reminders()
+    tasks_result = await check_and_generate_follow_up_tasks()
+    notif_result = await send_daily_reminders()
     logger.info("Job complete")
+    return {**tasks_result, **notif_result}
 
 if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1 and sys.argv[1] == "--once":
         # Run once for testing
-        asyncio.run(run_once())
+        result = asyncio.run(run_once())
+        print(json.dumps(result, indent=2))
     else:
         # Run scheduler loop
         asyncio.run(run_scheduler())
