@@ -771,6 +771,7 @@ const AppShell = () => {
   const [activeTab, setActiveTab] = useState('today');
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   useEffect(() => {
     if (location.pathname.includes('/prospects')) {
@@ -781,6 +782,41 @@ const AppShell = () => {
       setActiveTab('today');
     }
   }, [location.pathname]);
+
+  // Check if we should show notification prompt
+  useEffect(() => {
+    const checkNotificationPrompt = () => {
+      // Check if notifications are supported
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+        return;
+      }
+      
+      // Check if already enabled or prompted
+      const enabled = localStorage.getItem('kolo_notifications_enabled');
+      const prompted = localStorage.getItem('kolo_notifications_prompted');
+      
+      // If permission is already granted, mark as enabled
+      if (Notification.permission === 'granted') {
+        localStorage.setItem('kolo_notifications_enabled', 'true');
+        return;
+      }
+      
+      // If permission denied, don't show
+      if (Notification.permission === 'denied') {
+        return;
+      }
+      
+      // If not yet prompted and permission is default, show prompt after a short delay
+      if (!enabled && !prompted && Notification.permission === 'default') {
+        // Small delay to let the app load first
+        setTimeout(() => {
+          setShowNotificationPrompt(true);
+        }, 1500);
+      }
+    };
+
+    checkNotificationPrompt();
+  }, []);
 
   const handleSelectProspect = (prospect) => {
     setSelectedProspect(prospect);
