@@ -26,17 +26,22 @@ export const LocaleProvider = ({ children }) => {
   const [symbol, setSymbol] = useState('$');
 
   useEffect(() => {
+    // Check URL for locale override (for testing and demo)
+    const urlParams = new URLSearchParams(window.location.search);
+    const localeOverride = urlParams.get('locale');
+    const countryOverride = urlParams.get('country');
+    
     // Detect browser locale
-    const browserLocale = navigator.language || navigator.userLanguage || 'en-US';
+    const browserLocale = localeOverride || navigator.language || navigator.userLanguage || 'en-US';
     const lang = browserLocale.split('-')[0].toLowerCase();
-    const regionFromLocale = browserLocale.split('-')[1]?.toUpperCase();
+    const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
     
     // Set locale (only support en and fr for now)
     if (lang === 'fr') {
       setLocale('fr');
       // Default to France for French speakers
-      if (!regionFromLocale || regionFromLocale === 'FR') {
-        setCountry('FR');
+      if (!regionFromLocale || regionFromLocale === 'FR' || EU_COUNTRIES.includes(regionFromLocale)) {
+        setCountry(regionFromLocale || 'FR');
         setCurrency('EUR');
         setSymbol('€');
       }
