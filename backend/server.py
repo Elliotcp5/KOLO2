@@ -65,7 +65,7 @@ class User(BaseModel):
     locale: Optional[str] = None
     country: Optional[str] = None
     stripe_customer_id: Optional[str] = None
-    subscription_status: str = "none"  # active, trialing, past_due, canceled, incomplete, none
+    subscription_status: str = "none"
     subscription_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -78,6 +78,21 @@ class UserSession(BaseModel):
     expires_at: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Task(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    task_id: str = Field(default_factory=lambda: f"task_{uuid.uuid4().hex[:12]}")
+    user_id: str
+    prospect_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    task_type: str = "follow_up"  # follow_up, call, meeting, email, other
+    due_date: datetime
+    completed: bool = False
+    completed_at: Optional[datetime] = None
+    auto_generated: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Prospect(BaseModel):
     model_config = ConfigDict(extra="ignore")
     prospect_id: str = Field(default_factory=lambda: f"prospect_{uuid.uuid4().hex[:12]}")
@@ -85,9 +100,13 @@ class Prospect(BaseModel):
     full_name: str
     phone: str
     email: str
-    source: str = "manual"  # manual, whatsapp, email
+    source: str = "manual"
     status: str = "new"  # new, in_progress, closed, lost
     notes: Optional[str] = None
+    last_activity_date: Optional[datetime] = None
+    next_task_id: Optional[str] = None
+    next_task_date: Optional[datetime] = None
+    next_task_title: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -98,7 +117,7 @@ class PaymentTransaction(BaseModel):
     user_email: Optional[str] = None
     amount: float
     currency: str
-    payment_status: str = "pending"  # pending, paid, failed, expired
+    payment_status: str = "pending"
     metadata: Optional[Dict] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -124,9 +143,6 @@ class CreateCheckoutResponse(BaseModel):
     url: str
     session_id: str
 
-class CheckoutStatusRequest(BaseModel):
-    session_id: str
-
 class AuthSessionRequest(BaseModel):
     session_id: str
 
@@ -146,6 +162,20 @@ class UpdateProspectRequest(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
 
+class CreateTaskRequest(BaseModel):
+    prospect_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    task_type: str = "follow_up"
+    due_date: datetime
+
+class UpdateTaskRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    task_type: Optional[str] = None
+    due_date: Optional[datetime] = None
+    completed: Optional[bool] = None
+
 class GeoResponse(BaseModel):
     country: str
     currency: str
@@ -161,7 +191,6 @@ class CreateAccountRequest(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 def get_currency_for_country(country_code: str) -> str:
-    """Determine currency based on country"""
     if country_code == 'GB':
         return 'GBP'
     elif country_code in EU_COUNTRIES:
@@ -170,12 +199,10 @@ def get_currency_for_country(country_code: str) -> str:
         return 'USD'
 
 def get_pricing_for_country(country_code: str) -> dict:
-    """Get pricing info for a country"""
     currency = get_currency_for_country(country_code)
     return PRICING[currency]
 
 async def get_user_from_session(request: Request) -> Optional[User]:
-    """Get user from session token in cookie or Authorization header"""
     session_token = request.cookies.get('session_token')
     
     if not session_token:
@@ -186,7 +213,6 @@ async def get_user_from_session(request: Request) -> Optional[User]:
     if not session_token:
         return None
     
-    # Find session
     session_doc = await db.user_sessions.find_one(
         {"session_token": session_token},
         {"_id": 0}
@@ -195,7 +221,6 @@ async def get_user_from_session(request: Request) -> Optional[User]:
     if not session_doc:
         return None
     
-    # Check expiry
     expires_at = session_doc.get("expires_at")
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
@@ -205,7 +230,6 @@ async def get_user_from_session(request: Request) -> Optional[User]:
     if expires_at < datetime.now(timezone.utc):
         return None
     
-    # Get user
     user_doc = await db.users.find_one(
         {"user_id": session_doc["user_id"]},
         {"_id": 0}
@@ -217,25 +241,118 @@ async def get_user_from_session(request: Request) -> Optional[User]:
     return User(**user_doc)
 
 async def require_auth(request: Request) -> User:
-    """Require authenticated user"""
     user = await get_user_from_session(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
 async def require_active_subscription(request: Request) -> User:
-    """Require authenticated user with active subscription"""
     user = await require_auth(request)
     if user.subscription_status not in ['active', 'trialing']:
         raise HTTPException(status_code=403, detail="Active subscription required")
     return user
 
+async def update_prospect_next_task(prospect_id: str, user_id: str):
+    """Update prospect with next scheduled task info"""
+    next_task = await db.tasks.find_one(
+        {
+            "prospect_id": prospect_id,
+            "user_id": user_id,
+            "completed": False
+        },
+        {"_id": 0},
+        sort=[("due_date", 1)]
+    )
+    
+    if next_task:
+        due_date = next_task.get("due_date")
+        if isinstance(due_date, str):
+            due_date = datetime.fromisoformat(due_date)
+        
+        await db.prospects.update_one(
+            {"prospect_id": prospect_id},
+            {"$set": {
+                "next_task_id": next_task["task_id"],
+                "next_task_date": due_date.isoformat() if isinstance(due_date, datetime) else due_date,
+                "next_task_title": next_task["title"],
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    else:
+        await db.prospects.update_one(
+            {"prospect_id": prospect_id},
+            {"$set": {
+                "next_task_id": None,
+                "next_task_date": None,
+                "next_task_title": None,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+
+async def generate_follow_up_tasks_for_user(user_id: str):
+    """Generate automatic follow-up tasks for inactive prospects"""
+    now = datetime.now(timezone.utc)
+    one_week_ago = now - timedelta(days=7)
+    
+    # Find prospects that are not closed/lost and have no recent activity
+    prospects = await db.prospects.find(
+        {
+            "user_id": user_id,
+            "status": {"$nin": ["closed", "lost"]}
+        },
+        {"_id": 0}
+    ).to_list(1000)
+    
+    for prospect in prospects:
+        last_activity = prospect.get("last_activity_date")
+        if last_activity:
+            if isinstance(last_activity, str):
+                last_activity = datetime.fromisoformat(last_activity)
+            if last_activity.tzinfo is None:
+                last_activity = last_activity.replace(tzinfo=timezone.utc)
+        else:
+            # Use created_at if no activity
+            created_at = prospect.get("created_at")
+            if isinstance(created_at, str):
+                created_at = datetime.fromisoformat(created_at)
+            if created_at and created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            last_activity = created_at or now
+        
+        # Check if more than 7 days since last activity
+        if last_activity < one_week_ago:
+            # Check if there's already an uncompleted auto-generated task for this prospect
+            existing_task = await db.tasks.find_one({
+                "prospect_id": prospect["prospect_id"],
+                "user_id": user_id,
+                "auto_generated": True,
+                "completed": False
+            })
+            
+            if not existing_task:
+                # Create a new follow-up task
+                task = Task(
+                    user_id=user_id,
+                    prospect_id=prospect["prospect_id"],
+                    title=f"Suivi {prospect['full_name']}",
+                    description=f"Aucune activité depuis plus d'une semaine. Pensez à recontacter ce prospect.",
+                    task_type="follow_up",
+                    due_date=now,
+                    auto_generated=True
+                )
+                task_doc = task.model_dump()
+                task_doc['due_date'] = task_doc['due_date'].isoformat()
+                task_doc['created_at'] = task_doc['created_at'].isoformat()
+                task_doc['updated_at'] = task_doc['updated_at'].isoformat()
+                await db.tasks.insert_one(task_doc)
+                
+                # Update prospect with next task info
+                await update_prospect_next_task(prospect["prospect_id"], user_id)
+
 # ==================== GEO ENDPOINT ====================
 
 @api_router.get("/geo", response_model=GeoResponse)
 async def get_geo_info(request: Request, locale: Optional[str] = None, country: Optional[str] = None):
-    """Detect country and return pricing info"""
-    # Try to get country from header (set by Cloudflare/proxy) or fallback
     detected_country = country or request.headers.get('CF-IPCountry', 'US')
     detected_locale = locale or request.headers.get('Accept-Language', 'en-US').split(',')[0]
     
@@ -253,7 +370,6 @@ async def get_geo_info(request: Request, locale: Optional[str] = None, country: 
 
 @api_router.post("/auth/session")
 async def process_auth_session(request: AuthSessionRequest, response: Response):
-    """Process Emergent OAuth session_id and create local session"""
     # REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     try:
         async with httpx.AsyncClient() as http_client:
@@ -275,12 +391,10 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
     picture = auth_data.get("picture")
     session_token = auth_data.get("session_token")
     
-    # Check if user exists
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
     
     if existing_user:
         user_id = existing_user["user_id"]
-        # Update user info
         await db.users.update_one(
             {"user_id": user_id},
             {"$set": {
@@ -291,7 +405,6 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
         )
         subscription_status = existing_user.get("subscription_status", "none")
     else:
-        # Create new user
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         new_user = User(
             user_id=user_id,
@@ -307,7 +420,6 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
         await db.users.insert_one(user_doc)
         subscription_status = "none"
     
-    # Create session
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     session = UserSession(
         user_id=user_id,
@@ -319,7 +431,6 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
     session_doc['created_at'] = session_doc['created_at'].isoformat()
     await db.user_sessions.insert_one(session_doc)
     
-    # Set cookie
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -340,7 +451,6 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
 
 @api_router.get("/auth/me")
 async def get_current_user(request: Request):
-    """Get current authenticated user"""
     user = await get_user_from_session(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -355,7 +465,6 @@ async def get_current_user(request: Request):
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
-    """Logout user"""
     session_token = request.cookies.get('session_token')
     if session_token:
         await db.user_sessions.delete_many({"session_token": session_token})
@@ -367,21 +476,16 @@ async def logout(request: Request, response: Response):
 
 @api_router.post("/payments/create-checkout", response_model=CreateCheckoutResponse)
 async def create_checkout(request: CreateCheckoutRequest, http_request: Request):
-    """Create Stripe checkout session with regional pricing"""
-    # Determine pricing based on country
     country = request.country or http_request.headers.get('CF-IPCountry', 'US')
     pricing = get_pricing_for_country(country)
     
-    # Build URLs
     success_url = f"{request.origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{request.origin_url}/subscribe"
     
-    # Initialize Stripe
     host_url = str(http_request.base_url)
     webhook_url = f"{host_url}api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
-    # Create checkout session
     checkout_request = CheckoutSessionRequest(
         amount=pricing['amount'],
         currency=pricing['currency'],
@@ -398,17 +502,13 @@ async def create_checkout(request: CreateCheckoutRequest, http_request: Request)
     
     session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
     
-    # Record transaction
     transaction = PaymentTransaction(
         session_id=session.session_id,
         user_email=request.email,
         amount=pricing['amount'],
         currency=pricing['currency'],
         payment_status="pending",
-        metadata={
-            "country": country,
-            "locale": request.locale
-        }
+        metadata={"country": country, "locale": request.locale}
     )
     txn_doc = transaction.model_dump()
     txn_doc['created_at'] = txn_doc['created_at'].isoformat()
@@ -419,8 +519,6 @@ async def create_checkout(request: CreateCheckoutRequest, http_request: Request)
 
 @api_router.get("/payments/status/{session_id}")
 async def get_payment_status(session_id: str, http_request: Request):
-    """Get payment status and create success token if paid"""
-    # Initialize Stripe
     host_url = str(http_request.base_url)
     webhook_url = f"{host_url}api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
@@ -431,7 +529,6 @@ async def get_payment_status(session_id: str, http_request: Request):
         logger.error(f"Stripe status error: {e}")
         raise HTTPException(status_code=400, detail="Failed to get payment status")
     
-    # Update transaction in DB
     await db.payment_transactions.update_one(
         {"session_id": session_id},
         {"$set": {
@@ -440,10 +537,8 @@ async def get_payment_status(session_id: str, http_request: Request):
         }}
     )
     
-    # If paid, create success token
     payment_token = None
     if status.payment_status == "paid":
-        # Check if token already exists
         existing_token = await db.payment_success.find_one(
             {"session_id": session_id},
             {"_id": 0}
@@ -452,7 +547,6 @@ async def get_payment_status(session_id: str, http_request: Request):
         if existing_token:
             payment_token = existing_token["token"]
         else:
-            # Create new token
             email = status.metadata.get("email", "")
             token = PaymentSuccess(
                 email=email,
@@ -475,7 +569,6 @@ async def get_payment_status(session_id: str, http_request: Request):
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
-    """Handle Stripe webhooks"""
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
     
@@ -486,7 +579,6 @@ async def stripe_webhook(request: Request):
     try:
         webhook_response = await stripe_checkout.handle_webhook(body, signature)
         
-        # Update transaction
         if webhook_response.session_id:
             await db.payment_transactions.update_one(
                 {"session_id": webhook_response.session_id},
@@ -503,7 +595,6 @@ async def stripe_webhook(request: Request):
 
 @api_router.post("/payments/validate-token")
 async def validate_payment_token(token: str):
-    """Validate payment success token"""
     token_doc = await db.payment_success.find_one(
         {"token": token, "used": False},
         {"_id": 0}
@@ -512,7 +603,6 @@ async def validate_payment_token(token: str):
     if not token_doc:
         raise HTTPException(status_code=400, detail="Invalid or used token")
     
-    # Check expiry
     expires_at = token_doc.get("expires_at")
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
@@ -526,8 +616,6 @@ async def validate_payment_token(token: str):
 
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response):
-    """Create account after successful payment (gated)"""
-    # Validate payment token
     token_doc = await db.payment_success.find_one(
         {"token": request.payment_token, "used": False},
         {"_id": 0}
@@ -536,7 +624,6 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     if not token_doc:
         raise HTTPException(status_code=400, detail="Invalid or used payment token")
     
-    # Check expiry
     expires_at = token_doc.get("expires_at")
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
@@ -550,12 +637,10 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     if not email:
         raise HTTPException(status_code=400, detail="Email required")
     
-    # Check if user exists
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
     
     if existing_user:
         user_id = existing_user["user_id"]
-        # Update subscription status
         await db.users.update_one(
             {"user_id": user_id},
             {"$set": {
@@ -564,7 +649,6 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             }}
         )
     else:
-        # Create new user with active subscription
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         new_user = User(
             user_id=user_id,
@@ -577,13 +661,11 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         user_doc['updated_at'] = user_doc['updated_at'].isoformat()
         await db.users.insert_one(user_doc)
     
-    # Mark token as used
     await db.payment_success.update_one(
         {"token": request.payment_token},
         {"$set": {"used": True}}
     )
     
-    # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     session = UserSession(
@@ -596,7 +678,6 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     session_doc['created_at'] = session_doc['created_at'].isoformat()
     await db.user_sessions.insert_one(session_doc)
     
-    # Set cookie
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -612,6 +693,212 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         "email": email,
         "subscription_status": "active"
     }
+
+# ==================== TASK ENDPOINTS ====================
+
+@api_router.get("/tasks")
+async def list_tasks(request: Request, include_completed: bool = False):
+    """List all tasks for authenticated user"""
+    user = await require_active_subscription(request)
+    
+    # Generate follow-up tasks for inactive prospects
+    await generate_follow_up_tasks_for_user(user.user_id)
+    
+    query = {"user_id": user.user_id}
+    if not include_completed:
+        query["completed"] = False
+    
+    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(1000)
+    
+    # Enrich tasks with prospect info
+    for task in tasks:
+        if task.get("prospect_id"):
+            prospect = await db.prospects.find_one(
+                {"prospect_id": task["prospect_id"]},
+                {"_id": 0, "full_name": 1, "phone": 1, "email": 1, "status": 1}
+            )
+            task["prospect"] = prospect
+    
+    return {"tasks": tasks}
+
+@api_router.get("/tasks/today")
+async def list_today_tasks(request: Request):
+    """List tasks due today or overdue"""
+    user = await require_active_subscription(request)
+    
+    # Generate follow-up tasks for inactive prospects
+    await generate_follow_up_tasks_for_user(user.user_id)
+    
+    now = datetime.now(timezone.utc)
+    end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    tasks = await db.tasks.find(
+        {
+            "user_id": user.user_id,
+            "completed": False,
+            "due_date": {"$lte": end_of_today.isoformat()}
+        },
+        {"_id": 0}
+    ).sort("due_date", 1).to_list(1000)
+    
+    # Enrich tasks with prospect info
+    for task in tasks:
+        if task.get("prospect_id"):
+            prospect = await db.prospects.find_one(
+                {"prospect_id": task["prospect_id"]},
+                {"_id": 0, "full_name": 1, "phone": 1, "email": 1, "status": 1}
+            )
+            task["prospect"] = prospect
+    
+    return {"tasks": tasks}
+
+@api_router.post("/tasks")
+async def create_task(request: Request, task_data: CreateTaskRequest):
+    """Create a new task"""
+    user = await require_active_subscription(request)
+    
+    # Verify prospect exists if provided
+    if task_data.prospect_id:
+        prospect = await db.prospects.find_one(
+            {"prospect_id": task_data.prospect_id, "user_id": user.user_id}
+        )
+        if not prospect:
+            raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    task = Task(
+        user_id=user.user_id,
+        prospect_id=task_data.prospect_id,
+        title=task_data.title,
+        description=task_data.description,
+        task_type=task_data.task_type,
+        due_date=task_data.due_date,
+        auto_generated=False
+    )
+    
+    doc = task.model_dump()
+    doc['due_date'] = doc['due_date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.tasks.insert_one(doc)
+    
+    # Update prospect's next task if applicable
+    if task_data.prospect_id:
+        await update_prospect_next_task(task_data.prospect_id, user.user_id)
+        # Update last activity date
+        await db.prospects.update_one(
+            {"prospect_id": task_data.prospect_id},
+            {"$set": {
+                "last_activity_date": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    return {"task_id": task.task_id, "message": "Task created"}
+
+@api_router.put("/tasks/{task_id}")
+async def update_task(request: Request, task_id: str, update_data: UpdateTaskRequest):
+    """Update a task"""
+    user = await require_active_subscription(request)
+    
+    task = await db.tasks.find_one(
+        {"task_id": task_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    update_fields = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    # Handle completion
+    if update_data.completed is True and not task.get("completed"):
+        update_fields["completed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update prospect's last activity if task is linked to a prospect
+        if task.get("prospect_id"):
+            await db.prospects.update_one(
+                {"prospect_id": task["prospect_id"]},
+                {"$set": {
+                    "last_activity_date": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+    
+    if "due_date" in update_fields and isinstance(update_fields["due_date"], datetime):
+        update_fields["due_date"] = update_fields["due_date"].isoformat()
+    
+    update_fields['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tasks.update_one(
+        {"task_id": task_id, "user_id": user.user_id},
+        {"$set": update_fields}
+    )
+    
+    # Update prospect's next task if applicable
+    if task.get("prospect_id"):
+        await update_prospect_next_task(task["prospect_id"], user.user_id)
+    
+    return {"message": "Task updated"}
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(request: Request, task_id: str):
+    """Delete a task"""
+    user = await require_active_subscription(request)
+    
+    task = await db.tasks.find_one(
+        {"task_id": task_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    prospect_id = task.get("prospect_id")
+    
+    await db.tasks.delete_one({"task_id": task_id, "user_id": user.user_id})
+    
+    # Update prospect's next task if applicable
+    if prospect_id:
+        await update_prospect_next_task(prospect_id, user.user_id)
+    
+    return {"message": "Task deleted"}
+
+@api_router.post("/tasks/{task_id}/complete")
+async def complete_task(request: Request, task_id: str):
+    """Mark a task as completed"""
+    user = await require_active_subscription(request)
+    
+    task = await db.tasks.find_one(
+        {"task_id": task_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.tasks.update_one(
+        {"task_id": task_id},
+        {"$set": {
+            "completed": True,
+            "completed_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    # Update prospect's last activity if task is linked to a prospect
+    if task.get("prospect_id"):
+        await db.prospects.update_one(
+            {"prospect_id": task["prospect_id"]},
+            {"$set": {
+                "last_activity_date": now.isoformat(),
+                "updated_at": now.isoformat()
+            }}
+        )
+        await update_prospect_next_task(task["prospect_id"], user.user_id)
+    
+    return {"message": "Task completed"}
 
 # ==================== PROSPECT ENDPOINTS ====================
 
@@ -632,6 +919,8 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     """Create a new prospect"""
     user = await require_active_subscription(request)
     
+    now = datetime.now(timezone.utc)
+    
     prospect = Prospect(
         user_id=user.user_id,
         full_name=prospect_data.full_name,
@@ -639,19 +928,21 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
         email=prospect_data.email,
         source=prospect_data.source,
         status=prospect_data.status,
-        notes=prospect_data.notes
+        notes=prospect_data.notes,
+        last_activity_date=now
     )
     
     doc = prospect.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
+    doc['last_activity_date'] = doc['last_activity_date'].isoformat() if doc['last_activity_date'] else None
     await db.prospects.insert_one(doc)
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 
 @api_router.get("/prospects/{prospect_id}")
 async def get_prospect(request: Request, prospect_id: str):
-    """Get a single prospect"""
+    """Get a single prospect with tasks"""
     user = await require_active_subscription(request)
     
     prospect = await db.prospects.find_one(
@@ -662,6 +953,14 @@ async def get_prospect(request: Request, prospect_id: str):
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
+    # Get tasks for this prospect
+    tasks = await db.tasks.find(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    ).sort("due_date", -1).to_list(100)
+    
+    prospect["tasks"] = tasks
+    
     return prospect
 
 @api_router.put("/prospects/{prospect_id}")
@@ -671,6 +970,7 @@ async def update_prospect(request: Request, prospect_id: str, update_data: Updat
     
     update_fields = {k: v for k, v in update_data.model_dump().items() if v is not None}
     update_fields['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_fields['last_activity_date'] = datetime.now(timezone.utc).isoformat()
     
     result = await db.prospects.update_one(
         {"prospect_id": prospect_id, "user_id": user.user_id},
@@ -684,7 +984,7 @@ async def update_prospect(request: Request, prospect_id: str, update_data: Updat
 
 @api_router.delete("/prospects/{prospect_id}")
 async def delete_prospect(request: Request, prospect_id: str):
-    """Delete a prospect"""
+    """Delete a prospect and its tasks"""
     user = await require_active_subscription(request)
     
     result = await db.prospects.delete_one(
@@ -693,6 +993,11 @@ async def delete_prospect(request: Request, prospect_id: str):
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Delete associated tasks
+    await db.tasks.delete_many(
+        {"prospect_id": prospect_id, "user_id": user.user_id}
+    )
     
     return {"message": "Prospect deleted"}
 
