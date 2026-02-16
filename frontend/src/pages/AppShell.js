@@ -1257,46 +1257,63 @@ const TasksTab = ({ onRefresh }) => {
           <p className="text-muted" style={{ fontSize: '14px' }}>{t('addFirstTask')}</p>
         </div>
       ) : (
-        Object.entries(groupedTasks).map(([date, dateTasks]) => (
-          <div key={date} style={{ marginBottom: '24px' }}>
-            <h3 className="text-caption" style={{ marginBottom: '12px' }}>{date}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {dateTasks.map(task => (
-                <div 
-                  key={task.task_id} 
-                  className="card"
-                  style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {sortedTasks.map(task => {
+            const taskColor = getTaskColor(task);
+            return (
+              <div 
+                key={task.task_id} 
+                className="card"
+                style={{ 
+                  padding: '16px', 
+                  display: 'flex', 
+                  alignItems: 'flex-start', 
+                  gap: '12px',
+                  borderLeft: `3px solid ${taskColor}`,
+                  opacity: task.completed ? 0.6 : 1
+                }}
+              >
+                <button
+                  onClick={() => !task.completed && handleCompleteTask(task.task_id)}
+                  disabled={task.completed}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    border: `2px solid ${taskColor}`,
+                    background: task.completed ? taskColor : 'transparent',
+                    cursor: task.completed ? 'default' : 'pointer',
+                    flexShrink: 0,
+                    marginTop: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  data-testid={`complete-task-${task.task_id}`}
                 >
-                  <button
-                    onClick={() => handleCompleteTask(task.task_id)}
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      border: '2px solid var(--accent)',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      marginTop: '2px'
-                    }}
-                    data-testid={`complete-task-${task.task_id}`}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', color: 'var(--text)', marginBottom: '4px' }}>
-                      {task.title}
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                      {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {task.prospect_id && getProspectName(task.prospect_id) && (
-                        <span> • {getProspectName(task.prospect_id)}</span>
-                      )}
-                    </div>
+                  {task.completed && <Check size={12} style={{ color: 'white' }} />}
+                </button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ 
+                    fontSize: '15px', 
+                    color: taskColor, 
+                    marginBottom: '4px',
+                    textDecoration: task.completed ? 'line-through' : 'none'
+                  }}>
+                    {task.title}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                    {new Date(task.due_date).toLocaleDateString()} - {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {task.prospect_id && getProspectName(task.prospect_id) && (
+                      <span> • {getProspectName(task.prospect_id)}</span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))
+              </div>
+            );
+          })}
+        </div>
+      )}
       )}
     </div>
   );
