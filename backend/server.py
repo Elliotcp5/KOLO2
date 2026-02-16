@@ -1039,6 +1039,48 @@ async def unsubscribe_notifications(request: Request):
     
     return {"message": "Unsubscribed"}
 
+@api_router.post("/notifications/trigger")
+async def trigger_notifications(request: Request):
+    """Manually trigger notification job (admin only)"""
+    # Import and run the scheduler
+    from notification_scheduler import run_once
+    
+    try:
+        result = await run_once()
+        return {"status": "success", "result": result}
+    except Exception as e:
+        logger.error(f"Notification trigger error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/notifications/vapid-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push subscription"""
+    # Read public key and convert to base64
+    vapid_public_key_file = os.environ.get('VAPID_PUBLIC_KEY_FILE', '/app/backend/vapid_public.pem')
+    
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
+        import base64
+        
+        with open(vapid_public_key_file, 'rb') as f:
+            public_key = serialization.load_pem_public_key(f.read(), backend=default_backend())
+        
+        # Get the raw bytes in uncompressed point format
+        pub_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint
+        )
+        
+        # Convert to URL-safe base64
+        pub_b64 = base64.urlsafe_b64encode(pub_bytes).decode('utf-8').rstrip('=')
+        
+        return {"vapid_public_key": pub_b64}
+    except Exception as e:
+        logger.error(f"Error reading VAPID key: {e}")
+        # Fallback to default key
+        return {"vapid_public_key": "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U"}
+
 
 
 # ==================== ROOT ENDPOINTS ====================
