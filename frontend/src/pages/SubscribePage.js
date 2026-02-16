@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
@@ -12,52 +12,50 @@ const SubscribePage = () => {
   const { t, formatPrice, country, locale } = useLocale();
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [checkoutUrl, setCheckoutUrl] = useState(null);
-
-  // When checkoutUrl is set, redirect immediately
-  useEffect(() => {
-    if (checkoutUrl) {
-      // Direct navigation - most reliable method
-      window.location.href = checkoutUrl;
-    }
-  }, [checkoutUrl]);
 
   const handlePayment = async (method) => {
     if (loading) return;
     
     setSelectedMethod(method);
     setLoading(true);
-    setCheckoutUrl(null);
 
     try {
       const originUrl = window.location.origin;
+      const apiUrl = `${API_URL}/api/payments/create-checkout`;
       
-      const response = await fetch(`${API_URL}/api/payments/create-checkout`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           origin_url: originUrl,
-          locale: locale,
-          country: country,
+          locale: locale || 'fr',
+          country: country || 'FR',
         })
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+
       const data = await response.json();
       
-      if (response.ok && data.url) {
-        // Set URL - useEffect will handle the redirect
-        setCheckoutUrl(data.url);
+      if (data.url) {
+        // Redirect to Stripe
+        window.location.href = data.url;
       } else {
-        throw new Error(data.detail || 'Payment failed');
+        throw new Error('No checkout URL received');
       }
     } catch (error) {
-      console.error('Payment error:', error);
-      toast.error(t('paymentFailed'));
+      console.error('Payment error:', error.message);
+      // Show detailed error for debugging
+      toast.error(`Erreur: ${error.message}`);
       setLoading(false);
       setSelectedMethod(null);
+    }
+  };;
     }
   };
 
