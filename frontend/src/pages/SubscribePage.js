@@ -27,14 +27,17 @@ const SubscribePage = () => {
     
     setSelectedMethod(method);
     setLoading(true);
+    setCheckoutUrl(null);
 
     try {
       const originUrl = window.location.origin;
       
       const response = await fetch(`${API_URL}/api/payments/create-checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           origin_url: originUrl,
           locale: locale,
@@ -42,16 +45,13 @@ const SubscribePage = () => {
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.url) {
-          setCheckoutUrl(data.url);
-        } else {
-          throw new Error('No URL');
-        }
+      const data = await response.json();
+      
+      if (response.ok && data.url) {
+        // Set URL - useEffect will handle the redirect
+        setCheckoutUrl(data.url);
       } else {
-        throw new Error('Server error');
+        throw new Error(data.detail || 'Payment failed');
       }
     } catch (error) {
       console.error('Payment error:', error);
