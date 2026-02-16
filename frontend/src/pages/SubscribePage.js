@@ -55,8 +55,6 @@ const SubscribePage = () => {
       setLoading(false);
       setSelectedMethod(null);
     }
-  };;
-    }
   };
 
   return (
