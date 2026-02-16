@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { toast } from 'sonner';
@@ -9,9 +9,21 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const SubscribePage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t, formatPrice, country, locale } = useLocale();
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+
+  // Handle error messages from redirect
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error === 'already_subscribed') {
+      toast.error(t('alreadySubscribed'));
+    } else if (error === 'payment_failed') {
+      toast.error(t('paymentFailed'));
+    }
+  }, [searchParams, t]);
 
   const handlePayment = (method) => {
     if (loading) return;
@@ -20,7 +32,10 @@ const SubscribePage = () => {
     setLoading(true);
 
     // Direct navigation to server endpoint - works on ALL browsers
-    const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
+    let checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
+    if (email) {
+      checkoutUrl += `&email=${encodeURIComponent(email)}`;
+    }
     window.location.href = checkoutUrl;
   };
 
