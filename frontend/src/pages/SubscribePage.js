@@ -13,50 +13,15 @@ const SubscribePage = () => {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handlePayment = async (method) => {
+  const handlePayment = (method) => {
     if (loading) return;
     
     setSelectedMethod(method);
     setLoading(true);
 
-    try {
-      const originUrl = window.location.origin;
-      const apiUrl = `${API_URL}/api/payments/create-checkout`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          origin_url: originUrl,
-          locale: locale || 'fr',
-          country: country || 'FR',
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.url) {
-        // Try window.open first (works better on some iOS browsers)
-        const newWindow = window.open(data.url, '_self');
-        if (!newWindow) {
-          // Fallback to location.href
-          window.location.href = data.url;
-        }
-      } else {
-        throw new Error('No checkout URL');
-      }
-    } catch (error) {
-      toast.error(t('paymentFailed'));
-      setLoading(false);
-      setSelectedMethod(null);
-    }
+    // Direct navigation to server endpoint - works on ALL browsers
+    const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
+    window.location.href = checkoutUrl;
   };
 
   return (
