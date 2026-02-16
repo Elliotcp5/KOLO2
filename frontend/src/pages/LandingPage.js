@@ -41,12 +41,25 @@ const LandingPage = () => {
       <div className="page-container no-nav">
         {/* Header */}
         <div className="landing-hero">
-          {/* Login link */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+          {/* Login link - small, top right corner */}
+          <div style={{ 
+            position: 'absolute',
+            top: 'max(12px, env(safe-area-inset-top))',
+            right: '16px',
+            zIndex: 10
+          }}>
             <button 
-              className="btn-ghost"
               onClick={() => navigate('/login')}
               data-testid="login-link"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '400',
+                cursor: 'pointer',
+                padding: '4px 8px'
+              }}
             >
               {t('loginToKolo')}
             </button>
@@ -56,7 +69,8 @@ const LandingPage = () => {
           <div style={{ 
             display: 'flex', 
             justifyContent: 'center', 
-            marginBottom: '32px' 
+            marginBottom: '32px',
+            marginTop: '48px'
           }}>
             <img 
               src={LANDING_LOGO_URL} 
