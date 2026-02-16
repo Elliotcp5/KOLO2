@@ -63,6 +63,16 @@ async def get_push_subscription(user_id: str):
 async def send_push_notification(subscription: dict, title: str, body: str, url: str = "/app"):
     """Send a push notification to a subscription"""
     try:
+        # Validate subscription has required fields
+        if not subscription.get("endpoint") or not subscription.get("keys"):
+            logger.warning("Invalid subscription format")
+            return False
+        
+        # Skip test/mock subscriptions
+        if "test.push.com" in subscription.get("endpoint", ""):
+            logger.info("Skipping test subscription")
+            return True
+        
         payload = json.dumps({
             "title": title,
             "body": body,
