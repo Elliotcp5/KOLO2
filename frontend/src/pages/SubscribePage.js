@@ -37,21 +37,23 @@ const SubscribePage = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
+        throw new Error(`Server error: ${response.status}`);
       }
 
       const data = await response.json();
       
       if (data.url) {
-        // Redirect to Stripe
-        window.location.href = data.url;
+        // Try window.open first (works better on some iOS browsers)
+        const newWindow = window.open(data.url, '_self');
+        if (!newWindow) {
+          // Fallback to location.href
+          window.location.href = data.url;
+        }
       } else {
-        throw new Error('No checkout URL received');
+        throw new Error('No checkout URL');
       }
     } catch (error) {
-      console.error('Payment error:', error.message);
-      // Show detailed error for debugging
-      toast.error(`Erreur: ${error.message}`);
+      toast.error(t('paymentFailed'));
       setLoading(false);
       setSelectedMethod(null);
     }
