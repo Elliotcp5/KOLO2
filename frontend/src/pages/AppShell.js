@@ -1075,13 +1075,32 @@ const TasksTab = ({ onRefresh }) => {
     return prospect ? prospect.full_name : null;
   };
 
-  // Group tasks by date
-  const groupedTasks = tasks.reduce((groups, task) => {
-    const date = new Date(task.due_date).toLocaleDateString();
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(task);
-    return groups;
-  }, {});
+  // Helper to get task color based on status and date
+  const getTaskColor = (task) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const taskDate = new Date(task.due_date);
+    const taskDay = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+    
+    if (task.completed) {
+      return '#10B981'; // Green for completed
+    }
+    if (taskDay < today) {
+      return '#EF4444'; // Red for overdue
+    }
+    if (taskDay.getTime() === today.getTime()) {
+      return '#F59E0B'; // Orange for today
+    }
+    return '#FFFFFF'; // White for future
+  };
+
+  // Sort and filter tasks
+  const sortedTasks = [...tasks].sort((a, b) => {
+    // Completed tasks at the bottom
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    // Then by date
+    return new Date(a.due_date) - new Date(b.due_date);
+  });
 
   if (loading) {
     return (
