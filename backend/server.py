@@ -679,60 +679,43 @@ async def validate_payment_token(token: str):
 
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
-    # First, try to find payment token in our database
-    token_doc = await db.payment_success.find_one(
-        {"token": request.payment_token, "used": False},
-        {"_id": 0}
-    )
+    """Create account after successful Stripe payment - simplified and robust"""
     
-    # If not found, check if it's a Stripe session_id and verify directly with Stripe
-    if not token_doc and request.payment_token.startswith("cs_"):
+    # Validate input
+    if not request.email:
+        raise HTTPException(status_code=400, detail="Email requis")
+    
+    if not request.password or len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    
+    if not request.payment_token:
+        raise HTTPException(status_code=400, detail="Session de paiement invalide")
+    
+    # Check if user already exists with this email and has a password
+    existing_user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    if existing_user and existing_user.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
+    
+    # Verify payment with Stripe
+    if request.payment_token.startswith("cs_"):
         try:
             host_url = str(http_request.base_url)
             webhook_url = f"{host_url}api/webhook/stripe"
             stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
             status = await stripe_checkout.get_checkout_status(request.payment_token)
             
-            if status.payment_status == "paid":
-                # Create a token document on the fly
-                token_doc = {
-                    "token": request.payment_token,
-                    "session_id": request.payment_token,
-                    "email": status.metadata.get("email", ""),
-                    "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
-                    "used": False
-                }
-                # Store it for future reference
-                await db.payment_success.insert_one({**token_doc, "created_at": datetime.now(timezone.utc).isoformat()})
-            else:
-                raise HTTPException(status_code=400, detail="Payment not completed")
+            if status.payment_status != "paid":
+                raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
+                
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Stripe verification error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid or used payment token")
+            raise HTTPException(status_code=400, detail="Impossible de vérifier le paiement. Veuillez réessayer.")
+    else:
+        raise HTTPException(status_code=400, detail="Session de paiement invalide")
     
-    if not token_doc:
-        raise HTTPException(status_code=400, detail="Invalid or used payment token")
-        raise HTTPException(status_code=400, detail="Invalid or used payment token")
-    
-    expires_at = token_doc.get("expires_at")
-    if isinstance(expires_at, str):
-        expires_at = datetime.fromisoformat(expires_at)
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    
-    if expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Token expired")
-    
-    email = request.email or token_doc.get("email")
-    if not email:
-        raise HTTPException(status_code=400, detail="Email required")
-    
-    # Password is required for new accounts
-    if not request.password:
-        raise HTTPException(status_code=400, detail="Password required")
-    
-    existing_user = await db.users.find_one({"email": email}, {"_id": 0})
-    
+    # Create or update user
     if existing_user:
         user_id = existing_user["user_id"]
         await db.users.update_one(
@@ -740,26 +723,34 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             {"$set": {
                 "subscription_status": "active",
                 "password_hash": hash_password(request.password),
+                "stripe_session_id": request.payment_token,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
-        new_user = User(
-            user_id=user_id,
-            email=email,
-            auth_provider="email",
-            subscription_status="active"
-        )
-        user_doc = new_user.model_dump()
-        user_doc['password_hash'] = hash_password(request.password)
-        user_doc['created_at'] = user_doc['created_at'].isoformat()
-        user_doc['updated_at'] = user_doc['updated_at'].isoformat()
+        user_doc = {
+            "user_id": user_id,
+            "email": request.email,
+            "auth_provider": "email",
+            "subscription_status": "active",
+            "password_hash": hash_password(request.password),
+            "stripe_session_id": request.payment_token,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
         await db.users.insert_one(user_doc)
     
+    # Store payment record
     await db.payment_success.update_one(
-        {"token": request.payment_token},
-        {"$set": {"used": True}}
+        {"session_id": request.payment_token},
+        {"$set": {
+            "session_id": request.payment_token,
+            "email": request.email,
+            "user_id": user_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
     )
     
     session_token = f"sess_{uuid.uuid4().hex}"
