@@ -33,6 +33,7 @@ const translations = {
     creditDebitCard: "Credit / Debit Card",
     applePay: "Apple Pay",
     unlimitedLeads: "Unlimited leads and tasks",
+    securedByStripe: "Payments secured by Stripe",
     
     // Create Account
     createYourAccount: "Create Your Account",
