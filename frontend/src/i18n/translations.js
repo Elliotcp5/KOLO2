@@ -182,6 +182,7 @@ const translations = {
     addProspect: "Ajouter un Lead",
     noProspects: "Aucun lead",
     addFirstProspect: "Ajoutez votre premier lead pour commencer",
+    prospectCreated: "Lead créé!",
     
     // App - Prospect Detail
     nextScheduledTask: "Prochaine Tâche Programmée",
