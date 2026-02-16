@@ -42,10 +42,9 @@ const SubscribePage = () => {
         const data = await response.json();
         console.log('Checkout URL received:', data.url);
         
-        // Try multiple redirect methods for better compatibility
         if (data.url) {
-          // Method 1: Direct location change
-          window.location.assign(data.url);
+          // Use replace to avoid back button issues
+          window.location.replace(data.url);
         } else {
           throw new Error('No checkout URL received');
         }
