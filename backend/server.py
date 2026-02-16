@@ -831,29 +831,29 @@ async def login_with_password(request: LoginRequest, response: Response):
 # Recover account - for users who paid but didn't complete account creation
 @api_router.post("/auth/recover")
 async def recover_account(request: RecoverAccountRequest, response: Response, http_request: Request):
-    """Recover account for users who have a Stripe subscription but no account"""
+    """Recover account - creates account if email has a valid paid Stripe session"""
     
-    # Check if user already exists
+    if not request.password or len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    
+    # Check if user already exists with password
     existing_user = await db.users.find_one({"email": request.email}, {"_id": 0})
     
     if existing_user and existing_user.get("password_hash"):
-        raise HTTPException(status_code=400, detail="Account already exists. Please login.")
+        raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
     
-    # Check Stripe for active subscription with this email
-    # For now, check if there's a payment record for this email
-    payment_record = await db.payment_transactions.find_one(
-        {"user_email": request.email, "payment_status": "paid"},
-        {"_id": 0}
-    )
-    
-    # Also check payment_success collection
+    # Check if there's a payment_success record for this email
     payment_success = await db.payment_success.find_one(
         {"email": request.email},
         {"_id": 0}
     )
     
-    if not payment_record and not payment_success:
-        raise HTTPException(status_code=404, detail="No payment found for this email. Please subscribe first.")
+    if not payment_success:
+        # No payment record found - tell user to use their Stripe session ID
+        raise HTTPException(
+            status_code=404, 
+            detail="Aucun paiement trouvé pour cet email. Si vous avez payé, utilisez le lien de confirmation Stripe ou contactez le support."
+        )
     
     # Create or update user
     if existing_user:
@@ -868,16 +868,15 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
         )
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
-        new_user = User(
-            user_id=user_id,
-            email=request.email,
-            auth_provider="email",
-            subscription_status="active"
-        )
-        user_doc = new_user.model_dump()
-        user_doc['password_hash'] = hash_password(request.password)
-        user_doc['created_at'] = user_doc['created_at'].isoformat()
-        user_doc['updated_at'] = user_doc['updated_at'].isoformat()
+        user_doc = {
+            "user_id": user_id,
+            "email": request.email,
+            "auth_provider": "email",
+            "subscription_status": "active",
+            "password_hash": hash_password(request.password),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
         await db.users.insert_one(user_doc)
     
     # Create session
