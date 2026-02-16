@@ -540,7 +540,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
     cancel_url = f"{origin_url}/subscribe"
     
     # Get pricing based on country
-    pricing = get_regional_pricing(country)
+    pricing = get_pricing_for_country(country)
     
     checkout_request = CheckoutSessionRequest(
         amount=pricing['amount'],
