@@ -103,7 +103,7 @@ const translations = {
     feature2Title: "Prospects Actifs",
     feature2Desc: "Chaque acheteur et vendeur à conclure.",
     feature3Title: "Relances Intelligentes",
-    feature3Desc: "Rappels automatiques basés sur l'activité réelle.",
+    feature3Desc: "Rappels basés sur vos tâches et votre activité réelle.",
     madeBy: "Fait par des agents indépendants / pour des agents indépendants",
     startButton: "Commencer",
     cancelAnytime: "Annulez à tout moment",
