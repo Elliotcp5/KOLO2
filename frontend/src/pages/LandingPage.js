@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Briefcase, Sparkles, ArrowRight } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
+// New K icon logo for landing page only
+const LANDING_LOGO_URL = "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const LandingPage = () => {
         {/* Header */}
         <div className="landing-hero">
           {/* Login link */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
             <button 
               className="btn-ghost"
               onClick={() => navigate('/login')}
@@ -51,13 +52,20 @@ const LandingPage = () => {
             </button>
           </div>
 
-          {/* Logo only - no duplicate KOLO text */}
-          <div className="logo-placeholder" style={{ marginBottom: '32px' }}>
+          {/* Large K Logo - only on landing page */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginBottom: '32px' 
+          }}>
             <img 
-              src={LOGO_URL} 
+              src={LANDING_LOGO_URL} 
               alt="KOLO" 
-              className="logo-image"
-              style={{ maxHeight: '60px' }}
+              style={{ 
+                height: '120px',
+                width: 'auto',
+                objectFit: 'contain'
+              }}
             />
           </div>
 
