@@ -163,6 +163,54 @@ class KoloAPITester:
             print(f"   ❌ Missing url or session_id in response")
             return False
 
+    def test_notifications_subscribe_endpoint(self):
+        """Test push notifications subscribe endpoint - CRITICAL REQUIREMENT"""
+        print("\n🔍 Testing Push Notifications Subscribe Endpoint (CRITICAL REQUIREMENT)...")
+        
+        # Test without authentication (should work with user_id)
+        test_subscription = {
+            "subscription": {
+                "endpoint": "https://fcm.googleapis.com/fcm/send/test",
+                "keys": {
+                    "p256dh": "test_p256dh_key",
+                    "auth": "test_auth_key"
+                }
+            },
+            "user_id": "test_user_123"
+        }
+        
+        success, response = self.run_test(
+            "Push Notifications Subscribe", 
+            "POST", 
+            "api/notifications/subscribe", 
+            200, 
+            data=test_subscription
+        )
+        
+        if success:
+            print("   ✅ Push notifications subscribe endpoint is working")
+        else:
+            print("   ❌ Push notifications subscribe endpoint failed")
+            
+        return success
+
+    def test_tasks_today_endpoint(self):
+        """Test today tasks endpoint - requires authentication"""
+        print("\n🔍 Testing Tasks Today Endpoint (Authentication Required)...")
+        success, response = self.run_test(
+            "Tasks Today (No Auth)", 
+            "GET", 
+            "api/tasks/today", 
+            401  # Should fail without authentication
+        )
+        
+        if success:
+            print("   ✅ Tasks today endpoint properly requires authentication")
+        else:
+            print("   ❌ Tasks today endpoint authentication check failed")
+            
+        return success
+
     def test_cors_headers(self):
         """Test CORS headers are present"""
         url = f"{self.base_url}/api/"
