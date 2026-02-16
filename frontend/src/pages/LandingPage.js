@@ -51,23 +51,15 @@ const LandingPage = () => {
             </button>
           </div>
 
-          {/* Logo */}
-          <div className="logo-placeholder" style={{ marginBottom: '16px' }}>
+          {/* Logo only - no duplicate KOLO text */}
+          <div className="logo-placeholder" style={{ marginBottom: '32px' }}>
             <img 
               src={LOGO_URL} 
               alt="KOLO" 
               className="logo-image"
-              style={{ maxHeight: '50px' }}
+              style={{ maxHeight: '60px' }}
             />
           </div>
-
-          {/* App name */}
-          <h1 
-            className="text-headline" 
-            style={{ textAlign: 'center', marginBottom: '24px', fontSize: '28px', letterSpacing: '4px' }}
-          >
-            KOLO
-          </h1>
 
           {/* Hero headline */}
           <h2 
