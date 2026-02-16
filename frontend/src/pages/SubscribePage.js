@@ -168,6 +168,18 @@ const SubscribePage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Hidden link for iOS redirect compatibility */}
+      {checkoutUrl && (
+        <a 
+          ref={linkRef}
+          href={checkoutUrl}
+          style={{ display: 'none' }}
+          aria-hidden="true"
+        >
+          Checkout
+        </a>
+      )}
     </div>
   );
 };
