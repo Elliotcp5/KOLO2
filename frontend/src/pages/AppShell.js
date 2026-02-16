@@ -177,30 +177,67 @@ const TodayTab = ({ onOpenProfile }) => {
 
 // ==================== PROSPECTS TAB ====================
 const ProspectsTab = ({ onSelectProspect }) => {
-  const navigate = useNavigate();
   const { t } = useLocale();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newProspect, setNewProspect] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+    source: 'manual',
+    status: 'new',
+    notes: ''
+  });
+  const [creating, setCreating] = useState(false);
+
+  const fetchProspects = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/prospects`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProspects(data.prospects || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch prospects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProspects = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/prospects`, {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setProspects(data.prospects || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch prospects:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProspects();
   }, []);
+
+  const handleCreateProspect = async () => {
+    if (!newProspect.full_name || !newProspect.phone) return;
+    
+    setCreating(true);
+    try {
+      const response = await fetch(`${API_URL}/api/prospects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(newProspect)
+      });
+      
+      if (response.ok) {
+        toast.success(t('prospectCreated') || 'Lead créé!');
+        setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'new', notes: '' });
+        setShowAddForm(false);
+        fetchProspects();
+      } else {
+        throw new Error('Failed to create prospect');
+      }
+    } catch (error) {
+      console.error('Failed to create prospect:', error);
+      toast.error(t('updateError'));
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const getStatusLabel = (status) => {
     const labels = {
@@ -225,6 +262,114 @@ const ProspectsTab = ({ onSelectProspect }) => {
     };
   };
 
+  // Add Prospect Form Modal
+  if (showAddForm) {
+    return (
+      <div style={{ padding: '0' }}>
+        {/* Header */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '16px 24px',
+          borderBottom: '1px solid var(--border)'
+        }}>
+          <button 
+            onClick={() => setShowAddForm(false)}
+            style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '16px' }}
+          >
+            {t('cancel')}
+          </button>
+          <h2 style={{ fontSize: '17px', fontWeight: '600' }}>{t('addProspect')}</h2>
+          <button 
+            onClick={handleCreateProspect}
+            disabled={!newProspect.full_name || !newProspect.phone || creating}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: (!newProspect.full_name || !newProspect.phone || creating) ? 'var(--muted)' : 'var(--accent)', 
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600'
+            }}
+            data-testid="save-prospect-button"
+          >
+            {creating ? '...' : t('save')}
+          </button>
+        </div>
+
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <input
+            type="text"
+            className="input-dark"
+            placeholder={`${t('fullName')} *`}
+            value={newProspect.full_name}
+            onChange={(e) => setNewProspect({...newProspect, full_name: e.target.value})}
+            data-testid="prospect-name-input"
+          />
+          <input
+            type="tel"
+            className="input-dark"
+            placeholder={`${t('phone')} *`}
+            value={newProspect.phone}
+            onChange={(e) => setNewProspect({...newProspect, phone: e.target.value})}
+            data-testid="prospect-phone-input"
+          />
+          <input
+            type="email"
+            className="input-dark"
+            placeholder={t('email')}
+            value={newProspect.email}
+            onChange={(e) => setNewProspect({...newProspect, email: e.target.value})}
+            data-testid="prospect-email-input"
+          />
+          
+          {/* Source */}
+          <div>
+            <label className="text-caption" style={{ marginBottom: '8px', display: 'block' }}>{t('source')}</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {['manual', 'whatsapp', 'email'].map(source => (
+                <button
+                  key={source}
+                  onClick={() => setNewProspect({...newProspect, source})}
+                  className={`btn-chip ${newProspect.source === source ? 'active' : ''}`}
+                >
+                  {source === 'manual' ? 'Manual' : source === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="text-caption" style={{ marginBottom: '8px', display: 'block' }}>{t('status')}</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {['new', 'in_progress', 'closed', 'lost'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setNewProspect({...newProspect, status})}
+                  className={`btn-chip ${newProspect.status === status ? 'active' : ''}`}
+                >
+                  {getStatusLabel(status)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <textarea
+            className="input-dark"
+            placeholder={t('addNotes')}
+            value={newProspect.notes}
+            onChange={(e) => setNewProspect({...newProspect, notes: e.target.value})}
+            rows={4}
+            style={{ resize: 'none' }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '24px' }}>
       {/* Header */}
@@ -234,7 +379,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
         </h1>
         <button 
           className="btn-primary"
-          onClick={() => navigate('/app/prospects/new')}
+          onClick={() => setShowAddForm(true)}
           style={{ width: 'auto', height: '44px', padding: '0 20px' }}
           data-testid="add-prospect-button"
         >
