@@ -107,6 +107,14 @@ const translations = {
     subscriptionRequired: "Active subscription required",
     pleaseSubscribe: "Please subscribe to access the app",
     goToSubscribe: "Go to Subscribe",
+    
+    // Push Notifications
+    enableNotifications: "Enable Notifications",
+    notificationsDesc: "Get reminders for your daily tasks",
+    enableButton: "Enable",
+    maybeLater: "Maybe Later",
+    notificationsEnabled: "Notifications enabled!",
+    notificationsDenied: "Notifications permission denied",
   },
   fr: {
     // Landing
@@ -215,6 +223,14 @@ const translations = {
     subscriptionRequired: "Abonnement actif requis",
     pleaseSubscribe: "Veuillez vous abonner pour accéder à l'application",
     goToSubscribe: "S'abonner",
+    
+    // Push Notifications
+    enableNotifications: "Activer les Notifications",
+    notificationsDesc: "Recevez des rappels pour vos tâches quotidiennes",
+    enableButton: "Activer",
+    maybeLater: "Plus tard",
+    notificationsEnabled: "Notifications activées !",
+    notificationsDenied: "Permission de notifications refusée",
   }
 };
 
