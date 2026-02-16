@@ -856,6 +856,11 @@ const AppShell = () => {
         </div>
         {!selectedProspect && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />}
       </div>
+      
+      {/* Notification Permission Prompt */}
+      {showNotificationPrompt && (
+        <NotificationPrompt onClose={() => setShowNotificationPrompt(false)} />
+      )}
     </div>
   );
 };
