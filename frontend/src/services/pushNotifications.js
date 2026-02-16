@@ -1,10 +1,11 @@
 // Push notification service for KOLO
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 class PushNotificationService {
   constructor() {
     this.swRegistration = null;
     this.isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+    this.vapidPublicKey = null;
   }
 
   async init() {
@@ -17,10 +18,29 @@ class PushNotificationService {
       // Register service worker
       this.swRegistration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker registered');
+      
+      // Fetch VAPID public key from server
+      await this.fetchVapidKey();
+      
       return true;
     } catch (error) {
       console.error('Service Worker registration failed:', error);
       return false;
+    }
+  }
+
+  async fetchVapidKey() {
+    try {
+      const response = await fetch(`${API_URL}/api/notifications/vapid-key`);
+      if (response.ok) {
+        const data = await response.json();
+        this.vapidPublicKey = data.vapid_public_key;
+        console.log('VAPID key fetched');
+      }
+    } catch (error) {
+      console.error('Failed to fetch VAPID key:', error);
+      // Fallback to default key
+      this.vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
     }
   }
 
@@ -41,6 +61,10 @@ class PushNotificationService {
       await this.init();
     }
 
+    if (!this.vapidPublicKey) {
+      await this.fetchVapidKey();
+    }
+
     try {
       // Check if already subscribed
       let subscription = await this.swRegistration.pushManager.getSubscription();
@@ -49,12 +73,11 @@ class PushNotificationService {
         // Subscribe to push
         subscription = await this.swRegistration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
         });
       }
 
       // Send subscription to backend
-      const API_URL = process.env.REACT_APP_BACKEND_URL;
       await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,6 +103,12 @@ class PushNotificationService {
       const subscription = await this.swRegistration.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
+        
+        // Notify backend
+        await fetch(`${API_URL}/api/notifications/unsubscribe`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
       }
     } catch (error) {
       console.error('Unsubscribe failed:', error);
@@ -107,7 +136,7 @@ class PushNotificationService {
       await this.init();
     }
 
-    if (Notification.permission === 'granted') {
+    if (Notification.permission === 'granted' && this.swRegistration) {
       this.swRegistration.showNotification(title, {
         body,
         icon: '/logo192.png',
