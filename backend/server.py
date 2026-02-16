@@ -1131,7 +1131,7 @@ async def list_prospects(request: Request):
 
 @api_router.post("/prospects")
 async def create_prospect(request: Request, prospect_data: CreateProspectRequest):
-    """Create a new prospect"""
+    """Create a new prospect and auto-create follow-up task"""
     user = await require_active_subscription(request)
     
     now = datetime.now(timezone.utc)
@@ -1152,6 +1152,21 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     doc['updated_at'] = doc['updated_at'].isoformat()
     doc['last_activity_date'] = doc['last_activity_date'].isoformat() if doc['last_activity_date'] else None
     await db.prospects.insert_one(doc)
+    
+    # Auto-create follow-up task for the new prospect
+    follow_up_date = now + timedelta(days=1)  # Follow up tomorrow
+    task = Task(
+        user_id=user.user_id,
+        prospect_id=prospect.prospect_id,
+        title=f"Suivi {prospect_data.full_name}",
+        task_type="follow_up",
+        due_date=follow_up_date,
+        is_auto_generated=True
+    )
+    task_doc = task.model_dump()
+    task_doc['created_at'] = task_doc['created_at'].isoformat()
+    task_doc['due_date'] = task_doc['due_date'].isoformat()
+    await db.tasks.insert_one(task_doc)
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 
