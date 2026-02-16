@@ -129,6 +129,9 @@ const translations = {
     maybeLater: "Maybe Later",
     notificationsEnabled: "Notifications enabled!",
     notificationsDenied: "Notifications permission denied",
+    notifications: "Notifications",
+    notificationsOn: "On",
+    notificationsOff: "Off",
   },
   fr: {
     // Landing
