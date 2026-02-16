@@ -75,12 +75,23 @@ const SubscribePage = () => {
           </p>
 
           {/* Plan card */}
-          <div className="plan-card" style={{ marginBottom: '32px' }}>
+          <div className="plan-card" style={{ marginBottom: '24px' }}>
             <div className="plan-name">{t('monthlySubscription')}</div>
             <div className="plan-price">{formatPrice()}</div>
             <div className="plan-period">{t('perMonth')}</div>
             <div className="plan-cancel">{t('cancelAnytime')}</div>
           </div>
+
+          {/* Email input (optional - helps prevent double billing) */}
+          <input
+            type="email"
+            className="input-dark"
+            placeholder={t('enterEmail')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ marginBottom: '24px' }}
+            data-testid="email-input"
+          />
 
           {/* Payment method section */}
           <h3 className="text-caption" style={{ marginBottom: '16px' }}>
