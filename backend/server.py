@@ -1100,6 +1100,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== BACKGROUND SCHEDULER ====================
+import asyncio
+import threading
+
+async def run_background_scheduler():
+    """Background task that runs the notification scheduler at 8:00 AM UTC daily"""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            target_hour = 8  # 8:00 AM UTC
+            
+            # Check if it's time to run (within the first 5 minutes of the target hour)
+            if now.hour == target_hour and now.minute < 5:
+                logger.info("Running scheduled notification job...")
+                
+                # Import and run the scheduler
+                try:
+                    from notification_scheduler import run_once
+                    result = await run_once()
+                    logger.info(f"Scheduled job completed: {result}")
+                except Exception as e:
+                    logger.error(f"Scheduled job error: {e}")
+                
+                # Wait for 1 hour to avoid running multiple times
+                await asyncio.sleep(3600)
+            else:
+                # Check every minute
+                await asyncio.sleep(60)
+                
+        except Exception as e:
+            logger.error(f"Background scheduler error: {e}")
+            await asyncio.sleep(60)
+
+def start_background_scheduler():
+    """Start the background scheduler in a new event loop"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_background_scheduler())
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background scheduler on app startup"""
+    # Start scheduler in a background thread
+    scheduler_thread = threading.Thread(target=start_background_scheduler, daemon=True)
+    scheduler_thread.start()
+    logger.info("Background notification scheduler started")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
