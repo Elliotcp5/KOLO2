@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Bell } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
-import PWAGuide from '../components/PWAGuide';
-import pushService from '../services/pushNotifications';
+import { toast } from 'sonner';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,178 +12,64 @@ const CreateAccountPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t, locale } = useLocale();
-  const { createAccountAfterPayment } = useAuth();
+  const { login } = useAuth();
   
-  const [loading, setLoading] = useState(true);
-  const [paymentVerified, setPaymentVerified] = useState(false);
-  const [paymentToken, setPaymentToken] = useState(null);
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [showPWAGuide, setShowPWAGuide] = useState(false);
-  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
-  // Check payment status on mount
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
-    
-    if (!sessionId) {
+    const sid = searchParams.get('session_id');
+    if (!sid) {
       navigate('/subscribe', { replace: true });
       return;
     }
-
-    // If we have a session_id from Stripe redirect, payment was successful
-    // Stripe only redirects to success_url after successful payment
-    setPaymentVerified(true);
-    setPaymentToken(sessionId); // Use session_id as token
-    setLoading(false);
+    setSessionId(sid);
   }, [searchParams, navigate]);
 
-  const handleGoogleSignUp = () => {
-    if (paymentToken) {
-      sessionStorage.setItem('payment_token', paymentToken);
-      sessionStorage.setItem('show_pwa_guide', 'true');
+  const handleCreateAccount = async () => {
+    if (!email || !password || !sessionId) return;
+    
+    if (password.length < 6) {
+      toast.error(locale === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters');
+      return;
     }
-    const redirectUrl = window.location.origin + '/app';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  };
-
-  const handleEmailSignUp = async () => {
-    if (!email || !paymentToken) return;
     
     setCreating(true);
-    setError('');
 
     try {
-      await createAccountAfterPayment(paymentToken, email);
-      // Show PWA guide after successful account creation
-      setShowPWAGuide(true);
-    } catch (err) {
-      setError(err.message || t('paymentFailed'));
+      const response = await fetch(`${API_URL}/api/auth/create-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          payment_token: sessionId,
+          email: email,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Login successful
+        login(data);
+        toast.success(locale === 'fr' ? 'Compte créé avec succès!' : 'Account created successfully!');
+        navigate('/app', { replace: true });
+      } else {
+        throw new Error(data.detail || 'Failed to create account');
+      }
+    } catch (error) {
+      console.error('Create account error:', error);
+      toast.error(error.message || (locale === 'fr' ? 'Erreur lors de la création du compte' : 'Failed to create account'));
       setCreating(false);
     }
   };
 
-  const handlePWAGuideComplete = () => {
-    setShowPWAGuide(false);
-    setShowNotificationPrompt(true);
-  };
-
-  const handleEnableNotifications = async () => {
-    const permitted = await pushService.requestPermission();
-    if (permitted) {
-      await pushService.init();
-    }
-    navigate('/app', { replace: true });
-  };
-
-  const handleSkipNotifications = () => {
-    navigate('/app', { replace: true });
-  };
-
-  // Show PWA Guide
-  if (showPWAGuide) {
-    return <PWAGuide onComplete={handlePWAGuideComplete} />;
-  }
-
-  // Show notification prompt
-  if (showNotificationPrompt) {
-    return (
-      <div className="mobile-frame">
-        <div className="page-container no-nav" style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '32px'
-        }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            borderRadius: '25px',
-            backgroundColor: 'var(--surface)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '32px'
-          }}>
-            <Bell size={48} style={{ color: 'var(--accent)' }} />
-          </div>
-
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: 'var(--text)',
-            marginBottom: '16px',
-            textAlign: 'center'
-          }}>
-            {locale === 'fr' ? 'Activer les notifications' : 'Enable notifications'}
-          </h2>
-
-          <p style={{
-            fontSize: '16px',
-            color: 'var(--muted)',
-            textAlign: 'center',
-            marginBottom: '40px',
-            maxWidth: '280px',
-            lineHeight: '1.5'
-          }}>
-            {locale === 'fr' 
-              ? 'Recevez des rappels pour ne jamais oublier de relancer vos prospects'
-              : 'Get reminders so you never forget to follow up with your prospects'
-            }
-          </p>
-
-          <button 
-            className="btn-primary"
-            onClick={handleEnableNotifications}
-            style={{ marginBottom: '16px', width: '100%', maxWidth: '300px' }}
-            data-testid="enable-notifications"
-          >
-            {locale === 'fr' ? 'Activer' : 'Enable'}
-          </button>
-
-          <button 
-            className="btn-ghost"
-            onClick={handleSkipNotifications}
-            style={{ color: 'var(--muted)' }}
-            data-testid="skip-notifications"
-          >
-            {locale === 'fr' ? 'Plus tard' : 'Maybe later'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="mobile-frame">
-        <div className="page-container no-nav" style={{ justifyContent: 'center', alignItems: 'center' }}>
-          <div className="spinner"></div>
-          <p className="text-muted" style={{ marginTop: '16px' }}>{t('processing')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!paymentVerified) {
-    return (
-      <div className="mobile-frame">
-        <div className="page-container no-nav" style={{ justifyContent: 'center', alignItems: 'center', padding: '24px' }}>
-          <p className="text-body" style={{ textAlign: 'center', marginBottom: '24px' }}>
-            {error || t('paymentFailed')}
-          </p>
-          <button 
-            className="btn-primary"
-            onClick={() => navigate('/subscribe')}
-            style={{ maxWidth: '280px' }}
-          >
-            {t('goToSubscribe')}
-          </button>
-        </div>
-      </div>
-    );
+  if (!sessionId) {
+    return null;
   }
 
   return (
@@ -213,15 +98,6 @@ const CreateAccountPage = () => {
             />
           </div>
 
-          {/* Title */}
-          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '8px' }}>
-            {t('createYourAccount')}
-          </h1>
-
-          <p className="text-body text-muted" style={{ textAlign: 'center', marginBottom: '32px' }}>
-            {t('chooseSignUp')}
-          </p>
-
           {/* Success message */}
           <div style={{ 
             backgroundColor: 'rgba(16, 185, 129, 0.1)', 
@@ -231,61 +107,82 @@ const CreateAccountPage = () => {
             marginBottom: '24px',
             textAlign: 'center'
           }}>
-            <p style={{ color: '#10B981', fontWeight: '500' }}>{t('paymentSuccess')}</p>
+            <p style={{ color: '#10B981', fontWeight: '500' }}>
+              {locale === 'fr' ? 'Paiement réussi!' : 'Payment successful!'}
+            </p>
           </div>
 
-          {/* Google button */}
-          <button 
-            className="btn-secondary"
-            onClick={handleGoogleSignUp}
-            data-testid="google-signup-button"
-            style={{ marginBottom: '24px' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            {t('continueWithGoogle')}
-          </button>
+          {/* Title */}
+          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '8px' }}>
+            {locale === 'fr' ? 'Créez votre compte' : 'Create your account'}
+          </h1>
 
-          {/* Divider */}
-          <div className="divider" style={{ marginBottom: '24px' }}>
-            {t('orWithEmail')}
-          </div>
+          <p className="text-body text-muted" style={{ textAlign: 'center', marginBottom: '32px' }}>
+            {locale === 'fr' ? 'Entrez votre email et un mot de passe' : 'Enter your email and a password'}
+          </p>
 
           {/* Email input */}
           <input
             type="email"
             className="input-dark"
-            placeholder={t('email')}
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ marginBottom: '24px' }}
+            style={{ marginBottom: '16px' }}
             data-testid="email-input"
           />
 
-          {error && (
-            <p style={{ color: 'var(--error)', marginBottom: '16px', textAlign: 'center' }}>
-              {error}
-            </p>
-          )}
+          {/* Password input */}
+          <div style={{ position: 'relative', marginBottom: '24px' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              className="input-dark"
+              placeholder={locale === 'fr' ? 'Mot de passe (min. 6 caractères)' : 'Password (min. 6 characters)'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ paddingRight: '48px' }}
+              data-testid="password-input"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
 
           {/* Create Account Button */}
           <button 
             className="btn-primary"
-            onClick={handleEmailSignUp}
-            disabled={!email || creating}
+            onClick={handleCreateAccount}
+            disabled={!email || !password || creating}
             data-testid="create-account-button"
             style={{ marginBottom: '24px' }}
           >
-            {creating ? <div className="spinner"></div> : t('createAccount')}
+            {creating ? (
+              <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+            ) : (
+              locale === 'fr' ? 'Créer mon compte' : 'Create my account'
+            )}
           </button>
 
           {/* Terms */}
-          <p className="text-small" style={{ textAlign: 'center' }}>
-            {t('termsLine')}
+          <p className="text-small text-muted" style={{ textAlign: 'center' }}>
+            {locale === 'fr' 
+              ? 'En créant un compte, vous acceptez nos conditions d\'utilisation'
+              : 'By creating an account, you agree to our terms of service'
+            }
           </p>
         </div>
       </div>
