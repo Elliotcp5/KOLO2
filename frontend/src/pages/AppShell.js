@@ -99,6 +99,9 @@ const TodayTab = ({ onOpenProfile }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
+            const isOverdue = task.is_overdue;
+            const taskColor = isOverdue ? '#EF4444' : '#F59E0B'; // Red for overdue, Orange for today
+            
             return (
               <div 
                 key={task.task_id} 
@@ -108,7 +111,8 @@ const TodayTab = ({ onOpenProfile }) => {
                   alignItems: 'center', 
                   gap: '16px',
                   padding: '16px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  borderLeft: `3px solid ${taskColor}`
                 }}
                 data-testid={`task-${task.task_id}`}
               >
@@ -124,7 +128,7 @@ const TodayTab = ({ onOpenProfile }) => {
                     width: '28px',
                     height: '28px',
                     borderRadius: '50%',
-                    border: '2px solid var(--accent)',
+                    border: `2px solid ${taskColor}`,
                     background: 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -134,23 +138,35 @@ const TodayTab = ({ onOpenProfile }) => {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <Check size={14} strokeWidth={3} style={{ color: 'var(--accent)', opacity: 0 }} />
+                  <Check size={14} strokeWidth={3} style={{ color: taskColor, opacity: 0 }} />
                 </button>
                 
                 {/* Task content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <IconComponent size={14} strokeWidth={1.5} style={{ color: 'var(--accent)' }} />
-                    <span style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text)' }}>
+                    <IconComponent size={14} strokeWidth={1.5} style={{ color: taskColor }} />
+                    <span style={{ fontSize: '16px', fontWeight: '500', color: taskColor }}>
                       {task.title}
                     </span>
+                    {isOverdue && (
+                      <span style={{ 
+                        fontSize: '10px', 
+                        background: '#EF4444', 
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: '600'
+                      }}>
+                        URGENT
+                      </span>
+                    )}
                   </div>
                   {task.prospect && (
                     <span style={{ fontSize: '14px', color: 'var(--muted)' }}>
                       {task.prospect.full_name} • {task.prospect.phone}
                     </span>
                   )}
-                  {task.auto_generated && (
+                  {task.is_auto_generated && (
                     <span style={{ 
                       display: 'inline-block',
                       marginTop: '6px',
