@@ -551,6 +551,14 @@ html, body {
   gap: 16px;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+button.payment-method-card {
+  outline: none;
+  font-family: inherit;
 }
 
 .payment-method-card:hover {
