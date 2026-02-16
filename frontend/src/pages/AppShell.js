@@ -888,6 +888,50 @@ const SettingsTab = ({ onClose }) => {
   const navigate = useNavigate();
   const { t } = useLocale();
   const { user, logout } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  // Check notification status on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notificationsLoading) return;
+    setNotificationsLoading(true);
+
+    try {
+      if (notificationsEnabled) {
+        // Disable notifications
+        const { pushService } = await import('../services/pushNotifications');
+        await pushService.unsubscribe();
+        localStorage.removeItem('kolo_notifications_enabled');
+        setNotificationsEnabled(false);
+        toast.success(t('notificationsDenied'));
+      } else {
+        // Enable notifications
+        const { pushService } = await import('../services/pushNotifications');
+        await pushService.init();
+        const granted = await pushService.requestPermission();
+        
+        if (granted) {
+          await pushService.subscribe(user?.user_id);
+          localStorage.setItem('kolo_notifications_enabled', 'true');
+          setNotificationsEnabled(true);
+          toast.success(t('notificationsEnabled'));
+        } else {
+          toast.error(t('notificationsDenied'));
+        }
+      }
+    } catch (error) {
+      console.error('Notification toggle error:', error);
+      toast.error(t('notificationsDenied'));
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
