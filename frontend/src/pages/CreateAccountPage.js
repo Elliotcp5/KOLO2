@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bell } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
+import PWAGuide from '../components/PWAGuide';
+import pushService from '../services/pushNotifications';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -10,7 +12,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const CreateAccountPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { createAccountAfterPayment } = useAuth();
   
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,8 @@ const CreateAccountPage = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showPWAGuide, setShowPWAGuide] = useState(false);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   // Check payment status on mount
   useEffect(() => {
@@ -59,7 +63,6 @@ const CreateAccountPage = () => {
           }
         }
 
-        // Continue polling
         setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
       } catch (err) {
         console.error('Payment status error:', err);
@@ -71,11 +74,10 @@ const CreateAccountPage = () => {
   }, [searchParams, navigate, t]);
 
   const handleGoogleSignUp = () => {
-    // Store payment token in sessionStorage before redirecting
     if (paymentToken) {
       sessionStorage.setItem('payment_token', paymentToken);
+      sessionStorage.setItem('show_pwa_guide', 'true');
     }
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     const redirectUrl = window.location.origin + '/app';
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
@@ -88,12 +90,105 @@ const CreateAccountPage = () => {
 
     try {
       await createAccountAfterPayment(paymentToken, email);
-      navigate('/app', { replace: true });
+      // Show PWA guide after successful account creation
+      setShowPWAGuide(true);
     } catch (err) {
       setError(err.message || t('paymentFailed'));
       setCreating(false);
     }
   };
+
+  const handlePWAGuideComplete = () => {
+    setShowPWAGuide(false);
+    setShowNotificationPrompt(true);
+  };
+
+  const handleEnableNotifications = async () => {
+    const permitted = await pushService.requestPermission();
+    if (permitted) {
+      await pushService.init();
+    }
+    navigate('/app', { replace: true });
+  };
+
+  const handleSkipNotifications = () => {
+    navigate('/app', { replace: true });
+  };
+
+  // Show PWA Guide
+  if (showPWAGuide) {
+    return <PWAGuide onComplete={handlePWAGuideComplete} />;
+  }
+
+  // Show notification prompt
+  if (showNotificationPrompt) {
+    return (
+      <div className="mobile-frame">
+        <div className="page-container no-nav" style={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '32px'
+        }}>
+          <div style={{
+            width: '100px',
+            height: '100px',
+            borderRadius: '25px',
+            backgroundColor: 'var(--surface)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '32px'
+          }}>
+            <Bell size={48} style={{ color: 'var(--accent)' }} />
+          </div>
+
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: 'var(--text)',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            {locale === 'fr' ? 'Activer les notifications' : 'Enable notifications'}
+          </h2>
+
+          <p style={{
+            fontSize: '16px',
+            color: 'var(--muted)',
+            textAlign: 'center',
+            marginBottom: '40px',
+            maxWidth: '280px',
+            lineHeight: '1.5'
+          }}>
+            {locale === 'fr' 
+              ? 'Recevez des rappels pour ne jamais oublier de relancer vos prospects'
+              : 'Get reminders so you never forget to follow up with your prospects'
+            }
+          </p>
+
+          <button 
+            className="btn-primary"
+            onClick={handleEnableNotifications}
+            style={{ marginBottom: '16px', width: '100%', maxWidth: '300px' }}
+            data-testid="enable-notifications"
+          >
+            {locale === 'fr' ? 'Activer' : 'Enable'}
+          </button>
+
+          <button 
+            className="btn-ghost"
+            onClick={handleSkipNotifications}
+            style={{ color: 'var(--muted)' }}
+            data-testid="skip-notifications"
+          >
+            {locale === 'fr' ? 'Plus tard' : 'Maybe later'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
