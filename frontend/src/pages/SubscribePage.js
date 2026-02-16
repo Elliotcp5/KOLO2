@@ -23,8 +23,6 @@ const SubscribePage = () => {
     try {
       const originUrl = window.location.origin;
       
-      console.log('Creating checkout session...', { originUrl, locale, country });
-      
       const response = await fetch(`${API_URL}/api/payments/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,27 +34,19 @@ const SubscribePage = () => {
         })
       });
 
-      console.log('Response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Checkout URL received:', data.url);
         
         if (data.url) {
-          // Create a temporary link and click it - works better on iOS
-          const link = document.createElement('a');
-          link.href = data.url;
-          link.setAttribute('target', '_self');
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          // Force redirect - multiple methods for iOS compatibility
+          setTimeout(() => {
+            window.location.href = data.url;
+          }, 100);
         } else {
-          throw new Error('No checkout URL received');
+          throw new Error('No URL');
         }
       } else {
-        const errorData = await response.text();
-        console.error('Server error:', errorData);
-        throw new Error('Failed to create checkout session');
+        throw new Error('Server error');
       }
     } catch (error) {
       console.error('Payment error:', error);
