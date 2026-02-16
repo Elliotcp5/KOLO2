@@ -1330,7 +1330,6 @@ const TasksTab = ({ onRefresh }) => {
           })}
         </div>
       )}
-      )}
     </div>
   );
 };
