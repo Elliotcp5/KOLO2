@@ -46,27 +46,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (sessionId) => {
-    try {
-      const response = await fetch(`${API_URL}/api/auth/session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ session_id: sessionId })
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
-        return userData;
-      } else {
-        throw new Error('Login failed');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
+  const login = (userData) => {
+    // Direct login with user data from API response
+    setUser(userData);
+    setIsAuthenticated(true);
+    return userData;
   };
 
   const logout = async () => {
