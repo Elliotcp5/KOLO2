@@ -719,6 +719,10 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     if not email:
         raise HTTPException(status_code=400, detail="Email required")
     
+    # Password is required for new accounts
+    if not request.password:
+        raise HTTPException(status_code=400, detail="Password required")
+    
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
     
     if existing_user:
@@ -727,6 +731,7 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             {"user_id": user_id},
             {"$set": {
                 "subscription_status": "active",
+                "password_hash": hash_password(request.password),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
@@ -739,6 +744,7 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             subscription_status="active"
         )
         user_doc = new_user.model_dump()
+        user_doc['password_hash'] = hash_password(request.password)
         user_doc['created_at'] = user_doc['created_at'].isoformat()
         user_doc['updated_at'] = user_doc['updated_at'].isoformat()
         await db.users.insert_one(user_doc)
