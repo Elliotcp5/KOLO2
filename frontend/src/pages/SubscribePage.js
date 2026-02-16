@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
+import { toast } from 'sonner';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,11 +14,16 @@ const SubscribePage = () => {
   const [loading, setLoading] = useState(false);
 
   const handlePayment = async (method) => {
+    // Prevent double clicks
+    if (loading) return;
+    
     setSelectedMethod(method);
     setLoading(true);
 
     try {
       const originUrl = window.location.origin;
+      
+      console.log('Creating checkout session...', { originUrl, locale, country });
       
       const response = await fetch(`${API_URL}/api/payments/create-checkout`, {
         method: 'POST',
@@ -30,15 +36,27 @@ const SubscribePage = () => {
         })
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
+        console.log('Checkout URL received:', data.url);
+        
+        // Try multiple redirect methods for better compatibility
+        if (data.url) {
+          // Method 1: Direct location change
+          window.location.assign(data.url);
+        } else {
+          throw new Error('No checkout URL received');
+        }
       } else {
+        const errorData = await response.text();
+        console.error('Server error:', errorData);
         throw new Error('Failed to create checkout session');
       }
     } catch (error) {
       console.error('Payment error:', error);
+      toast.error(t('paymentFailed'));
       setLoading(false);
       setSelectedMethod(null);
     }
