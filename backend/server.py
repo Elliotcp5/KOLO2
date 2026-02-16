@@ -1001,6 +1001,46 @@ async def delete_prospect(request: Request, prospect_id: str):
     
     return {"message": "Prospect deleted"}
 
+
+# ==================== NOTIFICATION ENDPOINTS ====================
+
+class NotificationSubscription(BaseModel):
+    subscription: Dict
+    user_id: Optional[str] = None
+
+@api_router.post("/notifications/subscribe")
+async def subscribe_notifications(request: Request, data: NotificationSubscription):
+    """Save push notification subscription"""
+    user = await get_user_from_session(request)
+    user_id = data.user_id or (user.user_id if user else None)
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID required")
+    
+    # Store subscription
+    await db.push_subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id,
+            "subscription": data.subscription,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Subscription saved"}
+
+@api_router.delete("/notifications/unsubscribe")
+async def unsubscribe_notifications(request: Request):
+    """Remove push notification subscription"""
+    user = await require_auth(request)
+    
+    await db.push_subscriptions.delete_one({"user_id": user.user_id})
+    
+    return {"message": "Unsubscribed"}
+
+
+
 # ==================== ROOT ENDPOINTS ====================
 
 @api_router.get("/")
