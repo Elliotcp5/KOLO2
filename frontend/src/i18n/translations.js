@@ -150,6 +150,7 @@ const translations = {
     creditDebitCard: "Carte de Crédit / Débit",
     applePay: "Apple Pay",
     unlimitedLeads: "Prospects et tâches illimités",
+    securedByStripe: "Paiements sécurisés par Stripe",
     
     // Create Account
     createYourAccount: "Créez Votre Compte",
