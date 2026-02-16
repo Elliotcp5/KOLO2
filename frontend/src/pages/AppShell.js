@@ -755,11 +755,11 @@ const BottomNav = ({ activeTab, setActiveTab }) => {
         <Briefcase strokeWidth={1.5} />
       </div>
       <div 
-        className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-        onClick={() => setActiveTab('settings')}
-        data-testid="nav-settings"
+        className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
+        onClick={() => setActiveTab('tasks')}
+        data-testid="nav-tasks"
       >
-        <Menu strokeWidth={1.5} />
+        <Check strokeWidth={1.5} />
       </div>
     </nav>
   );
