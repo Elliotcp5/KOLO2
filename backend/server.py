@@ -912,18 +912,26 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
 # ==================== TASK ENDPOINTS ====================
 
 @api_router.get("/tasks")
-async def list_tasks(request: Request, include_completed: bool = False):
-    """List all tasks for authenticated user"""
+async def list_tasks(request: Request, include_completed: bool = True):
+    """List all tasks for authenticated user - includes completed tasks from last month"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
     await generate_follow_up_tasks_for_user(user.user_id)
     
-    query = {"user_id": user.user_id}
-    if not include_completed:
-        query["completed"] = False
+    one_month_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     
-    tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(1000)
+    # Get non-completed tasks + completed tasks from last month
+    tasks = await db.tasks.find(
+        {
+            "user_id": user.user_id,
+            "$or": [
+                {"completed": False},
+                {"completed": True, "completed_at": {"$gte": one_month_ago}}
+            ]
+        },
+        {"_id": 0}
+    ).sort("due_date", -1).to_list(1000)
     
     # Enrich tasks with prospect info
     for task in tasks:
