@@ -219,6 +219,35 @@ html, body {
   opacity: 0.8;
 }
 
+/* Chip buttons for selection */
+.btn-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-chip:hover {
+  background-color: var(--surface-2);
+  border-color: var(--muted-dark);
+}
+
+.btn-chip.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.btn-chip.active:hover {
+  background-color: var(--accent-2);
+}
+
 /* Bottom Navigation */
 .bottom-nav {
   position: fixed;
