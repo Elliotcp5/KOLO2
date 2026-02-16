@@ -475,7 +475,21 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     fetchProspectDetail();
   }, [prospect.prospect_id]);
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
+
   const handleStatusChange = async (newStatus) => {
+    // If status is "closed" (won) or "lost", ask for confirmation
+    if (newStatus === 'closed' || newStatus === 'lost') {
+      setPendingStatus(newStatus);
+      setShowConfirmDialog(true);
+      return;
+    }
+    
+    await updateStatus(newStatus);
+  };
+
+  const updateStatus = async (newStatus) => {
     try {
       const response = await fetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
         method: 'PUT',
@@ -488,11 +502,24 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         setProspectData(prev => ({ ...prev, status: newStatus }));
         toast.success(t('statusUpdated'));
         onUpdate();
+        
+        // If marked as closed or lost, go back to list
+        if (newStatus === 'closed' || newStatus === 'lost') {
+          onBack();
+        }
       }
     } catch (error) {
       console.error('Failed to update status:', error);
       toast.error(t('updateError'));
     }
+  };
+
+  const confirmStatusChange = () => {
+    if (pendingStatus) {
+      updateStatus(pendingStatus);
+    }
+    setShowConfirmDialog(false);
+    setPendingStatus(null);
   };
 
   const handleCreateTask = async () => {
