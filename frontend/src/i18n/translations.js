@@ -111,7 +111,7 @@ const translations = {
     
     // Login
     back: "Retour",
-    welcomeBack: "Bon Retour",
+    welcomeBack: "C'est bon de vous revoir !",
     email: "Email",
     password: "Mot de passe",
     signIn: "Se connecter",
