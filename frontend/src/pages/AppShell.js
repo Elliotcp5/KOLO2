@@ -9,7 +9,7 @@ import NotificationPrompt from '../components/NotificationPrompt';
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // ==================== TODAY TAB ====================
-const TodayTab = () => {
+const TodayTab = ({ onOpenProfile }) => {
   const { t, formatDate } = useLocale();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +70,7 @@ const TodayTab = () => {
         <button 
           className="btn-ghost" 
           style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}
+          onClick={onOpenProfile}
           data-testid="my-profile-button"
         >
           <User size={18} strokeWidth={1.5} color="white" />
