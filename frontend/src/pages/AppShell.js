@@ -1149,7 +1149,13 @@ const AppShell = () => {
     setRefreshKey(prev => prev + 1);
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+
   const renderTab = () => {
+    if (showSettings) {
+      return <SettingsTab onClose={() => setShowSettings(false)} />;
+    }
+    
     if (selectedProspect) {
       return (
         <ProspectDetail 
@@ -1163,10 +1169,10 @@ const AppShell = () => {
     switch (activeTab) {
       case 'prospects':
         return <ProspectsTab key={refreshKey} onSelectProspect={handleSelectProspect} />;
-      case 'settings':
-        return <SettingsTab />;
+      case 'tasks':
+        return <TasksTab key={refreshKey} onRefresh={() => setRefreshKey(prev => prev + 1)} />;
       default:
-        return <TodayTab key={refreshKey} />;
+        return <TodayTab key={refreshKey} onOpenProfile={() => setShowSettings(true)} />;
     }
   };
 
