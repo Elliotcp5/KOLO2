@@ -196,6 +196,14 @@ class CreateAccountRequest(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RecoverAccountRequest(BaseModel):
+    email: str
+    password: str
+
 # ==================== HELPER FUNCTIONS ====================
 
 def get_currency_for_country(country_code: str) -> str:
