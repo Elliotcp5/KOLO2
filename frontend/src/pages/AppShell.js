@@ -643,7 +643,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 };
 
 // ==================== SETTINGS TAB ====================
-const SettingsTab = () => {
+const SettingsTab = ({ onClose }) => {
   const navigate = useNavigate();
   const { t } = useLocale();
   const { user, logout } = useAuth();
@@ -655,9 +655,25 @@ const SettingsTab = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h1 className="text-headline" style={{ fontSize: '28px', marginBottom: '32px' }}>
-        {t('settings')}
-      </h1>
+      {/* Header with back button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <button 
+          onClick={onClose}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            color: 'var(--text)', 
+            cursor: 'pointer',
+            padding: '8px'
+          }}
+          data-testid="settings-back"
+        >
+          <X size={24} strokeWidth={1.5} />
+        </button>
+        <h1 className="text-headline" style={{ fontSize: '28px' }}>
+          {t('settings')}
+        </h1>
+      </div>
 
       {/* Profile section */}
       <h3 className="text-caption" style={{ marginBottom: '12px' }}>
