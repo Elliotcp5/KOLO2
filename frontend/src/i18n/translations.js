@@ -262,6 +262,9 @@ const translations = {
     maybeLater: "Plus tard",
     notificationsEnabled: "Notifications activées !",
     notificationsDenied: "Permission de notifications refusée",
+    notifications: "Notifications",
+    notificationsOn: "Activées",
+    notificationsOff: "Désactivées",
   }
 };
 
