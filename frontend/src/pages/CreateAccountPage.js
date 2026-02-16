@@ -33,45 +33,12 @@ const CreateAccountPage = () => {
       return;
     }
 
-    const pollPaymentStatus = async (attempts = 0) => {
-      const maxAttempts = 10;
-      const pollInterval = 2000;
-
-      if (attempts >= maxAttempts) {
-        setError(t('paymentFailed'));
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_URL}/api/payments/status/${sessionId}`, {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.payment_status === 'paid') {
-            setPaymentVerified(true);
-            setPaymentToken(data.payment_token);
-            setLoading(false);
-            return;
-          } else if (data.status === 'expired') {
-            setError(t('paymentFailed'));
-            setLoading(false);
-            return;
-          }
-        }
-
-        setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
-      } catch (err) {
-        console.error('Payment status error:', err);
-        setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
-      }
-    };
-
-    pollPaymentStatus();
-  }, [searchParams, navigate, t]);
+    // If we have a session_id from Stripe redirect, payment was successful
+    // Stripe only redirects to success_url after successful payment
+    setPaymentVerified(true);
+    setPaymentToken(sessionId); // Use session_id as token
+    setLoading(false);
+  }, [searchParams, navigate]);
 
   const handleGoogleSignUp = () => {
     if (paymentToken) {
