@@ -114,6 +114,8 @@ const translations = {
     processing: "Processing...",
     paymentSuccess: "Payment successful!",
     paymentFailed: "Payment failed. Please try again.",
+    alreadySubscribed: "You already have an active subscription. Please log in.",
+    enterEmail: "Enter your email (optional)",
     
     // Auth
     subscriptionRequired: "Active subscription required",
@@ -242,6 +244,8 @@ const translations = {
     processing: "Traitement...",
     paymentSuccess: "Paiement réussi !",
     paymentFailed: "Échec du paiement. Veuillez réessayer.",
+    alreadySubscribed: "Vous avez déjà un abonnement actif. Veuillez vous connecter.",
+    enterEmail: "Entrez votre email (optionnel)",
     
     // Auth
     subscriptionRequired: "Abonnement actif requis",
