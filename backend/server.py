@@ -535,13 +535,9 @@ async def create_checkout(request: CreateCheckoutRequest, http_request: Request)
 
 # Direct redirect endpoint - works on all browsers including iOS
 @api_router.get("/payments/checkout-redirect")
-async def checkout_redirect(http_request: Request, locale: str = "en", country: str = "US"):
+async def checkout_redirect(http_request: Request, locale: str = "en", country: str = "US", email: str = ""):
     """Direct server-side redirect to Stripe checkout - bypasses JavaScript issues"""
     from starlette.responses import RedirectResponse
-    
-    host_url = str(http_request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
     # Get origin from referer or use host
     referer = http_request.headers.get('referer', '')
@@ -551,6 +547,34 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         origin_url = f"{parsed.scheme}://{parsed.netloc}"
     else:
         origin_url = str(http_request.base_url).rstrip('/')
+    
+    # Check if email has already paid in the last 30 days (prevent double billing)
+    if email:
+        thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        
+        # Check for existing active user with this email
+        existing_user = await db.users.find_one({
+            "email": email,
+            "subscription_status": "active"
+        })
+        
+        if existing_user:
+            # User already has active subscription
+            return RedirectResponse(url=f"{origin_url}/subscribe?error=already_subscribed", status_code=303)
+        
+        # Check for recent successful payment
+        recent_payment = await db.payment_success.find_one({
+            "email": email,
+            "created_at": {"$gte": thirty_days_ago}
+        })
+        
+        if recent_payment:
+            # Already paid recently, redirect to account creation
+            return RedirectResponse(url=f"{origin_url}/create-account?session_id={recent_payment.get('session_id', '')}", status_code=303)
+    
+    host_url = str(http_request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
     success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin_url}/subscribe"
@@ -564,6 +588,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={
+            "email": email,
             "locale": locale,
             "country": country,
             "type": "subscription"
