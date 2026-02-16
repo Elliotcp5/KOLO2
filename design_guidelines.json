@@ -1,0 +1,122 @@
+{
+  "identity": {
+    "name": "KOLO",
+    "mission": "The most beautiful mobile CRM for real estate agents",
+    "tone": "Premium, Dark, Efficient, iOS-Native feel",
+    "target_audience": "Independent Real Estate Agents (France/International)"
+  },
+  "theme": {
+    "mode": "dark",
+    "strategy": "Dark Mode Only (No Light Mode Toggle)",
+    "ios_adaptation": "Use Safe Area Insets, Native System Fonts, and iOS Physics"
+  },
+  "colors": {
+    "background": {
+      "app": "#0B0B0F",
+      "card": "#14141A",
+      "input": "rgba(255, 255, 255, 0.05)",
+      "overlay": "rgba(11, 11, 15, 0.8)"
+    },
+    "primary": {
+      "default": "#7C3AED",
+      "hover": "#8B5CF6",
+      "glow": "rgba(124, 58, 237, 0.4)"
+    },
+    "text": {
+      "primary": "#F5F5F7",
+      "secondary": "#A1A1AA",
+      "tertiary": "#52525B",
+      "inverse": "#0B0B0F"
+    },
+    "status": {
+      "success": "#10B981",
+      "error": "#EF4444",
+      "warning": "#F59E0B"
+    },
+    "border": {
+      "subtle": "rgba(255, 255, 255, 0.08)",
+      "focus": "#7C3AED"
+    }
+  },
+  "typography": {
+    "font_family": {
+      "main": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+      "display": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+    },
+    "scale": {
+      "h1": "text-4xl font-bold tracking-tight",
+      "h2": "text-3xl font-bold tracking-tight",
+      "h3": "text-2xl font-semibold",
+      "body": "text-base font-normal leading-relaxed",
+      "caption": "text-sm font-medium text-zinc-500"
+    }
+  },
+  "spacing": {
+    "container_padding": "p-6",
+    "section_gap": "gap-8",
+    "item_gap": "gap-4",
+    "safe_area_top": "pt-[env(safe-area-inset-top)]",
+    "safe_area_bottom": "pb-[env(safe-area-inset-bottom)]"
+  },
+  "layout_strategies": {
+    "mobile_first": {
+      "viewport": "max-w-[430px] mx-auto min-h-screen bg-[#0B0B0F] relative shadow-2xl overflow-hidden",
+      "desktop_wrapper": "lg:flex lg:items-center lg:justify-center lg:bg-[#000000] lg:py-10"
+    },
+    "glassmorphism": {
+      "nav": "bg-[#0B0B0F]/80 backdrop-blur-xl border-t border-white/10",
+      "overlay": "bg-black/60 backdrop-blur-md"
+    },
+    "cards": {
+      "default": "bg-[#14141A] rounded-[24px] border border-white/5 p-5 shadow-sm",
+      "interactive": "hover:bg-[#1A1A22] active:scale-[0.98] transition-all duration-200"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#7C3AED] hover:bg-[#8B5CF6] text-white h-14 rounded-full font-semibold text-[17px] w-full shadow-[0_0_20px_-5px_rgba(124,58,237,0.5)] active:scale-95 transition-transform",
+      "secondary": "bg-white/10 hover:bg-white/15 text-white h-14 rounded-full font-medium w-full backdrop-blur-sm",
+      "ghost": "text-[#7C3AED] hover:text-[#8B5CF6] font-medium"
+    },
+    "inputs": {
+      "default": "bg-white/5 border border-white/10 rounded-2xl h-14 px-5 text-white placeholder:text-zinc-500 focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all outline-none"
+    },
+    "bottom_nav": {
+      "container": "fixed bottom-0 left-0 right-0 h-[84px] bg-[#0B0B0F]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-4 pb-[env(safe-area-inset-bottom)] z-50",
+      "item": "flex flex-col items-center gap-1",
+      "active_icon": "text-[#7C3AED]",
+      "inactive_icon": "text-zinc-600"
+    }
+  },
+  "image_urls": {
+    "hero_background": "https://images.unsplash.com/photo-1764258560295-21e74c3d0d15?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBkYXJrJTIwYWJzdHJhY3QlMjBnZW9tZXRyaWMlMjBzaGFwZXMlMjBwdXJwbGUlMjBsaWdodHxlbnwwfHx8fDE3NzEyNDk5NTd8MA&ixlib=rb-4.1.0&q=85",
+    "agent_avatar": "https://images.unsplash.com/photo-1738750908048-14200459c3c9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjByZWFsJTIwZXN0YXRlJTIwYWdlbnQlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzEyNDk5NTh8MA&ixlib=rb-4.1.0&q=85",
+    "property_exterior": "https://images.unsplash.com/photo-1762506168883-0f829364d598?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBtaW5pbWFsaXN0JTIwbHV4dXJ5JTIwaG91c2UlMjBleHRlcmlvciUyMG5pZ2h0fGVufDB8fHx8MTc3MTI0OTk1OXww&ixlib=rb-4.1.0&q=85",
+    "property_interior": "https://images.unsplash.com/photo-1592401526914-7e5d94a8d6fa?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBsaXZpbmclMjByb29tJTIwaW50ZXJpb3J8ZW58MHx8fHwxNzcxMjQ5OTU5fDA&ixlib=rb-4.1.0&q=85",
+    "logo_placeholder": "https://placehold.co/400x100/0B0B0F/FFFFFF?text=KOLO"
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark Mode ONLY theme. Do not implement a light mode.",
+    "Use the Mobile First layout strategy: The app should look like an iPhone app even on desktop (centered container).",
+    "Use 'sonner' for all toast notifications.",
+    "Implement the bottom tab bar navigation for the authenticated state.",
+    "The 'Subscribe' page is critical - make it look trustworthy with high-contrast text and secure payment icons.",
+    "Use Lucide-React icons with stroke width 1.5px for that thin iOS look.",
+    "For charts (if any), use Recharts with the purple primary color.",
+    "Add 'data-testid' to all interactive elements."
+  ],
+  "universal_guidelines": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories = main agent will use placeholder text which is FORBIDDEN"
+  ]
+}
