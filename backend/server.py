@@ -1356,7 +1356,40 @@ def start_background_scheduler():
 
 @app.on_event("startup")
 async def startup_event():
-    """Start background scheduler on app startup"""
+    """Initialize app on startup"""
+    # Create account for user who paid but couldn't create account
+    # This ensures the account exists in production after deployment
+    paid_users = [
+        {"email": "pressardelliot@gmail.com", "password": "Test123"}
+    ]
+    
+    for user_data in paid_users:
+        existing = await db.users.find_one({"email": user_data["email"]})
+        if not existing:
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            user_doc = {
+                "user_id": user_id,
+                "email": user_data["email"],
+                "auth_provider": "email",
+                "subscription_status": "active",
+                "password_hash": hash_password(user_data["password"]),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(user_doc)
+            logger.info(f"Created account for {user_data['email']}")
+        
+        # Ensure payment_success record exists for recovery
+        await db.payment_success.update_one(
+            {"email": user_data["email"]},
+            {"$set": {
+                "email": user_data["email"],
+                "session_id": "paid_user_recovery",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+    
     # Start scheduler in a background thread
     scheduler_thread = threading.Thread(target=start_background_scheduler, daemon=True)
     scheduler_thread.start()
