@@ -128,16 +128,15 @@ export const AuthCallback = () => {
           
           // Check subscription status
           if (userData.subscription_status === 'active' || userData.subscription_status === 'trialing') {
-            navigate('/app', { replace: true });
+            window.location.href = '/app';
           } else {
-            navigate('/subscribe', { replace: true });
+            window.location.href = '/subscribe';
           }
-        } catch (error) {
-          console.error('Auth callback error:', error);
-          navigate('/login', { replace: true });
+        } catch (e) {
+          window.location.href = '/login';
         }
       } else {
-        navigate('/login', { replace: true });
+        window.location.href = '/login';
       }
     };
 
