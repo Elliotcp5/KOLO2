@@ -68,26 +68,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   const createAccountAfterPayment = async (paymentToken, email = null) => {
-    try {
-      const response = await fetch(`${API_URL}/api/auth/create-account`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ payment_token: paymentToken, email })
-      });
+    const response = await fetch(`${API_URL}/api/auth/create-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ payment_token: paymentToken, email })
+    });
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
-        return userData;
-      } else {
-        const error = await response.json();
-        throw new Error(error.detail || 'Account creation failed');
-      }
-    } catch (error) {
-      console.error('Account creation error:', error);
-      throw error;
+    if (response.ok) {
+      const userData = await response.json();
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Account creation failed');
     }
   };
 
