@@ -1163,6 +1163,20 @@ const SettingsTab = ({ onClose }) => {
             )}
           </div>
         </div>
+        {/* Change Password */}
+        <div 
+          className="settings-row" 
+          onClick={() => setShowPasswordModal(true)}
+          style={{ cursor: 'pointer' }}
+          data-testid="change-password"
+        >
+          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span className="label">{t('changePassword')}</span>
+          <ChevronRight className="chevron" size={20} />
+        </div>
         {/* Version */}
         <div className="settings-row" style={{ borderBottom: 'none' }}>
           <span className="label">{t('version')}</span>
@@ -1179,6 +1193,96 @@ const SettingsTab = ({ onClose }) => {
       >
         {t('logout')}
       </button>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowPasswordModal(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>{t('changePassword')}</h2>
+              <button
+                className="btn-primary"
+                onClick={handleChangePassword}
+                disabled={!currentPassword || !newPassword || !confirmPassword || passwordLoading}
+                style={{ 
+                  width: 'auto', 
+                  height: '40px', 
+                  padding: '0 20px',
+                  fontSize: '15px'
+                }}
+              >
+                {passwordLoading ? (
+                  <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                ) : (
+                  t('save')
+                )}
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('currentPassword')}
+                </label>
+                <input
+                  type="password"
+                  className="input-dark"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  data-testid="current-password-input"
+                />
+              </div>
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('newPassword')}
+                </label>
+                <input
+                  type="password"
+                  className="input-dark"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  data-testid="new-password-input"
+                />
+              </div>
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {t('confirmNewPassword')}
+                </label>
+                <input
+                  type="password"
+                  className="input-dark"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  data-testid="confirm-password-input"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
