@@ -946,21 +946,21 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
 
 @api_router.get("/tasks")
 async def list_tasks(request: Request, include_completed: bool = True):
-    """List all tasks for authenticated user - includes completed tasks from last month"""
+    """List all tasks for authenticated user - includes completed tasks from last 2 weeks"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
     await generate_follow_up_tasks_for_user(user.user_id)
     
-    one_month_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    two_weeks_ago = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
     
-    # Get non-completed tasks + completed tasks from last month
+    # Get non-completed tasks + completed tasks from last 2 weeks
     tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
             "$or": [
                 {"completed": False},
-                {"completed": True, "completed_at": {"$gte": one_month_ago}}
+                {"completed": True, "completed_at": {"$gte": two_weeks_ago}}
             ]
         },
         {"_id": 0}
