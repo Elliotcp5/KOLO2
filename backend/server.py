@@ -703,7 +703,7 @@ async def validate_payment_token(token: str):
     return {"valid": True, "email": token_doc.get("email")}
 
 class BillingPortalRequest(BaseModel):
-    action: str  # payment_method, change_card, billing_address, change_email
+    action: str  # payment_method, billing_address, change_email
 
 @api_router.post("/billing/portal")
 async def create_billing_portal(request: BillingPortalRequest, http_request: Request):
@@ -757,6 +757,109 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
     except Exception as e:
         logger.error(f"Billing portal error: {e}")
         raise HTTPException(status_code=500, detail="Unable to access billing portal. Please try again later.")
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@api_router.post("/auth/change-password")
+async def change_password(request: ChangePasswordRequest, http_request: Request):
+    """Change password for authenticated user"""
+    user = await require_active_subscription(http_request)
+    
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit contenir au moins 6 caractères")
+    
+    # Get user from database
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    # Verify current password
+    if not verify_password(request.current_password, user_doc.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+    
+    # Hash new password and update
+    new_hash = hash_password(request.new_password)
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"password_hash": new_hash}}
+    )
+    
+    return {"message": "Mot de passe modifié avec succès"}
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset email"""
+    if not request.email:
+        raise HTTPException(status_code=400, detail="Email requis")
+    
+    # Check if user exists
+    user_doc = await db.users.find_one({"email": request.email}, {"_id": 0})
+    
+    # Always return success to prevent email enumeration
+    if not user_doc:
+        logger.info(f"Password reset requested for non-existent email: {request.email}")
+        return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation"}
+    
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    # Store reset token
+    await db.password_resets.delete_many({"email": request.email})  # Remove old tokens
+    await db.password_resets.insert_one({
+        "email": request.email,
+        "token": reset_token,
+        "expires_at": expires_at,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # In production, send email here
+    # For now, log the reset link
+    logger.info(f"Password reset token for {request.email}: {reset_token}")
+    
+    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation", "reset_token": reset_token}
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password using token"""
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    
+    # Find and validate reset token
+    reset_doc = await db.password_resets.find_one({"token": request.token}, {"_id": 0})
+    
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Lien de réinitialisation invalide ou expiré")
+    
+    if reset_doc.get("expires_at", datetime.min.replace(tzinfo=timezone.utc)) < datetime.now(timezone.utc):
+        await db.password_resets.delete_one({"token": request.token})
+        raise HTTPException(status_code=400, detail="Lien de réinitialisation expiré")
+    
+    email = reset_doc.get("email")
+    
+    # Update password
+    new_hash = hash_password(request.new_password)
+    result = await db.users.update_one(
+        {"email": email},
+        {"$set": {"password_hash": new_hash}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Utilisateur non trouvé")
+    
+    # Delete used token
+    await db.password_resets.delete_one({"token": request.token})
+    
+    return {"message": "Mot de passe réinitialisé avec succès"}
 
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
