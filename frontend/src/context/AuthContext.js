@@ -59,8 +59,8 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         credentials: 'include'
       });
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (e) {
+      // Silent fail
     } finally {
       setUser(null);
       setIsAuthenticated(false);
