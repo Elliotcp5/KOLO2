@@ -486,9 +486,6 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const [prospectData, setProspectData] = useState(prospect);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showNewTask, setShowNewTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDate, setNewTaskDate] = useState('');
 
   useEffect(() => {
     const fetchProspectDetail = async () => {
