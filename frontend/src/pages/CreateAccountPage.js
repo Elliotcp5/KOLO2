@@ -56,11 +56,16 @@ const CreateAccountPage = () => {
       try {
         data = await response.json();
       } catch (e) {
-        throw new Error('Failed to create account');
+        toast.error(locale === 'fr' ? 'Erreur serveur' : 'Server error');
+        setCreating(false);
+        return;
       }
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create account');
+        const errorMsg = data.detail || 'Failed to create account';
+        toast.error(locale === 'fr' ? errorMsg : errorMsg);
+        setCreating(false);
+        return;
       }
       
       // Create a simple serializable object for login
@@ -74,12 +79,13 @@ const CreateAccountPage = () => {
       login(userData);
       toast.success(locale === 'fr' ? 'Compte créé avec succès!' : 'Account created successfully!');
       
-      // Navigate without state to avoid cloning issues
-      navigate('/app', { replace: true });
-    } catch (error) {
-      console.error('Create account error:', error);
-      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
-      toast.error(errorMessage || (locale === 'fr' ? 'Erreur lors de la création du compte' : 'Failed to create account'));
+      // Use window.location for more reliable redirect
+      window.location.href = '/app';
+    } catch (err) {
+      const errorMsg = err && typeof err === 'object' && 'message' in err 
+        ? String(err.message) 
+        : 'Connection error';
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : errorMsg);
       setCreating(false);
     }
   };
