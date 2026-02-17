@@ -841,9 +841,15 @@ async def reset_password(request: ResetPasswordRequest):
     if not reset_doc:
         raise HTTPException(status_code=400, detail="Lien de réinitialisation invalide ou expiré")
     
-    if reset_doc.get("expires_at", datetime.min.replace(tzinfo=timezone.utc)) < datetime.now(timezone.utc):
-        await db.password_resets.delete_one({"token": request.token})
-        raise HTTPException(status_code=400, detail="Lien de réinitialisation expiré")
+    # Check expiration
+    expires_at = reset_doc.get("expires_at")
+    if expires_at:
+        # Make sure both are timezone-aware
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            await db.password_resets.delete_one({"token": request.token})
+            raise HTTPException(status_code=400, detail="Lien de réinitialisation expiré")
     
     email = reset_doc.get("email")
     
