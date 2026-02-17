@@ -1113,14 +1113,14 @@ const TasksTab = ({ onRefresh }) => {
   const fetchData = async () => {
     try {
       // Fetch all tasks
-      const tasksRes = await fetch(`${API_URL}/api/tasks`, { credentials: 'include' });
+      const tasksRes = await authFetch(`${API_URL}/api/tasks`);
       if (tasksRes.ok) {
         const data = await tasksRes.json();
         setTasks(data.tasks || []);
       }
       
       // Fetch prospects for linking
-      const prospectsRes = await fetch(`${API_URL}/api/prospects`, { credentials: 'include' });
+      const prospectsRes = await authFetch(`${API_URL}/api/prospects`);
       if (prospectsRes.ok) {
         const data = await prospectsRes.json();
         setProspects(data.prospects || []);
@@ -1149,10 +1149,9 @@ const TasksTab = ({ onRefresh }) => {
         dueDateTime = `${newTask.dueDate}T09:00:00`;
       }
 
-      const response = await fetch(`${API_URL}/api/tasks`, {
+      const response = await authFetch(`${API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           title: newTask.title,
           due_date: dueDateTime,
@@ -1177,9 +1176,8 @@ const TasksTab = ({ onRefresh }) => {
 
   const handleCompleteTask = async (taskId) => {
     try {
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
-        method: 'POST',
-        credentials: 'include'
+      const response = await authFetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST'
       });
       
       if (response.ok) {
