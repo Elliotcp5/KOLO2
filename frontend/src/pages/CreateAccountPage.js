@@ -51,9 +51,16 @@ const CreateAccountPage = () => {
         })
       });
 
+      // Clone the response before reading it
+      const responseClone = response.clone();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create account');
+        try {
+          const errorData = await responseClone.json();
+          throw new Error(errorData.detail || 'Failed to create account');
+        } catch (jsonError) {
+          throw new Error('Failed to create account');
+        }
       }
 
       const data = await response.json();
