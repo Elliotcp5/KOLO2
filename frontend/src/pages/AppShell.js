@@ -232,9 +232,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
 
   const fetchProspects = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/prospects`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`${API_URL}/api/prospects`);
       if (response.ok) {
         const data = await response.json();
         setProspects(data.prospects || []);
@@ -255,10 +253,9 @@ const ProspectsTab = ({ onSelectProspect }) => {
     
     setCreating(true);
     try {
-      const response = await fetch(`${API_URL}/api/prospects`, {
+      const response = await authFetch(`${API_URL}/api/prospects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(newProspect)
       });
       
@@ -496,9 +493,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   useEffect(() => {
     const fetchProspectDetail = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
-          credentials: 'include'
-        });
+        const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
         if (response.ok) {
           const data = await response.json();
           setProspectData(data);
@@ -530,10 +525,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
   const updateStatus = async (newStatus) => {
     try {
-      const response = await fetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
       
@@ -565,10 +559,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     if (!newTaskTitle || !newTaskDate) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/tasks`, {
+      const response = await authFetch(`${API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           prospect_id: prospect.prospect_id,
           title: newTaskTitle,
@@ -583,9 +576,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         setNewTaskTitle('');
         setNewTaskDate('');
         // Refresh prospect data
-        const refreshResponse = await fetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
-          credentials: 'include'
-        });
+        const refreshResponse = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
           setProspectData(refreshData);
@@ -601,9 +592,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
   const handleCompleteTask = async (taskId) => {
     try {
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
-        method: 'POST',
-        credentials: 'include'
+      const response = await authFetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST'
       });
       
       if (response.ok) {
@@ -611,9 +601,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           t.task_id === taskId ? { ...t, completed: true } : t
         ));
         // Refresh to update next_task
-        const refreshResponse = await fetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
-          credentials: 'include'
-        });
+        const refreshResponse = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
           setProspectData(refreshData);
