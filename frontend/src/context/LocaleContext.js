@@ -31,14 +31,18 @@ export const LocaleProvider = ({ children }) => {
     const localeOverride = urlParams.get('locale');
     const countryOverride = urlParams.get('country');
     
+    // Check localStorage for saved locale
+    const savedLocale = localStorage.getItem('kolo_locale');
+    
     // Detect browser locale
-    const browserLocale = localeOverride || navigator.language || navigator.userLanguage || 'en-US';
+    const browserLocale = localeOverride || savedLocale || navigator.language || navigator.userLanguage || 'en-US';
     const lang = browserLocale.split('-')[0].toLowerCase();
     const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
     
     // Set locale (only support en and fr for now)
     if (lang === 'fr') {
       setLocale('fr');
+      localStorage.setItem('kolo_locale', 'fr');
       // Default to France for French speakers
       if (!regionFromLocale || regionFromLocale === 'FR' || EU_COUNTRIES.includes(regionFromLocale)) {
         setCountry(regionFromLocale || 'FR');
@@ -47,6 +51,7 @@ export const LocaleProvider = ({ children }) => {
       }
     } else {
       setLocale('en');
+      localStorage.setItem('kolo_locale', 'en');
     }
 
     // Set country/currency based on locale region
