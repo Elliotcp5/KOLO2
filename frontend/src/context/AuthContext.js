@@ -17,6 +17,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('kolo_token');
+    if (token) {
+      return { 'Authorization': `Bearer ${token}` };
+    }
+    return {};
+  };
+
   // Check auth on mount
   useEffect(() => {
     checkAuth();
@@ -25,7 +34,8 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       
       if (response.ok) {
@@ -33,11 +43,14 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
+        // Clear token if auth fails
+        localStorage.removeItem('kolo_token');
         setUser(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
+    } catch (e) {
       // Silent fail - just reset auth state
+      localStorage.removeItem('kolo_token');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -46,6 +59,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (userData) => {
+    // Store token in localStorage if provided
+    if (userData.token) {
+      localStorage.setItem('kolo_token', userData.token);
+    }
     // Direct login with user data from API response
     setUser(userData);
     setIsAuthenticated(true);
@@ -56,7 +73,8 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
     } catch (e) {
       // Silent fail
