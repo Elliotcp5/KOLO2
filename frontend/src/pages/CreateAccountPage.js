@@ -51,19 +51,17 @@ const CreateAccountPage = () => {
         })
       });
 
-      // Clone the response before reading it
-      const responseClone = response.clone();
+      // Read JSON once
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('Failed to create account');
+      }
       
       if (!response.ok) {
-        try {
-          const errorData = await responseClone.json();
-          throw new Error(errorData.detail || 'Failed to create account');
-        } catch (jsonError) {
-          throw new Error('Failed to create account');
-        }
+        throw new Error(data.detail || 'Failed to create account');
       }
-
-      const data = await response.json();
       
       // Create a simple serializable object for login
       const userData = {
