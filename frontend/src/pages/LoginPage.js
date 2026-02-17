@@ -34,12 +34,18 @@ const LoginPage = () => {
 
       const data = await response.json();
       
-      if (response.ok) {
-        login(data);
-        navigate('/app', { replace: true });
-      } else {
+      if (!response.ok) {
         throw new Error(data.detail || 'Login failed');
       }
+      
+      // Create clean user data
+      const userData = {
+        user_id: data.user_id,
+        email: data.email,
+        subscription_status: data.subscription_status
+      };
+      login(userData);
+      navigate('/app', { replace: true });
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.message || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
@@ -67,13 +73,19 @@ const LoginPage = () => {
 
       const data = await response.json();
       
-      if (response.ok) {
-        login(data);
-        toast.success(locale === 'fr' ? 'Compte récupéré!' : 'Account recovered!');
-        navigate('/app', { replace: true });
-      } else {
+      if (!response.ok) {
         throw new Error(data.detail || 'Recovery failed');
       }
+      
+      // Create clean user data
+      const userData = {
+        user_id: data.user_id,
+        email: data.email,
+        subscription_status: data.subscription_status
+      };
+      login(userData);
+      toast.success(locale === 'fr' ? 'Compte récupéré!' : 'Account recovered!');
+      navigate('/app', { replace: true });
     } catch (error) {
       console.error('Recovery error:', error);
       toast.error(error.message || (locale === 'fr' ? 'Impossible de récupérer le compte' : 'Failed to recover account'));
