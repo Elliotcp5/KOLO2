@@ -111,9 +111,16 @@ class PushNotificationService {
       if (subscription) {
         await subscription.unsubscribe();
         
+        // Get auth token from localStorage
+        const token = localStorage.getItem('kolo_token');
+        const headers = {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        
         // Notify backend
         await fetch(`${API_URL}/api/notifications/unsubscribe`, {
           method: 'DELETE',
+          headers,
           credentials: 'include'
         });
       }
