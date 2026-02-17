@@ -79,6 +79,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       // Silent fail
     } finally {
+      localStorage.removeItem('kolo_token');
       setUser(null);
       setIsAuthenticated(false);
     }
