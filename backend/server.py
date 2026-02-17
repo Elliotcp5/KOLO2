@@ -845,6 +845,7 @@ async def login_with_password(request: LoginRequest, response: Response):
     session_doc['created_at'] = session_doc['created_at'].isoformat()
     await db.user_sessions.insert_one(session_doc)
     
+    # Set cookie
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -855,10 +856,12 @@ async def login_with_password(request: LoginRequest, response: Response):
         max_age=7 * 24 * 60 * 60
     )
     
+    # Return token in response body as well for localStorage fallback
     return {
         "user_id": user["user_id"],
         "email": user["email"],
-        "subscription_status": user["subscription_status"]
+        "subscription_status": user["subscription_status"],
+        "token": session_token
     }
 
 # Recover account - for users who paid but didn't complete account creation
