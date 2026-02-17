@@ -31,6 +31,7 @@ const AppRouter = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
       <Route path="/create-account" element={<CreateAccountPage />} />
+      <Route path="/faq" element={<FAQPage />} />
 
       {/* Protected routes */}
       <Route 
