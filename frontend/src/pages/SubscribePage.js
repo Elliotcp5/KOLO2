@@ -13,7 +13,6 @@ const SubscribePage = () => {
   const { t, formatPrice, country, locale } = useLocale();
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
 
   // Handle error messages from redirect
   useEffect(() => {
@@ -32,10 +31,7 @@ const SubscribePage = () => {
     setLoading(true);
 
     // Direct navigation to server endpoint - works on ALL browsers
-    let checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
-    if (email) {
-      checkoutUrl += `&email=${encodeURIComponent(email)}`;
-    }
+    const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
     window.location.href = checkoutUrl;
   };
 
