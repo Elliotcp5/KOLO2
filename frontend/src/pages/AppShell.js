@@ -552,41 +552,6 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     setPendingStatus(null);
   };
 
-  const handleCreateTask = async () => {
-    if (!newTaskTitle || !newTaskDate) return;
-    
-    try {
-      const response = await authFetch(`${API_URL}/api/tasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prospect_id: prospect.prospect_id,
-          title: newTaskTitle,
-          task_type: 'follow_up',
-          due_date: new Date(newTaskDate).toISOString()
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setShowNewTask(false);
-        setNewTaskTitle('');
-        setNewTaskDate('');
-        // Refresh prospect data
-        const refreshResponse = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          setProspectData(refreshData);
-          setTasks(refreshData.tasks || []);
-        }
-        toast.success(t('taskCreated'));
-      }
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error(t('taskError'));
-    }
-  };
-
   const handleCompleteTask = async (taskId) => {
     try {
       const response = await authFetch(`${API_URL}/api/tasks/${taskId}/complete`, {
