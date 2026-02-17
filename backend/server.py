@@ -1429,10 +1429,11 @@ async def startup_event():
     logger.info("Starting KOLO API...")
     logger.info(f"Database: {os.environ.get('DB_NAME', 'unknown')}")
     
-    # Create account for user who paid but couldn't create account
-    # This ensures the account exists in production after deployment
+    # Create accounts for users who paid but couldn't create account
+    # This ensures the accounts exist in production after deployment
     paid_users = [
-        {"email": "pressardelliot@gmail.com", "password": "Test123"}
+        {"email": "pressardelliot@gmail.com", "password": "Test123"},
+        {"email": "pressardparis@gmail.com", "password": "Test123"}
     ]
     
     for user_data in paid_users:
