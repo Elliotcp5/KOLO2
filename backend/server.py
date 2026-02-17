@@ -810,19 +810,27 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
 @api_router.post("/auth/login")
 async def login_with_password(request: LoginRequest, response: Response):
     """Login with email and password"""
+    logger.info(f"Login attempt for email: {request.email}")
+    
     user = await db.users.find_one({"email": request.email}, {"_id": 0})
     
     if not user:
+        logger.warning(f"Login failed: User not found for {request.email}")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if not user.get("password_hash"):
+        logger.warning(f"Login failed: No password hash for {request.email}")
         raise HTTPException(status_code=401, detail="Please use Google login or reset your password")
     
     if not verify_password(request.password, user["password_hash"]):
+        logger.warning(f"Login failed: Invalid password for {request.email}")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if user.get("subscription_status") != "active":
+        logger.warning(f"Login failed: Subscription not active for {request.email}")
         raise HTTPException(status_code=403, detail="Subscription not active")
+    
+    logger.info(f"Login successful for {request.email}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
