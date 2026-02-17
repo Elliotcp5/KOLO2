@@ -73,7 +73,7 @@ const LandingPage = () => {
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'white',
+                color: 'var(--muted)',
                 fontSize: '12px',
                 fontWeight: '400',
                 cursor: 'pointer',
