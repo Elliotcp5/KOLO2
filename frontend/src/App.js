@@ -12,6 +12,7 @@ import SubscribePage from "./pages/SubscribePage";
 import CreateAccountPage from "./pages/CreateAccountPage";
 import AppShell from "./pages/AppShell";
 import NewProspectPage from "./pages/NewProspectPage";
+import FAQPage from "./pages/FAQPage";
 
 // Router component that checks for session_id in URL
 const AppRouter = () => {
