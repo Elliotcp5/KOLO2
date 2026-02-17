@@ -7,6 +7,16 @@ import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
 import { API_URL } from '../config/api';
 
+// Helper for authenticated fetch
+const authFetch = (url, options = {}) => {
+  const token = localStorage.getItem('kolo_token');
+  const headers = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  return fetch(url, { ...options, credentials: 'include', headers });
+};
+
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile }) => {
   const { t, formatDate } = useLocale();
@@ -15,15 +25,13 @@ const TodayTab = ({ onOpenProfile }) => {
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/tasks/today`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`${API_URL}/api/tasks/today`);
       if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
+    } catch (e) {
+      // Silent fail
     } finally {
       setLoading(false);
     }
@@ -35,9 +43,8 @@ const TodayTab = ({ onOpenProfile }) => {
 
   const handleCompleteTask = async (taskId) => {
     try {
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
-        method: 'POST',
-        credentials: 'include'
+      const response = await authFetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST'
       });
       
       if (response.ok) {
