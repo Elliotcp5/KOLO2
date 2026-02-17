@@ -48,7 +48,8 @@ const LoginPage = () => {
       navigate('/app', { replace: true });
     } catch (error) {
       console.error('Login error:', error);
-      toast.error(error.message || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
+      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
+      toast.error(errorMessage || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
       setLoading(false);
     }
   };
