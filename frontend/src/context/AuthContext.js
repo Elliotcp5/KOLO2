@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_URL } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -10,8 +11,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
