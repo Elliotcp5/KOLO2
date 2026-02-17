@@ -205,7 +205,7 @@ const LoginPage = () => {
             onClick={showRecover ? handleRecover : handleLogin}
             disabled={!email || !password || loading}
             data-testid="signin-button"
-            style={{ marginBottom: '16px' }}
+            style={{ marginBottom: '12px' }}
           >
             {loading ? (
               <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
@@ -215,6 +215,22 @@ const LoginPage = () => {
               t('signIn')
             )}
           </button>
+
+          {/* Forgot Password link */}
+          {!showRecover && (
+            <button
+              className="btn-ghost"
+              onClick={() => navigate('/forgot-password')}
+              style={{ 
+                color: 'var(--muted)', 
+                fontSize: '13px',
+                marginBottom: '16px'
+              }}
+              data-testid="forgot-password-link"
+            >
+              {locale === 'fr' ? 'Mot de passe oublié ?' : 'Forgot password?'}
+            </button>
+          )}
 
           {/* Toggle recover mode */}
           <button
