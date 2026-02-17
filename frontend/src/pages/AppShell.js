@@ -1328,32 +1328,50 @@ const TasksTab = ({ onRefresh }) => {
 
       {/* Add Task Modal */}
       {showAddTask && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '20px 20px 0 0',
-            padding: '24px',
-            width: '100%',
-            maxHeight: '80vh',
-            overflow: 'auto'
-          }}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            zIndex: 1000
+          }}
+          onClick={() => setShowAddTask(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px 20px 0 0',
+              padding: '24px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '600' }}>{t('newTask')}</h2>
-              <button 
-                onClick={() => setShowAddTask(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}
+              <button
+                className="btn-primary"
+                onClick={handleCreateTask}
+                disabled={!newTask.title || !newTask.dueDate || creating}
+                data-testid="create-task-button"
+                style={{ 
+                  width: 'auto', 
+                  height: '40px', 
+                  padding: '0 20px',
+                  fontSize: '15px'
+                }}
               >
-                <X size={24} />
+                {creating ? (
+                  <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                ) : (
+                  t('save')
+                )}
               </button>
             </div>
 
@@ -1412,20 +1430,6 @@ const TasksTab = ({ onRefresh }) => {
                   ))}
                 </select>
               </div>
-
-              <button
-                className="btn-primary"
-                onClick={handleCreateTask}
-                disabled={!newTask.title || !newTask.dueDate || creating}
-                data-testid="create-task-button"
-                style={{ marginTop: '8px' }}
-              >
-                {creating ? (
-                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-                ) : (
-                  <span style={{ color: 'white' }}>{t('save')}</span>
-                )}
-              </button>
             </div>
           </div>
         </div>
