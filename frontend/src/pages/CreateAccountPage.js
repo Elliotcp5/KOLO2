@@ -78,7 +78,8 @@ const CreateAccountPage = () => {
       navigate('/app', { replace: true });
     } catch (error) {
       console.error('Create account error:', error);
-      toast.error(error.message || (locale === 'fr' ? 'Erreur lors de la création du compte' : 'Failed to create account'));
+      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
+      toast.error(errorMessage || (locale === 'fr' ? 'Erreur lors de la création du compte' : 'Failed to create account'));
       setCreating(false);
     }
   };
