@@ -151,7 +151,7 @@ html, body {
   width: 100%;
   height: 56px;
   background-color: var(--accent);
-  color: white;
+  color: white !important;
   border: none;
   border-radius: 9999px;
   font-size: 17px;
@@ -163,6 +163,11 @@ html, body {
   gap: 10px;
   box-shadow: 0 0 30px -5px var(--accent-glow);
   transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.btn-primary span,
+.btn-primary > * {
+  color: white !important;
 }
 
 .btn-primary:hover {
