@@ -1018,7 +1018,12 @@ const SettingsTab = ({ onClose }) => {
         {t('billingPayment')}
       </h3>
       <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
-        <div className="settings-row" data-testid="edit-payment-method">
+        <div 
+          className="settings-row" 
+          data-testid="edit-payment-method"
+          onClick={() => handleBillingAction('payment_method')}
+          style={{ cursor: 'pointer' }}
+        >
           <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
             <line x1="1" y1="10" x2="23" y2="10"></line>
@@ -1026,7 +1031,12 @@ const SettingsTab = ({ onClose }) => {
           <span className="label">{t('editPaymentMethod')}</span>
           <ChevronRight className="chevron" size={20} />
         </div>
-        <div className="settings-row" data-testid="change-card">
+        <div 
+          className="settings-row" 
+          data-testid="change-card"
+          onClick={() => handleBillingAction('change_card')}
+          style={{ cursor: 'pointer' }}
+        >
           <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
             <line x1="1" y1="10" x2="23" y2="10"></line>
@@ -1034,7 +1044,12 @@ const SettingsTab = ({ onClose }) => {
           <span className="label">{t('changeCard')}</span>
           <ChevronRight className="chevron" size={20} />
         </div>
-        <div className="settings-row" data-testid="billing-address">
+        <div 
+          className="settings-row" 
+          data-testid="billing-address"
+          onClick={() => handleBillingAction('billing_address')}
+          style={{ cursor: 'pointer' }}
+        >
           <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
@@ -1042,7 +1057,12 @@ const SettingsTab = ({ onClose }) => {
           <span className="label">{t('billingAddress')}</span>
           <ChevronRight className="chevron" size={20} />
         </div>
-        <div className="settings-row" data-testid="change-email">
+        <div 
+          className="settings-row" 
+          data-testid="change-email"
+          onClick={() => handleBillingAction('change_email')}
+          style={{ cursor: 'pointer' }}
+        >
           <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
             <polyline points="22,6 12,13 2,6"></polyline>
