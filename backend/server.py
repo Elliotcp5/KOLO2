@@ -351,7 +351,7 @@ async def generate_follow_up_tasks_for_user(user_id: str):
                     user_id=user_id,
                     prospect_id=prospect["prospect_id"],
                     title=f"Suivi {prospect['full_name']}",
-                    description=f"Aucune activité depuis plus d'une semaine. Pensez à recontacter ce prospect.",
+                    description="Aucune activité depuis plus d'une semaine. Pensez à recontacter ce prospect.",
                     task_type="follow_up",
                     due_date=now,
                     auto_generated=True
