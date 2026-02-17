@@ -77,10 +77,17 @@ class PushNotificationService {
         });
       }
 
+      // Get auth token from localStorage
+      const token = localStorage.getItem('kolo_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
       // Send subscription to backend
       await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           subscription: subscription.toJSON(),
