@@ -1,5 +1,5 @@
 // Push notification service for KOLO
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../config/api';
 
 class PushNotificationService {
   constructor() {
