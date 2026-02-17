@@ -1388,7 +1388,8 @@ const TasksTab = ({ onRefresh }) => {
             bottom: 0,
             background: 'rgba(0, 0, 0, 0.8)',
             display: 'flex',
-            alignItems: 'flex-end',
+            alignItems: 'center',
+            justifyContent: 'center',
             zIndex: 1000
           }}
           onClick={() => setShowAddTask(false)}
@@ -1396,11 +1397,12 @@ const TasksTab = ({ onRefresh }) => {
           <div 
             style={{
               background: 'var(--surface)',
-              borderRadius: '20px 20px 0 0',
+              borderRadius: '20px',
               padding: '24px',
-              width: '100%',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              width: '90%',
+              maxWidth: '400px',
+              maxHeight: '90vh',
+              overflow: 'visible'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1462,7 +1464,7 @@ const TasksTab = ({ onRefresh }) => {
                 />
               </div>
 
-              <div>
+              <div style={{ marginBottom: '16px' }}>
                 <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
                   {t('selectLead')}
                 </label>
@@ -1471,7 +1473,11 @@ const TasksTab = ({ onRefresh }) => {
                   value={newTask.prospectId}
                   onChange={(e) => setNewTask({...newTask, prospectId: e.target.value})}
                   data-testid="task-prospect-select"
-                  style={{ width: '100%' }}
+                  style={{ 
+                    width: '100%',
+                    height: '48px',
+                    fontSize: '16px'
+                  }}
                 >
                   <option value="">{t('noLeadLinked')}</option>
                   {prospects.map(p => (
