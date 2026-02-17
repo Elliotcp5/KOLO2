@@ -173,19 +173,19 @@ async def send_daily_reminders():
     return {"sent": sent_count, "failed": failed_count, "no_subscription": no_sub_count}
 
 async def check_and_generate_follow_up_tasks():
-    """Check for inactive prospects and generate follow-up tasks"""
-    logger.info("Checking for inactive prospects...")
+    """Check for prospects that need follow-up tasks based on specific rules:
+    - Prospect created more than 2 days ago with NO tasks linked
+    - Prospect with no completed tasks in the last 7 days AND no uncompleted tasks linked
+    """
+    logger.info("Checking for prospects needing follow-up tasks...")
     
     now = datetime.now(timezone.utc)
+    two_days_ago = now - timedelta(days=2)
     one_week_ago = now - timedelta(days=7)
     
-    # Find prospects that are not closed/lost and have no recent activity
+    # Find all active prospects (not closed/lost)
     prospects = await db.prospects.find({
-        "status": {"$nin": ["closed", "lost"]},
-        "$or": [
-            {"last_activity_date": {"$lt": one_week_ago.isoformat()}},
-            {"last_activity_date": None}
-        ]
+        "status": {"$nin": ["closed", "lost"]}
     }, {"_id": 0}).to_list(10000)
     
     tasks_created = 0
@@ -193,23 +193,91 @@ async def check_and_generate_follow_up_tasks():
     for prospect in prospects:
         user_id = prospect.get("user_id")
         prospect_id = prospect.get("prospect_id")
+        created_at = prospect.get("created_at")
         
-        # Check if there's already an uncompleted auto-generated task
-        existing_task = await db.tasks.find_one({
+        # Check if there's already an uncompleted task for this prospect (any task, not just auto)
+        existing_uncompleted_task = await db.tasks.find_one({
+            "prospect_id": prospect_id,
+            "completed": False
+        })
+        
+        # If there's already an uncompleted task linked, skip this prospect
+        if existing_uncompleted_task:
+            continue
+        
+        # Check if there's already an uncompleted auto-generated follow-up task
+        existing_auto_task = await db.tasks.find_one({
             "prospect_id": prospect_id,
             "user_id": user_id,
             "auto_generated": True,
             "completed": False
         })
         
-        if not existing_task:
+        if existing_auto_task:
+            continue
+        
+        should_create_task = False
+        
+        # Rule 1: Prospect created more than 2 days ago with NO tasks at all
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    # Handle ISO format
+                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    created_date = created_at
+                
+                if created_date.tzinfo is None:
+                    created_date = created_date.replace(tzinfo=timezone.utc)
+                
+                # Check if prospect is older than 2 days
+                if created_date < two_days_ago:
+                    # Check if there are ANY tasks for this prospect
+                    any_task = await db.tasks.find_one({"prospect_id": prospect_id})
+                    if not any_task:
+                        should_create_task = True
+                        logger.info(f"Rule 1: Prospect {prospect_id} created {(now - created_date).days} days ago with no tasks")
+            except Exception as e:
+                logger.error(f"Error parsing created_at for prospect {prospect_id}: {e}")
+        
+        # Rule 2: No completed tasks in the last 7 days AND no pending tasks
+        if not should_create_task:
+            # Find the most recent completed task for this prospect
+            recent_completed_task = await db.tasks.find_one(
+                {
+                    "prospect_id": prospect_id,
+                    "completed": True
+                },
+                sort=[("completed_at", -1)]
+            )
+            
+            if recent_completed_task:
+                completed_at = recent_completed_task.get("completed_at")
+                if completed_at:
+                    try:
+                        if isinstance(completed_at, str):
+                            completed_date = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
+                        else:
+                            completed_date = completed_at
+                        
+                        if completed_date.tzinfo is None:
+                            completed_date = completed_date.replace(tzinfo=timezone.utc)
+                        
+                        # If no task completed in the last 7 days
+                        if completed_date < one_week_ago:
+                            should_create_task = True
+                            logger.info(f"Rule 2: Prospect {prospect_id} last task completed {(now - completed_date).days} days ago")
+                    except Exception as e:
+                        logger.error(f"Error parsing completed_at: {e}")
+        
+        if should_create_task:
             # Create a new follow-up task
             task = {
                 "task_id": f"task_auto_{prospect_id}_{int(now.timestamp())}",
                 "user_id": user_id,
                 "prospect_id": prospect_id,
                 "title": f"Suivi {prospect.get('full_name', 'Prospect')}",
-                "description": "Aucune activité depuis plus d'une semaine. Pensez à recontacter ce prospect.",
+                "description": "Tâche de suivi générée automatiquement.",
                 "task_type": "follow_up",
                 "due_date": now.isoformat(),
                 "completed": False,
