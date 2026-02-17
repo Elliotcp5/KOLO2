@@ -2,19 +2,31 @@
 const translations = {
   en: {
     // Landing
-    loginToKolo: "Log in to KOLO",
-    heroHeadline: "Never Miss a Follow-Up Again!",
+    loginToKolo: "Log in",
+    heroHeadline: "Never Miss a Sale Again!",
     heroSubheadline: "Close more deals. Automatically.",
-    feature1Title: "Today's Follow-Ups",
+    feature1Title: "Today's Tasks",
     feature1Desc: "Know exactly who to contact today.",
     feature2Title: "Active Prospects",
     feature2Desc: "Every buyer and seller to close.",
     feature3Title: "Smart Reminders",
     feature3Desc: "Automatic reminders based on your tasks and real activity.",
-    madeBy: "Made by independent real estate agents for independent real estate agents",
+    madeBy: "Made by independents for independents",
     startButton: "Start",
     cancelAnytime: "Cancel anytime",
     perMonth: "/month",
+    faq: "FAQ",
+    
+    // FAQ
+    faqTitle: "Frequently Asked Questions",
+    faqQ1: "Who are we?",
+    faqA1: "KOLO was created by independent sales professionals who were tired of losing sales due to forgotten follow-ups. We built the tool we wished existed.",
+    faqQ2: "How does KOLO work?",
+    faqA2: "KOLO is simple: add your prospects, schedule your tasks, and let the app remind you when it's time to follow up. No complex setup, no learning curve.",
+    faqQ3: "How does KOLO help me close more deals?",
+    faqA3: "By ensuring you never forget a follow-up. Studies show that 80% of sales require 5+ follow-ups, but most give up after 2. KOLO keeps you on track.",
+    faqQ4: "Why is KOLO perfect for independents?",
+    faqA4: "Unlike complex CRMs designed for big teams, KOLO is mobile-first, quick to set up, and focuses on what matters: your daily actions and your prospects.",
     
     // Login
     back: "Back",
@@ -33,6 +45,9 @@ const translations = {
     creditDebitCard: "Credit / Debit Card",
     applePay: "Apple Pay",
     unlimitedLeads: "Unlimited leads and tasks",
+    smartReminders: "Smart automatic reminders",
+    mobileApp: "Mobile app always with you",
+    noCommitment: "No commitment, cancel anytime",
     securedByStripe: "Payments secured by Stripe",
     
     // Create Account
