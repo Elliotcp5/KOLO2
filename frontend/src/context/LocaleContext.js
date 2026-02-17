@@ -65,8 +65,18 @@ export const LocaleProvider = ({ children }) => {
     // Fetch geo info from backend (will override if available)
     const fetchGeo = async () => {
       try {
-        const API_URL = process.env.REACT_APP_BACKEND_URL;
-        const response = await fetch(`${API_URL}/api/geo?locale=${browserLocale}&country=${regionFromLocale || ''}`);
+        // Dynamically get API URL
+        const hostname = window.location.hostname;
+        let apiUrl = '';
+        if (hostname === 'trykolo.io' || hostname === 'www.trykolo.io') {
+          apiUrl = '';
+        } else if (hostname.includes('.preview.emergentagent.com')) {
+          apiUrl = `https://${hostname}`;
+        } else {
+          apiUrl = process.env.REACT_APP_BACKEND_URL || '';
+        }
+        
+        const response = await fetch(`${apiUrl}/api/geo?locale=${browserLocale}&country=${regionFromLocale || ''}`);
         if (response.ok) {
           const data = await response.json();
           // Only update if backend returns a valid country
@@ -77,8 +87,8 @@ export const LocaleProvider = ({ children }) => {
             setSymbol(data.symbol);
           }
         }
-      } catch (error) {
-        console.error('Failed to fetch geo info:', error);
+      } catch (e) {
+        // Silent fail
       }
     };
 
