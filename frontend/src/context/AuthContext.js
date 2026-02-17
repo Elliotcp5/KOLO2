@@ -133,7 +133,7 @@ export const AuthCallback = () => {
           
           // Check subscription status
           if (userData.subscription_status === 'active' || userData.subscription_status === 'trialing') {
-            navigate('/app', { replace: true, state: { user: userData } });
+            navigate('/app', { replace: true });
           } else {
             navigate('/subscribe', { replace: true });
           }
