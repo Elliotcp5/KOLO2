@@ -1420,7 +1420,11 @@ const TasksTab = ({ onRefresh }) => {
                 data-testid="create-task-button"
                 style={{ marginTop: '8px' }}
               >
-                {creating ? <div className="spinner" style={{ width: '20px', height: '20px' }}></div> : t('save')}
+                {creating ? (
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                ) : (
+                  <span style={{ color: 'white' }}>{t('save')}</span>
+                )}
               </button>
             </div>
           </div>
