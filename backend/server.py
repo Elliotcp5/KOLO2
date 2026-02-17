@@ -702,6 +702,62 @@ async def validate_payment_token(token: str):
     
     return {"valid": True, "email": token_doc.get("email")}
 
+class BillingPortalRequest(BaseModel):
+    action: str  # payment_method, change_card, billing_address, change_email
+
+@api_router.post("/billing/portal")
+async def create_billing_portal(request: BillingPortalRequest, http_request: Request):
+    """Create a Stripe Customer Portal session for billing management"""
+    user = await require_active_subscription(http_request)
+    
+    # Check if user has a stripe customer ID
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    stripe_customer_id = user_doc.get("stripe_customer_id") if user_doc else None
+    
+    if not stripe_customer_id:
+        # Try to find customer by email using Stripe API
+        try:
+            import stripe
+            stripe.api_key = STRIPE_API_KEY
+            
+            customers = stripe.Customer.list(email=user.email, limit=1)
+            if customers.data:
+                stripe_customer_id = customers.data[0].id
+                # Save customer ID for future use
+                await db.users.update_one(
+                    {"user_id": user.user_id},
+                    {"$set": {"stripe_customer_id": stripe_customer_id}}
+                )
+        except Exception as e:
+            logger.error(f"Stripe customer lookup error: {e}")
+    
+    if not stripe_customer_id:
+        raise HTTPException(status_code=400, detail="No billing information found. Please contact support.")
+    
+    try:
+        import stripe
+        stripe.api_key = STRIPE_API_KEY
+        
+        # Get origin URL for return
+        referer = http_request.headers.get('referer', '')
+        if referer:
+            from urllib.parse import urlparse
+            parsed = urlparse(referer)
+            return_url = f"{parsed.scheme}://{parsed.netloc}/app"
+        else:
+            return_url = str(http_request.base_url).rstrip('/') + "/app"
+        
+        # Create Customer Portal session
+        portal_session = stripe.billing_portal.Session.create(
+            customer=stripe_customer_id,
+            return_url=return_url
+        )
+        
+        return {"url": portal_session.url}
+    except Exception as e:
+        logger.error(f"Billing portal error: {e}")
+        raise HTTPException(status_code=500, detail="Unable to access billing portal. Please try again later.")
+
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
     """Create account after successful Stripe payment - simplified and robust"""
