@@ -89,7 +89,8 @@ const LoginPage = () => {
       navigate('/app', { replace: true });
     } catch (error) {
       console.error('Recovery error:', error);
-      toast.error(error.message || (locale === 'fr' ? 'Impossible de récupérer le compte' : 'Failed to recover account'));
+      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
+      toast.error(errorMessage || (locale === 'fr' ? 'Impossible de récupérer le compte' : 'Failed to recover account'));
       setLoading(false);
     }
   };
