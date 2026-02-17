@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../context/LocaleContext';
 import { toast } from 'sonner';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../config/api';
 
 const NewProspectPage = () => {
   const navigate = useNavigate();
