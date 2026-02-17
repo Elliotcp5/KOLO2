@@ -1081,19 +1081,6 @@ const SettingsTab = ({ onClose }) => {
         </div>
         <div 
           className="settings-row" 
-          data-testid="change-card"
-          onClick={() => handleBillingAction('change_card')}
-          style={{ cursor: 'pointer' }}
-        >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
-            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-            <line x1="1" y1="10" x2="23" y2="10"></line>
-          </svg>
-          <span className="label">{t('changeCard')}</span>
-          <ChevronRight className="chevron" size={20} />
-        </div>
-        <div 
-          className="settings-row" 
           data-testid="billing-address"
           onClick={() => handleBillingAction('billing_address')}
           style={{ cursor: 'pointer' }}
