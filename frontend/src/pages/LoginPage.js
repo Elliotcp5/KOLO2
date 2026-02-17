@@ -35,7 +35,12 @@ const LoginPage = () => {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        const errorMsg = data.detail || 'Login failed';
+        toast.error(locale === 'fr' && errorMsg === 'Invalid email or password' 
+          ? 'Email ou mot de passe incorrect' 
+          : errorMsg);
+        setLoading(false);
+        return;
       }
       
       // Create clean user data
@@ -45,11 +50,15 @@ const LoginPage = () => {
         subscription_status: data.subscription_status
       };
       login(userData);
-      navigate('/app', { replace: true });
-    } catch (error) {
-      console.error('Login error:', error);
-      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
-      toast.error(errorMessage || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
+      
+      // Use window.location for more reliable redirect
+      window.location.href = '/app';
+    } catch (err) {
+      // Safely handle error without cloning issues
+      const errorMsg = err && typeof err === 'object' && 'message' in err 
+        ? String(err.message) 
+        : 'Connection error';
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : errorMsg);
       setLoading(false);
     }
   };
