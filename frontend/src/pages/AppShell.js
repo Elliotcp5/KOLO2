@@ -1194,25 +1194,45 @@ const TasksTab = ({ onRefresh }) => {
     const taskDate = new Date(task.due_date);
     const taskDay = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
     
+    // Green for completed
     if (task.completed) {
-      return '#10B981'; // Green for completed
+      return '#10B981';
     }
-    if (taskDay < today) {
-      return '#EF4444'; // Red for overdue
+    
+    // Calculate days overdue
+    const diffTime = today.getTime() - taskDay.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 2) {
+      return '#EF4444'; // Red for overdue more than 2 days
     }
-    if (taskDay.getTime() === today.getTime()) {
-      return '#F59E0B'; // Orange for today
+    if (diffDays > 0 && diffDays <= 2) {
+      return '#F59E0B'; // Orange for overdue 2 days or less
     }
-    return '#FFFFFF'; // White for future
+    // Today or future = White
+    return '#FFFFFF';
   };
 
+  // Filter completed tasks older than 2 weeks
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  
   // Sort and filter tasks
-  const sortedTasks = [...tasks].sort((a, b) => {
-    // Completed tasks at the bottom
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    // Then by date
-    return new Date(a.due_date) - new Date(b.due_date);
-  });
+  const sortedTasks = [...tasks]
+    .filter(task => {
+      // Hide completed tasks older than 2 weeks
+      if (task.completed && task.completed_at) {
+        const completedDate = new Date(task.completed_at);
+        return completedDate >= twoWeeksAgo;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Completed tasks at the bottom
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      // Then by date
+      return new Date(a.due_date) - new Date(b.due_date);
+    });
 
   if (loading) {
     return (
