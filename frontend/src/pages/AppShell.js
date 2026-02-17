@@ -1371,7 +1371,8 @@ const TasksTab = ({ onRefresh }) => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {sortedTasks.map(task => {
-            const taskColor = getTaskColor(task);
+            const borderColor = getTaskColor(task);
+            const textColor = task.completed ? 'var(--muted)' : 'white';
             return (
               <div 
                 key={task.task_id} 
@@ -1381,8 +1382,9 @@ const TasksTab = ({ onRefresh }) => {
                   display: 'flex', 
                   alignItems: 'flex-start', 
                   gap: '12px',
-                  borderLeft: `3px solid ${taskColor}`,
-                  opacity: task.completed ? 0.6 : 1
+                  borderLeft: `3px solid ${borderColor}`,
+                  opacity: task.completed ? 0.6 : 1,
+                  background: 'var(--surface)'
                 }}
               >
                 <button
@@ -1392,8 +1394,8 @@ const TasksTab = ({ onRefresh }) => {
                     width: '24px',
                     height: '24px',
                     borderRadius: '50%',
-                    border: `2px solid ${taskColor}`,
-                    background: task.completed ? taskColor : 'transparent',
+                    border: `2px solid ${borderColor}`,
+                    background: task.completed ? borderColor : 'transparent',
                     cursor: task.completed ? 'default' : 'pointer',
                     flexShrink: 0,
                     marginTop: '2px',
@@ -1408,7 +1410,7 @@ const TasksTab = ({ onRefresh }) => {
                 <div style={{ flex: 1 }}>
                   <div style={{ 
                     fontSize: '15px', 
-                    color: taskColor, 
+                    color: textColor, 
                     marginBottom: '4px',
                     textDecoration: task.completed ? 'line-through' : 'none'
                   }}>
