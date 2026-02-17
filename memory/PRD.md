@@ -5,7 +5,8 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - UI dark mode style iOS avec accents violets
 - Localisation FR/EN automatique
 - Prix régional (9.99 EUR/GBP/USD)
-- Authentification email/password avec JWT + abonnement Stripe requis
+- Authentification email/password avec système dual (Cookie + Bearer Token)
+- Abonnement Stripe requis pour créer un compte
 - Gestion prospects et tâches avec suivi automatique
 - Notifications push pour rappels quotidiens
 
@@ -23,13 +24,31 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
     └── public/       # manifest.json, sw.js
 ```
 
-## Fonctionnalités Implémentées ✅
+## Système d'Authentification Dual (Cookie + Bearer Token)
+**Implémenté le 17 février 2026**
+
+Le système accepte l'authentification via:
+1. **Cookie HTTP-Only** (traditionnel, via `credentials: 'include'`)
+2. **Bearer Token** (stocké dans `localStorage`, envoyé dans l'en-tête `Authorization`)
+
+### Pourquoi ce système?
+- Résout les problèmes de cookies cross-domain en production
+- Compatible avec tous les navigateurs et environnements
+- Fallback automatique si les cookies sont bloqués
+
+### Fichiers clés:
+- `/app/backend/server.py` - `get_user_from_session()` accepte Cookie OU Bearer token (lignes 221-257)
+- `/app/frontend/src/pages/AppShell.js` - `authFetch` helper ajoute le Bearer token
+- `/app/frontend/src/context/AuthContext.js` - `login()` stocke le token dans localStorage
+
+## Fonctionnalités Implémentées
 - [x] Landing page avec pricing régional
 - [x] Meta tags et titres optimisés pour le partage
 - [x] Page FAQ avec questions déroulantes
-- [x] Auth Email/Password avec JWT
+- [x] Auth Email/Password avec JWT + système dual Cookie/Bearer Token
 - [x] Flow abonnement Stripe avec redirection serveur
 - [x] Création compte post-paiement
+- [x] Récupération de compte pour utilisateurs ayant payé sans finaliser
 - [x] App 3 onglets (Today, Leads, Tasks)
 - [x] CRUD Prospects complet avec boutons chip stylés
 - [x] Double confirmation pour statuts "Gagné"/"Perdu"
@@ -37,9 +56,9 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - [x] Gestion tâches (manuelles + auto-générées)
 - [x] Couleurs des tâches:
   - Vert: terminée
-  - Orange: aujourd'hui
-  - Rouge: en retard
-  - Blanc: future
+  - Orange: en retard 1-2 jours
+  - Rouge: en retard > 2 jours
+  - Blanc: aujourd'hui ou future
 - [x] Complétion tâches depuis Today tab (disparition immédiate)
 - [x] Complétion tâches depuis Tasks tab (vert + barré)
 - [x] Génération auto tâches suivi (prospects inactifs >7j)
@@ -51,10 +70,13 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - [x] Protection double facturation (vérifie email avant paiement)
 
 ## Endpoints Clés
-- `POST /api/auth/login` - Connexion email/password
-- `POST /api/auth/create-account` - Création compte post-paiement
-- `GET /api/payments/checkout-redirect` - Redirection Stripe (avec vérif double facturation)
+- `POST /api/auth/login` - Connexion email/password, retourne `token`
+- `POST /api/auth/create-account` - Création compte post-paiement, retourne `token`
+- `POST /api/auth/recover` - Récupération compte pour utilisateurs ayant payé, retourne `token`
+- `GET /api/auth/me` - Vérification auth (accepte Cookie OU Bearer token)
+- `GET /api/payments/checkout-redirect` - Redirection Stripe
 - `GET /api/tasks/today` - Tâches du jour + en retard
+- `GET /api/tasks` - Toutes les tâches
 - `POST /api/tasks/{id}/complete` - Marquer tâche terminée
 - `GET /api/prospects` - Liste prospects actifs (exclut closed/lost)
 - `PUT /api/prospects/{id}` - Mise à jour statut prospect
@@ -65,24 +87,36 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - **tasks**: task_id, prospect_id, due_date, completed, completed_at, auto_generated
 - **push_subscriptions**: user_id, subscription (endpoint, keys)
 - **payment_success**: email, session_id, created_at
+- **user_sessions**: session_id, user_id, session_token, expires_at
 
 ## Tests
-- Backend: 22/22 tests passés (pytest)
+- Backend: 11/11 tests passés (pytest) - Authentification dual validée
 - Frontend: Tous les flows critiques vérifiés
-- Fichier: /app/backend/tests/test_kolo_crm.py
+- Fichiers: 
+  - /app/backend/tests/test_kolo_crm.py
+  - /app/backend/tests/test_bearer_auth.py
+  - /app/test_reports/iteration_4.json
 
 ## Credentials de Test
-- Email: pressardelliot@gmail.com
-- Password: Test123
+- Email: pressardelliot@gmail.com / Password: Test123
+- Email: pressardparis@gmail.com / Password: Test123
 
 ## État Actuel
-**Toutes les fonctionnalités P0 et P1 sont implémentées et testées**
+**P0: Système d'authentification dual COMPLET et TESTÉ** (17 février 2026)
+- Login, logout, création de compte fonctionnent avec Bearer token
+- Tous les endpoints protégés acceptent le Bearer token
+- Le frontend stocke et utilise correctement le token
 
-## Backlog P2
-- [ ] Supprimer la création automatique du compte hardcodé au démarrage
+## Backlog
+### P1 - Prioritaire
+- [ ] Tester le déploiement en production pour confirmer que le problème de login est résolu
+- [ ] Corriger l'erreur VAPID keys en production (notifications push)
+
+### P2 - À faire
+- [ ] Empêcher la double facturation (même email, même mois) - logique backend ajoutée, tests nécessaires
+- [ ] Supprimer la création automatique des comptes hardcodés au démarrage
 - [ ] Refactoriser server.py en modules (routers/, models/, services/)
-- [ ] Option activer/désactiver notifications dans Settings
 - [ ] Liens Stripe portal dans Settings pour gestion facturation
 
 ## Date Dernière Mise à Jour
-16 février 2026
+17 février 2026
