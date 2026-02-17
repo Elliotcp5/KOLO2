@@ -897,10 +897,11 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 // ==================== SETTINGS TAB ====================
 const SettingsTab = ({ onClose }) => {
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { user, logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   // Check notification status on mount
   useEffect(() => {
@@ -941,6 +942,33 @@ const SettingsTab = ({ onClose }) => {
       toast.error(t('notificationsDenied'));
     } finally {
       setNotificationsLoading(false);
+    }
+  };
+
+  const handleBillingAction = async (action) => {
+    if (billingLoading) return;
+    setBillingLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/billing/portal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.url) {
+          window.open(data.url, '_blank');
+        }
+      } else {
+        toast.error(locale === 'fr' ? 'Fonctionnalité bientôt disponible' : 'Feature coming soon');
+      }
+    } catch (error) {
+      console.error('Billing action error:', error);
+      toast.error(locale === 'fr' ? 'Fonctionnalité bientôt disponible' : 'Feature coming soon');
+    } finally {
+      setBillingLoading(false);
     }
   };
 
