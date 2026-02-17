@@ -774,57 +774,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 className="text-caption">{t('tasks')}</h3>
-          <button 
-            className="btn-ghost"
-            onClick={() => setShowNewTask(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-            data-testid="add-task-button"
-          >
-            <Plus size={16} />
-            {t('addTask')}
-          </button>
         </div>
-
-        {/* New task form */}
-        {showNewTask && (
-          <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
-            <input
-              type="text"
-              className="input-dark"
-              placeholder={t('taskTitle')}
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              style={{ marginBottom: '12px' }}
-              data-testid="new-task-title"
-            />
-            <input
-              type="datetime-local"
-              className="input-dark"
-              value={newTaskDate}
-              onChange={(e) => setNewTaskDate(e.target.value)}
-              style={{ marginBottom: '12px' }}
-              data-testid="new-task-date"
-            />
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                className="btn-secondary" 
-                onClick={() => setShowNewTask(false)}
-                style={{ flex: 1, height: '44px' }}
-              >
-                {t('cancel')}
-              </button>
-              <button 
-                className="btn-primary" 
-                onClick={handleCreateTask}
-                disabled={!newTaskTitle || !newTaskDate}
-                style={{ flex: 1, height: '44px' }}
-                data-testid="save-task-button"
-              >
-                {t('save')}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Task list */}
         {tasks.length === 0 ? (
