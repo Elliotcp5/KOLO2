@@ -41,13 +41,32 @@ const LandingPage = () => {
       <div className="page-container no-nav">
         {/* Header */}
         <div className="landing-hero">
-          {/* Login link - small, top right corner */}
+          {/* Top right navigation - FAQ | Login */}
           <div style={{ 
             position: 'absolute',
             top: 'max(12px, env(safe-area-inset-top))',
             right: '16px',
-            zIndex: 10
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
+            <button 
+              onClick={() => navigate('/faq')}
+              data-testid="faq-link"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                fontSize: '12px',
+                fontWeight: '400',
+                cursor: 'pointer',
+                padding: '4px 8px'
+              }}
+            >
+              {t('faq')}
+            </button>
+            <span style={{ color: 'var(--muted-dark)', fontSize: '12px' }}>|</span>
             <button 
               onClick={() => navigate('/login')}
               data-testid="login-link"
