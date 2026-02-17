@@ -5,8 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../config/api';
 
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile }) => {
