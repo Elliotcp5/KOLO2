@@ -150,19 +150,31 @@ const translations = {
   },
   fr: {
     // Landing
-    loginToKolo: "Se connecter à KOLO",
-    heroHeadline: "Ne Manquez Plus Jamais une Relance !",
+    loginToKolo: "Se connecter",
+    heroHeadline: "Ne Manquez Plus Jamais une Vente !",
     heroSubheadline: "Concluez plus d'affaires. Automatiquement.",
-    feature1Title: "Relances du Jour",
+    feature1Title: "Tâches du Jour",
     feature1Desc: "Sachez exactement qui contacter aujourd'hui.",
     feature2Title: "Prospects Actifs",
     feature2Desc: "Chaque acheteur et vendeur à conclure.",
-    feature3Title: "Relances Intelligentes",
-    feature3Desc: "Rappels basés sur vos tâches et votre activité réelle.",
-    madeBy: "Fait par des indépendants de l'immobilier pour des indépendants de l'immobilier",
+    feature3Title: "Rappels Intelligents",
+    feature3Desc: "Rappels automatiques basés sur vos tâches et votre activité.",
+    madeBy: "Fait par des indépendants pour des indépendants",
     startButton: "Commencer",
     cancelAnytime: "Annulez à tout moment",
     perMonth: "/mois",
+    faq: "FAQ",
+    
+    // FAQ
+    faqTitle: "Questions Fréquentes",
+    faqQ1: "Qui sommes-nous ?",
+    faqA1: "KOLO a été créé par des commerciaux indépendants fatigués de perdre des ventes à cause de relances oubliées. On a construit l'outil qu'on aurait aimé avoir.",
+    faqQ2: "Comment fonctionne KOLO ?",
+    faqA2: "KOLO est simple : ajoutez vos prospects, planifiez vos tâches, et l'app vous rappelle quand il est temps de relancer. Pas de configuration complexe.",
+    faqQ3: "En quoi KOLO m'aide à conclure plus d'affaires ?",
+    faqA3: "En vous assurant de ne jamais oublier une relance. Les études montrent que 80% des ventes nécessitent 5+ relances, mais la plupart abandonnent après 2. KOLO vous garde sur la bonne voie.",
+    faqQ4: "En quoi KOLO est pensé pour les indépendants ?",
+    faqA4: "Contrairement aux CRM complexes conçus pour les grandes équipes, KOLO est mobile-first, rapide à configurer, et se concentre sur l'essentiel : vos actions quotidiennes et vos prospects.",
     
     // Login
     back: "Retour",
@@ -181,6 +193,9 @@ const translations = {
     creditDebitCard: "Carte de Crédit / Débit",
     applePay: "Apple Pay",
     unlimitedLeads: "Prospects et tâches illimités",
+    smartReminders: "Rappels automatiques intelligents",
+    mobileApp: "Application mobile toujours avec vous",
+    noCommitment: "Sans engagement, annulez quand vous voulez",
     securedByStripe: "Paiements sécurisés par Stripe",
     
     // Create Account
