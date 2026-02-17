@@ -84,7 +84,10 @@ const LoginPage = () => {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Recovery failed');
+        const errorMsg = data.detail || 'Recovery failed';
+        toast.error(locale === 'fr' ? 'Impossible de récupérer le compte' : errorMsg);
+        setLoading(false);
+        return;
       }
       
       // Create clean user data
@@ -95,11 +98,14 @@ const LoginPage = () => {
       };
       login(userData);
       toast.success(locale === 'fr' ? 'Compte récupéré!' : 'Account recovered!');
-      navigate('/app', { replace: true });
-    } catch (error) {
-      console.error('Recovery error:', error);
-      const errorMessage = typeof error === 'object' && error.message ? error.message : String(error);
-      toast.error(errorMessage || (locale === 'fr' ? 'Impossible de récupérer le compte' : 'Failed to recover account'));
+      
+      // Use window.location for more reliable redirect
+      window.location.href = '/app';
+    } catch (err) {
+      const errorMsg = err && typeof err === 'object' && 'message' in err 
+        ? String(err.message) 
+        : 'Connection error';
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : errorMsg);
       setLoading(false);
     }
   };
