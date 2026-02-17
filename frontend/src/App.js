@@ -13,6 +13,7 @@ import CreateAccountPage from "./pages/CreateAccountPage";
 import AppShell from "./pages/AppShell";
 import NewProspectPage from "./pages/NewProspectPage";
 import FAQPage from "./pages/FAQPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 // Router component that checks for session_id in URL
 const AppRouter = () => {
@@ -32,6 +33,7 @@ const AppRouter = () => {
       <Route path="/subscribe" element={<SubscribePage />} />
       <Route path="/create-account" element={<CreateAccountPage />} />
       <Route path="/faq" element={<FAQPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       {/* Protected routes */}
       <Route 
