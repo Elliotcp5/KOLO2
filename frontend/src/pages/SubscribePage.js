@@ -135,10 +135,24 @@ const SubscribePage = () => {
             </svg>
           </div>
 
-          {/* Feature line */}
-          <div className="check-row" style={{ marginTop: 'auto', marginBottom: '40px' }}>
-            <Check strokeWidth={2} />
-            <span>{t('unlimitedLeads')}</span>
+          {/* Feature lines */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '40px' }}>
+            <div className="check-row">
+              <Check strokeWidth={2} />
+              <span>{t('unlimitedLeads')}</span>
+            </div>
+            <div className="check-row">
+              <Check strokeWidth={2} />
+              <span>{t('smartReminders')}</span>
+            </div>
+            <div className="check-row">
+              <Check strokeWidth={2} />
+              <span>{t('mobileApp')}</span>
+            </div>
+            <div className="check-row">
+              <Check strokeWidth={2} />
+              <span>{t('noCommitment')}</span>
+            </div>
           </div>
         </div>
       </div>
