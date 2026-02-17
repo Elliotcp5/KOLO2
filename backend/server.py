@@ -943,7 +943,8 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
         "user_id": user_id,
         "email": request.email,
         "subscription_status": "active",
-        "message": "Account recovered successfully"
+        "message": "Account recovered successfully",
+        "token": session_token
     }
 
 # ==================== TASK ENDPOINTS ====================
