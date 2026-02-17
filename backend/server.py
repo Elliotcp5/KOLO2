@@ -1426,6 +1426,9 @@ def start_background_scheduler():
 @app.on_event("startup")
 async def startup_event():
     """Initialize app on startup"""
+    logger.info("Starting KOLO API...")
+    logger.info(f"Database: {os.environ.get('DB_NAME', 'unknown')}")
+    
     # Create account for user who paid but couldn't create account
     # This ensures the account exists in production after deployment
     paid_users = [
@@ -1446,7 +1449,9 @@ async def startup_event():
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
             await db.users.insert_one(user_doc)
-            logger.info(f"Created account for {user_data['email']}")
+            logger.info(f"✅ Created account for {user_data['email']}")
+        else:
+            logger.info(f"Account already exists for {user_data['email']}")
         
         # Ensure payment_success record exists for recovery
         await db.payment_success.update_one(
