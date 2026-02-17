@@ -902,6 +902,11 @@ const SettingsTab = ({ onClose }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Check notification status on mount
   useEffect(() => {
@@ -969,6 +974,49 @@ const SettingsTab = ({ onClose }) => {
       toast.error(locale === 'fr' ? 'Fonctionnalité bientôt disponible' : 'Feature coming soon');
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordLoading) return;
+    
+    if (newPassword !== confirmPassword) {
+      toast.error(t('passwordMismatch'));
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error(locale === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters');
+      return;
+    }
+    
+    setPasswordLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+      
+      if (response.ok) {
+        toast.success(t('passwordChanged'));
+        setShowPasswordModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || (locale === 'fr' ? 'Erreur lors du changement de mot de passe' : 'Error changing password'));
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
