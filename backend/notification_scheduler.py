@@ -82,9 +82,23 @@ async def send_push_notification(subscription: dict, title: str, body: str, url:
             "tag": "kolo-daily-reminder"
         })
         
+        # Check if VAPID key file exists
+        if not os.path.exists(VAPID_PRIVATE_KEY_FILE):
+            logger.warning(f"VAPID key file not found: {VAPID_PRIVATE_KEY_FILE}")
+            return False
+        
         # Read private key from file
-        with open(VAPID_PRIVATE_KEY_FILE, 'r') as f:
-            vapid_private_key = f.read()
+        try:
+            with open(VAPID_PRIVATE_KEY_FILE, 'r') as f:
+                vapid_private_key = f.read().strip()
+        except Exception as e:
+            logger.error(f"Failed to read VAPID key file: {e}")
+            return False
+        
+        # Validate key format
+        if not vapid_private_key:
+            logger.error("VAPID key file is empty")
+            return False
         
         webpush(
             subscription_info=subscription,
