@@ -98,8 +98,24 @@ const TodayTab = ({ onOpenProfile }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
-            const isOverdue = task.is_overdue;
-            const borderColor = isOverdue ? '#EF4444' : '#F59E0B'; // Red for overdue, Orange for today
+            
+            // Calculate days overdue
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const taskDate = new Date(task.due_date);
+            const taskDay = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+            const diffTime = today.getTime() - taskDay.getTime();
+            const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Color logic: white = today, orange = 1-2 days overdue, red = 3+ days overdue
+            let borderColor = '#FFFFFF'; // White for today
+            let isUrgent = false;
+            if (daysOverdue > 2) {
+              borderColor = '#EF4444'; // Red
+              isUrgent = true;
+            } else if (daysOverdue > 0) {
+              borderColor = '#F59E0B'; // Orange
+            }
             
             return (
               <div 
@@ -148,7 +164,7 @@ const TodayTab = ({ onOpenProfile }) => {
                     <span style={{ fontSize: '16px', fontWeight: '500', color: 'white' }}>
                       {task.title}
                     </span>
-                    {isOverdue && (
+                    {isUrgent && (
                       <span style={{ 
                         fontSize: '10px', 
                         background: '#EF4444', 
