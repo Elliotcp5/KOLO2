@@ -68,11 +68,12 @@ const CreateAccountPage = () => {
         return;
       }
       
-      // Create a simple serializable object for login
+      // Create a simple serializable object for login with token
       const userData = {
         user_id: data.user_id,
         email: data.email,
-        subscription_status: data.subscription_status
+        subscription_status: data.subscription_status,
+        token: data.token  // Include token for localStorage storage
       };
       
       // Login with clean data

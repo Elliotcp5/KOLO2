@@ -90,11 +90,12 @@ const LoginPage = () => {
         return;
       }
       
-      // Create clean user data
+      // Create clean user data with token
       const userData = {
         user_id: data.user_id,
         email: data.email,
-        subscription_status: data.subscription_status
+        subscription_status: data.subscription_status,
+        token: data.token  // Include token for localStorage storage
       };
       login(userData);
       toast.success(locale === 'fr' ? 'Compte récupéré!' : 'Account recovered!');
