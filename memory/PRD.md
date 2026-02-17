@@ -25,11 +25,13 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 
 ## Fonctionnalités Implémentées ✅
 - [x] Landing page avec pricing régional
+- [x] Meta tags et titres optimisés pour le partage
+- [x] Page FAQ avec questions déroulantes
 - [x] Auth Email/Password avec JWT
 - [x] Flow abonnement Stripe avec redirection serveur
 - [x] Création compte post-paiement
 - [x] App 3 onglets (Today, Leads, Tasks)
-- [x] CRUD Prospects complet
+- [x] CRUD Prospects complet avec boutons chip stylés
 - [x] Double confirmation pour statuts "Gagné"/"Perdu"
 - [x] Prospects gagnés/perdus disparaissent de la liste
 - [x] Gestion tâches (manuelles + auto-générées)
@@ -43,6 +45,7 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - [x] Génération auto tâches suivi (prospects inactifs >7j)
 - [x] PWA manifest + guide installation écran d'accueil
 - [x] Notifications push avec permission utilisateur
+- [x] Toggle notifications dans Settings > À propos
 - [x] Scheduler automatisé (intégré backend, 8h UTC)
 - [x] Localisation FR/EN complète
 - [x] Protection double facturation (vérifie email avant paiement)
