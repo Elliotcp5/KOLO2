@@ -803,7 +803,8 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     return {
         "user_id": user_id,
         "email": request.email,
-        "subscription_status": "active"
+        "subscription_status": "active",
+        "token": session_token
     }
 
 # Email/Password Login
