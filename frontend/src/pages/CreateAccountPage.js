@@ -51,16 +51,26 @@ const CreateAccountPage = () => {
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create account');
+      }
+
       const data = await response.json();
       
-      if (response.ok) {
-        // Login successful
-        login(data);
-        toast.success(locale === 'fr' ? 'Compte créé avec succès!' : 'Account created successfully!');
-        navigate('/app', { replace: true });
-      } else {
-        throw new Error(data.detail || 'Failed to create account');
-      }
+      // Create a simple serializable object for login
+      const userData = {
+        user_id: data.user_id,
+        email: data.email,
+        subscription_status: data.subscription_status
+      };
+      
+      // Login with clean data
+      login(userData);
+      toast.success(locale === 'fr' ? 'Compte créé avec succès!' : 'Account created successfully!');
+      
+      // Navigate without state to avoid cloning issues
+      navigate('/app', { replace: true });
     } catch (error) {
       console.error('Create account error:', error);
       toast.error(error.message || (locale === 'fr' ? 'Erreur lors de la création du compte' : 'Failed to create account'));
