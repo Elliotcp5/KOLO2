@@ -49,11 +49,14 @@ Le système accepte l'authentification via:
 - [x] Flow abonnement Stripe avec redirection serveur
 - [x] Création compte post-paiement
 - [x] Récupération de compte pour utilisateurs ayant payé sans finaliser
-- [x] App 3 onglets (Today, Leads, Tasks)
+- [x] App 3 onglets (Today, Prospects, Tasks)
 - [x] CRUD Prospects complet avec boutons chip stylés
 - [x] Double confirmation pour statuts "Gagné"/"Perdu"
 - [x] Prospects gagnés/perdus disparaissent de la liste
+- [x] Email obligatoire pour création de prospect
 - [x] Gestion tâches (manuelles + auto-générées)
+- [x] Création de tâches avec date et heure optionnelle
+- [x] Liaison tâche-prospect via dropdown
 - [x] Couleurs des tâches:
   - Vert: terminée
   - Orange: en retard 1-2 jours
@@ -62,12 +65,18 @@ Le système accepte l'authentification via:
 - [x] Complétion tâches depuis Today tab (disparition immédiate)
 - [x] Complétion tâches depuis Tasks tab (vert + barré)
 - [x] Génération auto tâches suivi (prospects inactifs >7j)
+- [x] Tâches auto-générées visibles dans l'onglet "Today"
+- [x] Date/heure affichées sur les cartes de tâches "Today"
 - [x] PWA manifest + guide installation écran d'accueil
 - [x] Notifications push avec permission utilisateur
 - [x] Toggle notifications dans Settings > À propos
 - [x] Scheduler automatisé (intégré backend, 8h UTC)
 - [x] Localisation FR/EN complète
 - [x] Protection double facturation (vérifie email avant paiement)
+- [x] Mot de passe oublié / Récupération de mot de passe
+- [x] Changement de mot de passe depuis les paramètres
+- [x] Portail Stripe Customer pour gestion facturation
+- [x] **UI Modals ergonomiques** - Icône 'X' en haut à droite + bouton 'Save' en bas
 
 ## Endpoints Clés
 - `POST /api/auth/login` - Connexion email/password, retourne `token`
