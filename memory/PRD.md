@@ -126,7 +126,6 @@ Le système accepte l'authentification via:
 
 ## Backlog
 ### P1 - Prioritaire
-- [ ] Corriger l'erreur VAPID keys en production (notifications push)
 - [ ] Déploiement final en production
 
 ### P2 - À faire
