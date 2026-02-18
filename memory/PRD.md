@@ -69,6 +69,7 @@ Le système accepte l'authentification via:
 - [x] Date/heure affichées sur les cartes de tâches "Today"
 - [x] PWA manifest + guide installation écran d'accueil
 - [x] Notifications push avec permission utilisateur
+- [x] VAPID keys corrigées - notifications push fonctionnelles
 - [x] Toggle notifications dans Settings > À propos
 - [x] Scheduler automatisé (intégré backend, 8h UTC)
 - [x] Localisation FR/EN complète
