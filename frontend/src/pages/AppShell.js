@@ -184,12 +184,26 @@ const TodayTab = ({ onOpenProfile }) => {
                       </span>
                     )}
                   </div>
+                  {/* Show date and time */}
+                  <div style={{ fontSize: '13px', color: borderColor, marginBottom: '4px', fontWeight: '500' }}>
+                    {new Date(task.due_date).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short'
+                    })}
+                    {task.due_date.includes('T') && !task.due_date.includes('T00:00') && !task.due_date.includes('T09:00:00') && (
+                      <span> • {new Date(task.due_date).toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                    )}
+                  </div>
                   {task.prospect && (
                     <span style={{ fontSize: '14px', color: 'var(--muted)' }}>
                       {task.prospect.full_name} • {task.prospect.phone}
                     </span>
                   )}
-                  {task.is_auto_generated && (
+                  {(task.auto_generated || task.is_auto_generated) && (
                     <span style={{ 
                       display: 'inline-block',
                       marginTop: '6px',
