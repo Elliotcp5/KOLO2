@@ -87,23 +87,11 @@ async def send_push_notification(subscription: dict, title: str, body: str, url:
             logger.warning(f"VAPID key file not found: {VAPID_PRIVATE_KEY_FILE}")
             return False
         
-        # Read private key from file
-        try:
-            with open(VAPID_PRIVATE_KEY_FILE, 'r') as f:
-                vapid_private_key = f.read().strip()
-        except Exception as e:
-            logger.error(f"Failed to read VAPID key file: {e}")
-            return False
-        
-        # Validate key format
-        if not vapid_private_key:
-            logger.error("VAPID key file is empty")
-            return False
-        
+        # Use the file path directly - pywebpush handles PEM files
         webpush(
             subscription_info=subscription,
             data=payload,
-            vapid_private_key=vapid_private_key,
+            vapid_private_key=VAPID_PRIVATE_KEY_FILE,
             vapid_claims={"sub": VAPID_EMAIL}
         )
         
