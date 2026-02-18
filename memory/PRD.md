@@ -82,12 +82,18 @@ Le système accepte l'authentification via:
 - `POST /api/auth/login` - Connexion email/password, retourne `token`
 - `POST /api/auth/create-account` - Création compte post-paiement, retourne `token`
 - `POST /api/auth/recover` - Récupération compte pour utilisateurs ayant payé, retourne `token`
+- `POST /api/auth/forgot-password` - Envoi email récupération mot de passe
+- `POST /api/auth/reset-password` - Réinitialisation mot de passe avec token
+- `POST /api/auth/change-password` - Changement mot de passe (utilisateur connecté)
 - `GET /api/auth/me` - Vérification auth (accepte Cookie OU Bearer token)
 - `GET /api/payments/checkout-redirect` - Redirection Stripe
+- `POST /api/billing/portal` - Génère URL portail client Stripe
 - `GET /api/tasks/today` - Tâches du jour + en retard
 - `GET /api/tasks` - Toutes les tâches
+- `POST /api/tasks` - Création tâche (avec date/heure/prospect optionnel)
 - `POST /api/tasks/{id}/complete` - Marquer tâche terminée
 - `GET /api/prospects` - Liste prospects actifs (exclut closed/lost)
+- `POST /api/prospects` - Création prospect (email obligatoire)
 - `PUT /api/prospects/{id}` - Mise à jour statut prospect
 
 ## Schéma DB (MongoDB)
