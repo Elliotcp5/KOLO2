@@ -19,7 +19,7 @@ const authFetch = (url, options = {}) => {
 
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile }) => {
-  const { t, formatDate } = useLocale();
+  const { t, formatDate, locale } = useLocale();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
