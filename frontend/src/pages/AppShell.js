@@ -333,11 +333,11 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <h2 style={{ fontSize: '17px', fontWeight: '600' }}>{t('addProspect')}</h2>
           <button 
             onClick={handleCreateProspect}
-            disabled={!newProspect.full_name || !newProspect.phone || creating}
+            disabled={!newProspect.full_name || !newProspect.phone || !newProspect.email || creating}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: (!newProspect.full_name || !newProspect.phone || creating) ? 'var(--muted)' : 'var(--accent)', 
+              color: (!newProspect.full_name || !newProspect.phone || !newProspect.email || creating) ? 'var(--muted)' : 'var(--accent)', 
               cursor: 'pointer',
               fontSize: '16px',
               fontWeight: '600'
