@@ -1420,25 +1420,21 @@ const TasksTab = ({ onRefresh }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header with close button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '600' }}>{t('newTask')}</h2>
               <button
-                className="btn-primary"
-                onClick={handleCreateTask}
-                disabled={!newTask.title || !newTask.dueDate || creating}
-                data-testid="create-task-button"
+                onClick={() => setShowAddTask(false)}
                 style={{ 
-                  width: 'auto', 
-                  height: '40px', 
-                  padding: '0 20px',
-                  fontSize: '15px'
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--muted)', 
+                  cursor: 'pointer',
+                  padding: '4px'
                 }}
+                data-testid="close-task-modal"
               >
-                {creating ? (
-                  <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
-                ) : (
-                  t('save')
-                )}
+                <X size={24} />
               </button>
             </div>
 
@@ -1478,7 +1474,7 @@ const TasksTab = ({ onRefresh }) => {
                 />
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
+              <div>
                 <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
                   {t('selectLead')}
                 </label>
@@ -1501,6 +1497,21 @@ const TasksTab = ({ onRefresh }) => {
                   ))}
                 </select>
               </div>
+
+              {/* Save button at the bottom */}
+              <button
+                className="btn-primary"
+                onClick={handleCreateTask}
+                disabled={!newTask.title || !newTask.dueDate || creating}
+                data-testid="create-task-button"
+                style={{ marginTop: '8px' }}
+              >
+                {creating ? (
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                ) : (
+                  t('save')
+                )}
+              </button>
             </div>
           </div>
         </div>
