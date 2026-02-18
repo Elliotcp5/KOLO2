@@ -105,33 +105,34 @@ Le système accepte l'authentification via:
 - **user_sessions**: session_id, user_id, session_token, expires_at
 
 ## Tests
-- Backend: 11/11 tests passés (pytest) - Authentification dual validée
-- Frontend: Tous les flows critiques vérifiés
+- Backend: 20/20 tests passés (pytest) - Authentification dual + Feature verification
+- Frontend: Tous les flows critiques vérifiés via Playwright
 - Fichiers: 
   - /app/backend/tests/test_kolo_crm.py
   - /app/backend/tests/test_bearer_auth.py
-  - /app/test_reports/iteration_4.json
+  - /app/backend/tests/test_feature_verification.py
+  - /app/test_reports/iteration_5.json
 
 ## Credentials de Test
 - Email: pressardelliot@gmail.com / Password: Test123
 - Email: pressardparis@gmail.com / Password: Test123
 
 ## État Actuel
-**P0: Système d'authentification dual COMPLET et TESTÉ** (17 février 2026)
-- Login, logout, création de compte fonctionnent avec Bearer token
-- Tous les endpoints protégés acceptent le Bearer token
-- Le frontend stocke et utilise correctement le token
+**P0: Modifications UI modals COMPLÈTES et TESTÉES** (18 février 2026)
+- Modals "Add Task" et "Add Prospect" avec ergonomie améliorée
+- Icône 'X' en haut à droite pour fermer
+- Bouton 'Save' en bas du modal
+- Tous les tests passés à 100%
 
 ## Backlog
 ### P1 - Prioritaire
-- [ ] Tester le déploiement en production pour confirmer que le problème de login est résolu
 - [ ] Corriger l'erreur VAPID keys en production (notifications push)
+- [ ] Déploiement final en production
 
 ### P2 - À faire
-- [ ] Empêcher la double facturation (même email, même mois) - logique backend ajoutée, tests nécessaires
-- [ ] Supprimer la création automatique des comptes hardcodés au démarrage
+- [ ] Tester la double facturation (même email, même mois) - logique backend ajoutée
+- [ ] Supprimer la création automatique des comptes hardcodés au démarrage (pressardelliot@gmail.com, pressardparis@gmail.com)
 - [ ] Refactoriser server.py en modules (routers/, models/, services/)
-- [ ] Liens Stripe portal dans Settings pour gestion facturation
 
 ## Date Dernière Mise à Jour
-17 février 2026
+18 février 2026
