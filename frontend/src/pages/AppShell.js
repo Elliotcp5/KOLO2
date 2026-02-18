@@ -368,7 +368,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <input
             type="email"
             className="input-dark"
-            placeholder={t('email')}
+            placeholder={`${t('email')} *`}
             value={newProspect.email}
             onChange={(e) => setNewProspect({...newProspect, email: e.target.value})}
             data-testid="prospect-email-input"
