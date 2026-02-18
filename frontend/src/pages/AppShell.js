@@ -316,7 +316,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
   if (showAddForm) {
     return (
       <div style={{ padding: '0' }}>
-        {/* Header */}
+        {/* Header with close button */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -324,27 +324,19 @@ const ProspectsTab = ({ onSelectProspect }) => {
           padding: '16px 24px',
           borderBottom: '1px solid var(--border)'
         }}>
-          <button 
-            onClick={() => setShowAddForm(false)}
-            style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '16px' }}
-          >
-            {t('cancel')}
-          </button>
           <h2 style={{ fontSize: '17px', fontWeight: '600' }}>{t('addProspect')}</h2>
           <button 
-            onClick={handleCreateProspect}
-            disabled={!newProspect.full_name || !newProspect.phone || !newProspect.email || creating}
+            onClick={() => setShowAddForm(false)}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: (!newProspect.full_name || !newProspect.phone || !newProspect.email || creating) ? 'var(--muted)' : 'var(--accent)', 
+              color: 'var(--muted)', 
               cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600'
+              padding: '4px'
             }}
-            data-testid="save-prospect-button"
+            data-testid="close-prospect-modal"
           >
-            {creating ? '...' : t('save')}
+            <X size={24} />
           </button>
         </div>
 
@@ -412,9 +404,24 @@ const ProspectsTab = ({ onSelectProspect }) => {
             placeholder={t('addNotes')}
             value={newProspect.notes}
             onChange={(e) => setNewProspect({...newProspect, notes: e.target.value})}
-            rows={4}
+            rows={3}
             style={{ resize: 'none' }}
           />
+
+          {/* Save button at the bottom */}
+          <button
+            className="btn-primary"
+            onClick={handleCreateProspect}
+            disabled={!newProspect.full_name || !newProspect.phone || !newProspect.email || creating}
+            data-testid="save-prospect-button"
+            style={{ marginTop: '8px' }}
+          >
+            {creating ? (
+              <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+            ) : (
+              t('save')
+            )}
+          </button>
         </div>
       </div>
     );
