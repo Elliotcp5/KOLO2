@@ -121,6 +121,17 @@ html, body {
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+/* Select styling */
+select.input-dark {
+  cursor: pointer;
+}
+
+select.input-dark option {
+  background-color: var(--surface);
+  color: var(--text);
+  padding: 12px;
+}
+
 /* Textarea */
 .textarea-dark {
   width: 100%;
