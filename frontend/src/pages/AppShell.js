@@ -344,7 +344,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <input
             type="text"
             className="input-dark"
-            placeholder={`${t('fullName')} *`}
+            placeholder={t('fullName')}
             value={newProspect.full_name}
             onChange={(e) => setNewProspect({...newProspect, full_name: e.target.value})}
             data-testid="prospect-name-input"
@@ -352,7 +352,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <input
             type="tel"
             className="input-dark"
-            placeholder={`${t('phone')} *`}
+            placeholder={t('phone')}
             value={newProspect.phone}
             onChange={(e) => setNewProspect({...newProspect, phone: e.target.value})}
             data-testid="prospect-phone-input"
@@ -360,7 +360,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <input
             type="email"
             className="input-dark"
-            placeholder={`${t('email')} *`}
+            placeholder={t('emailRequired')}
             value={newProspect.email}
             onChange={(e) => setNewProspect({...newProspect, email: e.target.value})}
             data-testid="prospect-email-input"
