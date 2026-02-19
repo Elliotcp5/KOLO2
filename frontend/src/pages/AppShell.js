@@ -1423,7 +1423,7 @@ const TasksTab = ({ onRefresh }) => {
               width: '90%',
               maxWidth: '400px',
               maxHeight: '90vh',
-              overflow: 'visible'
+              overflowY: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
           >
