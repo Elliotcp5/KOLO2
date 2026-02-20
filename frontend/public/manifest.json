@@ -4,13 +4,13 @@
   "description": "Ne manquez plus jamais une relance. Concluez plus d'affaires automatiquement.",
   "icons": [
     {
-      "src": "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png",
+      "src": "/logo192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png",
+      "src": "/logo512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
