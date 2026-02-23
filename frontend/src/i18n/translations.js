@@ -351,3 +351,4 @@ const translations = {
     reactivate: "Réactiver l'abonnement",
   }
 };
+export default translations;
