@@ -20,8 +20,10 @@ const authFetch = (url, options = {}) => {
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile }) => {
   const { t, formatDate, locale } = useLocale();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -29,6 +31,10 @@ const TodayTab = ({ onOpenProfile }) => {
       if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks || []);
+        setSubscriptionBlocked(false);
+      } else if (response.status === 403) {
+        // Subscription required
+        setSubscriptionBlocked(true);
       }
     } catch (e) {
       // Silent fail
