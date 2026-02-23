@@ -602,24 +602,20 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
     try:
         # First, get or create the price for this currency
         # We use a lookup key based on currency
-        price_lookup_key = f"kolo_monthly_{pricing['currency'].lower()}"
+        price_lookup_key = f"kolo_trial_{pricing['currency'].lower()}"
         
-        # Try to find existing price
+        # Try to find existing price with this lookup key
         existing_prices = stripe.Price.list(lookup_keys=[price_lookup_key], limit=1)
         
         if existing_prices.data:
             price_id = existing_prices.data[0].id
         else:
-            # Create a product if needed
-            products = stripe.Product.list(limit=1)
-            if products.data:
-                product_id = products.data[0].id
-            else:
-                product = stripe.Product.create(
-                    name="KOLO CRM - Monthly Subscription",
-                    description="CRM for real estate agents"
-                )
-                product_id = product.id
+            # Create a dedicated product for trials with simple name
+            product = stripe.Product.create(
+                name="Essayez KOLO",
+                description="7 jours gratuits"
+            )
+            product_id = product.id
             
             # Create price with lookup key
             price = stripe.Price.create(
@@ -632,6 +628,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
             price_id = price.id
         
         # Create checkout session with subscription and 7-day trial
+        # Using only 'card' payment method to avoid duplicate Apple Pay buttons
         session = stripe.checkout.Session.create(
             mode="subscription",
             payment_method_types=["card"],
@@ -655,17 +652,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
                 "country": country,
                 "type": "subscription_with_trial"
             },
-            allow_promotion_codes=False,
-            custom_text={
-                "submit": {
-                    "message": "Essayez KOLO"
-                }
-            },
-            payment_method_options={
-                "card": {
-                    "request_three_d_secure": "automatic"
-                }
-            }
+            allow_promotion_codes=False
         )
         
         # Direct redirect to Stripe
