@@ -1225,55 +1225,73 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     logger.debug(f"Step 3: Stripe verification passed, subscription_data: {subscription_data}")
     
     # Create or update user
-    if existing_user:
-        user_id = existing_user["user_id"]
-        update_data = {
-            "password_hash": hash_password(request.password),
-            "stripe_session_id": request.payment_token,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            **subscription_data
-        }
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": update_data}
-        )
-    else:
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        user_doc = {
-            "user_id": user_id,
-            "email": request.email,
-            "auth_provider": "email",
-            "password_hash": hash_password(request.password),
-            "stripe_session_id": request.payment_token,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            **subscription_data
-        }
-        await db.users.insert_one(user_doc)
+    try:
+        if existing_user:
+            logger.debug(f"Step 4: Updating existing user {existing_user['user_id']}")
+            user_id = existing_user["user_id"]
+            update_data = {
+                "password_hash": hash_password(request.password),
+                "stripe_session_id": request.payment_token,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                **subscription_data
+            }
+            await db.users.update_one(
+                {"user_id": user_id},
+                {"$set": update_data}
+            )
+            logger.debug("Step 4: User updated successfully")
+        else:
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            logger.debug(f"Step 4: Creating new user {user_id}")
+            user_doc = {
+                "user_id": user_id,
+                "email": request.email,
+                "auth_provider": "email",
+                "password_hash": hash_password(request.password),
+                "stripe_session_id": request.payment_token,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                **subscription_data
+            }
+            await db.users.insert_one(user_doc)
+            logger.debug("Step 4: User created successfully")
+    except Exception as e:
+        logger.error(f"Step 4 FAILED - Database error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erreur base de données: {str(e)}")
     
     # Store payment record
-    await db.payment_success.update_one(
-        {"session_id": request.payment_token},
-        {"$set": {
-            "session_id": request.payment_token,
-            "email": request.email,
-            "user_id": user_id,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }},
-        upsert=True
-    )
+    try:
+        logger.debug("Step 5: Storing payment record")
+        await db.payment_success.update_one(
+            {"session_id": request.payment_token},
+            {"$set": {
+                "session_id": request.payment_token,
+                "email": request.email,
+                "user_id": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+        logger.debug("Step 5: Payment record stored")
+    except Exception as e:
+        logger.error(f"Step 5 FAILED - Payment record error: {e}")
     
-    session_token = f"sess_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-    session = UserSession(
-        user_id=user_id,
-        session_token=session_token,
-        expires_at=expires_at
-    )
-    session_doc = session.model_dump()
-    session_doc['expires_at'] = session_doc['expires_at'].isoformat()
-    session_doc['created_at'] = session_doc['created_at'].isoformat()
-    await db.user_sessions.insert_one(session_doc)
+    try:
+        logger.debug("Step 6: Creating session")
+        session_token = f"sess_{uuid.uuid4().hex}"
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        session = UserSession(
+            user_id=user_id,
+            session_token=session_token,
+            expires_at=expires_at
+        )
+        session_doc = session.model_dump()
+        session_doc['expires_at'] = session_doc['expires_at'].isoformat()
+        session_doc['created_at'] = session_doc['created_at'].isoformat()
+        await db.user_sessions.insert_one(session_doc)
+        logger.debug("Step 6: Session created successfully")
     
     response.set_cookie(
         key="session_token",
