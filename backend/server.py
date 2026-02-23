@@ -1861,7 +1861,11 @@ async def trigger_notifications(request: Request):
 async def get_vapid_public_key():
     """Get VAPID public key for push subscription"""
     # Read public key and convert to base64
-    vapid_public_key_file = os.environ.get('VAPID_PUBLIC_KEY_FILE', '/app/backend/vapid_public.pem')
+    vapid_public_key_file = os.environ.get('VAPID_PUBLIC_KEY_FILE', 'vapid_public.pem')
+    
+    # Resolve relative path from ROOT_DIR
+    if not os.path.isabs(vapid_public_key_file):
+        vapid_public_key_file = ROOT_DIR / vapid_public_key_file
     
     try:
         from cryptography.hazmat.primitives import serialization
