@@ -1188,7 +1188,8 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             raise
         except Exception as e:
             logger.error(f"Stripe verification error: {e}")
-            raise HTTPException(status_code=400, detail="Impossible de vérifier le paiement. Veuillez réessayer.")
+            logger.error(f"Session ID attempted: {request.payment_token}")
+            raise HTTPException(status_code=400, detail=f"Impossible de vérifier le paiement: {str(e)}")
     else:
         raise HTTPException(status_code=400, detail="Session de paiement invalide")
     
