@@ -1192,7 +1192,17 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
                     logger.info(f"Subscription status: {sub.status}, trial_end: {sub.trial_end}")
                     
                     trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
-                    current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+                    
+                    # Get current_period_end from subscription items (new Stripe API structure)
+                    current_period_end = None
+                    if sub.items and sub.items.data:
+                        item_period_end = sub.items.data[0].get('current_period_end')
+                        if item_period_end:
+                            current_period_end = datetime.fromtimestamp(item_period_end, tz=timezone.utc)
+                    
+                    # Fallback to trial_end if in trial period
+                    if not current_period_end and trial_end:
+                        current_period_end = trial_end
                     
                     subscription_data = {
                         "subscription_id": session.subscription,
