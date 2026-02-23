@@ -332,7 +332,22 @@ const translations = {
     notifications: "Notifications",
     notificationsOn: "Activées",
     notificationsOff: "Désactivées",
+    
+    // Free Trial
+    freeTrial: "3 jours gratuits",
+    freeTrialDesc: "Essayez KOLO gratuitement pendant 3 jours",
+    startFreeTrial: "Démarrer l'essai gratuit",
+    thenPrice: "puis",
+    trialEndsIn: "Fin de l'essai dans",
+    days: "jours",
+    hours: "heures",
+    cancelTrial: "Résilier mon abonnement",
+    cancelTrialDesc: "Vous ne serez pas débité après la fin de votre essai",
+    trialCancelled: "Essai résilié",
+    subscriptionCancelled: "Abonnement résilié",
+    keepAccess: "Vous gardez l'accès jusqu'au",
+    subscribeToUnlock: "S'abonner pour continuer à utiliser KOLO",
+    featuresLocked: "Fonctionnalités verrouillées",
+    reactivate: "Réactiver l'abonnement",
   }
 };
-
-export default translations;
