@@ -1173,59 +1173,58 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         if existing_user and existing_user.get("password_hash"):
             logger.debug("ERROR: Account already exists with password")
             raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
-    
-    # Verify payment with Stripe and get subscription info
-    subscription_data = {}
-    if request.payment_token.startswith("cs_"):
-        try:
-            import stripe
-            stripe.api_key = STRIPE_API_KEY
-            
-            logger.info(f"Retrieving Stripe session: {request.payment_token}")
-            session = stripe.checkout.Session.retrieve(request.payment_token)
-            logger.info(f"Session retrieved - subscription: {session.subscription}, customer: {session.customer}, status: {session.status}")
-            
-            # For subscriptions, check the subscription status
-            if session.subscription:
-                logger.info(f"Retrieving subscription: {session.subscription}")
-                sub = stripe.Subscription.retrieve(session.subscription)
-                logger.info(f"Subscription status: {sub.status}, trial_end: {sub.trial_end}")
+        
+        # Verify payment with Stripe and get subscription info
+        subscription_data = {}
+        if request.payment_token.startswith("cs_"):
+            try:
+                import stripe
+                stripe.api_key = STRIPE_API_KEY
                 
-                trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
-                current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+                logger.info(f"Retrieving Stripe session: {request.payment_token}")
+                session = stripe.checkout.Session.retrieve(request.payment_token)
+                logger.info(f"Session retrieved - subscription: {session.subscription}, customer: {session.customer}, status: {session.status}")
                 
-                subscription_data = {
-                    "subscription_id": session.subscription,
-                    "stripe_customer_id": session.customer,
-                    "subscription_status": sub.status,  # trialing, active, etc.
-                    "trial_ends_at": trial_end.isoformat() if trial_end else None,
-                    "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
-                    "cancel_at_period_end": sub.cancel_at_period_end
-                }
-                logger.info(f"Subscription data prepared: {subscription_data}")
-            else:
-                # One-time payment (legacy)
-                logger.info(f"No subscription, checking payment_status: {session.payment_status}")
-                if session.payment_status != "paid":
-                    raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
-                subscription_data = {"subscription_status": "active"}
-                
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Step 3 FAILED - Stripe verification error: {e}")
-            logger.error(f"Session ID attempted: {request.payment_token}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            raise HTTPException(status_code=400, detail=f"Impossible de vérifier le paiement: {str(e)}")
-    else:
-        logger.error("ERROR: Payment token doesn't start with cs_")
-        raise HTTPException(status_code=400, detail="Session de paiement invalide")
-    
-    logger.debug(f"Step 3: Stripe verification passed, subscription_data: {subscription_data}")
-    
-    # Create or update user
-    try:
+                # For subscriptions, check the subscription status
+                if session.subscription:
+                    logger.info(f"Retrieving subscription: {session.subscription}")
+                    sub = stripe.Subscription.retrieve(session.subscription)
+                    logger.info(f"Subscription status: {sub.status}, trial_end: {sub.trial_end}")
+                    
+                    trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+                    current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+                    
+                    subscription_data = {
+                        "subscription_id": session.subscription,
+                        "stripe_customer_id": session.customer,
+                        "subscription_status": sub.status,  # trialing, active, etc.
+                        "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                        "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+                        "cancel_at_period_end": sub.cancel_at_period_end
+                    }
+                    logger.info(f"Subscription data prepared: {subscription_data}")
+                else:
+                    # One-time payment (legacy)
+                    logger.info(f"No subscription, checking payment_status: {session.payment_status}")
+                    if session.payment_status != "paid":
+                        raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
+                    subscription_data = {"subscription_status": "active"}
+                    
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Step 3 FAILED - Stripe verification error: {e}")
+                logger.error(f"Session ID attempted: {request.payment_token}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                raise HTTPException(status_code=400, detail=f"Impossible de vérifier le paiement: {str(e)}")
+        else:
+            logger.error("ERROR: Payment token doesn't start with cs_")
+            raise HTTPException(status_code=400, detail="Session de paiement invalide")
+        
+        logger.debug(f"Step 3: Stripe verification passed, subscription_data: {subscription_data}")
+        
+        # Create or update user
         if existing_user:
             logger.debug(f"Step 4: Updating existing user {existing_user['user_id']}")
             user_id = existing_user["user_id"]
@@ -1255,14 +1254,8 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             }
             await db.users.insert_one(user_doc)
             logger.debug("Step 4: User created successfully")
-    except Exception as e:
-        logger.error(f"Step 4 FAILED - Database error: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Erreur base de données: {str(e)}")
-    
-    # Store payment record
-    try:
+        
+        # Store payment record
         logger.debug("Step 5: Storing payment record")
         await db.payment_success.update_one(
             {"session_id": request.payment_token},
@@ -1275,47 +1268,42 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             upsert=True
         )
         logger.debug("Step 5: Payment record stored")
-    except Exception as e:
-        logger.error(f"Step 5 FAILED - Payment record error: {e}")
-    
-    try:
+        
+        # Create session
         logger.debug("Step 6: Creating session")
         session_token = f"sess_{uuid.uuid4().hex}"
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        session = UserSession(
+        user_session = UserSession(
             user_id=user_id,
             session_token=session_token,
             expires_at=expires_at
         )
-        session_doc = session.model_dump()
+        session_doc = user_session.model_dump()
         session_doc['expires_at'] = session_doc['expires_at'].isoformat()
         session_doc['created_at'] = session_doc['created_at'].isoformat()
         await db.user_sessions.insert_one(session_doc)
         logger.debug("Step 6: Session created successfully")
-    except Exception as e:
-        logger.error(f"Step 6 FAILED - Session error: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Erreur session: {str(e)}")
-    
-    response.set_cookie(
-        key="session_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/",
-        max_age=7 * 24 * 60 * 60
-    )
-    
-    logger.debug(f"Step 7: SUCCESS - Account created for {request.email}")
-    return {
-        "user_id": user_id,
-        "email": request.email,
-        "subscription_status": "active",
-        "token": session_token
-    }
-    
+        
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/",
+            max_age=7 * 24 * 60 * 60
+        )
+        
+        logger.debug(f"Step 7: SUCCESS - Account created for {request.email}")
+        return {
+            "user_id": user_id,
+            "email": request.email,
+            "subscription_status": subscription_data.get("subscription_status", "active"),
+            "token": session_token
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"GLOBAL ERROR in create_account: {e}")
         import traceback
