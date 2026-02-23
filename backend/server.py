@@ -1152,16 +1152,34 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     if existing_user and existing_user.get("password_hash"):
         raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
     
-    # Verify payment with Stripe
+    # Verify payment with Stripe and get subscription info
+    subscription_data = {}
     if request.payment_token.startswith("cs_"):
         try:
-            host_url = str(http_request.base_url)
-            webhook_url = f"{host_url}api/webhook/stripe"
-            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
-            status = await stripe_checkout.get_checkout_status(request.payment_token)
+            import stripe
+            stripe.api_key = STRIPE_API_KEY
             
-            if status.payment_status != "paid":
-                raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
+            session = stripe.checkout.Session.retrieve(request.payment_token)
+            
+            # For subscriptions, check the subscription status
+            if session.subscription:
+                sub = stripe.Subscription.retrieve(session.subscription)
+                trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+                current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+                
+                subscription_data = {
+                    "subscription_id": session.subscription,
+                    "stripe_customer_id": session.customer,
+                    "subscription_status": sub.status,  # trialing, active, etc.
+                    "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                    "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+                    "cancel_at_period_end": sub.cancel_at_period_end
+                }
+            else:
+                # One-time payment (legacy)
+                if session.payment_status != "paid":
+                    raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
+                subscription_data = {"subscription_status": "active"}
                 
         except HTTPException:
             raise
