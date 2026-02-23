@@ -840,6 +840,9 @@ const SettingsTab = ({ onClose }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Check notification status on mount
   useEffect(() => {
@@ -847,6 +850,70 @@ const SettingsTab = ({ onClose }) => {
       setNotificationsEnabled(Notification.permission === 'granted');
     }
   }, []);
+
+  // Fetch subscription status on mount
+  useEffect(() => {
+    const fetchSubscriptionStatus = async () => {
+      try {
+        const response = await authFetch(`${API_URL}/api/subscription/status`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubscriptionStatus(data);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription status:', error);
+      }
+    };
+    fetchSubscriptionStatus();
+  }, []);
+
+  const handleCancelSubscription = async () => {
+    if (cancelLoading) return;
+    setCancelLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/subscription/cancel`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(locale === 'fr' ? t('subscriptionCancelled') : 'Subscription cancelled');
+        setSubscriptionStatus(prev => ({ ...prev, cancel_at_period_end: true, subscription_ends_at: data.ends_at }));
+        setShowCancelConfirm(false);
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur lors de la résiliation' : 'Error cancelling subscription');
+      }
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (cancelLoading) return;
+    setCancelLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/subscription/reactivate`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'Abonnement réactivé' : 'Subscription reactivated');
+        setSubscriptionStatus(prev => ({ ...prev, cancel_at_period_end: false }));
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur lors de la réactivation' : 'Error reactivating subscription');
+      }
+    } catch (error) {
+      console.error('Reactivate subscription error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   const handleToggleNotifications = async () => {
     if (notificationsLoading) return;
