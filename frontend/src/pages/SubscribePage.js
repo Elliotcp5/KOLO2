@@ -1,3 +1,4 @@
+// v2.1.0 - Cache bust
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';

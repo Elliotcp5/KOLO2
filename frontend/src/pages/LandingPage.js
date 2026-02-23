@@ -1,3 +1,4 @@
+// v2.1.0 - Cache bust
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Briefcase, Sparkles, ArrowRight } from 'lucide-react';

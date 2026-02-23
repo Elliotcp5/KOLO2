@@ -1,3 +1,4 @@
+// v2.1.0 - Cache bust
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import translations from '../i18n/translations';
 
