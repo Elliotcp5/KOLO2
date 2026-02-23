@@ -1325,6 +1325,73 @@ const SettingsTab = ({ onClose }) => {
           </div>
         </div>
       )}
+
+      {/* Cancel subscription confirmation modal */}
+      {showCancelConfirm && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowCancelConfirm(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-title" style={{ marginBottom: '16px' }}>
+              {t('cancelTrial')}
+            </h2>
+            <p className="text-body text-muted" style={{ marginBottom: '24px' }}>
+              {subscriptionStatus?.status === 'trialing' 
+                ? (locale === 'fr' 
+                    ? "Vous ne serez pas débité à la fin de votre essai. Vous conserverez l'accès jusqu'à la fin de la période."
+                    : "You won't be charged after your trial ends. You'll keep access until the end of the period.")
+                : (locale === 'fr'
+                    ? "Votre abonnement sera résilié à la fin de la période en cours. Vous conserverez l'accès jusque-là."
+                    : "Your subscription will be cancelled at the end of the current period. You'll keep access until then.")
+              }
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowCancelConfirm(false)}
+                style={{ flex: 1 }}
+              >
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                style={{ flex: 1, background: '#ef4444' }}
+                data-testid="confirm-cancel"
+              >
+                {cancelLoading ? (
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                ) : (
+                  locale === 'fr' ? 'Confirmer' : 'Confirm'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
