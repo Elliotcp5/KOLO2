@@ -1736,7 +1736,7 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
         title=f"Suivi {prospect_data.full_name}",
         task_type="follow_up",
         due_date=follow_up_date,
-        is_auto_generated=True
+        auto_generated=True
     )
     task_doc = task.model_dump()
     task_doc['created_at'] = task_doc['created_at'].isoformat()
