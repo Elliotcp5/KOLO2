@@ -105,8 +105,9 @@ export const LocaleProvider = ({ children }) => {
     return translations[locale]?.[key] || translations.en[key] || key;
   };
 
-  // Format price
+  // Format price (amount is in cents, divide by 100 for display)
   const formatPrice = (value = amount) => {
+    const displayValue = value / 100;
     const localeCode = locale === 'fr' ? 'fr-FR' : (currency === 'GBP' ? 'en-GB' : 'en-US');
     
     try {
@@ -114,9 +115,9 @@ export const LocaleProvider = ({ children }) => {
         style: 'currency',
         currency: currency,
         minimumFractionDigits: 2,
-      }).format(value);
+      }).format(displayValue);
     } catch {
-      return `${symbol}${value.toFixed(2)}`;
+      return `${symbol}${displayValue.toFixed(2)}`;
     }
   };
 
