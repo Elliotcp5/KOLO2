@@ -709,26 +709,108 @@ async def stripe_webhook(request: Request):
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
     
-    host_url = str(request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
     
     try:
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        # Parse the event from Stripe
+        event = stripe.Webhook.construct_event(
+            body, signature, os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+        ) if signature and os.environ.get('STRIPE_WEBHOOK_SECRET') else None
         
-        if webhook_response.session_id:
-            await db.payment_transactions.update_one(
-                {"session_id": webhook_response.session_id},
-                {"$set": {
-                    "payment_status": webhook_response.payment_status,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
+        # If no webhook secret, parse event directly (development mode)
+        if not event:
+            import json
+            event_data = json.loads(body)
+            event = stripe.Event.construct_from(event_data, stripe.api_key)
+        
+        event_type = event.type
+        logger.info(f"Stripe webhook received: {event_type}")
+        
+        # Handle subscription events
+        if event_type == "customer.subscription.created":
+            sub = event.data.object
+            await handle_subscription_update(sub)
+        
+        elif event_type == "customer.subscription.updated":
+            sub = event.data.object
+            await handle_subscription_update(sub)
+        
+        elif event_type == "customer.subscription.deleted":
+            sub = event.data.object
+            await handle_subscription_deleted(sub)
+        
+        elif event_type == "checkout.session.completed":
+            session = event.data.object
+            email = session.metadata.get("email") or session.customer_email
+            subscription_id = session.subscription
+            customer_id = session.customer
+            
+            if email and subscription_id:
+                # Get subscription details
+                sub = stripe.Subscription.retrieve(subscription_id)
+                trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+                
+                # Store payment success
+                token_doc = {
+                    "session_id": session.id,
+                    "email": email,
+                    "subscription_id": subscription_id,
+                    "customer_id": customer_id,
+                    "status": sub.status,
+                    "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "token": f"pay_{uuid.uuid4().hex}",
+                    "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+                    "used": False
+                }
+                await db.payment_success.insert_one(token_doc)
+                logger.info(f"Payment success recorded for {email}")
         
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return {"status": "error", "message": str(e)}
+
+async def handle_subscription_update(sub):
+    """Handle subscription created or updated"""
+    customer_id = sub.customer
+    subscription_id = sub.id
+    status = sub.status
+    trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+    current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+    cancel_at_period_end = sub.cancel_at_period_end
+    
+    # Find user by stripe customer ID
+    user_doc = await db.users.find_one({"stripe_customer_id": customer_id})
+    
+    if user_doc:
+        await db.users.update_one(
+            {"stripe_customer_id": customer_id},
+            {"$set": {
+                "subscription_id": subscription_id,
+                "subscription_status": status,
+                "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+                "cancel_at_period_end": cancel_at_period_end,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        logger.info(f"Updated subscription status for customer {customer_id}: {status}")
+
+async def handle_subscription_deleted(sub):
+    """Handle subscription cancelled/deleted"""
+    customer_id = sub.customer
+    
+    await db.users.update_one(
+        {"stripe_customer_id": customer_id},
+        {"$set": {
+            "subscription_status": "canceled",
+            "cancel_at_period_end": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    logger.info(f"Subscription cancelled for customer {customer_id}")
 
 @api_router.post("/payments/validate-token")
 async def validate_payment_token(token: str):
