@@ -159,8 +159,8 @@ const translations = {
     notificationsOff: "Off",
     
     // Free Trial
-    freeTrial: "3 days free",
-    freeTrialDesc: "Try KOLO free for 3 days",
+    freeTrial: "7 days free",
+    freeTrialDesc: "Try KOLO free for 7 days",
     startFreeTrial: "Start Free Trial",
     thenPrice: "then",
     trialEndsIn: "Trial ends in",
@@ -334,8 +334,8 @@ const translations = {
     notificationsOff: "Désactivées",
     
     // Free Trial
-    freeTrial: "3 jours gratuits",
-    freeTrialDesc: "Essayez KOLO gratuitement pendant 3 jours",
+    freeTrial: "7 jours gratuits",
+    freeTrialDesc: "Essayez KOLO gratuitement pendant 7 jours",
     startFreeTrial: "Démarrer l'essai gratuit",
     thenPrice: "puis",
     trialEndsIn: "Fin de l'essai dans",
