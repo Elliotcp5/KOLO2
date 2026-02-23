@@ -99,6 +99,28 @@ const TodayTab = ({ onOpenProfile }) => {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
           <div className="spinner"></div>
         </div>
+      ) : subscriptionBlocked ? (
+        <div className="empty-state">
+          <div className="icon-wrapper" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" style={{ width: '32px', height: '32px' }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 className="title">{t('featuresLocked')}</h3>
+          <p className="subtitle" style={{ marginBottom: '24px' }}>
+            {locale === 'fr' 
+              ? "Votre abonnement a expiré" 
+              : "Your subscription has expired"}
+          </p>
+          <button 
+            className="btn-primary"
+            onClick={() => navigate('/subscribe')}
+            data-testid="subscribe-button"
+          >
+            {t('subscribeToUnlock')}
+          </button>
+        </div>
       ) : tasks.length === 0 ? (
         <div className="empty-state">
           <div className="icon-wrapper">
