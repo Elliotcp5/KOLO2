@@ -74,8 +74,10 @@ class User(BaseModel):
     locale: Optional[str] = None
     country: Optional[str] = None
     stripe_customer_id: Optional[str] = None
-    subscription_status: str = "none"
+    subscription_status: str = "none"  # none, trialing, active, canceled, past_due
     subscription_id: Optional[str] = None
+    trial_ends_at: Optional[datetime] = None
+    subscription_ends_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
