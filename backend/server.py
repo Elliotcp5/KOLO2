@@ -1148,21 +1148,31 @@ async def reset_password(request: ResetPasswordRequest):
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
     """Create account after successful Stripe payment - simplified and robust"""
+    logger.debug(f"=== CREATE ACCOUNT CALLED ===")
+    logger.debug(f"Email: {request.email}, Payment Token: {request.payment_token[:20]}...")
     
-    # Validate input
-    if not request.email:
-        raise HTTPException(status_code=400, detail="Email requis")
-    
-    if not request.password or len(request.password) < 6:
-        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
-    
-    if not request.payment_token:
-        raise HTTPException(status_code=400, detail="Session de paiement invalide")
-    
-    # Check if user already exists with this email and has a password
-    existing_user = await db.users.find_one({"email": request.email}, {"_id": 0})
-    if existing_user and existing_user.get("password_hash"):
-        raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
+    try:
+        # Validate input
+        if not request.email:
+            logger.debug("ERROR: Email missing")
+            raise HTTPException(status_code=400, detail="Email requis")
+        
+        if not request.password or len(request.password) < 6:
+            logger.debug("ERROR: Password too short")
+            raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+        
+        if not request.payment_token:
+            logger.debug("ERROR: Payment token missing")
+            raise HTTPException(status_code=400, detail="Session de paiement invalide")
+        
+        logger.debug("Step 1: Validation passed")
+        
+        # Check if user already exists with this email and has a password
+        existing_user = await db.users.find_one({"email": request.email}, {"_id": 0})
+        logger.debug(f"Step 2: Existing user check - found: {existing_user is not None}")
+        if existing_user and existing_user.get("password_hash"):
+            logger.debug("ERROR: Account already exists with password")
+            raise HTTPException(status_code=400, detail="Ce compte existe déjà. Veuillez vous connecter.")
     
     # Verify payment with Stripe and get subscription info
     subscription_data = {}
