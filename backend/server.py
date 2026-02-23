@@ -1195,8 +1195,9 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
                     
                     # Get current_period_end from subscription items (new Stripe API structure)
                     current_period_end = None
-                    if sub.items and sub.items.data:
-                        item_period_end = sub.items.data[0].get('current_period_end')
+                    items_data = sub.get('items', {})
+                    if items_data and items_data.get('data'):
+                        item_period_end = items_data['data'][0].get('current_period_end')
                         if item_period_end:
                             current_period_end = datetime.fromtimestamp(item_period_end, tz=timezone.utc)
                     
