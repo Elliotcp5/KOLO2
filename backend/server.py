@@ -807,6 +807,141 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
         logger.error(f"Billing portal error: {e}")
         raise HTTPException(status_code=500, detail="Unable to access billing portal. Please try again later.")
 
+@api_router.get("/subscription/status")
+async def get_subscription_status(http_request: Request):
+    """Get detailed subscription status for current user"""
+    user = await get_current_user_flexible(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # If user has a subscription ID, check Stripe for current status
+    subscription_id = user_doc.get("subscription_id")
+    if subscription_id:
+        try:
+            import stripe
+            stripe.api_key = STRIPE_API_KEY
+            sub = stripe.Subscription.retrieve(subscription_id)
+            
+            # Update local status
+            status = sub.status  # trialing, active, canceled, past_due, etc.
+            trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+            current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+            cancel_at_period_end = sub.cancel_at_period_end
+            
+            await db.users.update_one(
+                {"user_id": user.user_id},
+                {"$set": {
+                    "subscription_status": status,
+                    "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                    "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+                    "cancel_at_period_end": cancel_at_period_end
+                }}
+            )
+            
+            return {
+                "status": status,
+                "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+                "cancel_at_period_end": cancel_at_period_end,
+                "is_active": status in ["trialing", "active"]
+            }
+        except Exception as e:
+            logger.error(f"Stripe subscription check error: {e}")
+    
+    # Fallback to local data
+    return {
+        "status": user_doc.get("subscription_status", "none"),
+        "trial_ends_at": user_doc.get("trial_ends_at"),
+        "subscription_ends_at": user_doc.get("subscription_ends_at"),
+        "cancel_at_period_end": user_doc.get("cancel_at_period_end", False),
+        "is_active": user_doc.get("subscription_status") in ["trialing", "active"]
+    }
+
+@api_router.post("/subscription/cancel")
+async def cancel_subscription(http_request: Request):
+    """Cancel subscription at end of current period"""
+    user = await get_current_user_flexible(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    subscription_id = user_doc.get("subscription_id")
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription found")
+    
+    try:
+        import stripe
+        stripe.api_key = STRIPE_API_KEY
+        
+        # Cancel at end of period (not immediately)
+        sub = stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=True
+        )
+        
+        current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc)
+        
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {
+                "cancel_at_period_end": True,
+                "subscription_ends_at": current_period_end.isoformat()
+            }}
+        )
+        
+        return {
+            "message": "Subscription will be cancelled at end of period",
+            "ends_at": current_period_end.isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Cancel subscription error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to cancel subscription")
+
+@api_router.post("/subscription/reactivate")
+async def reactivate_subscription(http_request: Request):
+    """Reactivate a cancelled subscription"""
+    user = await get_current_user_flexible(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    subscription_id = user_doc.get("subscription_id")
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="No subscription found")
+    
+    try:
+        import stripe
+        stripe.api_key = STRIPE_API_KEY
+        
+        # Reactivate by removing cancel_at_period_end
+        sub = stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=False
+        )
+        
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {
+                "cancel_at_period_end": False,
+                "subscription_status": sub.status
+            }}
+        )
+        
+        return {"message": "Subscription reactivated", "status": sub.status}
+    except Exception as e:
+        logger.error(f"Reactivate subscription error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reactivate subscription")
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
