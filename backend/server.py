@@ -1162,11 +1162,16 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             import stripe
             stripe.api_key = STRIPE_API_KEY
             
+            logger.info(f"Retrieving Stripe session: {request.payment_token}")
             session = stripe.checkout.Session.retrieve(request.payment_token)
+            logger.info(f"Session retrieved - subscription: {session.subscription}, customer: {session.customer}, status: {session.status}")
             
             # For subscriptions, check the subscription status
             if session.subscription:
+                logger.info(f"Retrieving subscription: {session.subscription}")
                 sub = stripe.Subscription.retrieve(session.subscription)
+                logger.info(f"Subscription status: {sub.status}, trial_end: {sub.trial_end}")
+                
                 trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
                 current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
                 
@@ -1178,8 +1183,10 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
                     "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
                     "cancel_at_period_end": sub.cancel_at_period_end
                 }
+                logger.info(f"Subscription data prepared: {subscription_data}")
             else:
                 # One-time payment (legacy)
+                logger.info(f"No subscription, checking payment_status: {session.payment_status}")
                 if session.payment_status != "paid":
                     raise HTTPException(status_code=400, detail="Le paiement n'est pas complété. Veuillez réessayer.")
                 subscription_data = {"subscription_status": "active"}
