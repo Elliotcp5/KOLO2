@@ -160,7 +160,6 @@ const LandingPage = () => {
               : `Then ${formatPrice()} / month, cancel anytime`
             }
           </p>
-          </p>
         </div>
       </div>
     </div>
