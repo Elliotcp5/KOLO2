@@ -1192,14 +1192,15 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
     # Create or update user
     if existing_user:
         user_id = existing_user["user_id"]
+        update_data = {
+            "password_hash": hash_password(request.password),
+            "stripe_session_id": request.payment_token,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            **subscription_data
+        }
         await db.users.update_one(
             {"user_id": user_id},
-            {"$set": {
-                "subscription_status": "active",
-                "password_hash": hash_password(request.password),
-                "stripe_session_id": request.payment_token,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": update_data}
         )
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
@@ -1207,11 +1208,11 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
             "user_id": user_id,
             "email": request.email,
             "auth_provider": "email",
-            "subscription_status": "active",
             "password_hash": hash_password(request.password),
             "stripe_session_id": request.payment_token,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            **subscription_data
         }
         await db.users.insert_one(user_doc)
     
