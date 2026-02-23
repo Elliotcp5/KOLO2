@@ -629,7 +629,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
                 "quantity": 1
             }],
             subscription_data={
-                "trial_period_days": 3,
+                "trial_period_days": 7,
                 "metadata": {
                     "email": email,
                     "locale": locale,
