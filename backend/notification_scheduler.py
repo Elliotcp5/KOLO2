@@ -28,7 +28,12 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # VAPID configuration
-VAPID_PRIVATE_KEY_FILE = os.environ.get('VAPID_PRIVATE_KEY_FILE', '/app/backend/vapid_private.pem')
+_vapid_private_key_path = os.environ.get('VAPID_PRIVATE_KEY_FILE', 'vapid_private.pem')
+# Resolve relative path from ROOT_DIR
+if not os.path.isabs(_vapid_private_key_path):
+    VAPID_PRIVATE_KEY_FILE = str(ROOT_DIR / _vapid_private_key_path)
+else:
+    VAPID_PRIVATE_KEY_FILE = _vapid_private_key_path
 VAPID_EMAIL = os.environ.get('VAPID_EMAIL', 'mailto:contact@trykolo.io')
 
 async def get_users_with_tasks_today():
