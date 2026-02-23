@@ -43,10 +43,11 @@ Le système accepte l'authentification via:
 
 ## Fonctionnalités Implémentées
 - [x] Landing page avec pricing régional
+- [x] **Essai gratuit 3 jours** - Badge sur landing page et page d'abonnement
 - [x] Meta tags et titres optimisés pour le partage
 - [x] Page FAQ avec questions déroulantes
 - [x] Auth Email/Password avec JWT + système dual Cookie/Bearer Token
-- [x] Flow abonnement Stripe avec redirection serveur
+- [x] Flow abonnement Stripe avec période d'essai 3 jours
 - [x] Création compte post-paiement
 - [x] Récupération de compte pour utilisateurs ayant payé sans finaliser
 - [x] App 3 onglets (Today, Prospects, Tasks)
@@ -78,6 +79,8 @@ Le système accepte l'authentification via:
 - [x] Changement de mot de passe depuis les paramètres
 - [x] Portail Stripe Customer pour gestion facturation
 - [x] **UI Modals ergonomiques** - Icône 'X' en haut à droite + bouton 'Save' en bas
+- [x] **Résiliation abonnement** - Option dans les paramètres utilisateur
+- [x] **Blocage fonctionnalités** - Message "S'abonner" quand abonnement expiré
 
 ## Endpoints Clés
 - `POST /api/auth/login` - Connexion email/password, retourne `token`
