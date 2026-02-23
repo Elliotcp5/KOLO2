@@ -138,7 +138,7 @@ const LandingPage = () => {
         {/* Pricing section */}
         <div style={{ padding: '0 24px', marginTop: 'auto' }} className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
           {/* Made by line */}
-          <p className="text-small" style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <p className="text-small" style={{ textAlign: 'center', marginBottom: '20px', color: 'white' }}>
             {t('madeBy')}
           </p>
 
