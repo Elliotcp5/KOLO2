@@ -1105,6 +1105,48 @@ const SettingsTab = ({ onClose }) => {
           <span className="label">{t('changeEmail')}</span>
           <ChevronRight className="chevron" size={20} />
         </div>
+        
+        {/* Cancel/Reactivate subscription */}
+        {subscriptionStatus && (
+          <div 
+            className="settings-row" 
+            data-testid="cancel-subscription"
+            onClick={() => {
+              if (subscriptionStatus.cancel_at_period_end) {
+                handleReactivateSubscription();
+              } else {
+                setShowCancelConfirm(true);
+              }
+            }}
+            style={{ cursor: 'pointer', borderBottom: 'none' }}
+          >
+            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke={subscriptionStatus.cancel_at_period_end ? "var(--accent)" : "#ef4444"} strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <div style={{ flex: 1 }}>
+              <span className="label" style={{ color: subscriptionStatus.cancel_at_period_end ? 'var(--accent)' : '#ef4444' }}>
+                {subscriptionStatus.cancel_at_period_end ? t('reactivate') : t('cancelTrial')}
+              </span>
+              {subscriptionStatus.cancel_at_period_end && subscriptionStatus.subscription_ends_at && (
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                  {t('keepAccess')} {new Date(subscriptionStatus.subscription_ends_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}
+                </div>
+              )}
+              {subscriptionStatus.status === 'trialing' && !subscriptionStatus.cancel_at_period_end && (
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                  {t('cancelTrialDesc')}
+                </div>
+              )}
+            </div>
+            {cancelLoading ? (
+              <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
+            ) : (
+              <ChevronRight className="chevron" size={20} />
+            )}
+          </div>
+        )}
       </div>
 
       {/* About section */}
