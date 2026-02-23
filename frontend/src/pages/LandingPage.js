@@ -142,23 +142,6 @@ const LandingPage = () => {
             {t('madeBy')}
           </p>
 
-          {/* Price with free trial */}
-          <div className="price-display" style={{ marginBottom: '8px' }}>
-            <span className="amount">{formatPrice()}</span>
-            <span className="period">{t('perMonth')}</span>
-          </div>
-          
-          {/* Free trial badge */}
-          <p style={{ 
-            textAlign: 'center', 
-            marginBottom: '24px',
-            fontSize: '14px',
-            color: 'var(--accent)',
-            fontWeight: '500'
-          }}>
-            {t('freeTrial')}
-          </p>
-
           {/* CTA Button */}
           <button 
             className="btn-primary"
@@ -170,9 +153,13 @@ const LandingPage = () => {
             <ArrowRight size={20} strokeWidth={2} />
           </button>
 
-          {/* Cancel anytime */}
+          {/* Price info */}
           <p className="text-small" style={{ textAlign: 'center', marginBottom: '40px' }}>
-            {t('cancelAnytime')}
+            {locale === 'fr' 
+              ? `Puis ${formatPrice()} / mois, résiliable à tout moment`
+              : `Then ${formatPrice()} / month, cancel anytime`
+            }
+          </p>
           </p>
         </div>
       </div>
