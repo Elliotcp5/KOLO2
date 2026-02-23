@@ -157,6 +157,23 @@ const translations = {
     notifications: "Notifications",
     notificationsOn: "On",
     notificationsOff: "Off",
+    
+    // Free Trial
+    freeTrial: "3 days free",
+    freeTrialDesc: "Try KOLO free for 3 days",
+    startFreeTrial: "Start Free Trial",
+    thenPrice: "then",
+    trialEndsIn: "Trial ends in",
+    days: "days",
+    hours: "hours",
+    cancelTrial: "Cancel Subscription",
+    cancelTrialDesc: "You won't be charged after your trial ends",
+    trialCancelled: "Trial cancelled",
+    subscriptionCancelled: "Subscription cancelled",
+    keepAccess: "You'll keep access until",
+    subscribeToUnlock: "Subscribe to continue using KOLO",
+    featuresLocked: "Features locked",
+    reactivate: "Reactivate subscription",
   },
   fr: {
     // Landing
