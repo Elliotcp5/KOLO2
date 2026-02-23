@@ -1487,14 +1487,20 @@ async def list_tasks(request: Request, include_completed: bool = True):
         {"_id": 0}
     ).sort("due_date", -1).to_list(1000)
     
+    # Batch fetch prospects to avoid N+1 queries
+    prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
+    prospects_map = {}
+    if prospect_ids:
+        prospects = await db.prospects.find(
+            {"prospect_id": {"$in": prospect_ids}},
+            {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1, "status": 1}
+        ).to_list(len(prospect_ids))
+        prospects_map = {p["prospect_id"]: p for p in prospects}
+    
     # Enrich tasks with prospect info
     for task in tasks:
         if task.get("prospect_id"):
-            prospect = await db.prospects.find_one(
-                {"prospect_id": task["prospect_id"]},
-                {"_id": 0, "full_name": 1, "phone": 1, "email": 1, "status": 1}
-            )
-            task["prospect"] = prospect
+            task["prospect"] = prospects_map.get(task["prospect_id"])
     
     return {"tasks": tasks}
 
