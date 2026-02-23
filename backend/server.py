@@ -1292,6 +1292,11 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         session_doc['created_at'] = session_doc['created_at'].isoformat()
         await db.user_sessions.insert_one(session_doc)
         logger.debug("Step 6: Session created successfully")
+    except Exception as e:
+        logger.error(f"Step 6 FAILED - Session error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erreur session: {str(e)}")
     
     response.set_cookie(
         key="session_token",
@@ -1303,12 +1308,19 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         max_age=7 * 24 * 60 * 60
     )
     
+    logger.debug(f"Step 7: SUCCESS - Account created for {request.email}")
     return {
         "user_id": user_id,
         "email": request.email,
         "subscription_status": "active",
         "token": session_token
     }
+    
+    except Exception as e:
+        logger.error(f"GLOBAL ERROR in create_account: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Erreur serveur")
 
 # Email/Password Login
 @api_router.post("/auth/login")
