@@ -896,7 +896,8 @@ async def get_subscription_status(http_request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    user_id = user["user_id"]
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -915,7 +916,7 @@ async def get_subscription_status(http_request: Request):
             cancel_at_period_end = sub.cancel_at_period_end
             
             await db.users.update_one(
-                {"user_id": user.user_id},
+                {"user_id": user_id},
                 {"$set": {
                     "subscription_status": status,
                     "trial_ends_at": trial_end.isoformat() if trial_end else None,
@@ -950,7 +951,8 @@ async def cancel_subscription(http_request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    user_id = user["user_id"]
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
     
