@@ -631,7 +631,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
             )
             price_id = price.id
         
-        # Create checkout session with subscription and 3-day trial
+        # Create checkout session with subscription and 7-day trial
         session = stripe.checkout.Session.create(
             mode="subscription",
             payment_method_types=["card"],
@@ -655,7 +655,12 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
                 "country": country,
                 "type": "subscription_with_trial"
             },
-            allow_promotion_codes=True
+            allow_promotion_codes=False,
+            custom_text={
+                "submit": {
+                    "message": "Essayez KOLO"
+                }
+            }
         )
         
         # Direct redirect to Stripe
