@@ -72,10 +72,28 @@ const SubscribePage = () => {
 
           {/* Plan card */}
           <div className="plan-card" style={{ marginBottom: '32px' }}>
+            <div style={{ 
+              background: 'var(--accent)', 
+              color: 'white', 
+              padding: '4px 12px', 
+              borderRadius: '12px',
+              fontSize: '12px',
+              fontWeight: '600',
+              display: 'inline-block',
+              marginBottom: '12px'
+            }}>
+              {t('freeTrial')}
+            </div>
             <div className="plan-name">{t('monthlySubscription')}</div>
             <div className="plan-price">{formatPrice()}</div>
             <div className="plan-period">{t('perMonth')}</div>
-            <div className="plan-cancel">{t('cancelAnytime')}</div>
+            <div style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginTop: '8px' 
+            }}>
+              {t('freeTrialDesc')}
+            </div>
           </div>
 
           {/* Payment method section */}
