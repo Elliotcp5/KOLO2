@@ -86,7 +86,6 @@ const SubscribePage = () => {
             </div>
             <div className="plan-name">{t('monthlySubscription')}</div>
             <div className="plan-price">{formatPrice()}</div>
-            <div className="plan-period">{t('perMonth')}</div>
             <div style={{ 
               fontSize: '13px', 
               color: 'var(--muted)', 
