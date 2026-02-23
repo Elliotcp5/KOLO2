@@ -142,11 +142,22 @@ const LandingPage = () => {
             {t('madeBy')}
           </p>
 
-          {/* Price */}
-          <div className="price-display" style={{ marginBottom: '24px' }}>
+          {/* Price with free trial */}
+          <div className="price-display" style={{ marginBottom: '8px' }}>
             <span className="amount">{formatPrice()}</span>
             <span className="period">{t('perMonth')}</span>
           </div>
+          
+          {/* Free trial badge */}
+          <p style={{ 
+            textAlign: 'center', 
+            marginBottom: '24px',
+            fontSize: '14px',
+            color: 'var(--accent)',
+            fontWeight: '500'
+          }}>
+            {t('freeTrial')}
+          </p>
 
           {/* CTA Button */}
           <button 
@@ -155,7 +166,7 @@ const LandingPage = () => {
             data-testid="start-button"
             style={{ marginBottom: '16px' }}
           >
-            {t('startButton')}
+            {t('startFreeTrial')}
             <ArrowRight size={20} strokeWidth={2} />
           </button>
 
