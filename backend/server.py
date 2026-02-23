@@ -981,22 +981,34 @@ async def cancel_subscription(http_request: Request):
             cancel_at_period_end=True
         )
         
-        current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc)
+        # Get current_period_end from subscription items (new Stripe API structure)
+        current_period_end = None
+        items_data = sub.get('items', {})
+        if items_data and items_data.get('data'):
+            item_period_end = items_data['data'][0].get('current_period_end')
+            if item_period_end:
+                current_period_end = datetime.fromtimestamp(item_period_end, tz=timezone.utc)
+        
+        # Fallback to trial_end if in trial period
+        if not current_period_end and sub.trial_end:
+            current_period_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc)
         
         await db.users.update_one(
             {"user_id": user_id},
             {"$set": {
                 "cancel_at_period_end": True,
-                "subscription_ends_at": current_period_end.isoformat()
+                "subscription_ends_at": current_period_end.isoformat() if current_period_end else None
             }}
         )
         
         return {
             "message": "Subscription will be cancelled at end of period",
-            "ends_at": current_period_end.isoformat()
+            "ends_at": current_period_end.isoformat() if current_period_end else None
         }
     except Exception as e:
         logger.error(f"Cancel subscription error: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Failed to cancel subscription")
 
 @api_router.post("/subscription/reactivate")
