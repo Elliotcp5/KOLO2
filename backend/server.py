@@ -973,7 +973,7 @@ async def cancel_subscription(http_request: Request):
         current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc)
         
         await db.users.update_one(
-            {"user_id": user.user_id},
+            {"user_id": user_id},
             {"$set": {
                 "cancel_at_period_end": True,
                 "subscription_ends_at": current_period_end.isoformat()
@@ -995,7 +995,8 @@ async def reactivate_subscription(http_request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    user_id = user["user_id"]
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -1014,7 +1015,7 @@ async def reactivate_subscription(http_request: Request):
         )
         
         await db.users.update_one(
-            {"user_id": user.user_id},
+            {"user_id": user_id},
             {"$set": {
                 "cancel_at_period_end": False,
                 "subscription_status": sub.status
