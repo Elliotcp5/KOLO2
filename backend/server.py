@@ -892,7 +892,7 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
 @api_router.get("/subscription/status")
 async def get_subscription_status(http_request: Request):
     """Get detailed subscription status for current user"""
-    user = await get_current_user_flexible(http_request)
+    user = await get_current_user(http_request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
@@ -946,7 +946,7 @@ async def get_subscription_status(http_request: Request):
 @api_router.post("/subscription/cancel")
 async def cancel_subscription(http_request: Request):
     """Cancel subscription at end of current period"""
-    user = await get_current_user_flexible(http_request)
+    user = await get_current_user(http_request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
@@ -989,7 +989,7 @@ async def cancel_subscription(http_request: Request):
 @api_router.post("/subscription/reactivate")
 async def reactivate_subscription(http_request: Request):
     """Reactivate a cancelled subscription"""
-    user = await get_current_user_flexible(http_request)
+    user = await get_current_user(http_request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
