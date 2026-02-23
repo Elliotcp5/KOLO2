@@ -575,7 +575,6 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
     
     host_url = str(http_request.base_url)
     webhook_url = f"{host_url}api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
     success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin_url}/subscribe"
@@ -583,22 +582,69 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
     # Get pricing based on country
     pricing = get_pricing_for_country(country)
     
-    checkout_request = CheckoutSessionRequest(
-        amount=pricing['amount'],
-        currency=pricing['currency'],
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
-            "email": email,
-            "locale": locale,
-            "country": country,
-            "type": "subscription"
-        },
-        payment_methods=['card']
-    )
+    # Use Stripe directly for subscription with 3-day free trial
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
     
     try:
-        session = await stripe_checkout.create_checkout_session(checkout_request)
+        # First, get or create the price for this currency
+        # We use a lookup key based on currency
+        price_lookup_key = f"kolo_monthly_{pricing['currency'].lower()}"
+        
+        # Try to find existing price
+        existing_prices = stripe.Price.list(lookup_keys=[price_lookup_key], limit=1)
+        
+        if existing_prices.data:
+            price_id = existing_prices.data[0].id
+        else:
+            # Create a product if needed
+            products = stripe.Product.list(limit=1)
+            if products.data:
+                product_id = products.data[0].id
+            else:
+                product = stripe.Product.create(
+                    name="KOLO CRM - Monthly Subscription",
+                    description="CRM for real estate agents"
+                )
+                product_id = product.id
+            
+            # Create price with lookup key
+            price = stripe.Price.create(
+                product=product_id,
+                unit_amount=pricing['amount'],
+                currency=pricing['currency'].lower(),
+                recurring={"interval": "month"},
+                lookup_key=price_lookup_key
+            )
+            price_id = price.id
+        
+        # Create checkout session with subscription and 3-day trial
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            payment_method_types=["card"],
+            line_items=[{
+                "price": price_id,
+                "quantity": 1
+            }],
+            subscription_data={
+                "trial_period_days": 3,
+                "metadata": {
+                    "email": email,
+                    "locale": locale,
+                    "country": country
+                }
+            },
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "email": email,
+                "locale": locale,
+                "country": country,
+                "type": "subscription_with_trial"
+            },
+            allow_promotion_codes=True
+        )
+        
         # Direct redirect to Stripe
         return RedirectResponse(url=session.url, status_code=303)
     except Exception as e:
