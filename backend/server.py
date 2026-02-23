@@ -1213,11 +1213,16 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Stripe verification error: {e}")
+            logger.error(f"Step 3 FAILED - Stripe verification error: {e}")
             logger.error(f"Session ID attempted: {request.payment_token}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=400, detail=f"Impossible de vérifier le paiement: {str(e)}")
     else:
+        logger.error("ERROR: Payment token doesn't start with cs_")
         raise HTTPException(status_code=400, detail="Session de paiement invalide")
+    
+    logger.debug(f"Step 3: Stripe verification passed, subscription_data: {subscription_data}")
     
     # Create or update user
     if existing_user:
