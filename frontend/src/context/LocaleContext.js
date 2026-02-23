@@ -23,7 +23,7 @@ export const LocaleProvider = ({ children }) => {
   const [locale, setLocale] = useState('en');
   const [country, setCountry] = useState('US');
   const [currency, setCurrency] = useState('USD');
-  const [amount, setAmount] = useState(9.99);
+  const [amount, setAmount] = useState(999);
   const [symbol, setSymbol] = useState('$');
 
   useEffect(() => {
