@@ -232,35 +232,20 @@ const LoginPage = () => {
             </button>
           )}
 
-          {/* Toggle recover mode */}
-          <button
-            className="btn-ghost"
-            onClick={() => setShowRecover(!showRecover)}
-            style={{ color: 'var(--accent)', fontSize: '14px' }}
-            data-testid="toggle-recover"
-          >
-            {showRecover 
-              ? (locale === 'fr' ? '← Retour à la connexion' : '← Back to login')
-              : (locale === 'fr' ? 'J\'ai payé mais je n\'ai pas de compte' : 'I paid but don\'t have an account')
-            }
-          </button>
-
           {/* Subscribe link */}
-          {!showRecover && (
-            <div style={{ marginTop: 'auto', paddingBottom: '40px', textAlign: 'center' }}>
-              <p className="text-small text-muted" style={{ marginBottom: '8px' }}>
-                {locale === 'fr' ? 'Pas encore de compte?' : 'Don\'t have an account?'}
-              </p>
-              <button
-                className="btn-ghost"
-                onClick={() => navigate('/subscribe')}
-                style={{ color: 'var(--accent)' }}
-                data-testid="go-to-subscribe"
-              >
-                {locale === 'fr' ? 'S\'abonner' : 'Subscribe'}
-              </button>
-            </div>
-          )}
+          <div style={{ marginTop: 'auto', paddingBottom: '40px', textAlign: 'center' }}>
+            <p className="text-small text-muted" style={{ marginBottom: '8px' }}>
+              {locale === 'fr' ? 'Pas encore de compte?' : 'Don\'t have an account?'}
+            </p>
+            <button
+              className="btn-ghost"
+              onClick={() => navigate('/subscribe')}
+              style={{ color: 'var(--accent)' }}
+              data-testid="go-to-subscribe"
+            >
+              {locale === 'fr' ? 'S\'abonner' : 'Subscribe'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
