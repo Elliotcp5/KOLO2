@@ -35,11 +35,11 @@ from emergentintegrations.payments.stripe.checkout import (
 
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', '')
 
-# Regional pricing configuration (9.99 in each currency)
+# Regional pricing configuration (in cents - 999 = 9.99)
 PRICING = {
-    'EUR': {'amount': 9.99, 'currency': 'eur', 'symbol': '€'},
-    'GBP': {'amount': 9.99, 'currency': 'gbp', 'symbol': '£'},
-    'USD': {'amount': 9.99, 'currency': 'usd', 'symbol': '$'},
+    'EUR': {'amount': 999, 'currency': 'eur', 'symbol': '€', 'display': '9,99'},
+    'GBP': {'amount': 999, 'currency': 'gbp', 'symbol': '£', 'display': '9.99'},
+    'USD': {'amount': 999, 'currency': 'usd', 'symbol': '$', 'display': '9.99'},
 }
 
 # EU countries (ISO 3166-1 alpha-2)
