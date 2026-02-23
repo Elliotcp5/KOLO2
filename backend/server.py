@@ -660,6 +660,11 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
                 "submit": {
                     "message": "Essayez KOLO"
                 }
+            },
+            payment_method_options={
+                "card": {
+                    "request_three_d_secure": "automatic"
+                }
             }
         )
         
