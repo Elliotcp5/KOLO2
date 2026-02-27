@@ -178,7 +178,7 @@ const translations = {
   fr: {
     // Landing
     loginToKolo: "Se connecter",
-    heroHeadline: "Ne Manquez Plus Jamais une Vente !",
+    heroHeadline: "Ne manquez plus jamais une vente !",
     heroSubheadline: "Concluez plus d'affaires. Automatiquement.",
     feature1Title: "Tâches du Jour",
     feature1Desc: "Sachez exactement qui contacter aujourd'hui.",
