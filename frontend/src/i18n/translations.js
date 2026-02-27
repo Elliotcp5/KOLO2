@@ -3,7 +3,7 @@ const translations = {
   en: {
     // Landing
     loginToKolo: "Log in",
-    heroHeadline: "Never miss a sale satisfaire!",
+    heroHeadline: "Never miss a sale again!",
     heroSubheadline: "Close more deals. Automatically.",
     feature1Title: "Today's Tasks",
     feature1Desc: "Know exactly who to contact today.",
