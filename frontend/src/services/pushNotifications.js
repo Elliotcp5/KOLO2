@@ -119,8 +119,7 @@ class PushNotificationService {
         // Notify backend
         await fetch(`${API_URL}/api/notifications/unsubscribe`, {
           method: 'DELETE',
-          headers,
-          credentials: 'include'
+          headers
         });
       }
     } catch (error) {
