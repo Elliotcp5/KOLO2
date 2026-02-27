@@ -43,7 +43,6 @@ const CreateAccountPage = () => {
       const response = await fetch(`${API_URL}/api/auth/create-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           payment_token: sessionId,
           email: email,
