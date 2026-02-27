@@ -283,9 +283,41 @@ async def require_auth(request: Request) -> User:
 
 async def require_active_subscription(request: Request) -> User:
     user = await require_auth(request)
-    if user.subscription_status not in ['active', 'trialing']:
-        raise HTTPException(status_code=403, detail="Active subscription required")
-    return user
+    
+    # Check if user has active subscription
+    if user.subscription_status == 'active':
+        return user
+    
+    # Check if user is in valid trial period
+    if user.subscription_status == 'trialing':
+        if user.trial_ends_at:
+            trial_end = user.trial_ends_at
+            if isinstance(trial_end, str):
+                trial_end = datetime.fromisoformat(trial_end.replace('Z', '+00:00'))
+            if trial_end.tzinfo is None:
+                trial_end = trial_end.replace(tzinfo=timezone.utc)
+            
+            if datetime.now(timezone.utc) <= trial_end:
+                return user
+            else:
+                # Trial has expired - update status in DB
+                await db.users.update_one(
+                    {"user_id": user.user_id},
+                    {"$set": {"subscription_status": "expired"}}
+                )
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Votre essai gratuit est terminé. Abonnez-vous pour continuer à utiliser KOLO."
+                )
+        else:
+            # No trial_ends_at set, allow access (legacy trialing users)
+            return user
+    
+    # User has no active subscription or trial
+    raise HTTPException(
+        status_code=403, 
+        detail="Abonnement requis pour accéder à cette fonctionnalité."
+    )
 
 async def update_prospect_next_task(prospect_id: str, user_id: str):
     """Update prospect with next scheduled task info"""
