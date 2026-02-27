@@ -32,13 +32,14 @@ const LoginPage = () => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
+        const data = await response.json();
         toast.error(data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
         setLoading(false);
         return;
       }
+      
+      const data = await response.json();
       
       // Create clean user data with token
       const userData = {
@@ -52,7 +53,8 @@ const LoginPage = () => {
       
       window.location.href = '/app';
     } catch (err) {
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+      console.error('Login error:', err);
+      toast.error(locale === 'fr' ? 'Erreur réseau. Vérifiez votre connexion.' : 'Network error. Check your connection.');
       setLoading(false);
     }
   };
