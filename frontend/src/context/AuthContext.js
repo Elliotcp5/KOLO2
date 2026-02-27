@@ -75,12 +75,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    const token = localStorage.getItem('kolo_token');
     try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
+      if (token) {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
     } catch (e) {
       // Silent fail
     } finally {
@@ -94,12 +96,14 @@ export const AuthProvider = ({ children }) => {
     const response = await fetch(`${API_URL}/api/auth/create-account`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ payment_token: paymentToken, email })
     });
 
     if (response.ok) {
       const userData = await response.json();
+      if (userData.token) {
+        localStorage.setItem('kolo_token', userData.token);
+      }
       setUser(userData);
       setIsAuthenticated(true);
       return userData;
