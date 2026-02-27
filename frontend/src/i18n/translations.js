@@ -185,7 +185,7 @@ const translations = {
     feature2Title: "Prospects Actifs",
     feature2Desc: "Chaque acheteur et vendeur à conclure.",
     feature3Title: "Rappels Intelligents",
-    feature3Desc: "Rappels automatiques basés sur vos tâches et votre activité.",
+    feature3Desc: "Une IA propose des actions pour optimiser vos opportunités et ne jamais oublier une relance.",
     madeBy: "Fait par des agents immobiliers pour des agents immobiliers",
     startButton: "Commencer",
     cancelAnytime: "Annulez à tout moment",
