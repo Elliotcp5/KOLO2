@@ -164,7 +164,7 @@ select.input-dark option {
 .btn-primary {
   width: 100%;
   height: 56px;
-  background-color: var(--accent);
+  background: var(--accent-gradient);
   color: white !important;
   border: none;
   border-radius: 9999px;
@@ -175,8 +175,8 @@ select.input-dark option {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 0 30px -5px var(--accent-glow);
-  transition: background-color 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 4px 20px -5px var(--accent-glow), 0 0 40px -10px rgba(139, 92, 246, 0.3);
+  transition: all 0.2s ease;
 }
 
 .btn-primary span,
@@ -185,7 +185,8 @@ select.input-dark option {
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-2);
+  background: var(--accent-gradient-hover);
+  box-shadow: 0 6px 25px -5px var(--accent-glow), 0 0 50px -10px rgba(139, 92, 246, 0.4);
 }
 
 .btn-primary:active {
