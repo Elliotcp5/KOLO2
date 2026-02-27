@@ -8,6 +8,7 @@ import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContex
 // Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import SubscribePage from "./pages/SubscribePage";
 import CreateAccountPage from "./pages/CreateAccountPage";
 import AppShell from "./pages/AppShell";
@@ -30,6 +31,7 @@ const AppRouter = () => {
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
       <Route path="/create-account" element={<CreateAccountPage />} />
       <Route path="/faq" element={<FAQPage />} />
