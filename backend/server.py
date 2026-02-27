@@ -1413,25 +1413,39 @@ async def login_with_password(request: LoginRequest, response: Response):
     """Login with email and password"""
     logger.info(f"Login attempt for email: {request.email}")
     
-    user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    user = await db.users.find_one({"email": request.email.lower().strip()}, {"_id": 0})
     
     if not user:
         logger.warning(f"Login failed: User not found for {request.email}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
     if not user.get("password_hash"):
         logger.warning(f"Login failed: No password hash for {request.email}")
-        raise HTTPException(status_code=401, detail="Please use Google login or reset your password")
+        raise HTTPException(status_code=401, detail="Veuillez réinitialiser votre mot de passe")
     
     if not verify_password(request.password, user["password_hash"]):
         logger.warning(f"Login failed: Invalid password for {request.email}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
-    if user.get("subscription_status") != "active":
-        logger.warning(f"Login failed: Subscription not active for {request.email}")
-        raise HTTPException(status_code=403, detail="Subscription not active")
-    
+    # Allow login for all users (trialing, active, expired, canceled)
+    # Access restrictions are handled in the frontend based on subscription status
     logger.info(f"Login successful for {request.email}")
+    
+    # Check if trial has expired and update status
+    subscription_status = user.get("subscription_status", "none")
+    trial_ends_at = user.get("trial_ends_at")
+    
+    if subscription_status == "trialing" and trial_ends_at:
+        trial_end_date = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00'))
+        if trial_end_date.tzinfo is None:
+            trial_end_date = trial_end_date.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > trial_end_date:
+            subscription_status = "expired"
+            # Update in database
+            await db.users.update_one(
+                {"user_id": user["user_id"]},
+                {"$set": {"subscription_status": "expired"}}
+            )
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -1461,7 +1475,8 @@ async def login_with_password(request: LoginRequest, response: Response):
     return {
         "user_id": user["user_id"],
         "email": user["email"],
-        "subscription_status": user["subscription_status"],
+        "subscription_status": subscription_status,
+        "trial_ends_at": user.get("trial_ends_at"),
         "token": session_token
     }
 
