@@ -37,7 +37,6 @@ const RegisterPage = () => {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email, password })
       });
 
@@ -49,6 +48,11 @@ const RegisterPage = () => {
       }
       
       const data = await response.json();
+      
+      // Store token immediately
+      if (data.token) {
+        localStorage.setItem('kolo_token', data.token);
+      }
       
       // Login with returned data
       login({
