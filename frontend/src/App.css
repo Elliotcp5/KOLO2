@@ -11,7 +11,10 @@
   --border: rgba(255, 255, 255, 0.08);
   --accent: #7C3AED;
   --accent-2: #8B5CF6;
-  --accent-glow: rgba(124, 58, 237, 0.4);
+  --accent-pink: #EC4899;
+  --accent-gradient: linear-gradient(135deg, #EC4899 0%, #8B5CF6 50%, #7C3AED 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #F472B6 0%, #A78BFA 50%, #8B5CF6 100%);
+  --accent-glow: rgba(236, 72, 153, 0.3);
   --shadow: rgba(0, 0, 0, 0.3);
   --success: #10B981;
   --error: #EF4444;
