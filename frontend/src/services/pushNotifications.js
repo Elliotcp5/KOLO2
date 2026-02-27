@@ -88,7 +88,6 @@ class PushNotificationService {
       await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
         headers,
-        credentials: 'include',
         body: JSON.stringify({
           subscription: subscription.toJSON(),
           user_id: userId
