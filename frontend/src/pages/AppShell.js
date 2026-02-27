@@ -1652,25 +1652,219 @@ const TasksTab = ({ onRefresh }) => {
         <h1 className="text-headline" style={{ fontSize: '28px' }}>
           {t('tasks')}
         </h1>
-        <button 
-          className="btn-icon"
-          onClick={() => setShowAddTask(true)}
-          data-testid="add-task-button"
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {/* AI Suggestions Button */}
+          <button 
+            onClick={fetchAiSuggestions}
+            data-testid="ai-suggestions-button"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px -3px rgba(236, 72, 153, 0.4)'
+            }}
+          >
+            <Sparkles size={20} style={{ color: 'white' }} />
+          </button>
+          {/* Add Task Button */}
+          <button 
+            className="btn-icon"
+            onClick={() => setShowAddTask(true)}
+            data-testid="add-task-button"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={20} style={{ color: 'white' }} />
+          </button>
+        </div>
+      </div>
+
+      {/* AI Suggestions Modal */}
+      {showAiSuggestions && (
+        <div 
           style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            background: 'var(--accent)',
-            border: 'none',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'pointer'
+            zIndex: 1000
           }}
+          onClick={() => setShowAiSuggestions(false)}
         >
-          <Plus size={20} style={{ color: 'white' }} />
-        </button>
-      </div>
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '24px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Sparkles size={20} style={{ color: 'white' }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text)' }}>
+                    {locale === 'fr' ? 'Suggestions IA' : 'AI Suggestions'}
+                  </h2>
+                  <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                    {locale === 'fr' ? 'Basées sur vos prospects inactifs' : 'Based on inactive prospects'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAiSuggestions(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  padding: '8px'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            {aiLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', gap: '16px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Loader2 size={24} style={{ color: '#EC4899', animation: 'spin 1s linear infinite' }} />
+                </div>
+                <p style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center' }}>
+                  {locale === 'fr' ? 'Analyse de vos prospects...' : 'Analyzing your prospects...'}
+                </p>
+              </div>
+            ) : aiSuggestions.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', gap: '12px' }}>
+                <Check size={32} style={{ color: 'var(--success)' }} />
+                <p style={{ color: 'var(--text)', fontSize: '15px', fontWeight: '500' }}>
+                  {locale === 'fr' ? 'Tout est à jour !' : 'All caught up!'}
+                </p>
+                <p style={{ color: 'var(--muted)', fontSize: '13px', textAlign: 'center' }}>
+                  {locale === 'fr' ? 'Aucun prospect inactif à relancer' : 'No inactive prospects to follow up'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {aiSuggestions.map((suggestion, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      background: 'var(--surface-2)',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      border: '1px solid var(--border)'
+                    }}
+                  >
+                    <div style={{ marginBottom: '8px' }}>
+                      <p style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text)', marginBottom: '4px' }}>
+                        {suggestion.task_title}
+                      </p>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                        {suggestion.prospect_name}
+                      </p>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '12px', fontStyle: 'italic' }}>
+                      {suggestion.reason}
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => acceptSuggestion(suggestion, index)}
+                        disabled={acceptingIndex === index}
+                        style={{
+                          flex: 1,
+                          height: '36px',
+                          background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        {acceptingIndex === index ? (
+                          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                        ) : (
+                          <>
+                            <Check size={16} />
+                            {locale === 'fr' ? 'Créer' : 'Create'}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== index))}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '10px',
+                          color: 'var(--muted)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add Task Modal */}
       {showAddTask && (
