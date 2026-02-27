@@ -28,7 +28,6 @@ const LoginPage = () => {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email, password })
       });
 
@@ -40,6 +39,11 @@ const LoginPage = () => {
       }
       
       const data = await response.json();
+      
+      // Store token immediately
+      if (data.token) {
+        localStorage.setItem('kolo_token', data.token);
+      }
       
       // Create clean user data with token
       const userData = {
