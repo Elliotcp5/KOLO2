@@ -1536,6 +1536,55 @@ const TasksTab = ({ onRefresh }) => {
     }
   };
 
+  // AI Suggestions functions
+  const fetchAiSuggestions = async () => {
+    setAiLoading(true);
+    setShowAiSuggestions(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/tasks/ai-suggestions`);
+      if (response.ok) {
+        const data = await response.json();
+        setAiSuggestions(data.suggestions || []);
+        if (data.suggestions?.length === 0) {
+          toast.info(data.message || (locale === 'fr' ? 'Aucune suggestion disponible' : 'No suggestions available'));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch AI suggestions:', error);
+      toast.error(locale === 'fr' ? 'Erreur lors de la récupération des suggestions' : 'Failed to get suggestions');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const acceptSuggestion = async (suggestion, index) => {
+    setAcceptingIndex(index);
+    try {
+      const response = await authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prospect_id: suggestion.prospect_id,
+          task_title: suggestion.task_title,
+          task_type: suggestion.task_type
+        })
+      });
+      
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'Tâche créée !' : 'Task created!');
+        // Remove accepted suggestion
+        setAiSuggestions(prev => prev.filter((_, i) => i !== index));
+        fetchData();
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to accept suggestion:', error);
+      toast.error(locale === 'fr' ? 'Erreur lors de la création' : 'Failed to create task');
+    } finally {
+      setAcceptingIndex(null);
+    }
+  };
+
   const getProspectName = (prospectId) => {
     const prospect = prospects.find(p => p.prospect_id === prospectId);
     return prospect ? prospect.full_name : null;
