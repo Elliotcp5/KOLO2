@@ -210,6 +210,11 @@ class CreateAccountRequest(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
 
+class RegisterRequest(BaseModel):
+    """Request for free trial registration (no payment required)"""
+    email: str
+    password: str
+
 class LoginRequest(BaseModel):
     email: str
     password: str
