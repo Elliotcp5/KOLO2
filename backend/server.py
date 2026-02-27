@@ -2227,28 +2227,10 @@ async def root():
 # Include the router in the main app
 app.include_router(api_router)
 
-# CORS configuration - must list explicit origins when using credentials
-ALLOWED_ORIGINS = [
-    "https://trykolo.io",
-    "https://www.trykolo.io",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
-# Add any additional origins from environment
-env_origins = os.environ.get('CORS_ORIGINS', '')
-if env_origins:
-    ALLOWED_ORIGINS.extend([o.strip() for o in env_origins.split(',') if o.strip()])
-
-# Also include the preview URL pattern
-import re
-preview_pattern = re.compile(r'https://.*\.preview\.emergentagent\.com')
-
+# CORS configuration - simplified since we don't use cookies anymore
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r'https://.*\.preview\.emergentagent\.com',
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
