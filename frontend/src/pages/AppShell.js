@@ -101,24 +101,39 @@ const TodayTab = ({ onOpenProfile }) => {
         </div>
       ) : subscriptionBlocked ? (
         <div className="empty-state">
-          <div className="icon-wrapper" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" style={{ width: '32px', height: '32px' }}>
+          <div className="icon-wrapper" style={{ 
+            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
+            border: '1px solid rgba(236, 72, 153, 0.3)'
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" strokeWidth="2" style={{ width: '32px', height: '32px' }}>
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#EC4899" />
+                  <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+              </defs>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
           </div>
-          <h3 className="title">{t('featuresLocked')}</h3>
+          <h3 className="title" style={{ 
+            background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            {locale === 'fr' ? 'Essai terminé' : 'Trial ended'}
+          </h3>
           <p className="subtitle" style={{ marginBottom: '24px' }}>
             {locale === 'fr' 
-              ? "Votre abonnement a expiré" 
-              : "Your subscription has expired"}
+              ? "Abonnez-vous pour continuer à utiliser toutes les fonctionnalités de KOLO" 
+              : "Subscribe to continue using all KOLO features"}
           </p>
           <button 
             className="btn-primary"
             onClick={() => navigate('/subscribe')}
             data-testid="subscribe-button"
           >
-            {t('subscribeToUnlock')}
+            {locale === 'fr' ? "S'abonner maintenant" : 'Subscribe now'}
           </button>
         </div>
       ) : tasks.length === 0 ? (
