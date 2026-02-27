@@ -32,10 +32,13 @@ const NewProspectPage = () => {
     setSaving(true);
 
     try {
+      const token = localStorage.getItem('kolo_token');
       const response = await fetch(`${API_URL}/api/prospects`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(formData),
       });
 
