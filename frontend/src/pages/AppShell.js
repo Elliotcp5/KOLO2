@@ -1441,13 +1441,19 @@ const SettingsTab = ({ onClose }) => {
 
 // ==================== TASKS TAB ====================
 const TasksTab = ({ onRefresh }) => {
-  const { t, formatDate } = useLocale();
+  const { t, formatDate, locale } = useLocale();
   const [tasks, setTasks] = useState([]);
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', dueDate: '', dueTime: '', prospectId: '' });
   const [creating, setCreating] = useState(false);
+  
+  // AI Suggestions state
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [acceptingIndex, setAcceptingIndex] = useState(null);
 
   const fetchData = async () => {
     try {
