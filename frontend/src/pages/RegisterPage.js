@@ -41,13 +41,14 @@ const RegisterPage = () => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
+        const data = await response.json();
         toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
         setLoading(false);
         return;
       }
+      
+      const data = await response.json();
       
       // Login with returned data
       login({
@@ -61,7 +62,8 @@ const RegisterPage = () => {
       toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
       window.location.href = '/app';
     } catch (err) {
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+      console.error('Registration error:', err);
+      toast.error(locale === 'fr' ? 'Erreur réseau. Vérifiez votre connexion.' : 'Network error. Check your connection.');
       setLoading(false);
     }
   };
