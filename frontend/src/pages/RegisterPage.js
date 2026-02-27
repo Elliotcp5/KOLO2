@@ -33,43 +33,61 @@ const RegisterPage = () => {
     
     setLoading(true);
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
+    // Use XMLHttpRequest for better compatibility
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/api/auth/register`, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          
+          // Store token immediately
+          if (data.token) {
+            localStorage.setItem('kolo_token', data.token);
+          }
+          
+          // Login with returned data
+          login({
+            user_id: data.user_id,
+            email: data.email,
+            subscription_status: data.subscription_status,
+            trial_ends_at: data.trial_ends_at,
+            token: data.token
+          });
+          
+          toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
+          window.location.href = '/app';
+        } catch (parseErr) {
+          console.error('Parse error:', parseErr);
+          toast.error(locale === 'fr' ? 'Erreur de réponse serveur' : 'Server response error');
+          setLoading(false);
+        }
+      } else {
+        try {
+          const errorData = JSON.parse(xhr.responseText);
+          toast.error(errorData.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
+        } catch {
+          toast.error(locale === 'fr' ? 'Erreur serveur' : 'Server error');
+        }
         setLoading(false);
-        return;
       }
-      
-      const data = await response.json();
-      
-      // Store token immediately
-      if (data.token) {
-        localStorage.setItem('kolo_token', data.token);
-      }
-      
-      // Login with returned data
-      login({
-        user_id: data.user_id,
-        email: data.email,
-        subscription_status: data.subscription_status,
-        trial_ends_at: data.trial_ends_at,
-        token: data.token
-      });
-      
-      toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
-      window.location.href = '/app';
-    } catch (err) {
-      console.error('Registration error:', err);
-      toast.error(locale === 'fr' ? 'Erreur réseau. Vérifiez votre connexion.' : 'Network error. Check your connection.');
+    };
+    
+    xhr.onerror = function() {
+      console.error('XHR error:', xhr.status, xhr.statusText);
+      toast.error(locale === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot reach server');
       setLoading(false);
-    }
+    };
+    
+    xhr.ontimeout = function() {
+      toast.error(locale === 'fr' ? 'Délai d\'attente dépassé' : 'Request timeout');
+      setLoading(false);
+    };
+    
+    xhr.timeout = 30000; // 30 seconds timeout
+    xhr.send(JSON.stringify({ email, password }));
   };
 
   return (
