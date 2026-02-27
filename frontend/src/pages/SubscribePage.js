@@ -1,7 +1,7 @@
-// v2.1.0 - Cache bust
+// v3.0.0 - Free trial without payment
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Check, Lock } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { ArrowLeft, CreditCard, Check, Lock, Sparkles } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
@@ -12,26 +12,23 @@ const SubscribePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t, formatPrice, country, locale } = useLocale();
-  const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Handle error messages from redirect
   useEffect(() => {
     const error = searchParams.get('error');
     if (error === 'already_subscribed') {
-      toast.error(t('alreadySubscribed'));
+      toast.error(locale === 'fr' ? 'Vous avez déjà un abonnement actif' : 'You already have an active subscription');
     } else if (error === 'payment_failed') {
-      toast.error(t('paymentFailed'));
+      toast.error(locale === 'fr' ? 'Le paiement a échoué' : 'Payment failed');
     }
-  }, [searchParams, t]);
+  }, [searchParams, locale]);
 
-  const handlePayment = (method) => {
+  const handlePayment = () => {
     if (loading) return;
-    
-    setSelectedMethod(method);
     setLoading(true);
 
-    // Direct navigation to server endpoint - works on ALL browsers
+    // Direct navigation to Stripe checkout
     const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
     window.location.href = checkoutUrl;
   };
@@ -53,7 +50,7 @@ const SubscribePage = () => {
 
         <div style={{ padding: '0 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {/* Logo */}
-          <div className="logo-placeholder" style={{ marginTop: '24px', marginBottom: '32px' }}>
+          <div className="logo-placeholder" style={{ marginTop: '24px', marginBottom: '24px' }}>
             <img 
               src={LOGO_URL} 
               alt="KOLO" 
@@ -63,100 +60,127 @@ const SubscribePage = () => {
           </div>
 
           {/* Title */}
-          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '8px' }}>
-            {t('subscribeToKolo')}
+          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '8px', fontSize: '26px' }}>
+            {locale === 'fr' ? 'Passez à KOLO Pro' : 'Upgrade to KOLO Pro'}
           </h1>
 
           <p className="text-body text-muted" style={{ textAlign: 'center', marginBottom: '32px' }}>
-            {t('startClosingDeals')}
+            {locale === 'fr' ? 'Débloquez toutes les fonctionnalités' : 'Unlock all features'}
           </p>
 
           {/* Plan card */}
-          <div className="plan-card" style={{ marginBottom: '32px' }}>
+          <div style={{ 
+            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+            border: '1px solid rgba(236, 72, 153, 0.2)',
+            borderRadius: '20px',
+            padding: '24px',
+            marginBottom: '24px'
+          }}>
             <div style={{ 
-              background: 'var(--accent)', 
+              background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
               color: 'white', 
-              padding: '4px 12px', 
-              borderRadius: '12px',
+              padding: '6px 14px', 
+              borderRadius: '20px',
               fontSize: '12px',
               fontWeight: '600',
               display: 'inline-block',
-              marginBottom: '12px'
+              marginBottom: '16px'
             }}>
-              {t('freeTrial')}
+              PRO
             </div>
-            <div className="plan-name">{t('monthlySubscription')}</div>
-            <div className="plan-price">{formatPrice()}</div>
+            <div style={{ fontSize: '15px', color: 'var(--text)', marginBottom: '8px', fontWeight: '500' }}>
+              {locale === 'fr' ? 'Abonnement mensuel' : 'Monthly subscription'}
+            </div>
             <div style={{ 
-              fontSize: '13px', 
-              color: 'var(--muted)', 
-              marginTop: '8px' 
+              fontSize: '36px', 
+              fontWeight: '700',
+              background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '8px'
             }}>
-              {t('freeTrialDesc')}
+              {formatPrice()}
+              <span style={{ fontSize: '16px', fontWeight: '400' }}> / {locale === 'fr' ? 'mois' : 'month'}</span>
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+              {locale === 'fr' ? 'Résiliable à tout moment' : 'Cancel anytime'}
             </div>
           </div>
 
-          {/* Payment method section */}
-          <h3 className="text-caption" style={{ marginBottom: '16px' }}>
-            {t('choosePaymentMethod')}
-          </h3>
-
-          {/* Payment methods */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-            <button 
-              type="button"
-              className={`payment-method-card ${selectedMethod === 'card' ? 'selected' : ''}`}
-              onClick={() => handlePayment('card')}
-              disabled={loading}
-              data-testid="payment-card"
-              style={{ textAlign: 'left', width: '100%' }}
-            >
-              <CreditCard className="icon" strokeWidth={1.5} />
-              <span className="label">{t('creditDebitCard')}</span>
-              {loading && selectedMethod === 'card' && <div className="spinner" style={{ width: '20px', height: '20px' }}></div>}
-            </button>
+          {/* Features */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+            {[
+              locale === 'fr' ? 'Prospects illimités' : 'Unlimited prospects',
+              locale === 'fr' ? 'Rappels intelligents' : 'Smart reminders',
+              locale === 'fr' ? 'Application mobile PWA' : 'Mobile PWA app',
+              locale === 'fr' ? 'Support prioritaire' : 'Priority support'
+            ].map((feature, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Check size={14} strokeWidth={2.5} style={{ color: '#EC4899' }} />
+                </div>
+                <span style={{ color: 'var(--text)', fontSize: '14px' }}>{feature}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Stripe security badge */}
+          {/* Subscribe button */}
+          <button 
+            className="btn-primary"
+            onClick={handlePayment}
+            disabled={loading}
+            data-testid="subscribe-button"
+            style={{ marginBottom: '16px' }}
+          >
+            {loading ? (
+              <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+            ) : (
+              <>
+                <CreditCard size={20} />
+                {locale === 'fr' ? "S'abonner maintenant" : 'Subscribe now'}
+              </>
+            )}
+          </button>
+
+          {/* Stripe badge */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
             gap: '8px',
-            marginBottom: '24px',
-            padding: '12px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '8px'
+            marginBottom: '24px'
           }}>
-            <Lock size={14} style={{ color: 'var(--muted)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
-              {t('securedByStripe')}
+            <Lock size={14} style={{ color: 'var(--muted-dark)' }} />
+            <span style={{ fontSize: '12px', color: 'var(--muted-dark)' }}>
+              {locale === 'fr' ? 'Paiement sécurisé par Stripe' : 'Secured by Stripe'}
             </span>
-            <svg width="40" height="17" viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path fillRule="evenodd" clipRule="evenodd" d="M60 12.5C60 5.59644 53.7312 0 46.0714 0H13.9286C6.26878 0 0 5.59644 0 12.5C0 19.4036 6.26878 25 13.9286 25H46.0714C53.7312 25 60 19.4036 60 12.5Z" fill="#635BFF"/>
-              <path fillRule="evenodd" clipRule="evenodd" d="M27.5147 10.3846C27.5147 9.73077 28.0588 9.46154 28.9412 9.46154C30.2206 9.46154 31.8382 9.88462 33.1176 10.5769V7.11538C31.7206 6.53846 30.3382 6.30769 28.9412 6.30769C25.8088 6.30769 23.7353 7.96154 23.7353 10.5769C23.7353 14.6538 29.4118 14.0385 29.4118 15.7692C29.4118 16.5385 28.7353 16.8077 27.7941 16.8077C26.3971 16.8077 24.6029 16.2308 23.1765 15.4615V18.9615C24.75 19.6538 26.3382 19.9615 27.7941 19.9615C31.0147 19.9615 33.2059 18.3462 33.2059 15.6923C33.1912 11.2692 27.5147 12.0385 27.5147 10.3846ZM38.5294 3.84615L34.8529 4.65385V7.5L38.5294 7.5V3.84615ZM34.8529 8.26923H38.5294V19.6538H34.8529V8.26923ZM44.1176 8.26923L43.8529 8.26923V6.30769L40.1765 7.11538V19.6538H43.8529V11.5385C44.75 10.3077 46.3235 10.5769 46.8235 10.7692V8.26923C46.3088 8.03846 44.5 7.61538 43.8529 8.26923H44.1176ZM51.1765 6.96154L47.5 7.76923V10.5769C48.2647 9.84615 49.4118 9.46154 50.7353 9.46154C53.5735 9.46154 55.1912 11.3462 55.1912 14.1538C55.1912 17.5 53.1029 19.9615 50.0882 19.9615C48.7941 19.9615 47.6765 19.5385 46.8235 18.6538V19.6538H43.1471V7.76923L46.8235 6.96154V9.15385C47.5588 8.46154 48.6176 8.03846 49.8529 8.03846C50.3382 8.03846 50.7794 8.11538 51.1765 8.26923V6.96154ZM50.3235 17.0769C51.5 17.0769 52.3971 16.0385 52.3971 14.6154C52.3971 13.1923 51.5 12.1154 50.3235 12.1154C49.1471 12.1154 48.25 13.1923 48.25 14.6154C48.25 16.0385 49.1471 17.0769 50.3235 17.0769Z" fill="white"/>
-            </svg>
           </div>
 
-          {/* Feature lines */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '40px' }}>
-            <div className="check-row">
-              <Check strokeWidth={2} />
-              <span>{t('unlimitedLeads')}</span>
-            </div>
-            <div className="check-row">
-              <Check strokeWidth={2} />
-              <span>{t('smartReminders')}</span>
-            </div>
-            <div className="check-row">
-              <Check strokeWidth={2} />
-              <span>{t('mobileApp')}</span>
-            </div>
-            <div className="check-row">
-              <Check strokeWidth={2} />
-              <span>{t('noCommitment')}</span>
-            </div>
-          </div>
+          {/* Free trial link */}
+          <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '14px', marginTop: 'auto', paddingBottom: '24px' }}>
+            {locale === 'fr' ? 'Pas encore prêt ?' : 'Not ready yet?'}{' '}
+            <Link 
+              to="/register" 
+              style={{ 
+                background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: '500',
+                textDecoration: 'none'
+              }}
+            >
+              {locale === 'fr' ? 'Essai gratuit 7 jours' : '7-day free trial'}
+            </Link>
+          </p>
         </div>
       </div>
     </div>
