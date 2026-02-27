@@ -1337,6 +1337,76 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
+# Free Trial Registration (no payment required)
+@api_router.post("/auth/register")
+async def register_free_trial(request: RegisterRequest, response: Response):
+    """Register for free 7-day trial without payment"""
+    logger.info(f"Free trial registration attempt for: {request.email}")
+    
+    # Validate email format
+    if not request.email or '@' not in request.email:
+        raise HTTPException(status_code=400, detail="Email invalide")
+    
+    # Validate password
+    if not request.password or len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    
+    # Check if email already exists
+    existing_user = await db.users.find_one({"email": request.email.lower().strip()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
+    
+    # Calculate trial end date (7 days from now)
+    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    # Create user with trialing status
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    user_doc = {
+        "user_id": user_id,
+        "email": request.email.lower().strip(),
+        "auth_provider": "email",
+        "password_hash": hash_password(request.password),
+        "subscription_status": "trialing",
+        "trial_ends_at": trial_ends_at.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    logger.info(f"Free trial account created for {request.email}, trial ends: {trial_ends_at}")
+    
+    # Create session
+    session_token = f"sess_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    user_session = UserSession(
+        user_id=user_id,
+        session_token=session_token,
+        expires_at=expires_at
+    )
+    session_doc = user_session.model_dump()
+    session_doc['expires_at'] = session_doc['expires_at'].isoformat()
+    session_doc['created_at'] = session_doc['created_at'].isoformat()
+    await db.user_sessions.insert_one(session_doc)
+    
+    # Set cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60
+    )
+    
+    return {
+        "user_id": user_id,
+        "email": request.email.lower().strip(),
+        "subscription_status": "trialing",
+        "trial_ends_at": trial_ends_at.isoformat(),
+        "token": session_token
+    }
+
 # Email/Password Login
 @api_router.post("/auth/login")
 async def login_with_password(request: LoginRequest, response: Response):
