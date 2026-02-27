@@ -14,7 +14,7 @@ const authFetch = (url, options = {}) => {
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
-  return fetch(url, { ...options, credentials: 'include', headers });
+  return fetch(url, { ...options, headers });
 };
 
 // ==================== TODAY TAB ====================
