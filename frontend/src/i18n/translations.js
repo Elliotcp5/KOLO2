@@ -10,7 +10,7 @@ const translations = {
     feature2Title: "Active Prospects",
     feature2Desc: "Every buyer and seller to close.",
     feature3Title: "Smart Reminders",
-    feature3Desc: "AI-powered suggestions to optimize your opportunities and never miss a follow-up.",
+    feature3Desc: "AI suggests actions to maximize your opportunities.",
     madeBy: "Made by real estate agents for real estate agents",
     startButton: "Start",
     cancelAnytime: "Cancel anytime",
