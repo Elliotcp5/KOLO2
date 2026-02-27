@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -17,9 +17,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showRecover, setShowRecover] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
     if (!email || !password) return;
     
     setLoading(true);
@@ -35,10 +35,7 @@ const LoginPage = () => {
       const data = await response.json();
       
       if (!response.ok) {
-        const errorMsg = data.detail || 'Login failed';
-        toast.error(locale === 'fr' && errorMsg === 'Invalid email or password' 
-          ? 'Email ou mot de passe incorrect' 
-          : errorMsg);
+        toast.error(data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
         setLoading(false);
         return;
       }
@@ -48,66 +45,14 @@ const LoginPage = () => {
         user_id: data.user_id,
         email: data.email,
         subscription_status: data.subscription_status,
-        token: data.token  // Include token for localStorage storage
+        trial_ends_at: data.trial_ends_at,
+        token: data.token
       };
       login(userData);
       
-      // Use window.location for more reliable redirect
       window.location.href = '/app';
     } catch (err) {
-      // Safely handle error without cloning issues
-      const errorMsg = err && typeof err === 'object' && 'message' in err 
-        ? String(err.message) 
-        : 'Connection error';
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : errorMsg);
-      setLoading(false);
-    }
-  };
-
-  const handleRecover = async () => {
-    if (!email || !password) return;
-    
-    if (password.length < 6) {
-      toast.error(locale === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters');
-      return;
-    }
-    
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/api/auth/recover`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        const errorMsg = data.detail || 'Recovery failed';
-        toast.error(locale === 'fr' ? 'Impossible de récupérer le compte' : errorMsg);
-        setLoading(false);
-        return;
-      }
-      
-      // Create clean user data with token
-      const userData = {
-        user_id: data.user_id,
-        email: data.email,
-        subscription_status: data.subscription_status,
-        token: data.token  // Include token for localStorage storage
-      };
-      login(userData);
-      toast.success(locale === 'fr' ? 'Compte récupéré!' : 'Account recovered!');
-      
-      // Use window.location for more reliable redirect
-      window.location.href = '/app';
-    } catch (err) {
-      const errorMsg = err && typeof err === 'object' && 'message' in err 
-        ? String(err.message) 
-        : 'Connection error';
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : errorMsg);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
       setLoading(false);
     }
   };
@@ -139,113 +84,131 @@ const LoginPage = () => {
           </div>
 
           {/* Title */}
-          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '32px' }}>
-            {showRecover 
-              ? (locale === 'fr' ? 'Récupérer mon compte' : 'Recover my account')
-              : t('welcomeBack')
-            }
+          <h1 className="text-title" style={{ textAlign: 'center', marginBottom: '8px', fontSize: '26px' }}>
+            {t('welcomeBack')}
           </h1>
+          
+          <p className="text-body text-muted" style={{ textAlign: 'center', marginBottom: '32px' }}>
+            {locale === 'fr' ? 'Connectez-vous à votre compte' : 'Sign in to your account'}
+          </p>
 
-          {showRecover && (
-            <p className="text-body text-muted" style={{ textAlign: 'center', marginBottom: '24px' }}>
-              {locale === 'fr' 
-                ? 'Entrez l\'email utilisé lors du paiement et créez un mot de passe'
-                : 'Enter the email used for payment and create a password'
-              }
-            </p>
-          )}
+          <form onSubmit={handleLogin}>
+            {/* Email input */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <Mail 
+                size={20} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '20px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'var(--muted-dark)'
+                }} 
+              />
+              <input
+                type="email"
+                className="input-dark"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ paddingLeft: '52px' }}
+                data-testid="email-input"
+                autoComplete="email"
+              />
+            </div>
 
-          {/* Email input */}
-          <input
-            type="email"
-            className="input-dark"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ marginBottom: '16px' }}
-            data-testid="email-input"
-          />
+            {/* Password input */}
+            <div style={{ position: 'relative', marginBottom: '12px' }}>
+              <Lock 
+                size={20} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '20px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'var(--muted-dark)'
+                }} 
+              />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Mot de passe' : 'Password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingLeft: '52px', paddingRight: '52px' }}
+                data-testid="password-input"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
 
-          {/* Password input */}
-          <div style={{ position: 'relative', marginBottom: '24px' }}>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              className="input-dark"
-              placeholder={showRecover 
-                ? (locale === 'fr' ? 'Nouveau mot de passe' : 'New password')
-                : (locale === 'fr' ? 'Mot de passe' : 'Password')
-              }
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ paddingRight: '48px' }}
-              data-testid="password-input"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: 'absolute',
-                right: '16px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted)',
-                cursor: 'pointer',
-                padding: '4px'
-              }}
+            {/* Forgot Password link */}
+            <div style={{ textAlign: 'right', marginBottom: '24px' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                style={{ 
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)', 
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                data-testid="forgot-password-link"
+              >
+                {locale === 'fr' ? 'Mot de passe oublié ?' : 'Forgot password?'}
+              </button>
+            </div>
+
+            {/* Login Button */}
+            <button 
+              type="submit"
+              className="btn-primary"
+              disabled={!email || !password || loading}
+              data-testid="signin-button"
+              style={{ marginBottom: '24px' }}
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {loading ? (
+                <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+              ) : (
+                t('signIn')
+              )}
             </button>
-          </div>
+          </form>
 
-          {/* Main Button */}
-          <button 
-            className="btn-primary"
-            onClick={showRecover ? handleRecover : handleLogin}
-            disabled={!email || !password || loading}
-            data-testid="signin-button"
-            style={{ marginBottom: '12px' }}
-          >
-            {loading ? (
-              <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-            ) : showRecover ? (
-              locale === 'fr' ? 'Récupérer mon compte' : 'Recover my account'
-            ) : (
-              t('signIn')
-            )}
-          </button>
-
-          {/* Forgot Password link */}
-          {!showRecover && (
-            <button
-              className="btn-ghost"
-              onClick={() => navigate('/forgot-password')}
+          {/* Register link */}
+          <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+            {locale === 'fr' ? 'Pas encore de compte ?' : 'Don\'t have an account?'}{' '}
+            <Link 
+              to="/register" 
               style={{ 
-                color: 'var(--muted)', 
-                fontSize: '13px',
-                marginBottom: '16px'
+                background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: '500',
+                textDecoration: 'none'
               }}
-              data-testid="forgot-password-link"
             >
-              {locale === 'fr' ? 'Mot de passe oublié ?' : 'Forgot password?'}
-            </button>
-          )}
-
-          {/* Subscribe link */}
-          <div style={{ marginTop: 'auto', paddingBottom: '40px', textAlign: 'center' }}>
-            <p className="text-small text-muted" style={{ marginBottom: '8px' }}>
-              {locale === 'fr' ? 'Pas encore de compte?' : 'Don\'t have an account?'}
-            </p>
-            <button
-              className="btn-ghost"
-              onClick={() => navigate('/subscribe')}
-              style={{ color: 'var(--accent)' }}
-              data-testid="go-to-subscribe"
-            >
-              {locale === 'fr' ? 'S\'abonner' : 'Subscribe'}
-            </button>
-          </div>
+              {locale === 'fr' ? 'Créer un compte' : 'Create account'}
+            </Link>
+          </p>
         </div>
       </div>
     </div>
