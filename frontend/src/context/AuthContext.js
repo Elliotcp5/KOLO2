@@ -32,10 +32,17 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
+    const token = localStorage.getItem('kolo_token');
+    if (!token) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (response.ok) {
@@ -43,13 +50,11 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
-        // Clear token if auth fails
         localStorage.removeItem('kolo_token');
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (e) {
-      // Silent fail - just reset auth state
       localStorage.removeItem('kolo_token');
       setUser(null);
       setIsAuthenticated(false);
