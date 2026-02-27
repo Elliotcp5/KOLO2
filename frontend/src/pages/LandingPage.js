@@ -141,7 +141,7 @@ const LandingPage = () => {
           {/* CTA Button */}
           <button 
             className="btn-primary"
-            onClick={() => navigate('/subscribe')}
+            onClick={() => navigate('/register')}
             data-testid="start-button"
             style={{ marginBottom: '16px' }}
           >
@@ -150,10 +150,10 @@ const LandingPage = () => {
           </button>
 
           {/* Price info */}
-          <p className="text-small" style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <p className="text-small" style={{ textAlign: 'center', marginBottom: '40px', color: 'var(--muted)' }}>
             {locale === 'fr' 
-              ? `Puis ${formatPrice()} / mois, résiliable à tout moment`
-              : `Then ${formatPrice()} / month, cancel anytime`
+              ? `7 jours gratuits, puis ${formatPrice()} / mois`
+              : `7 days free, then ${formatPrice()} / month`
             }
           </p>
         </div>
