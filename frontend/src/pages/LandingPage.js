@@ -145,15 +145,15 @@ const LandingPage = () => {
             data-testid="start-button"
             style={{ marginBottom: '16px' }}
           >
-            {t('startFreeTrial')}
+            {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
             <ArrowRight size={20} strokeWidth={2} />
           </button>
 
           {/* Price info */}
           <p className="text-small" style={{ textAlign: 'center', marginBottom: '40px', color: 'var(--muted)' }}>
             {locale === 'fr' 
-              ? `7 jours gratuits, puis ${formatPrice()} / mois`
-              : `7 days free, then ${formatPrice()} / month`
+              ? `7 jours gratuits, sans carte bancaire`
+              : `7 days free, no credit card required`
             }
           </p>
         </div>
