@@ -1914,12 +1914,21 @@ Suggère une action de suivi appropriée pour chaque prospect. Sois concis et ac
         
         # Parse JSON response
         import json
-        # Clean response if needed
+        import re
+        
+        # Clean response - remove markdown code blocks
         response_clean = response.strip()
-        if response_clean.startswith("```"):
-            response_clean = response_clean.split("```")[1]
-            if response_clean.startswith("json"):
-                response_clean = response_clean[4:]
+        
+        # Remove ```json ... ``` or ``` ... ```
+        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_clean)
+        if json_match:
+            response_clean = json_match.group(1).strip()
+        
+        # Also try to find JSON object directly
+        if not response_clean.startswith('{'):
+            json_obj_match = re.search(r'\{[\s\S]*\}', response_clean)
+            if json_obj_match:
+                response_clean = json_obj_match.group(0)
         
         suggestions_data = json.loads(response_clean)
         
