@@ -1,16 +1,52 @@
 // KOLO Service Worker for Push Notifications
-const CACHE_NAME = 'kolo-v1';
+// Version 2 - with explicit no-cache for API calls
+const CACHE_VERSION = 'kolo-v2';
 
-// Install event
+// Install event - force update
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing');
+  console.log('Service Worker v2 installing');
   self.skipWaiting();
 });
 
-// Activate event
+// Activate event - clear old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activated');
-  event.waitUntil(clients.claim());
+  console.log('Service Worker v2 activated');
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_VERSION)
+          .map(name => {
+            console.log('Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      );
+    }).then(() => clients.claim())
+  );
+});
+
+// Fetch event - NEVER cache API calls
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Never cache API calls - always go to network
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request, {
+        credentials: 'include',
+        cache: 'no-store'
+      })
+    );
+    return;
+  }
+  
+  // For other requests, use network-first strategy
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      // Only return cached response if network fails
+      return caches.match(event.request);
+    })
+  );
 });
 
 // Push event - handle incoming push notifications
