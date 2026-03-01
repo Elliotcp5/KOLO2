@@ -732,7 +732,147 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           <X size={24} strokeWidth={1.5} />
         </button>
         <h1 className="text-title" style={{ flex: 1 }}>{prospectData.full_name}</h1>
+        <button 
+          onClick={() => setShowEditModal(true)}
+          style={{ 
+            background: 'var(--surface-2)', 
+            border: '1px solid var(--border)', 
+            color: 'var(--text)', 
+            cursor: 'pointer',
+            padding: '8px 16px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+          data-testid="edit-prospect-button"
+        >
+          {locale === 'fr' ? 'Modifier' : 'Edit'}
+        </button>
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '16px'
+        }} onClick={() => setShowEditModal(false)}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600' }}>
+                {locale === 'fr' ? 'Modifier le prospect' : 'Edit prospect'}
+              </h2>
+              <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                  {locale === 'fr' ? 'Nom complet' : 'Full name'} *
+                </label>
+                <input
+                  type="text"
+                  className="input-dark"
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  data-testid="edit-fullname"
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                  {locale === 'fr' ? 'Téléphone' : 'Phone'}
+                </label>
+                <input
+                  type="tel"
+                  className="input-dark"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                  data-testid="edit-phone"
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  className="input-dark"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                  data-testid="edit-email"
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                  Source
+                </label>
+                <select
+                  className="input-dark"
+                  value={editForm.source}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, source: e.target.value }))}
+                  data-testid="edit-source"
+                >
+                  <option value="leboncoin">Leboncoin</option>
+                  <option value="seloger">SeLoger</option>
+                  <option value="pap">PAP</option>
+                  <option value="referral">{locale === 'fr' ? 'Recommandation' : 'Referral'}</option>
+                  <option value="website">{locale === 'fr' ? 'Site web' : 'Website'}</option>
+                  <option value="other">{locale === 'fr' ? 'Autre' : 'Other'}</option>
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                  Notes
+                </label>
+                <textarea
+                  className="input-dark"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                  style={{ resize: 'none' }}
+                  data-testid="edit-notes"
+                />
+              </div>
+              
+              <button
+                className="btn-primary"
+                onClick={handleEditSubmit}
+                disabled={editLoading}
+                data-testid="save-edit-button"
+                style={{ marginTop: '8px' }}
+              >
+                {editLoading ? (
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                ) : (
+                  locale === 'fr' ? 'Enregistrer' : 'Save'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
