@@ -2,140 +2,148 @@
 
 ## Problème Original
 Application CRM mobile-first PWA pour agents immobiliers avec:
-- UI dark mode style iOS avec accents violets
+- UI dark mode style iOS avec accents gradient rose-violet
 - Localisation FR/EN automatique
 - Prix régional (9.99 EUR/GBP/USD)
-- Authentification email/password avec système dual (Cookie + Bearer Token)
-- Abonnement Stripe requis pour créer un compte
+- Authentification email/password avec Bearer Token (localStorage)
+- **Essai gratuit 7 jours SANS carte bancaire** (nouveau modèle)
 - Gestion prospects et tâches avec suivi automatique
 - Notifications push pour rappels quotidiens
+- Suggestions de tâches IA (Claude)
 
 ## Architecture
 ```
 /app/
 ├── backend/          # FastAPI + MongoDB
 │   ├── server.py     # API principale + scheduler intégré
-│   ├── notification_scheduler.py  # Logique notifications
 │   ├── tests/        # Tests pytest
 │   └── .env          # Config (Stripe, VAPID keys)
 └── frontend/         # React PWA
-    ├── src/pages/    # Landing, Login, Subscribe, AppShell
+    ├── src/pages/    # Landing, Login, Register, Subscribe, AppShell
     ├── src/components/  # PWAGuide, NotificationPrompt
-    └── public/       # manifest.json, sw.js
+    ├── src/context/  # AuthContext, LocaleContext
+    └── public/       # manifest.json, sw.js (v2 - no API cache)
 ```
 
-## Système d'Authentification Dual (Cookie + Bearer Token)
-**Implémenté le 17 février 2026**
+## Système d'Authentification Bearer Token
+**Mis à jour le 1er mars 2026**
 
-Le système accepte l'authentification via:
-1. **Cookie HTTP-Only** (traditionnel, via `credentials: 'include'`)
-2. **Bearer Token** (stocké dans `localStorage`, envoyé dans l'en-tête `Authorization`)
-
-### Pourquoi ce système?
-- Résout les problèmes de cookies cross-domain en production
-- Compatible avec tous les navigateurs et environnements
-- Fallback automatique si les cookies sont bloqués
+Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`:
+- Token retourné par `/api/auth/register` et `/api/auth/login`
+- Stocké dans `localStorage` sous la clé `kolo_token`
+- Envoyé dans l'en-tête `Authorization: Bearer {token}`
 
 ### Fichiers clés:
-- `/app/backend/server.py` - `get_user_from_session()` accepte Cookie OU Bearer token (lignes 221-257)
+- `/app/backend/server.py` - `get_user_from_session()` accepte Bearer token (lignes 240-276)
 - `/app/frontend/src/pages/AppShell.js` - `authFetch` helper ajoute le Bearer token
-- `/app/frontend/src/context/AuthContext.js` - `login()` stocke le token dans localStorage
+- `/app/frontend/src/context/AuthContext.js` - `login()` stocke le token
 
 ## Fonctionnalités Implémentées
 - [x] Landing page avec pricing régional
-- [x] **Essai gratuit 3 jours** - Badge sur landing page et page d'abonnement
+- [x] **Essai gratuit 7 jours sans carte bancaire** - Inscription via /register
 - [x] Meta tags et titres optimisés pour le partage
 - [x] Page FAQ avec questions déroulantes
-- [x] Auth Email/Password avec JWT + système dual Cookie/Bearer Token
-- [x] Flow abonnement Stripe avec période d'essai 3 jours
+- [x] Auth Email/Password avec Bearer Token
+- [x] Flow abonnement Stripe (post-trial)
 - [x] Création compte post-paiement
 - [x] Récupération de compte pour utilisateurs ayant payé sans finaliser
 - [x] App 3 onglets (Today, Prospects, Tasks)
-- [x] CRUD Prospects complet avec boutons chip stylés
+- [x] **CRUD Prospects complet avec édition via modal**
 - [x] Double confirmation pour statuts "Gagné"/"Perdu"
 - [x] Prospects gagnés/perdus disparaissent de la liste
 - [x] Email obligatoire pour création de prospect
 - [x] Gestion tâches (manuelles + auto-générées)
+- [x] **Suggestions de tâches IA** (Claude via emergentintegrations)
 - [x] Création de tâches avec date et heure optionnelle
 - [x] Liaison tâche-prospect via dropdown
-- [x] Couleurs des tâches:
-  - Vert: terminée
-  - Orange: en retard 1-2 jours
-  - Rouge: en retard > 2 jours
-  - Blanc: aujourd'hui ou future
+- [x] Couleurs des tâches (vert/orange/rouge/blanc selon statut)
 - [x] Complétion tâches depuis Today tab (disparition immédiate)
 - [x] Complétion tâches depuis Tasks tab (vert + barré)
 - [x] Génération auto tâches suivi (prospects inactifs >7j)
-- [x] Tâches auto-générées visibles dans l'onglet "Today"
-- [x] Date/heure affichées sur les cartes de tâches "Today"
 - [x] PWA manifest + guide installation écran d'accueil
 - [x] Notifications push avec permission utilisateur
-- [x] VAPID keys corrigées - notifications push fonctionnelles
-- [x] Toggle notifications dans Settings > À propos
+- [x] Toggle notifications dans Settings
 - [x] Scheduler automatisé (intégré backend, 8h UTC)
 - [x] Localisation FR/EN complète
 - [x] Protection double facturation (vérifie email avant paiement)
-- [x] Mot de passe oublié / Récupération de mot de passe
+- [x] Mot de passe oublié / Récupération de mot de passe (MOCKED - console only)
 - [x] Changement de mot de passe depuis les paramètres
-- [x] Portail Stripe Customer pour gestion facturation
-- [x] **UI Modals ergonomiques** - Icône 'X' en haut à droite + bouton 'Save' en bas
-- [x] **Résiliation abonnement** - Option dans les paramètres utilisateur
-- [x] **Blocage fonctionnalités** - Message "S'abonner" quand abonnement expiré
+- [x] **Portail Stripe Customer pour gestion facturation** (crée client Stripe auto si nécessaire)
+- [x] UI Modals ergonomiques avec gradient rose-violet
+- [x] Résiliation abonnement dans les paramètres
+- [x] Blocage fonctionnalités quand essai expiré (message "S'abonner")
+- [x] **Service Worker v2** - Ne cache jamais les appels /api/
 
 ## Endpoints Clés
+### Authentification
+- `POST /api/auth/register` - Inscription essai gratuit 7 jours, retourne `token`
 - `POST /api/auth/login` - Connexion email/password, retourne `token`
-- `POST /api/auth/create-account` - Création compte post-paiement, retourne `token`
-- `POST /api/auth/recover` - Récupération compte pour utilisateurs ayant payé, retourne `token`
-- `POST /api/auth/forgot-password` - Envoi email récupération mot de passe
-- `POST /api/auth/reset-password` - Réinitialisation mot de passe avec token
-- `POST /api/auth/change-password` - Changement mot de passe (utilisateur connecté)
-- `GET /api/auth/me` - Vérification auth (accepte Cookie OU Bearer token)
+- `POST /api/auth/create-account` - Création compte post-paiement Stripe
+- `POST /api/auth/recover` - Récupération compte pour utilisateurs ayant payé
+- `POST /api/auth/forgot-password` - Envoi email récupération (MOCKED)
+- `POST /api/auth/reset-password` - Réinitialisation mot de passe
+- `POST /api/auth/change-password` - Changement mot de passe
+- `GET /api/auth/me` - Vérification auth
+
+### Facturation
 - `GET /api/payments/checkout-redirect` - Redirection Stripe
-- `POST /api/billing/portal` - Génère URL portail client Stripe
+- `POST /api/billing/portal` - Génère URL portail client Stripe (crée customer si nécessaire)
+- `GET /api/subscription/status` - Statut abonnement détaillé
+- `POST /api/subscription/cancel` - Annulation fin de période
+- `POST /api/subscription/reactivate` - Réactivation abonnement
+
+### Tâches
 - `GET /api/tasks/today` - Tâches du jour + en retard
 - `GET /api/tasks` - Toutes les tâches
-- `POST /api/tasks` - Création tâche (avec date/heure/prospect optionnel)
-- `POST /api/tasks/{id}/complete` - Marquer tâche terminée
-- `GET /api/prospects` - Liste prospects actifs (exclut closed/lost)
-- `POST /api/prospects` - Création prospect (email obligatoire)
-- `PUT /api/prospects/{id}` - Mise à jour statut prospect
+- `POST /api/tasks` - Création tâche
+- `POST /api/tasks/{id}/complete` - Marquer terminée
+- `GET /api/tasks/ai-suggestions` - Suggestions IA (Claude)
+
+### Prospects
+- `GET /api/prospects` - Liste prospects actifs
+- `POST /api/prospects` - Création prospect
+- `GET /api/prospects/{id}` - Détail prospect avec tâches
+- `PUT /api/prospects/{id}` - Mise à jour prospect
+- `DELETE /api/prospects/{id}` - Suppression prospect
 
 ## Schéma DB (MongoDB)
-- **users**: user_id, email, password_hash, subscription_status
-- **prospects**: prospect_id, user_id, full_name, status, last_activity_date
+- **users**: user_id, email, password_hash, subscription_status (none/trialing/active/expired/canceled), trial_ends_at, stripe_customer_id, subscription_id
+- **prospects**: prospect_id, user_id, full_name, phone, email, source, status, notes, last_activity_date
 - **tasks**: task_id, prospect_id, due_date, completed, completed_at, auto_generated
 - **push_subscriptions**: user_id, subscription (endpoint, keys)
 - **payment_success**: email, session_id, created_at
 - **user_sessions**: session_id, user_id, session_token, expires_at
 
 ## Tests
-- Backend: 20/20 tests passés (pytest) - Authentification dual + Feature verification
-- Frontend: Tous les flows critiques vérifiés via Playwright
+- Backend: 100% tests passés (14/14 tests pytest)
+- Frontend: 100% flows vérifiés via Playwright
 - Fichiers: 
-  - /app/backend/tests/test_kolo_crm.py
-  - /app/backend/tests/test_bearer_auth.py
-  - /app/backend/tests/test_feature_verification.py
-  - /app/test_reports/iteration_5.json
+  - /app/backend/tests/test_kolo_features.py
+  - /app/test_reports/iteration_7.json
 
-## Credentials de Test
-- Email: pressardelliot@gmail.com / Password: Test123
-- Email: pressardparis@gmail.com / Password: Test123
+## État Actuel (1er mars 2026)
+**P0 & P1 COMPLETS et TESTÉS**
 
-## État Actuel
-**P0: Modifications UI modals COMPLÈTES et TESTÉES** (18 février 2026)
-- Modals "Add Task" et "Add Prospect" avec ergonomie améliorée
-- Icône 'X' en haut à droite pour fermer
-- Bouton 'Save' en bas du modal
-- Tous les tests passés à 100%
+### Résolu dans cette session:
+1. ✅ Bug "erreur réseau" - Service Worker v2 ne cache plus les appels API
+2. ✅ Inscription simplifiée avec fetch + headers no-cache
+3. ✅ Édition des prospects via modal fonctionnelle
+4. ✅ Portail de facturation Stripe créé automatiquement pour utilisateurs trial
 
 ## Backlog
 ### P1 - Prioritaire
+- [ ] **Email "Mot de passe oublié"** - Intégrer un service d'email (Resend)
 - [ ] Déploiement final en production
 
 ### P2 - À faire
-- [ ] Tester la double facturation (même email, même mois) - logique backend ajoutée
-- [ ] Supprimer la création automatique des comptes hardcodés au démarrage (pressardelliot@gmail.com, pressardparis@gmail.com)
-- [ ] Refactoriser server.py en modules (routers/, models/, services/)
+- [ ] Refactoriser server.py en modules (routes/auth.py, routes/prospects.py, etc.)
+- [ ] Vérifier les notifications push en production
+- [ ] Tester la double facturation (même email, même mois)
+
+### P3 - Backlog
+- [ ] Export des prospects en CSV
+- [ ] Statistiques de conversion
+- [ ] Intégration calendrier
 
 ## Date Dernière Mise à Jour
-18 février 2026
+1er mars 2026
