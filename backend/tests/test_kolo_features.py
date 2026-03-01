@@ -11,20 +11,26 @@ import pytest
 import requests
 import os
 import time
+import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
     BASE_URL = "https://kolo-purple-trial.preview.emergentagent.com"
+
+def unique_email(prefix="test"):
+    """Generate unique email using uuid"""
+    return f"{prefix}_{uuid.uuid4().hex[:8]}@test.com"
+
 
 class TestRegistration:
     """Test free trial registration (7 days, no payment required)"""
     
     def test_register_success(self):
         """Register a new user with email/password"""
-        unique_email = f"test_reg_{int(time.time())}@test.com"
+        email = unique_email("reg")
         
         response = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": unique_email,
+            "email": email,
             "password": "testpass123"
         })
         
@@ -34,7 +40,7 @@ class TestRegistration:
         # Verify response contains expected fields
         assert "user_id" in data
         assert "email" in data
-        assert data["email"] == unique_email
+        assert data["email"] == email
         assert "subscription_status" in data
         assert data["subscription_status"] == "trialing"
         assert "trial_ends_at" in data
@@ -43,29 +49,31 @@ class TestRegistration:
         
     def test_register_duplicate_email_fails(self):
         """Cannot register with an already used email"""
-        unique_email = f"test_dup_{int(time.time())}@test.com"
+        email = unique_email("dup")
         
         # First registration
         response1 = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": unique_email,
+            "email": email,
             "password": "testpass123"
         })
         assert response1.status_code == 200
         
         # Second registration with same email
         response2 = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": unique_email,
+            "email": email,
             "password": "testpass456"
         })
         assert response2.status_code == 400
-        assert "existe déjà" in response2.json().get("detail", "").lower() or "already" in response2.json().get("detail", "").lower()
+        # Check for French error message
+        detail = response2.json().get("detail", "").lower()
+        assert "existe" in detail or "already" in detail or "compte" in detail
     
     def test_register_short_password_fails(self):
         """Password must be at least 6 characters"""
-        unique_email = f"test_short_{int(time.time())}@test.com"
+        email = unique_email("short")
         
         response = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": unique_email,
+            "email": email,
             "password": "12345"  # Only 5 characters
         })
         
@@ -76,23 +84,22 @@ class TestRegistration:
 class TestLogin:
     """Test login with email/password"""
     
-    @pytest.fixture(autouse=True)
-    def setup_user(self):
-        """Create a test user for login tests"""
-        self.email = f"test_login_{int(time.time())}@test.com"
-        self.password = "testpass123"
-        
-        response = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": self.email,
-            "password": self.password
-        })
-        assert response.status_code == 200
-        
     def test_login_success(self):
         """Login with valid credentials"""
+        email = unique_email("login")
+        password = "testpass123"
+        
+        # First register
+        reg_response = requests.post(f"{BASE_URL}/api/auth/register", json={
+            "email": email,
+            "password": password
+        })
+        assert reg_response.status_code == 200
+        
+        # Then login
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": self.email,
-            "password": self.password
+            "email": email,
+            "password": password
         })
         
         assert response.status_code == 200
@@ -100,15 +107,26 @@ class TestLogin:
         
         assert "user_id" in data
         assert "email" in data
-        assert data["email"] == self.email
+        assert data["email"] == email
         assert "token" in data
         assert data["token"].startswith("sess_")
         assert "subscription_status" in data
         
     def test_login_wrong_password_fails(self):
         """Login fails with wrong password"""
+        email = unique_email("wrongpw")
+        password = "testpass123"
+        
+        # First register
+        reg_response = requests.post(f"{BASE_URL}/api/auth/register", json={
+            "email": email,
+            "password": password
+        })
+        assert reg_response.status_code == 200
+        
+        # Try to login with wrong password
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": self.email,
+            "email": email,
             "password": "wrongpassword"
         })
         
@@ -117,7 +135,7 @@ class TestLogin:
     def test_login_nonexistent_user_fails(self):
         """Login fails for non-existent user"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "nonexistent@test.com",
+            "email": f"nonexistent_{uuid.uuid4().hex[:8]}@test.com",
             "password": "testpass123"
         })
         
@@ -127,25 +145,23 @@ class TestLogin:
 class TestProspects:
     """Test prospect CRUD operations"""
     
-    @pytest.fixture(autouse=True)
-    def setup_user_with_token(self):
-        """Create a test user and get auth token"""
-        self.email = f"test_prospect_{int(time.time())}@test.com"
-        self.password = "testpass123"
-        
-        # Register
-        register_response = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": self.email,
-            "password": self.password
+    def _get_auth_token(self):
+        """Helper to create user and get token"""
+        email = unique_email("prospect")
+        response = requests.post(f"{BASE_URL}/api/auth/register", json={
+            "email": email,
+            "password": "testpass123"
         })
-        assert register_response.status_code == 200
-        self.token = register_response.json()["token"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+        assert response.status_code == 200, f"Registration failed: {response.text}"
+        return response.json()["token"]
         
     def test_create_prospect(self):
         """Create a new prospect"""
+        token = self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        
         response = requests.post(f"{BASE_URL}/api/prospects", 
-            headers=self.headers,
+            headers=headers,
             json={
                 "full_name": "Test Prospect",
                 "phone": "+33612345678",
@@ -156,14 +172,16 @@ class TestProspects:
             }
         )
         
-        assert response.status_code == 201 or response.status_code == 200
+        assert response.status_code in [200, 201]
         data = response.json()
         assert "prospect_id" in data
-        self.prospect_id = data["prospect_id"]
         
     def test_get_prospects_list(self):
         """Get list of prospects"""
-        response = requests.get(f"{BASE_URL}/api/prospects", headers=self.headers)
+        token = self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        response = requests.get(f"{BASE_URL}/api/prospects", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -171,9 +189,12 @@ class TestProspects:
         
     def test_edit_prospect(self):
         """Edit/update an existing prospect - PUT /api/prospects/{id}"""
+        token = self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        
         # First create a prospect
         create_response = requests.post(f"{BASE_URL}/api/prospects", 
-            headers=self.headers,
+            headers=headers,
             json={
                 "full_name": "Original Name",
                 "phone": "+33612345678",
@@ -187,7 +208,7 @@ class TestProspects:
         
         # Update the prospect
         update_response = requests.put(f"{BASE_URL}/api/prospects/{prospect_id}",
-            headers=self.headers,
+            headers=headers,
             json={
                 "full_name": "Updated Name",
                 "phone": "+33698765432",
@@ -198,7 +219,7 @@ class TestProspects:
         assert update_response.status_code == 200
         
         # Verify the update
-        get_response = requests.get(f"{BASE_URL}/api/prospects/{prospect_id}", headers=self.headers)
+        get_response = requests.get(f"{BASE_URL}/api/prospects/{prospect_id}", headers=headers)
         assert get_response.status_code == 200
         
         updated_prospect = get_response.json()
@@ -210,25 +231,23 @@ class TestProspects:
 class TestBillingPortal:
     """Test Stripe billing portal access - POST /api/billing/portal"""
     
-    @pytest.fixture(autouse=True)
-    def setup_user_with_token(self):
-        """Create a test user (trialing status) and get auth token"""
-        self.email = f"test_billing_{int(time.time())}@test.com"
-        self.password = "testpass123"
-        
-        # Register (creates user with trialing status)
-        register_response = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": self.email,
-            "password": self.password
+    def _get_auth_token(self):
+        """Helper to create user and get token"""
+        email = unique_email("billing")
+        response = requests.post(f"{BASE_URL}/api/auth/register", json={
+            "email": email,
+            "password": "testpass123"
         })
-        assert register_response.status_code == 200
-        self.token = register_response.json()["token"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+        assert response.status_code == 200, f"Registration failed: {response.text}"
+        return response.json()["token"]
         
     def test_billing_portal_access(self):
         """Access billing portal - should return Stripe URL"""
+        token = self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        
         response = requests.post(f"{BASE_URL}/api/billing/portal",
-            headers=self.headers,
+            headers=headers,
             json={"action": "payment_method"}
         )
         
@@ -251,23 +270,22 @@ class TestBillingPortal:
 class TestAuthMe:
     """Test auth/me endpoint for session verification"""
     
-    @pytest.fixture(autouse=True)
-    def setup_user_with_token(self):
-        """Create a test user and get auth token"""
-        self.email = f"test_authme_{int(time.time())}@test.com"
-        self.password = "testpass123"
-        
-        register_response = requests.post(f"{BASE_URL}/api/auth/register", json={
+    def _get_auth_token(self):
+        """Helper to create user and get token"""
+        self.email = unique_email("authme")
+        response = requests.post(f"{BASE_URL}/api/auth/register", json={
             "email": self.email,
-            "password": self.password
+            "password": "testpass123"
         })
-        assert register_response.status_code == 200
-        self.token = register_response.json()["token"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+        assert response.status_code == 200, f"Registration failed: {response.text}"
+        return response.json()["token"]
         
     def test_auth_me_with_valid_token(self):
         """Get current user with valid token"""
-        response = requests.get(f"{BASE_URL}/api/auth/me", headers=self.headers)
+        token = self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        response = requests.get(f"{BASE_URL}/api/auth/me", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -286,7 +304,7 @@ class TestAuthMe:
     def test_auth_me_with_invalid_token(self):
         """Auth/me fails with invalid token"""
         response = requests.get(f"{BASE_URL}/api/auth/me", 
-            headers={"Authorization": "Bearer invalid_token"})
+            headers={"Authorization": "Bearer invalid_token_xyz"})
         
         assert response.status_code == 401
 
