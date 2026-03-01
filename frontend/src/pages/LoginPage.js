@@ -23,62 +23,54 @@ const LoginPage = () => {
     if (!email || !password) return;
     
     setLoading(true);
-
-    // Use XMLHttpRequest for better compatibility
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_URL}/api/auth/login`, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
     
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          
-          // Store token immediately
-          if (data.token) {
-            localStorage.setItem('kolo_token', data.token);
-          }
-          
-          // Create clean user data with token
-          const userData = {
-            user_id: data.user_id,
-            email: data.email,
-            subscription_status: data.subscription_status,
-            trial_ends_at: data.trial_ends_at,
-            token: data.token
-          };
-          login(userData);
-          
-          window.location.href = '/app';
-        } catch (parseErr) {
-          console.error('Parse error:', parseErr);
-          toast.error(locale === 'fr' ? 'Erreur de réponse serveur' : 'Server response error');
-          setLoading(false);
+    const trimmedEmail = email.trim().toLowerCase();
+
+    try {
+      // Use fetch with cache-busting headers
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ 
+          email: trimmedEmail, 
+          password 
+        }),
+        cache: 'no-store'
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Store token immediately
+        if (data.token) {
+          localStorage.setItem('kolo_token', data.token);
         }
+        
+        // Create clean user data with token
+        const userData = {
+          user_id: data.user_id,
+          email: data.email,
+          subscription_status: data.subscription_status,
+          trial_ends_at: data.trial_ends_at,
+          token: data.token
+        };
+        login(userData);
+        
+        window.location.href = '/app';
       } else {
-        try {
-          const errorData = JSON.parse(xhr.responseText);
-          toast.error(errorData.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
-        } catch {
-          toast.error(locale === 'fr' ? 'Erreur serveur' : 'Server error');
-        }
+        const errorMsg = data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password');
+        toast.error(errorMsg);
         setLoading(false);
       }
-    };
-    
-    xhr.onerror = function() {
-      console.error('XHR error:', xhr.status, xhr.statusText);
-      toast.error(locale === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot reach server');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur. Vérifiez votre connexion internet.' : 'Server connection error. Check your internet.');
       setLoading(false);
-    };
-    
-    xhr.ontimeout = function() {
-      toast.error(locale === 'fr' ? 'Délai d\'attente dépassé' : 'Request timeout');
-      setLoading(false);
-    };
-    
-    xhr.timeout = 30000;
-    xhr.send(JSON.stringify({ email, password }));
+    }
   };
 
   return (
