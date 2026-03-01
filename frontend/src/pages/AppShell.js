@@ -546,10 +546,21 @@ const ProspectsTab = ({ onSelectProspect }) => {
 
 // ==================== PROSPECT DETAIL ====================
 const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
-  const { t, formatDate } = useLocale();
+  const { t, formatDate, locale } = useLocale();
   const [prospectData, setProspectData] = useState(prospect);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+    source: '',
+    notes: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     const fetchProspectDetail = async () => {
@@ -559,6 +570,14 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           const data = await response.json();
           setProspectData(data);
           setTasks(data.tasks || []);
+          // Initialize edit form
+          setEditForm({
+            full_name: data.full_name || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            source: data.source || '',
+            notes: data.notes || ''
+          });
         }
       } catch (error) {
         console.error('Failed to fetch prospect:', error);
@@ -569,6 +588,37 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
     fetchProspectDetail();
   }, [prospect.prospect_id]);
+
+  const handleEditSubmit = async () => {
+    if (!editForm.full_name.trim()) {
+      toast.error(locale === 'fr' ? 'Le nom est requis' : 'Name is required');
+      return;
+    }
+    
+    setEditLoading(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      
+      if (response.ok) {
+        const updatedData = await response.json();
+        setProspectData(prev => ({ ...prev, ...editForm }));
+        setShowEditModal(false);
+        toast.success(locale === 'fr' ? 'Prospect mis à jour' : 'Prospect updated');
+        onUpdate();
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur de mise à jour' : 'Update failed');
+      }
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de mise à jour' : 'Update failed');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
