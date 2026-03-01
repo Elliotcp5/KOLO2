@@ -21,7 +21,9 @@ const RegisterPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (!trimmedEmail || !password) {
       toast.error(locale === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill all fields');
       return;
     }
@@ -33,61 +35,52 @@ const RegisterPage = () => {
     
     setLoading(true);
 
-    // Use XMLHttpRequest for better compatibility
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_URL}/api/auth/register`, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          
-          // Store token immediately
-          if (data.token) {
-            localStorage.setItem('kolo_token', data.token);
-          }
-          
-          // Login with returned data
-          login({
-            user_id: data.user_id,
-            email: data.email,
-            subscription_status: data.subscription_status,
-            trial_ends_at: data.trial_ends_at,
-            token: data.token
-          });
-          
-          toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
-          window.location.href = '/app';
-        } catch (parseErr) {
-          console.error('Parse error:', parseErr);
-          toast.error(locale === 'fr' ? 'Erreur de réponse serveur' : 'Server response error');
-          setLoading(false);
+    try {
+      // Use fetch with cache-busting and no-cache headers
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ 
+          email: trimmedEmail, 
+          password 
+        }),
+        cache: 'no-store'
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Store token immediately
+        if (data.token) {
+          localStorage.setItem('kolo_token', data.token);
         }
+        
+        // Login with returned data
+        login({
+          user_id: data.user_id,
+          email: data.email,
+          subscription_status: data.subscription_status,
+          trial_ends_at: data.trial_ends_at,
+          token: data.token
+        });
+        
+        toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
+        window.location.href = '/app';
       } else {
-        try {
-          const errorData = JSON.parse(xhr.responseText);
-          toast.error(errorData.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
-        } catch {
-          toast.error(locale === 'fr' ? 'Erreur serveur' : 'Server error');
-        }
+        // Handle specific error messages
+        const errorMsg = data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error');
+        toast.error(errorMsg);
         setLoading(false);
       }
-    };
-    
-    xhr.onerror = function() {
-      console.error('XHR error:', xhr.status, xhr.statusText);
-      toast.error(locale === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot reach server');
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur. Vérifiez votre connexion internet.' : 'Server connection error. Check your internet.');
       setLoading(false);
-    };
-    
-    xhr.ontimeout = function() {
-      toast.error(locale === 'fr' ? 'Délai d\'attente dépassé' : 'Request timeout');
-      setLoading(false);
-    };
-    
-    xhr.timeout = 30000; // 30 seconds timeout
-    xhr.send(JSON.stringify({ email, password }));
+    }
   };
 
   return (
