@@ -122,13 +122,18 @@ Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`
   - /app/test_reports/iteration_7.json
 
 ## État Actuel (1er mars 2026)
-**P0 & P1 COMPLETS et TESTÉS**
+**P0, P1 et Email COMPLETS et TESTÉS**
 
 ### Résolu dans cette session:
 1. ✅ Bug "erreur réseau" - Service Worker v2 ne cache plus les appels API
 2. ✅ Inscription simplifiée avec fetch + headers no-cache
 3. ✅ Édition des prospects via modal fonctionnelle
 4. ✅ Portail de facturation Stripe créé automatiquement pour utilisateurs trial
+5. ✅ **Email "Mot de passe oublié"** - Intégré avec Resend (envoi réel fonctionnel)
+
+### Note importante sur Resend:
+- En mode test, les emails ne peuvent être envoyés qu'à l'adresse vérifiée du compte (pressardelliot@gmail.com)
+- Pour envoyer à tous les utilisateurs, vérifier le domaine trykolo.io sur https://resend.com/domains
 
 ## Backlog
 ### P1 - Prioritaire
