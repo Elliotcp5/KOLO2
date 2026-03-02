@@ -1756,12 +1756,15 @@ const TasksTab = ({ onRefresh }) => {
         body: JSON.stringify({
           prospect_id: suggestion.prospect_id,
           task_title: suggestion.task_title,
-          task_type: suggestion.task_type
+          task_type: suggestion.task_type,
+          suggested_date: suggestion.suggested_date,
+          urgency: suggestion.urgency
         })
       });
       
       if (response.ok) {
-        toast.success(locale === 'fr' ? 'Tâche créée !' : 'Task created!');
+        const data = await response.json();
+        toast.success(data.message || (locale === 'fr' ? 'Tâche créée !' : 'Task created!'));
         // Remove accepted suggestion
         setAiSuggestions(prev => prev.filter((_, i) => i !== index));
         fetchData();
@@ -1980,7 +1983,34 @@ const TasksTab = ({ onRefresh }) => {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {aiSuggestions.map((suggestion, index) => (
+                {aiSuggestions.map((suggestion, index) => {
+                  // Format the suggested date
+                  let dateLabel = '';
+                  if (suggestion.suggested_date) {
+                    const suggestedDate = new Date(suggestion.suggested_date);
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    
+                    if (suggestedDate.toDateString() === today.toDateString()) {
+                      dateLabel = locale === 'fr' ? "Aujourd'hui" : 'Today';
+                    } else if (suggestedDate.toDateString() === tomorrow.toDateString()) {
+                      dateLabel = locale === 'fr' ? 'Demain' : 'Tomorrow';
+                    } else {
+                      const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+                      dateLabel = `${days[suggestedDate.getDay()]} ${suggestedDate.getDate()}/${suggestedDate.getMonth() + 1}`;
+                    }
+                  }
+                  
+                  // Urgency colors
+                  const urgencyColors = {
+                    'haute': { bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444', label: locale === 'fr' ? 'Urgent' : 'Urgent' },
+                    'moyenne': { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B', label: locale === 'fr' ? 'Normal' : 'Normal' },
+                    'basse': { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981', label: locale === 'fr' ? 'Flexible' : 'Flexible' }
+                  };
+                  const urgency = urgencyColors[suggestion.urgency] || urgencyColors['moyenne'];
+                  
+                  return (
                   <div 
                     key={index}
                     style={{
@@ -1990,13 +2020,42 @@ const TasksTab = ({ onRefresh }) => {
                       border: '1px solid var(--border)'
                     }}
                   >
-                    <div style={{ marginBottom: '8px' }}>
-                      <p style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text)', marginBottom: '4px' }}>
-                        {suggestion.task_title}
-                      </p>
-                      <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                        {suggestion.prospect_name}
-                      </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text)', marginBottom: '4px' }}>
+                          {suggestion.task_title}
+                        </p>
+                        <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                          {suggestion.prospect_name}
+                        </p>
+                      </div>
+                      {/* Date and urgency badges */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        {dateLabel && (
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: 'var(--text)',
+                            background: 'rgba(139, 92, 246, 0.2)',
+                            padding: '3px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {dateLabel}
+                          </span>
+                        )}
+                        {suggestion.urgency && (
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: '500',
+                            color: urgency.text,
+                            background: urgency.bg,
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            {urgency.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '12px', fontStyle: 'italic' }}>
                       {suggestion.reason}
@@ -2049,7 +2108,8 @@ const TasksTab = ({ onRefresh }) => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

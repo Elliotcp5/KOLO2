@@ -1951,28 +1951,75 @@ async def complete_task(request: Request, task_id: str):
 
 @api_router.get("/tasks/ai-suggestions")
 async def get_ai_task_suggestions(request: Request):
-    """Get AI-powered task suggestions based on inactive prospects"""
+    """Get AI-powered task suggestions with intelligent scheduling based on workload and prospect context"""
     user = await require_active_subscription(request)
     
-    # Get prospects with no recent activity (no task in last 7 days)
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    now = datetime.now(timezone.utc)
     
-    # Get all active prospects
+    # Get user's workload for the next 7 days
+    next_week = now + timedelta(days=7)
+    existing_tasks = await db.tasks.find(
+        {
+            "user_id": user.user_id,
+            "completed": False,
+            "due_date": {"$gte": now.isoformat(), "$lte": next_week.isoformat()}
+        },
+        {"_id": 0, "due_date": 1}
+    ).to_list(100)
+    
+    # Count tasks per day
+    tasks_per_day = {}
+    for task in existing_tasks:
+        task_date = task.get("due_date", "")[:10]  # YYYY-MM-DD
+        tasks_per_day[task_date] = tasks_per_day.get(task_date, 0) + 1
+    
+    # Build workload context
+    workload_context = []
+    for i in range(7):
+        date = (now + timedelta(days=i)).strftime("%Y-%m-%d")
+        day_name = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"][(now + timedelta(days=i)).weekday()]
+        count = tasks_per_day.get(date, 0)
+        workload_context.append(f"{day_name} {date}: {count} tâches")
+    
+    # Get all active prospects with their full history
     prospects = await db.prospects.find(
         {
             "user_id": user.user_id,
             "status": {"$nin": ["closed", "lost"]}
         },
-        {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1, "status": 1, "source": 1, "notes": 1, "last_activity_date": 1, "created_at": 1}
+        {"_id": 0}
     ).to_list(100)
     
     if not prospects:
         return {"suggestions": [], "message": "Aucun prospect à analyser"}
     
-    # Find inactive prospects (no activity in last 7 days)
-    inactive_prospects = []
+    # Get task history for each prospect
+    prospect_ids = [p["prospect_id"] for p in prospects]
+    all_tasks = await db.tasks.find(
+        {
+            "user_id": user.user_id,
+            "prospect_id": {"$in": prospect_ids}
+        },
+        {"_id": 0, "prospect_id": 1, "title": 1, "task_type": 1, "due_date": 1, "completed": 1, "completed_at": 1, "created_at": 1}
+    ).sort("created_at", -1).to_list(500)
+    
+    # Group tasks by prospect
+    tasks_by_prospect = {}
+    for task in all_tasks:
+        pid = task.get("prospect_id")
+        if pid not in tasks_by_prospect:
+            tasks_by_prospect[pid] = []
+        tasks_by_prospect[pid].append(task)
+    
+    # Build detailed prospect context
+    prospects_context = []
     for p in prospects:
+        pid = p["prospect_id"]
+        prospect_tasks = tasks_by_prospect.get(pid, [])
+        
+        # Calculate inactivity
         last_activity = p.get("last_activity_date") or p.get("created_at")
+        days_inactive = 0
         if last_activity:
             if isinstance(last_activity, str):
                 last_activity_date = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
@@ -1980,20 +2027,45 @@ async def get_ai_task_suggestions(request: Request):
                 last_activity_date = last_activity
             if last_activity_date.tzinfo is None:
                 last_activity_date = last_activity_date.replace(tzinfo=timezone.utc)
-            
-            days_inactive = (datetime.now(timezone.utc) - last_activity_date).days
-            if days_inactive >= 3:  # At least 3 days inactive
-                inactive_prospects.append({
-                    **p,
-                    "days_inactive": days_inactive
-                })
+            days_inactive = (now - last_activity_date).days
+        
+        # Only include prospects with some inactivity
+        if days_inactive < 2:
+            continue
+        
+        # Build task history summary
+        completed_tasks = [t for t in prospect_tasks if t.get("completed")]
+        pending_tasks = [t for t in prospect_tasks if not t.get("completed")]
+        
+        task_history = ""
+        if completed_tasks:
+            recent_completed = completed_tasks[:3]
+            task_history = "Tâches passées: " + ", ".join([f"{t['title']} ({t.get('task_type', 'autre')})" for t in recent_completed])
+        
+        pending_info = ""
+        if pending_tasks:
+            pending_info = f"⚠️ {len(pending_tasks)} tâche(s) en attente"
+        
+        prospect_info = {
+            "prospect_id": pid,
+            "full_name": p["full_name"],
+            "status": p.get("status", "nouveau"),
+            "source": p.get("source", "inconnu"),
+            "notes": (p.get("notes", "") or "")[:150],
+            "days_inactive": days_inactive,
+            "task_count": len(prospect_tasks),
+            "task_history": task_history,
+            "pending_info": pending_info,
+            "created_days_ago": (now - datetime.fromisoformat(p.get("created_at", now.isoformat()).replace('Z', '+00:00'))).days if p.get("created_at") else 0
+        }
+        prospects_context.append(prospect_info)
     
-    if not inactive_prospects:
+    if not prospects_context:
         return {"suggestions": [], "message": "Tous vos prospects sont actifs !"}
     
-    # Limit to 5 most inactive prospects
-    inactive_prospects.sort(key=lambda x: x["days_inactive"], reverse=True)
-    inactive_prospects = inactive_prospects[:5]
+    # Sort by inactivity and limit
+    prospects_context.sort(key=lambda x: x["days_inactive"], reverse=True)
+    prospects_context = prospects_context[:6]
     
     # Generate AI suggestions
     try:
@@ -2006,43 +2078,84 @@ async def get_ai_task_suggestions(request: Request):
         chat = LlmChat(
             api_key=api_key,
             session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Tu es un assistant commercial expert en immobilier. 
-Tu analyses les prospects inactifs et suggères des actions de suivi pertinentes.
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans ```json```, juste le JSON pur.
-Format: {"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|email|meeting|follow_up", "reason": "..."}]}
-task_type doit être exactement un de: call, email, meeting, follow_up
-Limite-toi à 1 suggestion par prospect."""
+            system_message="""Tu es un expert en gestion de relation client immobilier. Tu analyses les prospects et leur historique pour suggérer des actions de suivi INTELLIGENTES et CONTEXTUELLES.
+
+RÈGLES IMPORTANTES:
+1. TIMING INTELLIGENT: 
+   - Analyse la charge de travail des jours à venir
+   - Si aujourd'hui est chargé (>5 tâches), propose demain ou après-demain
+   - Répartis les tâches de façon équilibrée
+   - Évite le week-end sauf urgence
+
+2. CONTEXTUALISATION:
+   - Si prospect récent (<7 jours) et nouveau → relance rapide OK
+   - Si prospect ancien avec beaucoup de relances sans réponse → espacer les contacts
+   - Si notes mentionnent "pas intéressé", "rappeler plus tard" → respecter
+   - Source "recommandation" → traitement prioritaire
+   - Source "leboncoin/seloger" → suivi standard
+
+3. TYPE D'ACTION ADAPTÉ:
+   - call: pour conversations importantes, négociations
+   - email: pour envoi d'infos, rappels doux
+   - meeting: pour visites, rendez-vous
+   - follow_up: relance générique
+
+Réponds UNIQUEMENT en JSON valide, sans markdown:
+{
+  "suggestions": [
+    {
+      "prospect_id": "...",
+      "prospect_name": "...",
+      "task_title": "...",
+      "task_type": "call|email|meeting|follow_up",
+      "suggested_date": "YYYY-MM-DD",
+      "urgency": "haute|moyenne|basse",
+      "reason": "Explication courte et pertinente"
+    }
+  ]
+}"""
         ).with_model("anthropic", "claude-sonnet-4-5-20250929")
         
-        # Build context
-        prospects_context = "\n".join([
-            f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_inactive']} jours sans contact, statut: {p.get('status', 'nouveau')}, source: {p.get('source', 'inconnu')}, notes: {p.get('notes', 'aucune')[:100] if p.get('notes') else 'aucune'}"
-            for p in inactive_prospects
-        ])
-        
-        user_message = UserMessage(
-            text=f"""Voici les prospects inactifs à relancer:
+        # Build detailed context
+        today = now.strftime("%Y-%m-%d")
+        context_text = f"""Date d'aujourd'hui: {today}
 
-{prospects_context}
+CHARGE DE TRAVAIL (7 prochains jours):
+{chr(10).join(workload_context)}
 
-Suggère une action de suivi appropriée pour chaque prospect. Sois concis et actionnable."""
-        )
+PROSPECTS À ANALYSER:
+"""
+        for p in prospects_context:
+            context_text += f"""
+---
+Prospect: {p['full_name']} (ID: {p['prospect_id']})
+- Statut: {p['status']}
+- Source: {p['source']}
+- Inactif depuis: {p['days_inactive']} jours
+- Créé il y a: {p['created_days_ago']} jours
+- Nombre total d'interactions: {p['task_count']}
+- {p['task_history'] if p['task_history'] else 'Aucun historique de tâches'}
+- {p['pending_info'] if p['pending_info'] else 'Pas de tâches en attente'}
+- Notes: {p['notes'] if p['notes'] else 'Aucune note'}
+"""
         
+        context_text += """
+Suggère les actions les plus pertinentes avec des dates RÉALISTES basées sur la charge de travail et le contexte de chaque prospect."""
+        
+        user_message = UserMessage(text=context_text)
         response = await chat.send_message(user_message)
         
         # Parse JSON response
         import json
         import re
         
-        # Clean response - remove markdown code blocks
         response_clean = response.strip()
         
-        # Remove ```json ... ``` or ``` ... ```
+        # Remove markdown code blocks
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_clean)
         if json_match:
             response_clean = json_match.group(1).strip()
         
-        # Also try to find JSON object directly
         if not response_clean.startswith('{'):
             json_obj_match = re.search(r'\{[\s\S]*\}', response_clean)
             if json_obj_match:
@@ -2052,47 +2165,53 @@ Suggère une action de suivi appropriée pour chaque prospect. Sois concis et ac
         
         return {
             "suggestions": suggestions_data.get("suggestions", []),
-            "inactive_count": len(inactive_prospects)
+            "inactive_count": len(prospects_context),
+            "workload": tasks_per_day
         }
         
     except json.JSONDecodeError as e:
-        logger.error(f"AI response parsing error: {e}, response: {response[:200] if response else 'None'}")
-        # Fallback: generate simple suggestions without AI
+        logger.error(f"AI response parsing error: {e}, response: {response[:500] if response else 'None'}")
+        # Fallback suggestions
         fallback_suggestions = []
-        for p in inactive_prospects[:3]:
+        for p in prospects_context[:3]:
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
                 "task_title": f"Relancer {p['full_name']}",
                 "task_type": "call",
+                "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+                "urgency": "moyenne",
                 "reason": f"Aucun contact depuis {p['days_inactive']} jours"
             })
-        return {"suggestions": fallback_suggestions, "inactive_count": len(inactive_prospects)}
+        return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        # Fallback suggestions
         fallback_suggestions = []
-        for p in inactive_prospects[:3]:
+        for p in prospects_context[:3]:
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
                 "task_title": f"Relancer {p['full_name']}",
                 "task_type": "call",
+                "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+                "urgency": "moyenne",
                 "reason": f"Aucun contact depuis {p['days_inactive']} jours"
             })
-        return {"suggestions": fallback_suggestions, "inactive_count": len(inactive_prospects)}
+        return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
 
 @api_router.post("/tasks/ai-suggestions/accept")
 async def accept_ai_suggestion(request: Request):
-    """Create a task from an AI suggestion"""
+    """Create a task from an AI suggestion with intelligent date"""
     user = await require_active_subscription(request)
     
     body = await request.json()
     prospect_id = body.get("prospect_id")
     task_title = body.get("task_title")
     task_type = body.get("task_type", "follow_up")
+    suggested_date = body.get("suggested_date")  # YYYY-MM-DD from AI
+    urgency = body.get("urgency", "moyenne")
     
     if not prospect_id or not task_title:
         raise HTTPException(status_code=400, detail="prospect_id and task_title required")
@@ -2105,11 +2224,36 @@ async def accept_ai_suggestion(request: Request):
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
-    # Create task for TODAY (so it appears in Today tab immediately)
     now = datetime.now(timezone.utc)
-    # Set due time to current hour + 1 (or end of day if late)
-    due_hour = min(now.hour + 1, 18)  # Max 18h
-    due_date = now.replace(hour=due_hour, minute=0, second=0, microsecond=0)
+    
+    # Use AI suggested date if provided, otherwise smart default
+    if suggested_date:
+        try:
+            # Parse the suggested date
+            due_date = datetime.strptime(suggested_date, "%Y-%m-%d")
+            due_date = due_date.replace(tzinfo=timezone.utc)
+            
+            # Set appropriate time based on urgency
+            if urgency == "haute":
+                due_hour = 9  # Morning for urgent
+            elif urgency == "basse":
+                due_hour = 16  # Afternoon for low priority
+            else:
+                due_hour = 10  # Mid-morning for normal
+            
+            due_date = due_date.replace(hour=due_hour, minute=0, second=0, microsecond=0)
+            
+            # If date is today and time has passed, adjust
+            if due_date.date() == now.date() and due_date <= now:
+                due_date = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+                
+        except ValueError:
+            # Invalid date format, fall back to today
+            due_date = now.replace(hour=min(now.hour + 1, 18), minute=0, second=0, microsecond=0)
+    else:
+        # No suggested date - use today with smart time
+        due_hour = min(now.hour + 1, 18)
+        due_date = now.replace(hour=due_hour, minute=0, second=0, microsecond=0)
     
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     task_doc = {
@@ -2121,6 +2265,7 @@ async def accept_ai_suggestion(request: Request):
         "due_date": due_date.isoformat(),
         "completed": False,
         "auto_generated": True,
+        "ai_urgency": urgency,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
@@ -2130,7 +2275,14 @@ async def accept_ai_suggestion(request: Request):
     # Update prospect next task
     await update_prospect_next_task(prospect_id, user.user_id)
     
-    return {"task_id": task_id, "message": "Tâche créée avec succès"}
+    # Format response with readable date
+    date_label = "Aujourd'hui" if due_date.date() == now.date() else due_date.strftime("%d/%m")
+    
+    return {
+        "task_id": task_id, 
+        "message": f"Tâche créée pour {date_label}",
+        "due_date": due_date.isoformat()
+    }
 
 # ==================== PROSPECT ENDPOINTS ====================
 
@@ -2356,7 +2508,6 @@ app.add_middleware(
 )
 
 # ==================== BACKGROUND SCHEDULER ====================
-import asyncio
 import threading
 
 async def run_background_scheduler():
