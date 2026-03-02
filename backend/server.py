@@ -2235,7 +2235,6 @@ async def accept_ai_suggestion(request: Request):
             
             # Set appropriate time based on urgency
             # Hours in UTC that correspond to French working hours (9h-18h Paris = 8h-17h UTC winter, 7h-16h UTC summer)
-            # Using UTC times that work year-round for French business hours
             if urgency == "haute":
                 due_hour = 8  # 9h-10h Paris (urgent = first thing in the morning)
             elif urgency == "basse":
@@ -2245,34 +2244,23 @@ async def accept_ai_suggestion(request: Request):
             
             due_date = due_date.replace(hour=due_hour, minute=0, second=0, microsecond=0)
             
-            # If date is today and time has passed, adjust to next available hour
+            # If date is TODAY and time has passed, use end of day (so it appears in Today tab)
+            # Don't automatically push to tomorrow - let the user decide
             if due_date.date() == now.date() and due_date <= now:
-                next_hour = now.hour + 1
-                # Keep within working hours (8h-17h UTC = ~9h-18h Paris)
-                if next_hour > 17:
-                    # Too late today, move to tomorrow morning
-                    due_date = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
-                else:
-                    due_date = now.replace(hour=next_hour, minute=0, second=0, microsecond=0)
+                # Set to end of working day so it still shows as "today" task
+                due_date = due_date.replace(hour=17, minute=0, second=0, microsecond=0)
                 
         except ValueError:
-            # Invalid date format, fall back to today
-            due_date = now.replace(hour=min(now.hour + 1, 18), minute=0, second=0, microsecond=0)
+            # Invalid date format, fall back to today end of day
+            due_date = now.replace(hour=17, minute=0, second=0, microsecond=0)
     else:
-        # No suggested date - use today with smart working hours
-        next_hour = now.hour + 1
-        # Keep within working hours (8h-17h UTC = ~9h-18h Paris)
-        if next_hour < 8:
-            due_hour = 8  # Before work, schedule for 9h Paris
-        elif next_hour > 17:
-            # Too late today, move to tomorrow morning
-            due_date = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
-            next_hour = None
+        # No suggested date - use today
+        # If within working hours, use next hour; otherwise end of day
+        if 8 <= now.hour < 17:
+            due_date = now.replace(hour=now.hour + 1, minute=0, second=0, microsecond=0)
         else:
-            due_hour = next_hour
-        
-        if next_hour is not None:
-            due_date = now.replace(hour=due_hour, minute=0, second=0, microsecond=0)
+            # Outside working hours - set to end of today's working day
+            due_date = now.replace(hour=17, minute=0, second=0, microsecond=0)
     
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     task_doc = {
