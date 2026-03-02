@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 import httpx
 import hashlib
 import resend
+import stripe
 
 ROOT_DIR = Path(__file__).parent
 
@@ -1494,29 +1495,51 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     if not request.password or len(request.password) < 6:
         raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
     
+    email_clean = request.email.lower().strip()
+    
     # Check if email already exists
-    existing_user = await db.users.find_one({"email": request.email.lower().strip()})
+    existing_user = await db.users.find_one({"email": email_clean})
     if existing_user:
         raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
     
     # Calculate trial end date (7 days from now)
     trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
     
+    # Create Stripe customer immediately for tracking
+    stripe_customer_id = None
+    try:
+        stripe.api_key = STRIPE_API_KEY
+        if STRIPE_API_KEY:
+            customer = stripe.Customer.create(
+                email=email_clean,
+                metadata={
+                    "source": "free_trial",
+                    "trial_start": datetime.now(timezone.utc).isoformat(),
+                    "trial_ends": trial_ends_at.isoformat()
+                }
+            )
+            stripe_customer_id = customer.id
+            logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
+    except Exception as e:
+        logger.warning(f"Failed to create Stripe customer for {email_clean}: {e}")
+        # Continue without Stripe customer - not critical for trial
+    
     # Create user with trialing status
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     user_doc = {
         "user_id": user_id,
-        "email": request.email.lower().strip(),
+        "email": email_clean,
         "auth_provider": "email",
         "password_hash": hash_password(request.password),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
+        "stripe_customer_id": stripe_customer_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.users.insert_one(user_doc)
-    logger.info(f"Free trial account created for {request.email}, trial ends: {trial_ends_at}")
+    logger.info(f"Free trial account created for {email_clean}, trial ends: {trial_ends_at}, stripe: {stripe_customer_id}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -1544,7 +1567,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     
     return {
         "user_id": user_id,
-        "email": request.email.lower().strip(),
+        "email": email_clean,
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
         "token": session_token
