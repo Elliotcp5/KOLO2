@@ -66,7 +66,7 @@ Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`
 - [x] Scheduler automatisé (intégré backend, 8h UTC)
 - [x] Localisation FR/EN complète
 - [x] Protection double facturation (vérifie email avant paiement)
-- [x] Mot de passe oublié / Récupération de mot de passe (MOCKED - console only)
+- [x] **Mot de passe oublié / Récupération via email Resend** (fonctionnel)
 - [x] Changement de mot de passe depuis les paramètres
 - [x] **Portail Stripe Customer pour gestion facturation** (crée client Stripe auto si nécessaire)
 - [x] UI Modals ergonomiques avec gradient rose-violet
