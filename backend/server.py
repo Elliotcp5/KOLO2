@@ -2029,13 +2029,21 @@ async def get_ai_task_suggestions(request: Request):
                 last_activity_date = last_activity_date.replace(tzinfo=timezone.utc)
             days_inactive = (now - last_activity_date).days
         
-        # Only include prospects with some inactivity
-        if days_inactive < 2:
-            continue
-        
         # Build task history summary
         completed_tasks = [t for t in prospect_tasks if t.get("completed")]
-        pending_tasks = [t for t in prospect_tasks if not t.get("completed")]
+        # For pending tasks, ignore auto-generated "Suivi" tasks (they are generic placeholders)
+        pending_tasks = [t for t in prospect_tasks if not t.get("completed") and not (t.get("auto_generated") and t.get("title", "").startswith("Suivi "))]
+        
+        
+        # Include prospect if:
+        # 1. Has NO meaningful pending tasks (needs action regardless of age)
+        # 2. OR has been inactive for 2+ days
+        has_no_pending_tasks = len(pending_tasks) == 0
+        is_inactive = days_inactive >= 2
+        
+        
+        if not has_no_pending_tasks and not is_inactive:
+            continue
         
         task_history = ""
         if completed_tasks:
@@ -2046,6 +2054,9 @@ async def get_ai_task_suggestions(request: Request):
         if pending_tasks:
             pending_info = f"⚠️ {len(pending_tasks)} tâche(s) en attente"
         
+        # Priority score: prospects without pending tasks are highest priority
+        priority_score = 100 if has_no_pending_tasks else days_inactive
+        
         prospect_info = {
             "prospect_id": pid,
             "full_name": p["full_name"],
@@ -2053,18 +2064,20 @@ async def get_ai_task_suggestions(request: Request):
             "source": p.get("source", "inconnu"),
             "notes": (p.get("notes", "") or "")[:150],
             "days_inactive": days_inactive,
+            "has_no_pending_tasks": has_no_pending_tasks,
             "task_count": len(prospect_tasks),
             "task_history": task_history,
-            "pending_info": pending_info,
+            "pending_info": pending_info if pending_tasks else "Aucune tâche programmée",
+            "priority_score": priority_score,
             "created_days_ago": (now - datetime.fromisoformat(p.get("created_at", now.isoformat()).replace('Z', '+00:00'))).days if p.get("created_at") else 0
         }
         prospects_context.append(prospect_info)
     
     if not prospects_context:
-        return {"suggestions": [], "message": "Tous vos prospects sont actifs !"}
+        return {"suggestions": [], "message": "Tous vos prospects ont des tâches programmées !"}
     
-    # Sort by inactivity and limit
-    prospects_context.sort(key=lambda x: x["days_inactive"], reverse=True)
+    # Sort by priority (no pending tasks first, then by inactivity)
+    prospects_context.sort(key=lambda x: x["priority_score"], reverse=True)
     prospects_context = prospects_context[:6]
     
     # Generate AI suggestions
@@ -2126,16 +2139,18 @@ CHARGE DE TRAVAIL (7 prochains jours):
 PROSPECTS À ANALYSER:
 """
         for p in prospects_context:
+            no_task_warning = "⚠️ AUCUNE TÂCHE PROGRAMMÉE - Action requise!" if p.get('has_no_pending_tasks') else ""
             context_text += f"""
 ---
 Prospect: {p['full_name']} (ID: {p['prospect_id']})
+{no_task_warning}
 - Statut: {p['status']}
 - Source: {p['source']}
 - Inactif depuis: {p['days_inactive']} jours
 - Créé il y a: {p['created_days_ago']} jours
 - Nombre total d'interactions: {p['task_count']}
 - {p['task_history'] if p['task_history'] else 'Aucun historique de tâches'}
-- {p['pending_info'] if p['pending_info'] else 'Pas de tâches en attente'}
+- {p['pending_info']}
 - Notes: {p['notes'] if p['notes'] else 'Aucune note'}
 """
         
