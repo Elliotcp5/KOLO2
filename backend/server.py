@@ -1127,17 +1127,111 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
     
     return {"message": "Mot de passe modifié avec succès"}
 
+# Resend email configuration
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@trykolo.io')
+
+# Initialize Resend
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
+async def send_password_reset_email(to_email: str, reset_token: str, base_url: str):
+    """Send password reset email via Resend"""
+    reset_link = f"{base_url}/reset-password?token={reset_token}"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #0B0B0F; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0B0B0F; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #1A1A1F; border-radius: 16px; padding: 32px;">
+                        <tr>
+                            <td align="center" style="padding-bottom: 24px;">
+                                <img src="https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png" alt="KOLO" style="height: 40px;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding-bottom: 16px;">
+                                <h1 style="margin: 0; color: #FFFFFF; font-size: 22px; font-weight: 600;">Réinitialisez votre mot de passe</h1>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding-bottom: 24px;">
+                                <p style="margin: 0; color: #9CA3AF; font-size: 15px; line-height: 1.5;">
+                                    Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour continuer.
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding-bottom: 24px;">
+                                <a href="{reset_link}" style="display: inline-block; background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: #FFFFFF; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 600;">
+                                    Réinitialiser mon mot de passe
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding-bottom: 16px;">
+                                <p style="margin: 0; color: #6B7280; font-size: 13px;">
+                                    Ce lien expire dans 1 heure.
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center">
+                                <p style="margin: 0; color: #6B7280; font-size: 12px;">
+                                    Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    params = {
+        "from": f"KOLO <{SENDER_EMAIL}>",
+        "to": [to_email],
+        "subject": "Réinitialisez votre mot de passe KOLO",
+        "html": html_content
+    }
+    
+    try:
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Password reset email sent to {to_email}, id: {email_result.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to {to_email}: {str(e)}")
+        return False
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest):
+async def forgot_password(request: ForgotPasswordRequest, http_request: Request):
     """Send password reset email"""
     if not request.email:
         raise HTTPException(status_code=400, detail="Email requis")
     
+    # Get base URL for reset link
+    referer = http_request.headers.get('referer', '')
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        base_url = str(http_request.base_url).rstrip('/')
+    
     # Check if user exists
-    user_doc = await db.users.find_one({"email": request.email}, {"_id": 0})
+    user_doc = await db.users.find_one({"email": request.email.lower().strip()}, {"_id": 0})
     
     # Always return success to prevent email enumeration
     if not user_doc:
@@ -1149,19 +1243,23 @@ async def forgot_password(request: ForgotPasswordRequest):
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     
     # Store reset token
-    await db.password_resets.delete_many({"email": request.email})  # Remove old tokens
+    await db.password_resets.delete_many({"email": request.email.lower().strip()})
     await db.password_resets.insert_one({
-        "email": request.email,
+        "email": request.email.lower().strip(),
         "token": reset_token,
         "expires_at": expires_at,
         "created_at": datetime.now(timezone.utc)
     })
     
-    # In production, send email here
-    # For now, log the reset link
-    logger.info(f"Password reset token for {request.email}: {reset_token}")
+    # Send email via Resend
+    if RESEND_API_KEY:
+        email_sent = await send_password_reset_email(request.email.lower().strip(), reset_token, base_url)
+        if not email_sent:
+            logger.warning(f"Email sending failed for {request.email}, but token was created")
+    else:
+        logger.warning(f"RESEND_API_KEY not configured, password reset token: {reset_token}")
     
-    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation", "reset_token": reset_token}
+    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation"}
 
 class ResetPasswordRequest(BaseModel):
     token: str
