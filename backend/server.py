@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import secrets
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict
@@ -12,6 +13,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
 import hashlib
+import resend
 
 ROOT_DIR = Path(__file__).parent
 
