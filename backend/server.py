@@ -1709,25 +1709,32 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
 
 @api_router.get("/tasks")
 async def list_tasks(request: Request, include_completed: bool = True):
-    """List all tasks for authenticated user - includes completed tasks from last 2 weeks"""
+    """List all tasks for authenticated user - limits completed tasks to 10 most recent"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
     await generate_follow_up_tasks_for_user(user.user_id)
     
-    two_weeks_ago = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
-    
-    # Get non-completed tasks + completed tasks from last 2 weeks
-    tasks = await db.tasks.find(
+    # Get non-completed tasks
+    pending_tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
-            "$or": [
-                {"completed": False},
-                {"completed": True, "completed_at": {"$gte": two_weeks_ago}}
-            ]
+            "completed": False
         },
         {"_id": 0}
-    ).sort("due_date", -1).to_list(1000)
+    ).sort("due_date", 1).to_list(1000)
+    
+    # Get only the 10 most recently completed tasks
+    completed_tasks = await db.tasks.find(
+        {
+            "user_id": user.user_id,
+            "completed": True
+        },
+        {"_id": 0}
+    ).sort("completed_at", -1).limit(10).to_list(10)
+    
+    # Combine: pending first, then completed
+    tasks = pending_tasks + completed_tasks
     
     # Batch fetch prospects to avoid N+1 queries
     prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
@@ -2098,9 +2105,11 @@ async def accept_ai_suggestion(request: Request):
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
-    # Create task for tomorrow
-    due_date = datetime.now(timezone.utc) + timedelta(days=1)
-    due_date = due_date.replace(hour=10, minute=0, second=0, microsecond=0)
+    # Create task for TODAY (so it appears in Today tab immediately)
+    now = datetime.now(timezone.utc)
+    # Set due time to current hour + 1 (or end of day if late)
+    due_hour = min(now.hour + 1, 18)  # Max 18h
+    due_date = now.replace(hour=due_hour, minute=0, second=0, microsecond=0)
     
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     task_doc = {
