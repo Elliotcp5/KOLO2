@@ -137,7 +137,8 @@ Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`
 
 ## Backlog
 ### P1 - Prioritaire
-- [ ] **Email "Mot de passe oublié"** - Intégrer un service d'email (Resend)
+- [x] ~~Email "Mot de passe oublié"~~ - ✅ Intégré avec Resend
+- [ ] Vérifier le domaine trykolo.io sur Resend pour envoi à tous
 - [ ] Déploiement final en production
 
 ### P2 - À faire
