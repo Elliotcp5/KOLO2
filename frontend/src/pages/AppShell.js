@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, X, Sparkles, Loader2, MessageSquare } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -503,6 +503,14 @@ const ProspectsTab = ({ onSelectProspect }) => {
         <div>
           {prospects.map((prospect) => {
             const nextTask = formatNextTask(prospect);
+            // Score badge colors
+            const scoreColors = {
+              'chaud': { bg: 'rgba(34, 197, 94, 0.2)', color: '#22C55E', emoji: '🟢' },
+              'tiede': { bg: 'rgba(245, 158, 11, 0.2)', color: '#F59E0B', emoji: '🟠' },
+              'froid': { bg: 'rgba(239, 68, 68, 0.2)', color: '#EF4444', emoji: '🔴' }
+            };
+            const scoreStyle = scoreColors[prospect.score] || scoreColors['tiede'];
+            
             return (
               <div 
                 key={prospect.prospect_id} 
@@ -512,9 +520,16 @@ const ProspectsTab = ({ onSelectProspect }) => {
                 data-testid={`prospect-${prospect.prospect_id}`}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div className="name">{prospect.full_name}</div>
-                    <div className="contact">{prospect.phone} • {prospect.email}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {prospect.score && (
+                      <span style={{ fontSize: '14px' }} title={`Score: ${prospect.score}`}>
+                        {scoreStyle.emoji}
+                      </span>
+                    )}
+                    <div>
+                      <div className="name">{prospect.full_name}</div>
+                      <div className="contact">{prospect.phone} • {prospect.email}</div>
+                    </div>
                   </div>
                   <ChevronRight size={20} style={{ color: 'var(--muted-dark)' }} />
                 </div>
@@ -561,6 +576,16 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     notes: ''
   });
   const [editLoading, setEditLoading] = useState(false);
+  
+  // AI Message modal state
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageContext, setMessageContext] = useState(null);
+  const [sendingSms, setSendingSms] = useState(false);
+  
+  // Score state
+  const [updatingScore, setUpdatingScore] = useState(false);
 
   useEffect(() => {
     const fetchProspectDetail = async () => {
@@ -617,6 +642,98 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       toast.error(locale === 'fr' ? 'Erreur de mise à jour' : 'Update failed');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // Update prospect score
+  const updateScore = async (forceScore = null) => {
+    setUpdatingScore(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}/score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(forceScore ? { force_score: forceScore } : {})
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProspectData(prev => ({ ...prev, score: data.score }));
+        toast.success(locale === 'fr' ? `Score mis à jour: ${data.score}` : `Score updated: ${data.score}`);
+      }
+    } catch (error) {
+      console.error('Score update error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de mise à jour du score' : 'Score update failed');
+    } finally {
+      setUpdatingScore(false);
+    }
+  };
+  
+  // Generate AI message
+  const generateMessage = async () => {
+    setMessageLoading(true);
+    setShowMessageModal(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}/generate-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAiMessage(data.message);
+        setMessageContext(data.context);
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur de génération' : 'Generation failed');
+      }
+    } catch (error) {
+      console.error('Message generation error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de génération' : 'Generation failed');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+  
+  // Copy message to clipboard
+  const copyMessage = () => {
+    navigator.clipboard.writeText(aiMessage);
+    toast.success(locale === 'fr' ? 'Message copié !' : 'Message copied!');
+  };
+  
+  // Send SMS
+  const sendSms = async () => {
+    if (!aiMessage.trim()) return;
+    if (!prospectData.phone) {
+      toast.error(locale === 'fr' ? 'Numéro de téléphone manquant' : 'Phone number missing');
+      return;
+    }
+    
+    setSendingSms(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: aiMessage })
+      });
+      
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
+        setShowMessageModal(false);
+        // Refresh prospect data
+        const refreshResponse = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          setProspectData(data);
+          setTasks(data.tasks || []);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || (locale === 'fr' ? 'Erreur d\'envoi' : 'Send failed'));
+      }
+    } catch (error) {
+      console.error('SMS send error:', error);
+      toast.error(locale === 'fr' ? 'Erreur d\'envoi SMS' : 'SMS send failed');
+    } finally {
+      setSendingSms(false);
     }
   };
 
@@ -731,7 +848,18 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         >
           <X size={24} strokeWidth={1.5} />
         </button>
-        <h1 className="text-title" style={{ flex: 1 }}>{prospectData.full_name}</h1>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 className="text-title">{prospectData.full_name}</h1>
+          {/* Score badge */}
+          {prospectData.score && (
+            <span style={{
+              fontSize: '16px',
+              cursor: 'pointer'
+            }} title={`Score: ${prospectData.score}`}>
+              {prospectData.score === 'chaud' ? '🟢' : prospectData.score === 'tiede' ? '🟠' : '🔴'}
+            </span>
+          )}
+        </div>
         <button 
           onClick={() => setShowEditModal(true)}
           style={{ 
@@ -941,6 +1069,230 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           </a>
         </div>
       </div>
+      
+      {/* Score section */}
+      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <span className="text-caption">{locale === 'fr' ? 'Score prospect' : 'Prospect score'}</span>
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: '600',
+            color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : '#EF4444'
+          }}>
+            {prospectData.score === 'chaud' ? '🟢 Chaud' : prospectData.score === 'tiede' ? '🟠 Tiède' : prospectData.score === 'froid' ? '🔴 Froid' : '—'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => updateScore('chaud')}
+            disabled={updatingScore}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: prospectData.score === 'chaud' ? '2px solid #22C55E' : '1px solid var(--border)',
+              background: prospectData.score === 'chaud' ? 'rgba(34, 197, 94, 0.1)' : 'var(--surface-2)',
+              borderRadius: '10px',
+              color: '#22C55E',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500'
+            }}
+          >
+            🟢 Chaud
+          </button>
+          <button
+            onClick={() => updateScore('tiede')}
+            disabled={updatingScore}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: prospectData.score === 'tiede' ? '2px solid #F59E0B' : '1px solid var(--border)',
+              background: prospectData.score === 'tiede' ? 'rgba(245, 158, 11, 0.1)' : 'var(--surface-2)',
+              borderRadius: '10px',
+              color: '#F59E0B',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500'
+            }}
+          >
+            🟠 Tiède
+          </button>
+          <button
+            onClick={() => updateScore('froid')}
+            disabled={updatingScore}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: prospectData.score === 'froid' ? '2px solid #EF4444' : '1px solid var(--border)',
+              background: prospectData.score === 'froid' ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface-2)',
+              borderRadius: '10px',
+              color: '#EF4444',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500'
+            }}
+          >
+            🔴 Froid
+          </button>
+        </div>
+      </div>
+      
+      {/* AI Message button */}
+      <button
+        onClick={generateMessage}
+        disabled={messageLoading}
+        style={{
+          width: '100%',
+          padding: '14px',
+          background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+          border: 'none',
+          borderRadius: '12px',
+          color: 'white',
+          fontSize: '15px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: '16px'
+        }}
+        data-testid="ai-message-button"
+      >
+        <Sparkles size={18} />
+        {locale === 'fr' ? 'Rédiger un message avec l\'IA' : 'Write message with AI'}
+      </button>
+      
+      {/* AI Message Modal */}
+      {showMessageModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '16px'
+        }} onClick={() => setShowMessageModal(false)}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={20} style={{ color: 'var(--accent)' }} />
+                {locale === 'fr' ? 'Message IA' : 'AI Message'}
+              </h2>
+              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {messageLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                <p style={{ marginTop: '12px', color: 'var(--muted)' }}>
+                  {locale === 'fr' ? 'Génération en cours...' : 'Generating...'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={aiMessage}
+                  onChange={(e) => setAiMessage(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '120px',
+                    padding: '12px',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    color: 'var(--text)',
+                    fontSize: '14px',
+                    resize: 'vertical',
+                    marginBottom: '12px'
+                  }}
+                />
+                
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button
+                    onClick={generateMessage}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    🔄 {locale === 'fr' ? 'Regénérer' : 'Regenerate'}
+                  </button>
+                  <button
+                    onClick={copyMessage}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    📋 {locale === 'fr' ? 'Copier' : 'Copy'}
+                  </button>
+                </div>
+                
+                <button
+                  onClick={sendSms}
+                  disabled={sendingSms || !prospectData.phone}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: prospectData.phone ? 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' : 'var(--surface-2)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: prospectData.phone ? 'white' : 'var(--muted)',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: prospectData.phone ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {sendingSms ? (
+                    <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <>
+                      <MessageSquare size={18} />
+                      {locale === 'fr' ? 'Envoyer par SMS' : 'Send SMS'}
+                    </>
+                  )}
+                </button>
+                
+                {!prospectData.phone && (
+                  <p style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '8px' }}>
+                    {locale === 'fr' ? 'Ajoutez un numéro de téléphone pour envoyer un SMS' : 'Add a phone number to send SMS'}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Status */}
       <div style={{ marginBottom: '24px' }}>

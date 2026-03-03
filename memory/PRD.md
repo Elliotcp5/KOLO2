@@ -121,19 +121,27 @@ Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`
   - /app/backend/tests/test_kolo_features.py
   - /app/test_reports/iteration_7.json
 
-## État Actuel (1er mars 2026)
-**P0, P1 et Email COMPLETS et TESTÉS**
+## État Actuel (3 mars 2026)
+**P0, P1 et nouvelles fonctionnalités COMPLETS et TESTÉS**
 
 ### Résolu dans cette session:
 1. ✅ Bug "erreur réseau" - Service Worker v2 ne cache plus les appels API
 2. ✅ Inscription simplifiée avec fetch + headers no-cache
 3. ✅ Édition des prospects via modal fonctionnelle
 4. ✅ Portail de facturation Stripe créé automatiquement pour utilisateurs trial
-5. ✅ **Email "Mot de passe oublié"** - Intégré avec Resend (envoi réel fonctionnel)
+5. ✅ **Email "Mot de passe oublié"** - Intégré avec Resend
+6. ✅ **Création client Stripe automatique** à l'inscription (tracking trial)
+7. ✅ **Scoring visuel des prospects** - 🟢 chaud / 🟠 tiède / 🔴 froid
+8. ✅ **Rédaction IA des messages** - Claude génère des messages personnalisés
+9. ✅ **Envoi SMS via Brevo** - Intégration complète (nécessite crédits SMS)
 
 ### Note importante sur Resend:
-- En mode test, les emails ne peuvent être envoyés qu'à l'adresse vérifiée du compte (pressardelliot@gmail.com)
+- En mode test, les emails ne peuvent être envoyés qu'à l'adresse vérifiée du compte
 - Pour envoyer à tous les utilisateurs, vérifier le domaine trykolo.io sur https://resend.com/domains
+
+### Note importante sur SMS Brevo:
+- L'intégration est complète mais nécessite des crédits SMS
+- Acheter des crédits sur https://app.brevo.com/billing/addon/customize/sms
 
 ## Backlog
 ### P1 - Prioritaire

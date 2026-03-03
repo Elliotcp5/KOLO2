@@ -132,6 +132,13 @@ class Prospect(BaseModel):
     next_task_id: Optional[str] = None
     next_task_date: Optional[datetime] = None
     next_task_title: Optional[str] = None
+    # Scoring fields
+    score: Optional[str] = None  # chaud, tiede, froid
+    score_calculated_at: Optional[datetime] = None
+    score_manual_override: bool = False
+    # SMS opt-out
+    sms_opt_out: bool = False
+    sms_history: Optional[List[Dict]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -358,6 +365,118 @@ async def update_prospect_next_task(prospect_id: str, user_id: str):
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
+
+async def calculate_prospect_score(prospect_id: str, user_id: str, force_score: str = None):
+    """
+    Calculate prospect score (chaud/tiede/froid) based on:
+    - Last interaction freshness (40%)
+    - Profile completeness (30%)
+    - Completed tasks (30%)
+    
+    If force_score is provided, use it as manual override.
+    21+ days inactive = automatically froid.
+    """
+    now = datetime.now(timezone.utc)
+    
+    # Get prospect
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        return None
+    
+    # If force_score provided, use manual override
+    if force_score and force_score in ["chaud", "tiede", "froid"]:
+        await db.prospects.update_one(
+            {"prospect_id": prospect_id},
+            {"$set": {
+                "score": force_score,
+                "score_calculated_at": now.isoformat(),
+                "score_manual_override": True,
+                "updated_at": now.isoformat()
+            }}
+        )
+        return force_score
+    
+    # Calculate freshness score (40%)
+    last_activity = prospect.get("last_activity_date") or prospect.get("created_at")
+    days_inactive = 0
+    if last_activity:
+        if isinstance(last_activity, str):
+            last_activity = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
+        if last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        days_inactive = (now - last_activity).days
+    
+    # 21+ days = automatic froid
+    if days_inactive >= 21:
+        await db.prospects.update_one(
+            {"prospect_id": prospect_id},
+            {"$set": {
+                "score": "froid",
+                "score_calculated_at": now.isoformat(),
+                "score_manual_override": False,
+                "updated_at": now.isoformat()
+            }}
+        )
+        return "froid"
+    
+    # Freshness score: 0-7 days = 100%, 8-14 days = 60%, 15-21 days = 30%
+    if days_inactive <= 7:
+        freshness_score = 100
+    elif days_inactive <= 14:
+        freshness_score = 60
+    else:
+        freshness_score = 30
+    
+    # Calculate profile completeness score (30%)
+    # Fields: full_name, phone, email, source, notes
+    completeness_fields = 0
+    if prospect.get("full_name"): completeness_fields += 1
+    if prospect.get("phone"): completeness_fields += 1
+    if prospect.get("email"): completeness_fields += 1
+    if prospect.get("source") and prospect.get("source") != "manual": completeness_fields += 1
+    if prospect.get("notes") and len(prospect.get("notes", "")) > 10: completeness_fields += 1
+    completeness_score = (completeness_fields / 5) * 100
+    
+    # Calculate completed tasks score (30%)
+    completed_tasks = await db.tasks.count_documents({
+        "prospect_id": prospect_id,
+        "user_id": user_id,
+        "completed": True
+    })
+    # 0 tasks = 0%, 1 task = 50%, 2+ tasks = 100%
+    if completed_tasks == 0:
+        tasks_score = 0
+    elif completed_tasks == 1:
+        tasks_score = 50
+    else:
+        tasks_score = 100
+    
+    # Weighted total
+    total_score = (freshness_score * 0.4) + (completeness_score * 0.3) + (tasks_score * 0.3)
+    
+    # Determine score label
+    if total_score >= 70:
+        score_label = "chaud"
+    elif total_score >= 40:
+        score_label = "tiede"
+    else:
+        score_label = "froid"
+    
+    # Update prospect
+    await db.prospects.update_one(
+        {"prospect_id": prospect_id},
+        {"$set": {
+            "score": score_label,
+            "score_calculated_at": now.isoformat(),
+            "score_manual_override": False,
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    return score_label
 
 async def generate_follow_up_tasks_for_user(user_id: str):
     """Generate automatic follow-up tasks for inactive prospects"""
@@ -2386,6 +2505,9 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     task_doc['due_date'] = task_doc['due_date'].isoformat()
     await db.tasks.insert_one(task_doc)
     
+    # Calculate initial score
+    await calculate_prospect_score(prospect.prospect_id, user.user_id)
+    
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 
 @api_router.get("/prospects/{prospect_id}")
@@ -2400,6 +2522,23 @@ async def get_prospect(request: Request, prospect_id: str):
     
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Auto-recalculate score if missing or stale (> 1 day) and not manually overridden
+    should_recalculate = False
+    if not prospect.get("score"):
+        should_recalculate = True
+    elif not prospect.get("score_manual_override"):
+        score_date = prospect.get("score_calculated_at")
+        if score_date:
+            if isinstance(score_date, str):
+                score_date = datetime.fromisoformat(score_date.replace('Z', '+00:00'))
+            if (datetime.now(timezone.utc) - score_date).days >= 1:
+                should_recalculate = True
+    
+    if should_recalculate:
+        new_score = await calculate_prospect_score(prospect_id, user.user_id)
+        prospect["score"] = new_score
+        prospect["score_calculated_at"] = datetime.now(timezone.utc).isoformat()
     
     # Get tasks for this prospect
     tasks = await db.tasks.find(
@@ -2428,6 +2567,9 @@ async def update_prospect(request: Request, prospect_id: str, update_data: Updat
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
+    # Recalculate score after update
+    await calculate_prospect_score(prospect_id, user.user_id)
+    
     return {"message": "Prospect updated"}
 
 @api_router.delete("/prospects/{prospect_id}")
@@ -2448,6 +2590,274 @@ async def delete_prospect(request: Request, prospect_id: str):
     )
     
     return {"message": "Prospect deleted"}
+
+@api_router.post("/prospects/{prospect_id}/score")
+async def update_prospect_score(request: Request, prospect_id: str):
+    """Calculate or manually set prospect score"""
+    user = await require_active_subscription(request)
+    
+    body = await request.json()
+    force_score = body.get("force_score")  # Optional: chaud, tiede, froid
+    
+    score = await calculate_prospect_score(prospect_id, user.user_id, force_score)
+    
+    if not score:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    return {"score": score, "manual_override": force_score is not None}
+
+@api_router.post("/prospects/{prospect_id}/generate-message")
+async def generate_followup_message(request: Request, prospect_id: str):
+    """Generate AI-powered follow-up message for a prospect"""
+    user = await require_active_subscription(request)
+    
+    # Get prospect
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Calculate score if not present
+    score = prospect.get("score")
+    if not score:
+        score = await calculate_prospect_score(prospect_id, user.user_id)
+    
+    # Get last completed task
+    last_task = await db.tasks.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id, "completed": True},
+        {"_id": 0},
+        sort=[("completed_at", -1)]
+    )
+    
+    # Calculate days inactive
+    now = datetime.now(timezone.utc)
+    last_activity = prospect.get("last_activity_date") or prospect.get("created_at")
+    days_inactive = 0
+    if last_activity:
+        if isinstance(last_activity, str):
+            last_activity = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
+        if last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        days_inactive = (now - last_activity).days
+    
+    # Extract first name
+    full_name = prospect.get("full_name", "")
+    first_name = full_name.split()[0] if full_name else "Client"
+    
+    # Build context
+    context = {
+        "first_name": first_name,
+        "full_name": full_name,
+        "source": prospect.get("source", "inconnu"),
+        "notes": prospect.get("notes", ""),
+        "score": score,
+        "days_inactive": days_inactive,
+        "last_action": last_task.get("title") if last_task else None,
+        "last_action_date": last_task.get("completed_at") if last_task else None
+    }
+    
+    # Generate message with AI
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
+        
+        # Tone based on score
+        tone_instructions = {
+            "chaud": "Ton direct et orienté action. Propose un RDV rapidement. Le prospect est engagé.",
+            "tiede": "Ton professionnel avec apport de valeur. Rappelle les bénéfices, propose d'avancer sans pression.",
+            "froid": "Ton léger et non-intrusif. Simple prise de nouvelles, pas de pression commerciale."
+        }
+        
+        tone = tone_instructions.get(score, tone_instructions["tiede"])
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"message_gen_{prospect_id}_{datetime.now().timestamp()}",
+            system_message=f"""Tu es un agent immobilier professionnel. Rédige un message de relance SMS/WhatsApp court et efficace.
+
+RÈGLES:
+- Maximum 160 caractères (1 SMS)
+- Tutoie le prospect si jeune, vouvoie sinon (déduire de la situation)
+- Personnalise avec le prénom
+- {tone}
+- Pas de formules génériques type "J'espère que vous allez bien"
+- Termine par une question ou une proposition concrète
+
+Réponds UNIQUEMENT avec le message, sans guillemets, sans explication."""
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        
+        context_text = f"""Prospect: {first_name}
+Source: {context['source']}
+Score: {score}
+Inactif depuis: {days_inactive} jours
+Dernière action: {context['last_action'] or 'Aucune'}
+Notes: {context['notes'] or 'Aucune'}
+
+Génère un message de relance adapté."""
+        
+        user_message = UserMessage(text=context_text)
+        message = await chat.send_message(user_message)
+        
+        return {
+            "message": message.strip(),
+            "context": context,
+            "tone": score
+        }
+        
+    except Exception as e:
+        logger.error(f"AI message generation error: {e}")
+        # Fallback message
+        fallback = f"Bonjour {first_name}, je me permets de vous recontacter concernant votre projet immobilier. Êtes-vous toujours en recherche ?"
+        return {
+            "message": fallback,
+            "context": context,
+            "tone": score,
+            "fallback": True
+        }
+
+@api_router.post("/prospects/{prospect_id}/send-sms")
+async def send_sms_to_prospect(request: Request, prospect_id: str):
+    """Send SMS to prospect via Brevo API"""
+    user = await require_active_subscription(request)
+    
+    body = await request.json()
+    message = body.get("message")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message required")
+    
+    # Get prospect
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Check opt-out
+    if prospect.get("sms_opt_out"):
+        raise HTTPException(status_code=400, detail="Ce prospect a demandé à ne plus recevoir de SMS")
+    
+    # Get phone number
+    phone = prospect.get("phone")
+    if not phone:
+        raise HTTPException(status_code=400, detail="Numéro de téléphone manquant")
+    
+    # Format phone number for France
+    phone = phone.strip().replace(" ", "").replace(".", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "+33" + phone[1:]
+    elif not phone.startswith("+"):
+        phone = "+33" + phone
+    
+    # Send SMS via Brevo
+    brevo_api_key = os.environ.get("BREVO_API_KEY")
+    if not brevo_api_key:
+        raise HTTPException(status_code=500, detail="SMS service not configured")
+    
+    try:
+        from brevo import Brevo
+        
+        client = Brevo(api_key=brevo_api_key)
+        
+        # Send SMS using the new API
+        response = await asyncio.to_thread(
+            client.transactional_sms.send_transac_sms,
+            recipient=phone,
+            sender="KOLO",
+            type="transactional"
+        )
+        
+        # Note: Brevo's new SDK doesn't have content in send_transac_sms
+        # We need to use a different approach - using httpx directly
+        import httpx
+        
+        async with httpx.AsyncClient() as http_client:
+            sms_response = await http_client.post(
+                "https://api.brevo.com/v3/transactionalSMS/sms",
+                headers={
+                    "api-key": brevo_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "sender": "KOLO",
+                    "recipient": phone,
+                    "content": message[:160],
+                    "type": "transactional"
+                }
+            )
+            sms_response.raise_for_status()
+            response_data = sms_response.json()
+        
+        # Log SMS in prospect history
+        sms_entry = {
+            "id": f"sms_{uuid.uuid4().hex[:8]}",
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "message": message[:160],
+            "phone": phone,
+            "status": "sent",
+            "brevo_message_id": response_data.get("messageId")
+        }
+        
+        # Update prospect with SMS history
+        await db.prospects.update_one(
+            {"prospect_id": prospect_id},
+            {
+                "$push": {"sms_history": sms_entry},
+                "$set": {
+                    "last_activity_date": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Recalculate score after activity
+        await calculate_prospect_score(prospect_id, user.user_id)
+        
+        logger.info(f"SMS sent to {phone} for prospect {prospect_id}")
+        
+        return {
+            "success": True,
+            "message_id": sms_entry["id"],
+            "status": "sent"
+        }
+        
+    except httpx.HTTPStatusError as e:
+        error_body = e.response.json() if e.response.content else {}
+        error_msg = error_body.get("message", str(e))
+        if "not_enough_credits" in str(error_body):
+            error_msg = "Crédits SMS insuffisants. Rechargez sur app.brevo.com"
+        logger.error(f"SMS sending error: {error_msg}")
+        raise HTTPException(status_code=400, detail=error_msg)
+    except Exception as e:
+        logger.error(f"SMS sending error: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur d'envoi SMS: {str(e)}")
+
+@api_router.post("/prospects/{prospect_id}/sms-opt-out")
+async def toggle_sms_opt_out(request: Request, prospect_id: str):
+    """Toggle SMS opt-out status for a prospect"""
+    user = await require_active_subscription(request)
+    
+    body = await request.json()
+    opt_out = body.get("opt_out", True)
+    
+    result = await db.prospects.update_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"$set": {
+            "sms_opt_out": opt_out,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    return {"sms_opt_out": opt_out}
 
 
 # ==================== NOTIFICATION ENDPOINTS ====================
