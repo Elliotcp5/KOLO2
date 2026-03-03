@@ -503,13 +503,8 @@ const ProspectsTab = ({ onSelectProspect }) => {
         <div>
           {prospects.map((prospect) => {
             const nextTask = formatNextTask(prospect);
-            // Score badge colors
-            const scoreColors = {
-              'chaud': { bg: 'rgba(34, 197, 94, 0.2)', color: '#22C55E', emoji: '🟢' },
-              'tiede': { bg: 'rgba(245, 158, 11, 0.2)', color: '#F59E0B', emoji: '🟠' },
-              'froid': { bg: 'rgba(239, 68, 68, 0.2)', color: '#EF4444', emoji: '🔴' }
-            };
-            const scoreStyle = scoreColors[prospect.score] || scoreColors['tiede'];
+            // Score indicator - just a small dot
+            const scoreColor = prospect.score === 'chaud' ? '#22C55E' : prospect.score === 'tiede' ? '#F59E0B' : prospect.score === 'froid' ? '#EF4444' : null;
             
             return (
               <div 
@@ -520,11 +515,16 @@ const ProspectsTab = ({ onSelectProspect }) => {
                 data-testid={`prospect-${prospect.prospect_id}`}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {prospect.score && (
-                      <span style={{ fontSize: '14px' }} title={`Score: ${prospect.score}`}>
-                        {scoreStyle.emoji}
-                      </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Discrete score dot */}
+                    {scoreColor && (
+                      <span style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        borderRadius: '50%', 
+                        background: scoreColor,
+                        flexShrink: 0
+                      }} title={prospect.score} />
                     )}
                     <div>
                       <div className="name">{prospect.full_name}</div>
@@ -586,6 +586,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   
   // Score state
   const [updatingScore, setUpdatingScore] = useState(false);
+  const [showScoreMenu, setShowScoreMenu] = useState(false);
 
   useEffect(() => {
     const fetchProspectDetail = async () => {
@@ -850,14 +851,15 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1 className="text-title">{prospectData.full_name}</h1>
-          {/* Score badge */}
+          {/* Discrete score dot in header */}
           {prospectData.score && (
             <span style={{
-              fontSize: '16px',
-              cursor: 'pointer'
-            }} title={`Score: ${prospectData.score}`}>
-              {prospectData.score === 'chaud' ? '🟢' : prospectData.score === 'tiede' ? '🟠' : '🔴'}
-            </span>
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : '#EF4444',
+              flexShrink: 0
+            }} title={prospectData.score} />
           )}
         </div>
         <button 
@@ -1070,70 +1072,92 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </div>
       </div>
       
-      {/* Score section */}
-      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span className="text-caption">{locale === 'fr' ? 'Score prospect' : 'Prospect score'}</span>
-          <span style={{ 
-            fontSize: '14px', 
-            fontWeight: '600',
-            color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : '#EF4444'
-          }}>
-            {prospectData.score === 'chaud' ? '🟢 Chaud' : prospectData.score === 'tiede' ? '🟠 Tiède' : prospectData.score === 'froid' ? '🔴 Froid' : '—'}
+      {/* Score section - discrete inline display */}
+      <div className="card" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
+            {locale === 'fr' ? 'Température' : 'Temperature'}
           </span>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => updateScore('chaud')}
-            disabled={updatingScore}
-            style={{
-              flex: 1,
-              padding: '10px',
-              border: prospectData.score === 'chaud' ? '2px solid #22C55E' : '1px solid var(--border)',
-              background: prospectData.score === 'chaud' ? 'rgba(34, 197, 94, 0.1)' : 'var(--surface-2)',
-              borderRadius: '10px',
-              color: '#22C55E',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '500'
-            }}
-          >
-            🟢 Chaud
-          </button>
-          <button
-            onClick={() => updateScore('tiede')}
-            disabled={updatingScore}
-            style={{
-              flex: 1,
-              padding: '10px',
-              border: prospectData.score === 'tiede' ? '2px solid #F59E0B' : '1px solid var(--border)',
-              background: prospectData.score === 'tiede' ? 'rgba(245, 158, 11, 0.1)' : 'var(--surface-2)',
-              borderRadius: '10px',
-              color: '#F59E0B',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '500'
-            }}
-          >
-            🟠 Tiède
-          </button>
-          <button
-            onClick={() => updateScore('froid')}
-            disabled={updatingScore}
-            style={{
-              flex: 1,
-              padding: '10px',
-              border: prospectData.score === 'froid' ? '2px solid #EF4444' : '1px solid var(--border)',
-              background: prospectData.score === 'froid' ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface-2)',
-              borderRadius: '10px',
-              color: '#EF4444',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '500'
-            }}
-          >
-            🔴 Froid
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowScoreMenu(!showScoreMenu)}
+              disabled={updatingScore}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}
+            >
+              <span style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)'
+              }} />
+              {prospectData.score === 'chaud' ? (locale === 'fr' ? 'Chaud' : 'Hot') : 
+               prospectData.score === 'tiede' ? (locale === 'fr' ? 'Tiède' : 'Warm') : 
+               prospectData.score === 'froid' ? (locale === 'fr' ? 'Froid' : 'Cold') : '—'}
+              <ChevronRight size={14} style={{ transform: showScoreMenu ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+            </button>
+            
+            {showScoreMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '4px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '4px',
+                zIndex: 100,
+                minWidth: '120px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}>
+                {[
+                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E' },
+                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B' },
+                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444' }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => { updateScore(option.value); setShowScoreMenu(false); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: prospectData.score === option.value ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: option.color,
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      borderRadius: '50%', 
+                      background: option.color 
+                    }} />
+                    {option.label}
+                    {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

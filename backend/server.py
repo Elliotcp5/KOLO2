@@ -2761,22 +2761,7 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
         raise HTTPException(status_code=500, detail="SMS service not configured")
     
     try:
-        from brevo import Brevo
-        
-        client = Brevo(api_key=brevo_api_key)
-        
-        # Send SMS using the new API
-        response = await asyncio.to_thread(
-            client.transactional_sms.send_transac_sms,
-            recipient=phone,
-            sender="KOLO",
-            type="transactional"
-        )
-        
-        # Note: Brevo's new SDK doesn't have content in send_transac_sms
-        # We need to use a different approach - using httpx directly
-        import httpx
-        
+        # Send SMS using httpx directly (Brevo REST API)
         async with httpx.AsyncClient() as http_client:
             sms_response = await http_client.post(
                 "https://api.brevo.com/v3/transactionalSMS/sms",
@@ -2789,7 +2774,8 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
                     "recipient": phone,
                     "content": message[:160],
                     "type": "transactional"
-                }
+                },
+                timeout=30.0
             )
             sms_response.raise_for_status()
             response_data = sms_response.json()
@@ -2805,6 +2791,14 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
         }
         
         # Update prospect with SMS history
+        # First ensure sms_history is an array
+        current_prospect = await db.prospects.find_one({"prospect_id": prospect_id}, {"sms_history": 1})
+        if current_prospect and current_prospect.get("sms_history") is None:
+            await db.prospects.update_one(
+                {"prospect_id": prospect_id},
+                {"$set": {"sms_history": []}}
+            )
+        
         await db.prospects.update_one(
             {"prospect_id": prospect_id},
             {
