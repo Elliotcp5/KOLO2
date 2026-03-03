@@ -1075,84 +1075,44 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       {/* Score section - discrete inline display */}
       <div className="card" style={{ marginBottom: '16px', padding: '12px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
+          <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>
             {locale === 'fr' ? 'Température' : 'Temperature'}
           </span>
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowScoreMenu(!showScoreMenu)}
               disabled={updatingScore}
+              className="btn-minimal"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
                 padding: '6px 12px',
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                borderRadius: '20px',
-                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: '500'
+                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)'
               }}
             >
-              <span style={{ 
-                width: '8px', 
-                height: '8px', 
-                borderRadius: '50%', 
-                background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)'
-              }} />
+              <span className={`score-dot ${prospectData.score === 'chaud' ? 'hot' : prospectData.score === 'tiede' ? 'warm' : 'cold'}`} />
               {prospectData.score === 'chaud' ? (locale === 'fr' ? 'Chaud' : 'Hot') : 
                prospectData.score === 'tiede' ? (locale === 'fr' ? 'Tiède' : 'Warm') : 
                prospectData.score === 'froid' ? (locale === 'fr' ? 'Froid' : 'Cold') : '—'}
-              <ChevronRight size={14} style={{ transform: showScoreMenu ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
             </button>
             
             {showScoreMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '4px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '4px',
-                zIndex: 100,
-                minWidth: '120px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-              }}>
+              <div className="dropdown-menu">
                 {[
-                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E' },
-                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B' },
-                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444' }
+                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E', dotClass: 'hot' },
+                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B', dotClass: 'warm' },
+                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444', dotClass: 'cold' }
                 ].map(option => (
                   <button
                     key={option.value}
                     onClick={() => { updateScore(option.value); setShowScoreMenu(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 12px',
-                      background: prospectData.score === option.value ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: option.color,
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      textAlign: 'left'
-                    }}
+                    className={`dropdown-item ${prospectData.score === option.value ? 'active' : ''}`}
+                    style={{ color: option.color }}
                   >
-                    <span style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      borderRadius: '50%', 
-                      background: option.color 
-                    }} />
+                    <span className={`score-dot ${option.dotClass}`} />
                     {option.label}
-                    {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                    {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto', opacity: 0.7 }} />}
                   </button>
                 ))}
               </div>
@@ -1165,65 +1125,33 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       <button
         onClick={generateMessage}
         disabled={messageLoading}
-        style={{
-          width: '100%',
-          padding: '14px',
-          background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
-          border: 'none',
-          borderRadius: '12px',
-          color: 'white',
-          fontSize: '15px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          marginBottom: '16px'
-        }}
+        className="btn-ai"
+        style={{ width: '100%', marginBottom: '16px' }}
         data-testid="ai-message-button"
       >
         <Sparkles size={18} />
-        {locale === 'fr' ? 'Rédiger un message avec l\'IA' : 'Write message with AI'}
+        {locale === 'fr' ? 'Rédiger avec l\'IA' : 'Write with AI'}
       </button>
       
       {/* AI Message Modal */}
       {showMessageModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '16px'
-        }} onClick={() => setShowMessageModal(false)}>
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: '20px',
-            padding: '24px',
-            width: '100%',
-            maxWidth: '400px'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={20} style={{ color: 'var(--accent)' }} />
+        <div className="modal-overlay" onClick={() => setShowMessageModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={18} style={{ color: 'var(--accent)' }} />
                 {locale === 'fr' ? 'Message IA' : 'AI Message'}
               </h2>
-              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
             
             {messageLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
-                <p style={{ marginTop: '12px', color: 'var(--muted)' }}>
-                  {locale === 'fr' ? 'Génération en cours...' : 'Generating...'}
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)', marginBottom: '12px' }} />
+                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                  {locale === 'fr' ? 'Génération...' : 'Generating...'}
                 </p>
               </div>
             ) : (
@@ -1233,47 +1161,24 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                   onChange={(e) => setAiMessage(e.target.value)}
                   style={{
                     width: '100%',
-                    minHeight: '120px',
-                    padding: '12px',
+                    minHeight: '100px',
+                    padding: '14px',
                     background: 'var(--surface-2)',
                     border: '1px solid var(--border)',
                     borderRadius: '12px',
                     color: 'var(--text)',
                     fontSize: '14px',
+                    lineHeight: '1.5',
                     resize: 'vertical',
-                    marginBottom: '12px'
+                    marginBottom: '16px'
                   }}
                 />
                 
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  <button
-                    onClick={generateMessage}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: 'var(--surface-2)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '13px'
-                    }}
-                  >
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <button onClick={generateMessage} className="btn-minimal" style={{ flex: 1 }}>
                     🔄 {locale === 'fr' ? 'Regénérer' : 'Regenerate'}
                   </button>
-                  <button
-                    onClick={copyMessage}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: 'var(--surface-2)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      color: 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '13px'
-                    }}
-                  >
+                  <button onClick={copyMessage} className="btn-minimal" style={{ flex: 1 }}>
                     📋 {locale === 'fr' ? 'Copier' : 'Copy'}
                   </button>
                 </div>
@@ -1294,7 +1199,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: prospectData.phone ? '0 4px 20px rgba(34, 197, 94, 0.25)' : 'none'
                   }}
                 >
                   {sendingSms ? (
@@ -1308,8 +1215,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 </button>
                 
                 {!prospectData.phone && (
-                  <p style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '8px' }}>
-                    {locale === 'fr' ? 'Ajoutez un numéro de téléphone pour envoyer un SMS' : 'Add a phone number to send SMS'}
+                  <p style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '10px' }}>
+                    {locale === 'fr' ? 'Numéro requis pour envoyer un SMS' : 'Phone required to send SMS'}
                   </p>
                 )}
               </>
