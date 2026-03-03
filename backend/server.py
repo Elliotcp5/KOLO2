@@ -1904,15 +1904,17 @@ async def list_today_tasks(request: Request):
     await generate_follow_up_tasks_for_user(user.user_id)
     
     now = datetime.now(timezone.utc)
-    end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    # End of today - use tomorrow midnight to catch all today's tasks regardless of timezone
+    tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Get overdue tasks (before today, not completed) and today's tasks
+    # Use $lte with tomorrow start to be inclusive of all today's times
     tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
             "completed": False,
-            "due_date": {"$lte": end_of_today.isoformat()}
+            "due_date": {"$lt": tomorrow_start.isoformat()}
         },
         {"_id": 0}
     ).sort("due_date", 1).to_list(1000)
@@ -1928,12 +1930,13 @@ async def list_today_tasks(request: Request):
         prospects_map = {p["prospect_id"]: p for p in prospects}
     
     # Mark tasks as overdue or today and enrich with prospect info
+    tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     for task in tasks:
         task_date = datetime.fromisoformat(task["due_date"].replace('Z', '+00:00'))
         if task_date.tzinfo is None:
             task_date = task_date.replace(tzinfo=timezone.utc)
         task["is_overdue"] = task_date < start_of_today
-        task["is_today"] = start_of_today <= task_date <= end_of_today
+        task["is_today"] = start_of_today <= task_date < tomorrow_start
         
         # Enrich with prospect info from batch
         if task.get("prospect_id"):
@@ -2491,7 +2494,14 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     await db.prospects.insert_one(doc)
     
     # Auto-create follow-up task for the new prospect
-    follow_up_date = now + timedelta(days=1)  # Follow up tomorrow
+    # Schedule for later today if within working hours, otherwise tomorrow morning
+    paris_offset = timedelta(hours=1)  # UTC+1 for France
+    local_hour = (now + paris_offset).hour
+    
+    if local_hour < 17:  # Before 5 PM Paris time, schedule for today
+        follow_up_date = now.replace(hour=16, minute=0, second=0, microsecond=0)  # 17h Paris
+    else:  # After 5 PM, schedule for tomorrow morning
+        follow_up_date = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)  # 9h Paris
     task = Task(
         user_id=user.user_id,
         prospect_id=prospect.prospect_id,
