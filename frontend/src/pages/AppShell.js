@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -131,14 +131,36 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     }
   };
 
+  // Get icon for task type - returns null if type not recognized
   const getTaskTypeIcon = (type) => {
     switch (type) {
       case 'call': return Phone;
       case 'email': return Mail;
       case 'sms': return MessageSquare;
-      case 'meeting': return Calendar;
-      default: return Clock;
+      case 'visit': return Home;
+      case 'administrative': return FileText;
+      case 'prospection': return Search;
+      default: return null; // No icon for unrecognized types
     }
+  };
+  
+  // Get task type label
+  const getTaskTypeLabel = (type) => {
+    const labels = {
+      call: locale === 'fr' ? 'Appeler' : 'Call',
+      email: 'Email',
+      sms: 'SMS',
+      visit: locale === 'fr' ? 'Visite' : 'Visit',
+      administrative: locale === 'fr' ? 'Administratif' : 'Administrative',
+      prospection: locale === 'fr' ? 'Prospection' : 'Prospecting',
+      follow_up: locale === 'fr' ? 'Suivi' : 'Follow-up'
+    };
+    return labels[type] || '';
+  };
+  
+  // Check if task type has action buttons
+  const hasActionButtons = (type) => {
+    return ['call', 'sms', 'email'].includes(type);
   };
 
   return (
@@ -217,6 +239,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
+            const taskLabel = getTaskTypeLabel(task.task_type);
+            const showActions = hasActionButtons(task.task_type);
             const isExpanded = expandedTaskId === task.task_id;
             
             // Calculate if overdue
@@ -280,31 +304,37 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       {task.prospect?.full_name || task.title}
                     </div>
                     <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <IconComponent size={12} />
-                        {task.task_type === 'call' ? (locale === 'fr' ? 'Appeler' : 'Call') : 
-                         task.task_type === 'email' ? 'Email' : 
-                         task.task_type === 'sms' ? 'SMS' : 
-                         (locale === 'fr' ? 'Suivi' : 'Follow-up')}
-                      </span>
+                      {/* Icon + label only if recognized type */}
+                      {IconComponent && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <IconComponent size={12} />
+                          {taskLabel}
+                        </span>
+                      )}
+                      {/* Just show title snippet if no recognized type */}
+                      {!IconComponent && task.title && (
+                        <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {task.title}
+                        </span>
+                      )}
                       <span style={{ color: 'var(--muted-dark)' }}>•</span>
                       <span style={{ color: isOverdue ? '#F59E0B' : 'var(--muted)' }}>{taskTime}</span>
                       {isOverdue && <span style={{ color: '#F59E0B' }}>({locale === 'fr' ? 'En retard' : 'Overdue'})</span>}
                     </div>
                   </div>
                   
-                  {/* Quick action button - only the one matching task type */}
-                  {task.prospect && (
+                  {/* Quick action buttons - ONLY for call/sms/email tasks */}
+                  {task.prospect && showActions && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      {/* Call button for call/follow_up tasks */}
-                      {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
+                      {/* Call button for call tasks only */}
+                      {task.task_type === 'call' && task.prospect.phone && (
                         <a href={`tel:${task.prospect.phone}`} 
                           onClick={(e) => e.stopPropagation()}
                           style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
                           <Phone size={18} />
                         </a>
                       )}
-                      {/* Email button for email tasks */}
+                      {/* Email button for email tasks only */}
                       {task.task_type === 'email' && task.prospect.email && (
                         <a href={`mailto:${task.prospect.email}`}
                           onClick={(e) => e.stopPropagation()}
@@ -312,7 +342,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                           <Mail size={18} />
                         </a>
                       )}
-                      {/* SMS buttons for sms tasks - native + AI */}
+                      {/* SMS buttons for sms tasks only - native + AI */}
                       {task.task_type === 'sms' && task.prospect.phone && (
                         <>
                           <a href={`sms:${task.prospect.phone}`}
