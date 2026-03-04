@@ -1,22 +1,23 @@
 /* KOLO - iOS-style Dark Mode Fintech CRM */
 
-/* CSS Variables */
+/* CSS Variables - Minimalist Dark Theme */
 :root {
-  --bg: #0B0B0F;
-  --surface: #14141A;
-  --surface-2: #1A1A22;
-  --text: #F5F5F7;
-  --muted: #A1A1AA;
-  --muted-dark: #52525B;
-  --border: rgba(255, 255, 255, 0.08);
-  --accent: #7C3AED;
-  --accent-2: #8B5CF6;
+  --bg: #0A0A0C;
+  --surface: #111114;
+  --surface-2: #17171A;
+  --surface-light: #1E1E22;
+  --text: #FAFAFA;
+  --muted: #8E8E93;
+  --muted-dark: #48484A;
+  --border: rgba(255, 255, 255, 0.06);
+  --accent: #8B5CF6;
+  --accent-2: #A78BFA;
   --accent-pink: #EC4899;
-  --accent-gradient: linear-gradient(135deg, #EC4899 0%, #8B5CF6 50%, #7C3AED 100%);
-  --accent-gradient-hover: linear-gradient(135deg, #F472B6 0%, #A78BFA 50%, #8B5CF6 100%);
-  --accent-glow: rgba(236, 72, 153, 0.3);
-  --shadow: rgba(0, 0, 0, 0.3);
-  --success: #10B981;
+  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+  --accent-glow: rgba(139, 92, 246, 0.2);
+  --shadow: rgba(0, 0, 0, 0.4);
+  --success: #22C55E;
   --error: #EF4444;
   --warning: #F59E0B;
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -80,13 +81,13 @@ html, body {
   padding-bottom: 0;
 }
 
-/* Cards */
+/* Cards - Cleaner */
 .card {
   background-color: var(--surface);
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  padding: 20px;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  padding: 16px;
+  transition: background-color 0.15s ease;
 }
 
 .card:hover {
@@ -94,25 +95,25 @@ html, body {
 }
 
 .card:active {
-  transform: scale(0.98);
+  transform: scale(0.995);
 }
 
 .card-interactive {
   cursor: pointer;
 }
 
-/* Inputs */
+/* Inputs - Refined */
 .input-dark {
   width: 100%;
-  height: 56px;
-  background-color: rgba(255, 255, 255, 0.05);
+  height: 50px;
+  background-color: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 0 20px;
+  border-radius: 12px;
+  padding: 0 16px;
   color: var(--text);
-  font-size: 16px;
+  font-size: 15px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .input-dark::placeholder {
@@ -121,7 +122,7 @@ html, body {
 
 .input-dark:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  background-color: var(--surface-light);
 }
 
 /* Select styling */
@@ -160,23 +161,22 @@ select.input-dark option {
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-/* Buttons */
+/* Buttons - Simplified */
 .btn-primary {
   width: 100%;
-  height: 56px;
-  background: var(--accent-gradient);
+  height: 52px;
+  background: var(--accent);
   color: white !important;
   border: none;
-  border-radius: 9999px;
-  font-size: 17px;
+  border-radius: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  box-shadow: 0 4px 20px -5px var(--accent-glow), 0 0 40px -10px rgba(139, 92, 246, 0.3);
-  transition: all 0.2s ease;
+  gap: 8px;
+  transition: all 0.15s ease;
 }
 
 .btn-primary span,
@@ -185,12 +185,12 @@ select.input-dark option {
 }
 
 .btn-primary:hover {
-  background: var(--accent-gradient-hover);
-  box-shadow: 0 6px 25px -5px var(--accent-glow), 0 0 50px -10px rgba(139, 92, 246, 0.4);
+  background: var(--accent-2);
+  transform: translateY(-1px);
 }
 
 .btn-primary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn-primary:disabled {
@@ -200,28 +200,27 @@ select.input-dark option {
 
 .btn-secondary {
   width: 100%;
-  height: 56px;
-  background-color: rgba(255, 255, 255, 0.1);
+  height: 50px;
+  background-color: var(--surface-2);
   color: white;
   border: 1px solid var(--border);
-  border-radius: 9999px;
-  font-size: 17px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  backdrop-filter: blur(8px);
-  transition: background-color 0.2s ease, transform 0.15s ease;
+  gap: 8px;
+  transition: background-color 0.15s ease;
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--surface-light);
 }
 
 .btn-secondary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn-ghost {
@@ -239,29 +238,28 @@ select.input-dark option {
   opacity: 0.8;
 }
 
-/* Chip buttons for selection */
+/* Chip buttons for selection - Subtle */
 .btn-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 8px 14px;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background-color: var(--surface);
+  background-color: transparent;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .btn-chip:hover {
   background-color: var(--surface-2);
-  border-color: var(--muted-dark);
+  color: var(--text);
 }
 
 .btn-chip.active {
   background-color: var(--accent);
   border-color: var(--accent);
   color: white;
-  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .btn-chip.active:hover {
@@ -452,14 +450,14 @@ select.input-dark option {
   margin-top: 4px;
 }
 
-/* Settings Row */
+/* Settings Row - Clean */
 .settings-row {
   display: flex;
   align-items: center;
-  padding: 16px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .settings-row:last-child {
@@ -467,134 +465,130 @@ select.input-dark option {
 }
 
 .settings-row:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .settings-row .icon {
-  width: 32px;
-  height: 32px;
-  color: white;
-  margin-right: 16px;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+  margin-right: 14px;
 }
 
 .settings-row .label {
   flex: 1;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text);
 }
 
 .settings-row .value {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--muted);
   margin-right: 8px;
 }
 
 .settings-row .chevron {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--muted-dark);
 }
 
-/* Prospect Card */
+/* Prospect Card - Minimalist */
 .prospect-card {
   background-color: var(--surface);
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  transition: all 0.2s ease;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
 }
 
 .prospect-card:hover {
   background-color: var(--surface-2);
-  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .prospect-card:active {
-  transform: scale(0.99);
+  transform: scale(0.995);
 }
 
 .prospect-card .name {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
   margin-bottom: 2px;
-  letter-spacing: -0.01em;
 }
 
 .prospect-card .contact {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
-  margin-bottom: 10px;
-  opacity: 0.8;
+  margin-bottom: 8px;
 }
 
 .prospect-card .status-badge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
 .prospect-card .status-badge.new {
-  background-color: rgba(124, 58, 237, 0.15);
+  background-color: rgba(139, 92, 246, 0.12);
   color: var(--accent-2);
 }
 
 .prospect-card .status-badge.in_progress {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(245, 158, 11, 0.12);
   color: var(--warning);
 }
 
 .prospect-card .status-badge.closed {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(34, 197, 94, 0.12);
   color: var(--success);
 }
 
 .prospect-card .status-badge.lost {
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(239, 68, 68, 0.12);
   color: var(--error);
 }
 
-/* Empty State */
+/* Empty State - Cleaner */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 48px 20px;
   text-align: center;
 }
 
 .empty-state .icon-wrapper {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.05);
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background-color: var(--surface-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .empty-state .icon-wrapper svg {
-  width: 36px;
-  height: 36px;
-  color: var(--success);
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
 }
 
 .empty-state .title {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .empty-state .subtitle {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--muted);
 }
 
@@ -901,24 +895,24 @@ button.payment-method-card {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
+  padding: 20px;
 }
 
 .modal-content {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: 16px;
+  padding: 20px;
   width: 100%;
-  max-width: 400px;
-  animation: modalSlideUp 0.25s ease;
+  max-width: 360px;
+  animation: modalSlideUp 0.2s ease;
 }
 
 @keyframes modalSlideUp {
@@ -1001,26 +995,25 @@ button.payment-method-card {
   background: rgba(139, 92, 246, 0.1);
 }
 
-/* AI Button Glow */
+/* AI Button - Subtle */
 .btn-ai {
-  background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);
+  background: var(--accent);
   border: none;
   border-radius: 12px;
-  padding: 14px 20px;
+  padding: 12px 18px;
   color: white;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 20px rgba(236, 72, 153, 0.25);
+  transition: all 0.15s ease;
 }
 
 .btn-ai:hover {
-  box-shadow: 0 6px 30px rgba(236, 72, 153, 0.35);
+  background: var(--accent-2);
   transform: translateY(-1px);
 }
 

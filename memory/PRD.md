@@ -96,6 +96,22 @@ Pour recevoir les réponses SMS dans KOLO :
 6. ✅ **Bug langue corrigé** : Le choix FR/EN sur la landing persiste dans toute l'app
 7. ✅ **Label "Expéditeur SMS" supprimé** dans les paramètres profil
 8. ✅ **Messages d'erreur SMS améliorés** : guide l'utilisateur vers les paramètres
+9. ✅ **UI MINIMALISTE** : Interface complètement refactorisée
+   - Variables CSS simplifiées (moins de gradients)
+   - Boutons avec coins moins arrondis, couleurs unies
+   - Cartes plus compactes et légères
+   - Inputs plus fins et subtils
+   - Modals redesignés
+10. ✅ **Backend refactorisé** (fichiers préparés pour migration future)
+    - `/app/backend/routes/auth.py`
+    - `/app/backend/routes/prospects.py`
+    - `/app/backend/routes/tasks.py`
+    - `/app/backend/routes/payments.py`
+    - `/app/backend/routes/webhooks.py`
+    - `/app/backend/routes/notifications.py`
+    - `/app/backend/models.py`
+    - `/app/backend/utils.py`
+    - `/app/backend/database.py`
 
 ### Tests effectués :
 - ✅ Webhook reçoit et stocke les réponses
@@ -103,6 +119,7 @@ Pour recevoir les réponses SMS dans KOLO :
 - ✅ Landing et FAQ mises à jour visuellement
 - ✅ Changement de langue FR/EN sur landing + persistence après navigation
 - ✅ Endpoint SMS retourne erreurs claires en français
+- ✅ UI minimaliste validée visuellement
 
 ## Note importante sur l'envoi SMS
 Pour que l'envoi SMS fonctionne, l'utilisateur DOIT avoir configuré :
@@ -114,12 +131,12 @@ Sans ces informations, l'API retourne une erreur claire guidant vers les paramè
 ## Backlog
 
 ### P1 - Prioritaire
+- [x] Simplification UI (rendu moins "lourd") - **FAIT**
 - [ ] Configurer le webhook dans Brevo (côté client)
 - [ ] Déploiement en production
-- [ ] Simplification UI (rendu moins "lourd") - en cours
 
 ### P2 - À faire
-- [ ] Refactoring server.py en modules
+- [x] Refactoring server.py en modules - **Fichiers prêts, migration en attente**
 - [ ] Notifications push en production
 
 ### P3 - Backlog
