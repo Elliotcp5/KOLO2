@@ -1352,6 +1352,10 @@ const SettingsTab = ({ onClose }) => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [userPhone, setUserPhone] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1365,6 +1369,22 @@ const SettingsTab = ({ onClose }) => {
     if ('Notification' in window) {
       setNotificationsEnabled(Notification.permission === 'granted');
     }
+  }, []);
+
+  // Fetch user profile (including phone) on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await authFetch(`${API_URL}/api/auth/profile`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserPhone(data.phone || '');
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    fetchProfile();
   }, []);
 
   // Fetch subscription status on mount
@@ -1382,6 +1402,41 @@ const SettingsTab = ({ onClose }) => {
     };
     fetchSubscriptionStatus();
   }, []);
+
+  const handleUpdatePhone = async () => {
+    if (phoneLoading) return;
+    
+    if (!newPhone || newPhone.length < 10) {
+      toast.error(locale === 'fr' ? 'Numéro de téléphone invalide' : 'Invalid phone number');
+      return;
+    }
+    
+    setPhoneLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/auth/update-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: newPhone })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserPhone(data.phone);
+        toast.success(locale === 'fr' ? 'Numéro mis à jour' : 'Phone updated');
+        setShowPhoneModal(false);
+        setNewPhone('');
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating phone'));
+      }
+    } catch (error) {
+      console.error('Update phone error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
 
   const handleCancelSubscription = async () => {
     if (cancelLoading) return;
@@ -1567,13 +1622,33 @@ const SettingsTab = ({ onClose }) => {
       <h3 className="text-caption" style={{ marginBottom: '12px' }}>
         {t('profile')}
       </h3>
-      <div className="card" style={{ marginBottom: '24px', padding: '16px' }}>
-        <div className="settings-row" style={{ borderBottom: 'none' }}>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+        <div className="settings-row">
           <User className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '500', marginBottom: '4px' }}>{user?.name || user?.email}</div>
             <div className="text-muted" style={{ fontSize: '14px' }}>{user?.email}</div>
           </div>
+        </div>
+        <div 
+          className="settings-row" 
+          onClick={() => {
+            setNewPhone(userPhone);
+            setShowPhoneModal(true);
+          }}
+          style={{ cursor: 'pointer', borderBottom: 'none' }}
+          data-testid="edit-phone"
+        >
+          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+          <div style={{ flex: 1 }}>
+            <span className="label">{locale === 'fr' ? 'Téléphone SMS' : 'SMS Phone'}</span>
+            <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+              {userPhone || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
+            </div>
+          </div>
+          <ChevronRight className="chevron" size={20} />
         </div>
       </div>
 
@@ -1837,6 +1912,81 @@ const SettingsTab = ({ onClose }) => {
                   data-testid="confirm-password-input"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phone update modal */}
+      {showPhoneModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowPhoneModal(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>
+                {locale === 'fr' ? 'Téléphone SMS' : 'SMS Phone'}
+              </h2>
+              <button
+                className="btn-primary"
+                onClick={handleUpdatePhone}
+                disabled={!newPhone || newPhone.length < 10 || phoneLoading}
+                style={{ 
+                  width: 'auto', 
+                  height: '40px', 
+                  padding: '0 20px',
+                  fontSize: '15px'
+                }}
+              >
+                {phoneLoading ? (
+                  <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                ) : (
+                  t('save')
+                )}
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {locale === 'fr' ? 'Numéro de téléphone' : 'Phone number'}
+                </label>
+                <input
+                  type="tel"
+                  className="input-dark"
+                  placeholder={locale === 'fr' ? 'Ex: 06 12 34 56 78' : 'E.g. 06 12 34 56 78'}
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  data-testid="phone-input-modal"
+                />
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                {locale === 'fr' 
+                  ? 'Ce numéro sera utilisé comme expéditeur pour les SMS envoyés à vos prospects. Les réponses seront reçues directement sur ce numéro.'
+                  : 'This number will be used as the sender for SMS sent to your prospects. Replies will be received directly on this number.'
+                }
+              </p>
             </div>
           </div>
         </div>

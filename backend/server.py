@@ -82,6 +82,7 @@ class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     user_id: str = Field(default_factory=lambda: f"user_{uuid.uuid4().hex[:12]}")
     email: str
+    phone: Optional[str] = None  # Agent's phone number for SMS
     name: Optional[str] = None
     picture: Optional[str] = None
     auth_provider: str = "google"
@@ -224,6 +225,7 @@ class RegisterRequest(BaseModel):
     """Request for free trial registration (no payment required)"""
     email: str
     password: str
+    phone: str  # Agent's phone number (required for SMS functionality)
 
 class LoginRequest(BaseModel):
     email: str
@@ -1247,6 +1249,46 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
     
     return {"message": "Mot de passe modifié avec succès"}
 
+class UpdatePhoneRequest(BaseModel):
+    phone: str
+
+@api_router.post("/auth/update-phone")
+async def update_phone(request: UpdatePhoneRequest, http_request: Request):
+    """Update user's phone number"""
+    user = await require_auth(http_request)
+    
+    if not request.phone or len(request.phone) < 10:
+        raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
+    
+    phone_clean = format_phone_number(request.phone)
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {
+            "phone": phone_clean,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Numéro de téléphone mis à jour", "phone": phone_clean}
+
+@api_router.get("/auth/profile")
+async def get_profile(request: Request):
+    """Get user profile including phone number"""
+    user = await require_auth(request)
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    return {
+        "user_id": user_doc.get("user_id"),
+        "email": user_doc.get("email"),
+        "phone": user_doc.get("phone"),
+        "subscription_status": user_doc.get("subscription_status"),
+        "trial_ends_at": user_doc.get("trial_ends_at")
+    }
+
 # Resend email configuration
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@trykolo.io')
@@ -1600,6 +1642,16 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
+# Helper function to format phone number
+def format_phone_number(phone: str) -> str:
+    """Format phone number to international format (+33...)"""
+    phone = phone.strip().replace(" ", "").replace(".", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "+33" + phone[1:]
+    elif not phone.startswith("+"):
+        phone = "+33" + phone
+    return phone
+
 # Free Trial Registration (no payment required)
 @api_router.post("/auth/register")
 async def register_free_trial(request: RegisterRequest, response: Response):
@@ -1614,7 +1666,12 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     if not request.password or len(request.password) < 6:
         raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
     
+    # Validate phone number
+    if not request.phone or len(request.phone) < 10:
+        raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
+    
     email_clean = request.email.lower().strip()
+    phone_clean = format_phone_number(request.phone)
     
     # Check if email already exists
     existing_user = await db.users.find_one({"email": email_clean})
@@ -1631,6 +1688,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
         if STRIPE_API_KEY:
             customer = stripe.Customer.create(
                 email=email_clean,
+                phone=phone_clean,
                 metadata={
                     "source": "free_trial",
                     "trial_start": datetime.now(timezone.utc).isoformat(),
@@ -1648,6 +1706,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     user_doc = {
         "user_id": user_id,
         "email": email_clean,
+        "phone": phone_clean,
         "auth_provider": "email",
         "password_hash": hash_password(request.password),
         "subscription_status": "trialing",
@@ -1658,7 +1717,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     }
     
     await db.users.insert_one(user_doc)
-    logger.info(f"Free trial account created for {email_clean}, trial ends: {trial_ends_at}, stripe: {stripe_customer_id}")
+    logger.info(f"Free trial account created for {email_clean}, phone: {phone_clean}, trial ends: {trial_ends_at}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -2732,7 +2791,7 @@ Génère un message de relance adapté."""
 
 @api_router.post("/prospects/{prospect_id}/send-sms")
 async def send_sms_to_prospect(request: Request, prospect_id: str):
-    """Send SMS to prospect via Brevo API"""
+    """Send SMS to prospect via Brevo API using agent's phone number as sender"""
     user = await require_active_subscription(request)
     
     body = await request.json()
@@ -2740,6 +2799,16 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
     
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
+    
+    # Get user's phone number (agent's number)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    agent_phone = user_doc.get("phone") if user_doc else None
+    
+    if not agent_phone:
+        raise HTTPException(
+            status_code=400, 
+            detail="Numéro de téléphone non configuré. Ajoutez votre numéro dans les paramètres."
+        )
     
     # Get prospect
     prospect = await db.prospects.find_one(
@@ -2753,17 +2822,14 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
     if prospect.get("sms_opt_out"):
         raise HTTPException(status_code=400, detail="Ce prospect a demandé à ne plus recevoir de SMS")
     
-    # Get phone number
-    phone = prospect.get("phone")
-    if not phone:
-        raise HTTPException(status_code=400, detail="Numéro de téléphone manquant")
+    # Get prospect phone number
+    prospect_phone = prospect.get("phone")
+    if not prospect_phone:
+        raise HTTPException(status_code=400, detail="Numéro de téléphone du prospect manquant")
     
-    # Format phone number for France
-    phone = phone.strip().replace(" ", "").replace(".", "").replace("-", "")
-    if phone.startswith("0"):
-        phone = "+33" + phone[1:]
-    elif not phone.startswith("+"):
-        phone = "+33" + phone
+    # Format phone numbers for France
+    prospect_phone = format_phone_number(prospect_phone)
+    agent_phone_formatted = format_phone_number(agent_phone)
     
     # Send SMS via Brevo
     brevo_api_key = os.environ.get("BREVO_API_KEY")
@@ -2772,6 +2838,9 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
     
     try:
         # Send SMS using httpx directly (Brevo REST API)
+        # Using agent's phone number as sender so prospects can reply directly
+        # Note: For numeric senders, the number must be validated in Brevo account
+        # For alpha senders (like "KOLO"), replies are not possible
         async with httpx.AsyncClient() as http_client:
             sms_response = await http_client.post(
                 "https://api.brevo.com/v3/transactionalSMS/sms",
@@ -2780,8 +2849,8 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
                     "Content-Type": "application/json"
                 },
                 json={
-                    "sender": "KOLO",
-                    "recipient": phone,
+                    "sender": agent_phone_formatted,  # Use agent's phone for replies
+                    "recipient": prospect_phone,
                     "content": message[:160],
                     "type": "transactional"
                 },
@@ -2795,7 +2864,8 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
             "id": f"sms_{uuid.uuid4().hex[:8]}",
             "sent_at": datetime.now(timezone.utc).isoformat(),
             "message": message[:160],
-            "phone": phone,
+            "sender_phone": agent_phone_formatted,
+            "recipient_phone": prospect_phone,
             "status": "sent",
             "brevo_message_id": response_data.get("messageId")
         }
@@ -2823,12 +2893,13 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
         # Recalculate score after activity
         await calculate_prospect_score(prospect_id, user.user_id)
         
-        logger.info(f"SMS sent to {phone} for prospect {prospect_id}")
+        logger.info(f"SMS sent from {agent_phone_formatted} to {prospect_phone} for prospect {prospect_id}")
         
         return {
             "success": True,
             "message_id": sms_entry["id"],
-            "status": "sent"
+            "status": "sent",
+            "sender": agent_phone_formatted
         }
         
     except httpx.HTTPStatusError as e:
@@ -2836,6 +2907,10 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
         error_msg = error_body.get("message", str(e))
         if "not_enough_credits" in str(error_body):
             error_msg = "Crédits SMS insuffisants. Rechargez sur app.brevo.com"
+        elif "sender" in str(error_body).lower():
+            # Fallback to alphanumeric sender if phone number is not validated
+            error_msg = "Le numéro d'expéditeur n'est pas validé dans Brevo. Utilisation du nom KOLO comme expéditeur."
+            logger.warning(f"Phone sender not validated, will need to use alpha sender: {agent_phone_formatted}")
         logger.error(f"SMS sending error: {error_msg}")
         raise HTTPException(status_code=400, detail=error_msg)
     except Exception as e:

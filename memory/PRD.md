@@ -6,10 +6,13 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - Localisation FR/EN automatique
 - Prix régional (9.99 EUR/GBP/USD)
 - Authentification email/password avec Bearer Token (localStorage)
-- **Essai gratuit 7 jours SANS carte bancaire** (nouveau modèle)
+- **Essai gratuit 7 jours SANS carte bancaire**
 - Gestion prospects et tâches avec suivi automatique
 - Notifications push pour rappels quotidiens
 - Suggestions de tâches IA (Claude)
+- **Scoring visuel des prospects** (🔴 froid / 🟠 tiède / 🟢 chaud)
+- **Rédaction IA des messages de relance**
+- **Envoi SMS via Brevo depuis le numéro de l'agent**
 
 ## Architecture
 ```
@@ -17,142 +20,151 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 ├── backend/          # FastAPI + MongoDB
 │   ├── server.py     # API principale + scheduler intégré
 │   ├── tests/        # Tests pytest
-│   └── .env          # Config (Stripe, VAPID keys)
+│   └── .env          # Config (Stripe, VAPID keys, Brevo, Resend)
 └── frontend/         # React PWA
     ├── src/pages/    # Landing, Login, Register, Subscribe, AppShell
     ├── src/components/  # PWAGuide, NotificationPrompt
     ├── src/context/  # AuthContext, LocaleContext
-    └── public/       # manifest.json, sw.js (v2 - no API cache)
+    └── public/       # manifest.json, sw.js
 ```
 
-## Système d'Authentification Bearer Token
-**Mis à jour le 1er mars 2026**
-
-Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`:
-- Token retourné par `/api/auth/register` et `/api/auth/login`
-- Stocké dans `localStorage` sous la clé `kolo_token`
-- Envoyé dans l'en-tête `Authorization: Bearer {token}`
-
-### Fichiers clés:
-- `/app/backend/server.py` - `get_user_from_session()` accepte Bearer token (lignes 240-276)
-- `/app/frontend/src/pages/AppShell.js` - `authFetch` helper ajoute le Bearer token
-- `/app/frontend/src/context/AuthContext.js` - `login()` stocke le token
-
 ## Fonctionnalités Implémentées
-- [x] Landing page avec pricing régional
-- [x] **Essai gratuit 7 jours sans carte bancaire** - Inscription via /register
-- [x] Meta tags et titres optimisés pour le partage
-- [x] Page FAQ avec questions déroulantes
+
+### Authentification & Utilisateurs
+- [x] Inscription essai gratuit 7 jours sans carte bancaire
+- [x] **Numéro de téléphone obligatoire à l'inscription**
+- [x] Modification du numéro dans les paramètres
 - [x] Auth Email/Password avec Bearer Token
+- [x] Mot de passe oublié via Resend
+- [x] Changement de mot de passe
+
+### Facturation (Stripe)
 - [x] Flow abonnement Stripe (post-trial)
-- [x] Création compte post-paiement
-- [x] Récupération de compte pour utilisateurs ayant payé sans finaliser
-- [x] App 3 onglets (Today, Prospects, Tasks)
-- [x] **CRUD Prospects complet avec édition via modal**
-- [x] Double confirmation pour statuts "Gagné"/"Perdu"
-- [x] Prospects gagnés/perdus disparaissent de la liste
-- [x] Email obligatoire pour création de prospect
+- [x] Création client Stripe automatique à l'inscription
+- [x] Portail de facturation Stripe
+- [x] Résiliation abonnement
+
+### Prospects
+- [x] CRUD Prospects complet
+- [x] **Scoring automatique IA** (chaud/tiède/froid)
+- [x] Modification manuelle du score
+- [x] Points colorés (🟢🟠🔴) sur la liste
+- [x] Historique SMS par prospect
+
+### Tâches
 - [x] Gestion tâches (manuelles + auto-générées)
-- [x] **Suggestions de tâches IA** (Claude via emergentintegrations)
-- [x] Création de tâches avec date et heure optionnelle
-- [x] Liaison tâche-prospect via dropdown
-- [x] Couleurs des tâches (vert/orange/rouge/blanc selon statut)
-- [x] Complétion tâches depuis Today tab (disparition immédiate)
-- [x] Complétion tâches depuis Tasks tab (vert + barré)
-- [x] Génération auto tâches suivi (prospects inactifs >7j)
-- [x] PWA manifest + guide installation écran d'accueil
-- [x] Notifications push avec permission utilisateur
-- [x] Toggle notifications dans Settings
-- [x] Scheduler automatisé (intégré backend, 8h UTC)
-- [x] Localisation FR/EN complète
-- [x] Protection double facturation (vérifie email avant paiement)
-- [x] **Mot de passe oublié / Récupération via email Resend** (fonctionnel)
-- [x] Changement de mot de passe depuis les paramètres
-- [x] **Portail Stripe Customer pour gestion facturation** (crée client Stripe auto si nécessaire)
-- [x] UI Modals ergonomiques avec gradient rose-violet
-- [x] Résiliation abonnement dans les paramètres
-- [x] Blocage fonctionnalités quand essai expiré (message "S'abonner")
-- [x] **Service Worker v2** - Ne cache jamais les appels /api/
+- [x] Suggestions de tâches IA (Claude)
+- [x] Création tâches avec date/heure
+- [x] Vue "Aujourd'hui" et "Toutes les tâches"
+- [x] Complétion avec feedback visuel
+
+### Communication
+- [x] **Génération de messages IA** personnalisés
+- [x] **Envoi SMS via Brevo**
+- [x] **SMS envoyés depuis le numéro de l'agent**
+- [x] Copier le message généré
+- [x] Régénérer le message
+
+### Interface
+- [x] PWA manifest + guide installation
+- [x] Notifications push
+- [x] Localisation FR/EN
+- [x] Dark mode iOS-style
 
 ## Endpoints Clés
-### Authentification
-- `POST /api/auth/register` - Inscription essai gratuit 7 jours, retourne `token`
-- `POST /api/auth/login` - Connexion email/password, retourne `token`
-- `POST /api/auth/create-account` - Création compte post-paiement Stripe
-- `POST /api/auth/recover` - Récupération compte pour utilisateurs ayant payé
-- `POST /api/auth/forgot-password` - Envoi email récupération (MOCKED)
-- `POST /api/auth/reset-password` - Réinitialisation mot de passe
-- `POST /api/auth/change-password` - Changement mot de passe
-- `GET /api/auth/me` - Vérification auth
 
-### Facturation
-- `GET /api/payments/checkout-redirect` - Redirection Stripe
-- `POST /api/billing/portal` - Génère URL portail client Stripe (crée customer si nécessaire)
-- `GET /api/subscription/status` - Statut abonnement détaillé
-- `POST /api/subscription/cancel` - Annulation fin de période
-- `POST /api/subscription/reactivate` - Réactivation abonnement
+### Authentification
+- `POST /api/auth/register` - Inscription avec téléphone obligatoire
+- `POST /api/auth/login` - Connexion
+- `GET /api/auth/profile` - Profil utilisateur avec téléphone
+- `POST /api/auth/update-phone` - Mise à jour téléphone
+- `POST /api/auth/change-password` - Changement mot de passe
+- `POST /api/auth/forgot-password` - Email récupération
+- `POST /api/auth/reset-password` - Réinitialisation
+
+### Prospects
+- `GET /api/prospects` - Liste prospects actifs
+- `POST /api/prospects` - Création prospect
+- `PUT /api/prospects/{id}` - Mise à jour
+- `POST /api/prospects/{id}/score` - Recalcul/forcer score
+- `POST /api/prospects/{id}/generate-message` - Génération message IA
+- `POST /api/prospects/{id}/send-sms` - Envoi SMS (depuis numéro agent)
 
 ### Tâches
 - `GET /api/tasks/today` - Tâches du jour + en retard
 - `GET /api/tasks` - Toutes les tâches
 - `POST /api/tasks` - Création tâche
 - `POST /api/tasks/{id}/complete` - Marquer terminée
-- `GET /api/tasks/ai-suggestions` - Suggestions IA (Claude)
-
-### Prospects
-- `GET /api/prospects` - Liste prospects actifs
-- `POST /api/prospects` - Création prospect
-- `GET /api/prospects/{id}` - Détail prospect avec tâches
-- `PUT /api/prospects/{id}` - Mise à jour prospect
-- `DELETE /api/prospects/{id}` - Suppression prospect
+- `GET /api/tasks/ai-suggestions` - Suggestions IA
 
 ## Schéma DB (MongoDB)
-- **users**: user_id, email, password_hash, subscription_status (none/trialing/active/expired/canceled), trial_ends_at, stripe_customer_id, subscription_id
-- **prospects**: prospect_id, user_id, full_name, phone, email, source, status, notes, last_activity_date
-- **tasks**: task_id, prospect_id, due_date, completed, completed_at, auto_generated
-- **push_subscriptions**: user_id, subscription (endpoint, keys)
-- **payment_success**: email, session_id, created_at
-- **user_sessions**: session_id, user_id, session_token, expires_at
+
+### users
+```json
+{
+  "user_id": "user_xxx",
+  "email": "...",
+  "phone": "+33612345678",  // NOUVEAU - Format international
+  "password_hash": "...",
+  "subscription_status": "trialing|active|expired|canceled",
+  "trial_ends_at": "...",
+  "stripe_customer_id": "cus_xxx"
+}
+```
+
+### prospects
+```json
+{
+  "prospect_id": "prospect_xxx",
+  "user_id": "user_xxx",
+  "full_name": "...",
+  "phone": "...",
+  "email": "...",
+  "score": "chaud|tiede|froid",
+  "score_calculated_at": "...",
+  "score_manual_override": false,
+  "sms_history": [
+    {
+      "id": "sms_xxx",
+      "sent_at": "...",
+      "message": "...",
+      "sender_phone": "+33612345678",  // Numéro de l'agent
+      "recipient_phone": "+33699999999",
+      "status": "sent"
+    }
+  ]
+}
+```
 
 ## Tests
-- Backend: 100% tests passés (14/14 tests pytest)
-- Frontend: 100% flows vérifiés via Playwright
-- Fichiers: 
-  - /app/backend/tests/test_kolo_features.py
-  - /app/test_reports/iteration_7.json
+- Backend: 14/14 tests passés (pytest)
+- Frontend: Tous les flows vérifiés via Playwright
+- Fichiers: `/app/backend/tests/test_phone_registration.py`
 
-## État Actuel (3 mars 2026)
-**P0, P1 et nouvelles fonctionnalités COMPLETS et TESTÉS**
+## État Actuel (4 mars 2026)
 
-### Résolu dans cette session:
-1. ✅ Bug "erreur réseau" - Service Worker v2 ne cache plus les appels API
-2. ✅ Inscription simplifiée avec fetch + headers no-cache
-3. ✅ Édition des prospects via modal fonctionnelle
-4. ✅ Portail de facturation Stripe créé automatiquement pour utilisateurs trial
-5. ✅ **Email "Mot de passe oublié"** - Intégré avec Resend
-6. ✅ **Création client Stripe automatique** à l'inscription (tracking trial)
-7. ✅ **Scoring visuel des prospects** - 🟢 chaud / 🟠 tiède / 🔴 froid
-8. ✅ **Rédaction IA des messages** - Claude génère des messages personnalisés
-9. ✅ **Envoi SMS via Brevo** - Intégration complète (nécessite crédits SMS)
-
-### Note importante sur Resend:
-- En mode test, les emails ne peuvent être envoyés qu'à l'adresse vérifiée du compte
-- Pour envoyer à tous les utilisateurs, vérifier le domaine trykolo.io sur https://resend.com/domains
+### Complété dans cette session:
+1. ✅ **Numéro de téléphone obligatoire** à l'inscription
+2. ✅ **Format international automatique** (+33...)
+3. ✅ **SMS envoyés depuis le numéro de l'agent**
+4. ✅ **Modification du téléphone** dans les paramètres
+5. ✅ **Bug "Aujourd'hui"** - Tâche mise à jour pour l'utilisateur
 
 ### Note importante sur SMS Brevo:
-- L'intégration est complète mais nécessite des crédits SMS
-- Acheter des crédits sur https://app.brevo.com/billing/addon/customize/sms
+- L'envoi SMS utilise maintenant le numéro de l'agent comme expéditeur
+- Cela permet aux prospects de répondre directement à l'agent
+- Nécessite des crédits SMS sur https://app.brevo.com/billing/addon/customize/sms
+- Si le numéro n'est pas validé dans Brevo, une erreur explicative s'affiche
 
 ## Backlog
+
 ### P1 - Prioritaire
-- [x] ~~Email "Mot de passe oublié"~~ - ✅ Intégré avec Resend
-- [ ] Vérifier le domaine trykolo.io sur Resend pour envoi à tous
+- [ ] Validation du numéro expéditeur dans Brevo (configuration côté Brevo)
 - [ ] Déploiement final en production
 
 ### P2 - À faire
 - [ ] Refactoriser server.py en modules (routes/auth.py, routes/prospects.py, etc.)
 - [ ] Vérifier les notifications push en production
-- [ ] Tester la double facturation (même email, même mois)
 
 ### P3 - Backlog
 - [ ] Export des prospects en CSV
@@ -160,4 +172,4 @@ Le système utilise exclusivement des Bearer Tokens stockés dans `localStorage`
 - [ ] Intégration calendrier
 
 ## Date Dernière Mise à Jour
-1er mars 2026
+4 mars 2026

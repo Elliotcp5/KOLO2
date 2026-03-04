@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, Sparkles, Phone } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ const RegisterPage = () => {
   const { login } = useAuth();
   
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,14 +23,20 @@ const RegisterPage = () => {
     e.preventDefault();
     
     const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPhone = phone.trim();
     
-    if (!trimmedEmail || !password) {
+    if (!trimmedEmail || !password || !trimmedPhone) {
       toast.error(locale === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill all fields');
       return;
     }
     
     if (password.length < 6) {
       toast.error(locale === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters');
+      return;
+    }
+    
+    if (trimmedPhone.length < 10) {
+      toast.error(locale === 'fr' ? 'Numéro de téléphone invalide' : 'Invalid phone number');
       return;
     }
     
@@ -46,7 +53,8 @@ const RegisterPage = () => {
         },
         body: JSON.stringify({ 
           email: trimmedEmail, 
-          password 
+          password,
+          phone: trimmedPhone
         }),
         cache: 'no-store'
       });
@@ -183,8 +191,32 @@ const RegisterPage = () => {
               />
             </div>
 
+            {/* Phone input */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <Phone 
+                size={20} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '20px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'var(--muted-dark)'
+                }} 
+              />
+              <input
+                type="tel"
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Téléphone (ex: 06 12 34 56 78)' : 'Phone (e.g. 06 12 34 56 78)'}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                style={{ paddingLeft: '52px' }}
+                data-testid="phone-input"
+                autoComplete="tel"
+              />
+            </div>
+
             {/* Password input */}
-            <div style={{ position: 'relative', marginBottom: '24px' }}>
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
               <Lock 
                 size={20} 
                 style={{ 
@@ -224,11 +256,25 @@ const RegisterPage = () => {
               </button>
             </div>
 
+            {/* Phone info notice */}
+            <p style={{ 
+              fontSize: '12px', 
+              color: 'var(--muted)', 
+              marginBottom: '20px',
+              textAlign: 'center',
+              lineHeight: '1.4'
+            }}>
+              {locale === 'fr' 
+                ? 'Votre numéro sera utilisé pour envoyer des SMS à vos prospects. Les réponses seront reçues sur ce numéro.'
+                : 'Your number will be used to send SMS to prospects. Replies will be received on this number.'
+              }
+            </p>
+
             {/* Register Button */}
             <button 
               type="submit"
               className="btn-primary"
-              disabled={!email || !password || loading}
+              disabled={!email || !password || !phone || loading}
               data-testid="register-button"
               style={{ marginBottom: '16px' }}
             >
