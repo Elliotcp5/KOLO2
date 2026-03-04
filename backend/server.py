@@ -2339,73 +2339,39 @@ async def get_ai_task_suggestions(request: Request):
         chat = LlmChat(
             api_key=api_key,
             session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Tu es un expert en gestion de relation client immobilier. Tu analyses les prospects et leur historique pour suggérer des actions de suivi INTELLIGENTES et CONTEXTUELLES.
+            system_message="""Tu es un assistant CRM immobilier. Suggère des actions de suivi.
 
-RÈGLES IMPORTANTES:
-1. TIMING INTELLIGENT: 
-   - Analyse la charge de travail des jours à venir
-   - Si aujourd'hui est chargé (>5 tâches), propose demain ou après-demain
-   - Répartis les tâches de façon équilibrée
-   - Évite le week-end sauf urgence
+TYPES D'ACTIONS:
+- call: appel téléphonique (négociation, questions complexes)
+- sms: message court (relance rapide, rappel RDV)
+- email: infos détaillées, documents
+- meeting: visite, rendez-vous physique
 
-2. CONTEXTUALISATION:
-   - Si prospect récent (<7 jours) et nouveau → relance rapide OK
-   - Si prospect ancien avec beaucoup de relances sans réponse → espacer les contacts
-   - Si notes mentionnent "pas intéressé", "rappeler plus tard" → respecter
-   - Source "recommandation" → traitement prioritaire
-   - Source "leboncoin/seloger" → suivi standard
+RÈGLES:
+- Si prospect inactif 2-5 jours → SMS de relance
+- Si prospect inactif 5-10 jours → Appel
+- Si prospect inactif >10 jours → Email ou SMS doux
+- Prospect chaud/récent → Action rapide
+- Évite le week-end
 
-3. TYPE D'ACTION ADAPTÉ:
-   - call: pour conversations importantes, négociations
-   - email: pour envoi d'infos, rappels doux
-   - meeting: pour visites, rendez-vous
-   - follow_up: relance générique
-
-Réponds UNIQUEMENT en JSON valide, sans markdown:
-{
-  "suggestions": [
-    {
-      "prospect_id": "...",
-      "prospect_name": "...",
-      "task_title": "...",
-      "task_type": "call|email|meeting|follow_up",
-      "suggested_date": "YYYY-MM-DD",
-      "urgency": "haute|moyenne|basse",
-      "reason": "Explication courte et pertinente"
-    }
-  ]
-}"""
+Réponds UNIQUEMENT en JSON:
+{"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|meeting", "suggested_date": "YYYY-MM-DD", "urgency": "haute|moyenne|basse", "reason": "..."}]}"""
         ).with_model("anthropic", "claude-sonnet-4-5-20250929")
         
-        # Build detailed context
+        # Build concise context
         today = now.strftime("%Y-%m-%d")
-        context_text = f"""Date d'aujourd'hui: {today}
-
-CHARGE DE TRAVAIL (7 prochains jours):
-{chr(10).join(workload_context)}
-
-PROSPECTS À ANALYSER:
-"""
-        for p in prospects_context:
-            no_task_warning = "⚠️ AUCUNE TÂCHE PROGRAMMÉE - Action requise!" if p.get('has_no_pending_tasks') else ""
-            context_text += f"""
----
-Prospect: {p['full_name']} (ID: {p['prospect_id']})
-{no_task_warning}
-- Statut: {p['status']}
-- Source: {p['source']}
-- Inactif depuis: {p['days_inactive']} jours
-- Créé il y a: {p['created_days_ago']} jours
-- Nombre total d'interactions: {p['task_count']}
-- {p['task_history'] if p['task_history'] else 'Aucun historique de tâches'}
-- {p['pending_info']}
-- Notes: {p['notes'] if p['notes'] else 'Aucune note'}
-"""
+        context_lines = [f"Aujourd'hui: {today}", "PROSPECTS:"]
         
-        context_text += """
-Suggère les actions les plus pertinentes avec des dates RÉALISTES basées sur la charge de travail et le contexte de chaque prospect."""
+        for p in prospects_context[:5]:  # Limit to 5 prospects for speed
+            has_phone = "phone" in str(prospects_context)
+            context_lines.append(
+                f"- {p['full_name']} (ID:{p['prospect_id']}) | "
+                f"Inactif {p['days_inactive']}j | "
+                f"Statut:{p['status']} | "
+                f"{'Aucune tâche!' if p.get('has_no_pending_tasks') else p['pending_info']}"
+            )
         
-        user_message = UserMessage(text=context_text)
+        user_message = UserMessage(text="\n".join(context_lines))
         response = await chat.send_message(user_message)
         
         # Parse JSON response
@@ -2434,17 +2400,18 @@ Suggère les actions les plus pertinentes avec des dates RÉALISTES basées sur 
         
     except json.JSONDecodeError as e:
         logger.error(f"AI response parsing error: {e}, response: {response[:500] if response else 'None'}")
-        # Fallback suggestions
+        # Fallback suggestions with SMS for quick follow-ups
         fallback_suggestions = []
-        for p in prospects_context[:3]:
+        for i, p in enumerate(prospects_context[:3]):
+            task_type = "sms" if p['days_inactive'] < 5 else "call"
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
-                "task_title": f"Relancer {p['full_name']}",
-                "task_type": "call",
+                "task_title": f"Relancer {p['full_name']}" if task_type == "call" else f"SMS à {p['full_name']}",
+                "task_type": task_type,
                 "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "urgency": "moyenne",
-                "reason": f"Aucun contact depuis {p['days_inactive']} jours"
+                "urgency": "haute" if p['days_inactive'] < 3 else "moyenne",
+                "reason": f"Inactif depuis {p['days_inactive']} jours"
             })
         return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
     except Exception as e:
@@ -2452,15 +2419,16 @@ Suggère les actions les plus pertinentes avec des dates RÉALISTES basées sur 
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         fallback_suggestions = []
-        for p in prospects_context[:3]:
+        for i, p in enumerate(prospects_context[:3]):
+            task_type = "sms" if p['days_inactive'] < 5 else "call"
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
-                "task_title": f"Relancer {p['full_name']}",
-                "task_type": "call",
+                "task_title": f"Relancer {p['full_name']}" if task_type == "call" else f"SMS à {p['full_name']}",
+                "task_type": task_type,
                 "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "urgency": "moyenne",
-                "reason": f"Aucun contact depuis {p['days_inactive']} jours"
+                "urgency": "haute" if p['days_inactive'] < 3 else "moyenne",
+                "reason": f"Inactif depuis {p['days_inactive']} jours"
             })
         return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
 

@@ -68,6 +68,8 @@ const TodayTab = ({ onOpenProfile }) => {
     switch (type) {
       case 'call': return Phone;
       case 'email': return Mail;
+      case 'sms': return MessageSquare;
+      case 'meeting': return Calendar;
       default: return Clock;
     }
   };
@@ -176,7 +178,6 @@ const TodayTab = ({ onOpenProfile }) => {
                   alignItems: 'center', 
                   gap: '16px',
                   padding: '16px',
-                  cursor: 'pointer',
                   borderLeft: `3px solid ${borderColor}`,
                   background: 'var(--surface)'
                 }}
@@ -261,7 +262,75 @@ const TodayTab = ({ onOpenProfile }) => {
                   )}
                 </div>
                 
-                <ChevronRight size={18} style={{ color: 'var(--muted-dark)', flexShrink: 0 }} />
+                {/* Quick action button based on task type */}
+                {task.prospect && (
+                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
+                      <a 
+                        href={`tel:${task.prospect.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          textDecoration: 'none'
+                        }}
+                        data-testid={`call-${task.task_id}`}
+                      >
+                        <Phone size={18} />
+                      </a>
+                    )}
+                    {task.task_type === 'email' && task.prospect.email && (
+                      <a 
+                        href={`mailto:${task.prospect.email}?subject=${encodeURIComponent(locale === 'fr' ? 'Suivi de votre projet immobilier' : 'Follow-up on your real estate project')}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          textDecoration: 'none'
+                        }}
+                        data-testid={`email-${task.task_id}`}
+                      >
+                        <Mail size={18} />
+                      </a>
+                    )}
+                    {task.task_type === 'sms' && task.prospect.phone && (
+                      <a 
+                        href={`sms:${task.prospect.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          textDecoration: 'none'
+                        }}
+                        data-testid={`sms-${task.task_id}`}
+                      >
+                        <MessageSquare size={18} />
+                      </a>
+                    )}
+                  </div>
+                )}
+                
+                {!task.prospect && (
+                  <ChevronRight size={18} style={{ color: 'var(--muted-dark)', flexShrink: 0 }} />
+                )}
               </div>
             );
           })}
