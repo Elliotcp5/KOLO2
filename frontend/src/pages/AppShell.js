@@ -101,10 +101,13 @@ const TodayTab = ({ onOpenProfile }) => {
         handleCompleteTask(selectedTask.task_id);
       } else {
         const data = await response.json();
-        toast.error(data.detail || 'Erreur');
+        // More specific error handling
+        const errorMsg = data.detail || (locale === 'fr' ? 'Erreur d\'envoi SMS' : 'SMS send error');
+        toast.error(errorMsg);
       }
     } catch (error) {
-      toast.error(locale === 'fr' ? 'Erreur d\'envoi' : 'Send error');
+      console.error('SMS send error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
     } finally {
       setSendingSms(false);
     }
@@ -210,38 +213,26 @@ const TodayTab = ({ onOpenProfile }) => {
           <p className="subtitle">{t('noPendingTask')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
             
-            // Calculate days overdue
+            // Calculate if overdue
             const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const taskDate = new Date(task.due_date);
-            const taskDay = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-            const diffTime = today.getTime() - taskDay.getTime();
-            const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Color logic: white = today, orange = 1-2 days overdue, red = 3+ days overdue
-            let borderColor = '#FFFFFF'; // White for today
-            let isUrgent = false;
-            if (daysOverdue > 2) {
-              borderColor = '#EF4444'; // Red
-              isUrgent = true;
-            } else if (daysOverdue > 0) {
-              borderColor = '#F59E0B'; // Orange
-            }
+            const isOverdue = taskDate < now;
+            const borderColor = isOverdue ? '#F59E0B' : 'var(--border)';
             
             return (
               <div 
                 key={task.task_id} 
-                className="card task-card"
+                className="card"
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '16px',
-                  padding: '16px',
-                  borderLeft: `3px solid ${borderColor}`,
+                  gap: '12px',
+                  padding: '14px 16px',
+                  borderLeft: isOverdue ? `3px solid ${borderColor}` : 'none',
                   background: 'var(--surface)'
                 }}
                 data-testid={`task-${task.task_id}`}
@@ -255,178 +246,54 @@ const TodayTab = ({ onOpenProfile }) => {
                   className="task-complete-btn"
                   data-testid={`complete-task-${task.task_id}`}
                   style={{
-                    width: '28px',
-                    height: '28px',
+                    width: '22px',
+                    height: '22px',
                     borderRadius: '50%',
-                    border: `2px solid ${borderColor}`,
+                    border: '1.5px solid var(--muted-dark)',
                     background: 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     cursor: 'pointer',
-                    flexShrink: 0,
-                    transition: 'all 0.2s ease'
+                    flexShrink: 0
                   }}
-                >
-                  <Check size={14} strokeWidth={3} style={{ color: borderColor, opacity: 0 }} />
-                </button>
+                />
                 
-                {/* Task content */}
+                {/* Task content - simplified */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <IconComponent size={14} strokeWidth={1.5} style={{ color: borderColor }} />
-                    <span style={{ fontSize: '16px', fontWeight: '500', color: 'white' }}>
-                      {task.title}
-                    </span>
-                    {isUrgent && (
-                      <span style={{ 
-                        fontSize: '10px', 
-                        background: '#EF4444', 
-                        color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontWeight: '600'
-                      }}>
-                        URGENT
-                      </span>
-                    )}
+                  <div style={{ fontSize: '15px', fontWeight: '500', color: 'white', marginBottom: '2px' }}>
+                    {task.prospect?.full_name || task.title}
                   </div>
-                  {/* Show date and time */}
-                  <div style={{ fontSize: '13px', color: borderColor, marginBottom: '4px', fontWeight: '500' }}>
-                    {new Date(task.due_date).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short'
-                    })}
-                    {task.due_date.includes('T') && !task.due_date.includes('T00:00') && !task.due_date.includes('T09:00:00') && (
-                      <span> • {new Date(task.due_date).toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</span>
-                    )}
+                  <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                    <IconComponent size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                    {task.task_type === 'call' ? (locale === 'fr' ? 'Appeler' : 'Call') : 
+                     task.task_type === 'email' ? 'Email' : 
+                     task.task_type === 'sms' ? 'SMS' : 
+                     (locale === 'fr' ? 'Suivi' : 'Follow-up')}
+                    {isOverdue && <span style={{ color: '#F59E0B', marginLeft: '6px' }}>• {locale === 'fr' ? 'En retard' : 'Overdue'}</span>}
                   </div>
-                  {task.prospect && (
-                    <span style={{ fontSize: '14px', color: 'var(--muted)' }}>
-                      {task.prospect.full_name} • {task.prospect.phone}
-                    </span>
-                  )}
-                  {(task.auto_generated || task.is_auto_generated) && (
-                    <span style={{ 
-                      display: 'inline-block',
-                      marginTop: '6px',
-                      fontSize: '11px', 
-                      color: 'var(--accent)', 
-                      backgroundColor: 'rgba(124, 58, 237, 0.15)',
-                      padding: '2px 8px',
-                      borderRadius: '4px'
-                    }}>
-                      {t('autoGenerated')}
-                    </span>
-                  )}
                 </div>
                 
-                {/* Quick action buttons - minimalist design */}
+                {/* Single action button */}
                 {task.prospect && (
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <>
                     {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
-                      <a 
-                        href={`tel:${task.prospect.phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '10px',
-                          background: 'transparent',
-                          border: '1px solid var(--border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--text)',
-                          textDecoration: 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        data-testid={`call-${task.task_id}`}
-                      >
-                        <Phone size={16} />
+                      <a href={`tel:${task.prospect.phone}`} onClick={(e) => e.stopPropagation()}
+                        style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                        <Phone size={18} />
                       </a>
                     )}
                     {task.task_type === 'email' && task.prospect.email && (
-                      <a 
-                        href={`mailto:${task.prospect.email}?subject=${encodeURIComponent(locale === 'fr' ? 'Suivi de votre projet immobilier' : 'Follow-up on your real estate project')}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '10px',
-                          background: 'transparent',
-                          border: '1px solid var(--border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--text)',
-                          textDecoration: 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        data-testid={`email-${task.task_id}`}
-                      >
-                        <Mail size={16} />
+                      <a href={`mailto:${task.prospect.email}`} onClick={(e) => e.stopPropagation()}
+                        style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                        <Mail size={18} />
                       </a>
                     )}
                     {task.task_type === 'sms' && task.prospect.phone && (
-                      <>
-                        {/* SMS natif */}
-                        <a 
-                          href={`sms:${task.prospect.phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: 'transparent',
-                            border: '1px solid var(--border)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--text)',
-                            textDecoration: 'none',
-                            transition: 'all 0.2s ease'
-                          }}
-                          data-testid={`sms-native-${task.task_id}`}
-                        >
-                          <MessageSquare size={16} />
-                        </a>
-                        {/* SMS avec IA */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openAiSmsModal(task);
-                          }}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: 'rgba(139, 92, 246, 0.15)',
-                            border: '1px solid rgba(139, 92, 246, 0.3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--accent)',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            transition: 'all 0.2s ease'
-                          }}
-                          data-testid={`sms-ai-${task.task_id}`}
-                        >
-                          <MessageSquare size={14} />
-                          <Sparkles size={10} style={{ position: 'absolute', top: '4px', right: '4px' }} />
-                        </button>
-                      </>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
+                        style={{ padding: '8px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}>
+                        <MessageSquare size={18} />
+                      </button>
                     )}
-                  </div>
-                )}
-                
-                {!task.prospect && (
-                  <ChevronRight size={18} style={{ color: 'var(--muted-dark)', flexShrink: 0 }} />
+                  </>
                 )}
               </div>
             );
@@ -2046,7 +1913,7 @@ const SettingsTab = ({ onClose }) => {
         >
           <User className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
           <div style={{ flex: 1 }}>
-            <span className="label">{locale === 'fr' ? 'Nom (expéditeur SMS)' : 'Name (SMS sender)'}</span>
+            <span className="label">{locale === 'fr' ? 'Nom' : 'Name'}</span>
             <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
               {userName || user?.email || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
             </div>
@@ -2480,8 +2347,8 @@ const SettingsTab = ({ onClose }) => {
               </div>
               <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
                 {locale === 'fr' 
-                  ? 'Votre nom apparaîtra comme expéditeur des SMS envoyés à vos prospects.'
-                  : 'Your name will appear as the sender of SMS sent to your prospects.'
+                  ? 'Votre nom sera utilisé pour personnaliser vos communications.'
+                  : 'Your name will be used to personalize your communications.'
                 }
               </p>
             </div>

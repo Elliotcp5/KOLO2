@@ -42,17 +42,27 @@ export const LocaleProvider = ({ children }) => {
     const localeOverride = urlParams.get('locale');
     const countryOverride = urlParams.get('country');
     
-    // Check if user manually changed language (flag in localStorage)
+    // PRIORITY 1: Check if user manually changed language (this ALWAYS wins)
     const userChangedLang = localStorage.getItem('kolo_locale_manual');
-    const savedLocale = userChangedLang ? localStorage.getItem('kolo_locale') : null;
+    const savedLocale = localStorage.getItem('kolo_locale');
     
-    // Detect browser locale - PRIORITY over saved locale (unless manually changed)
+    // Detect browser locale for fallback
     const browserLocale = navigator.language || navigator.userLanguage || 'en-US';
     const browserLang = browserLocale.split('-')[0].toLowerCase();
     const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
     
-    // Use override > manual saved > browser detection
-    let detectedLang = localeOverride || savedLocale || browserLang;
+    // Priority order: URL override > manual saved locale > browser detection
+    let detectedLang;
+    if (localeOverride) {
+      // URL override for testing
+      detectedLang = localeOverride;
+    } else if (userChangedLang && savedLocale) {
+      // User manually changed language - ALWAYS respect this
+      detectedLang = savedLocale;
+    } else {
+      // Browser detection
+      detectedLang = browserLang;
+    }
     
     // Fallback for unsupported languages
     if (!['en', 'fr'].includes(detectedLang)) {
@@ -63,7 +73,10 @@ export const LocaleProvider = ({ children }) => {
     // Final supported locale
     const supportedLocale = ['en', 'fr'].includes(detectedLang) ? detectedLang : 'en';
     setLocale(supportedLocale);
-    localStorage.setItem('kolo_locale', supportedLocale);
+    // Only save if not manually set (to not override user choice)
+    if (!userChangedLang) {
+      localStorage.setItem('kolo_locale', supportedLocale);
+    }
 
     // Set country/currency based on region
     if (regionFromLocale) {
@@ -91,6 +104,7 @@ export const LocaleProvider = ({ children }) => {
     }
 
     // Fetch geo info from backend (will override if available)
+    // BUT NOT the locale if user manually changed it
     const fetchGeo = async () => {
       try {
         const hostname = window.location.hostname;
@@ -112,11 +126,13 @@ export const LocaleProvider = ({ children }) => {
             setAmount(data.amount);
             setSymbol(data.symbol);
             
-            // Update locale based on detected country
-            const countryLang = COUNTRY_LANGUAGES[data.country];
-            if (countryLang && ['en', 'fr'].includes(countryLang)) {
-              setLocale(countryLang);
-              localStorage.setItem('kolo_locale', countryLang);
+            // Update locale based on detected country ONLY if user didn't manually change it
+            if (!userChangedLang) {
+              const countryLang = COUNTRY_LANGUAGES[data.country];
+              if (countryLang && ['en', 'fr'].includes(countryLang)) {
+                setLocale(countryLang);
+                localStorage.setItem('kolo_locale', countryLang);
+              }
             }
           }
         }

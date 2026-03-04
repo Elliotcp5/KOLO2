@@ -1,0 +1,79 @@
+{
+  "summary": "KOLO PWA Iteration 8 Testing Complete - All 4 requested features verified working: Language switcher, language persistence, Settings label fix, and SMS error messages.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "test_report_links": [
+    "/app/test_reports/iteration_8.json"
+  ],
+  
+  "passed_tests": [
+    "Landing Page: Language switcher (EN/FR) - changes UI language correctly",
+    "Landing Page: localStorage stores kolo_locale and kolo_locale_manual=true when user changes language",
+    "Navigation: Language persists after navigating from landing page to login page",
+    "Settings Tab: 'Nom' label displays correctly without '(Expéditeur SMS)' suffix",
+    "Settings Tab: Shows user's name and phone configured during registration",
+    "Backend SMS: POST /api/prospects/{id}/send-sms - returns clear error 'Numéro de téléphone non configuré' when phone missing",
+    "Backend SMS: POST /api/prospects/{id}/send-sms - returns clear error 'Nom non configuré' when name missing",
+    "Backend SMS: POST /api/prospects/{id}/send-sms - works correctly when both name and phone are configured"
+  ],
+  
+  "verified_features": {
+    "language_switcher": {
+      "status": "WORKING",
+      "details": "Language selector on landing page switches between EN/FR, updates UI immediately, and stores choice in localStorage with kolo_locale_manual flag"
+    },
+    "language_persistence": {
+      "status": "WORKING",
+      "details": "Language choice persists across navigation (landing → login → app). The kolo_locale_manual flag ensures browser/geo detection doesn't override user's manual choice"
+    },
+    "settings_label_fix": {
+      "status": "WORKING",
+      "details": "Settings tab shows 'Name' label without '(Expéditeur SMS)' suffix. The label is clean and displays just 'Name' in EN or 'Nom' in FR"
+    },
+    "sms_error_messages": {
+      "status": "WORKING",
+      "details": "SMS endpoint returns clear French error messages: 'Numéro de téléphone non configuré. Ajoutez votre numéro dans les paramètres.' and 'Nom non configuré. Ajoutez votre nom dans les paramètres.' when respective fields are missing"
+    }
+  },
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "LocaleContext.js correctly implements language persistence with kolo_locale_manual flag",
+    "AppShell.js Settings tab shows clean 'Nom'/'Name' label without SMS sender text",
+    "server.py send-sms endpoint properly validates user name/phone and returns helpful French error messages"
+  ],
+  
+  "updated_files": [],
+  
+  "success_rate": {
+    "backend": "100% (SMS endpoint tested with different user configurations)",
+    "frontend": "100% (all 4 requested features verified via Playwright)"
+  },
+  
+  "test_credentials": {
+    "users_created": [
+      "test_lang_07eb6b0e@test.com (has name and phone, trialing)",
+      "sms_error_test_1772590818@test.com (used for SMS error testing)"
+    ],
+    "password": "testpass123"
+  },
+  
+  "seed_data_creation": "Test users and prospects created during testing",
+  
+  "retest_needed": false,
+  
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "All 4 requested bug fixes verified: 1) Language switcher on landing works and persists choice via kolo_locale_manual flag in localStorage, 2) Language persists after navigation to login and app, 3) Settings 'Nom' label no longer shows '(Expéditeur SMS)', 4) SMS send errors display clear messages when user profile incomplete. Note: The SMS bug mentioned by user is actually a data issue (user needs to configure name/phone), not a code issue - the error messages are now clear and guide user to settings."
+}

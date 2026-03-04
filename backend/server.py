@@ -3051,7 +3051,7 @@ async def brevo_webhook_setup_info(request: Request):
     # Get the base URL from environment or construct it
     base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
     if not base_url:
-        base_url = "https://real-estate-pwa-1.preview.emergentagent.com"
+        base_url = "https://kolo-real-estate-pwa.preview.emergentagent.com"
     
     webhook_url = f"{base_url}/api/webhooks/brevo-sms"
     
