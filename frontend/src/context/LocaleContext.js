@@ -42,23 +42,25 @@ export const LocaleProvider = ({ children }) => {
     const localeOverride = urlParams.get('locale');
     const countryOverride = urlParams.get('country');
     
-    // Check localStorage for saved locale
-    const savedLocale = localStorage.getItem('kolo_locale');
+    // Check if user manually changed language (flag in localStorage)
+    const userChangedLang = localStorage.getItem('kolo_locale_manual');
+    const savedLocale = userChangedLang ? localStorage.getItem('kolo_locale') : null;
     
-    // Detect browser locale
-    const browserLocale = localeOverride || savedLocale || navigator.language || navigator.userLanguage || 'en-US';
-    const lang = browserLocale.split('-')[0].toLowerCase();
+    // Detect browser locale - PRIORITY over saved locale (unless manually changed)
+    const browserLocale = navigator.language || navigator.userLanguage || 'en-US';
+    const browserLang = browserLocale.split('-')[0].toLowerCase();
     const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
     
-    // Determine language (we support: en, fr, it, de, es, pt - fallback to en)
-    let detectedLang = lang;
-    if (!['en', 'fr', 'it', 'de', 'es', 'pt'].includes(detectedLang)) {
-      // Try to get language from country
+    // Use override > manual saved > browser detection
+    let detectedLang = localeOverride || savedLocale || browserLang;
+    
+    // Fallback for unsupported languages
+    if (!['en', 'fr'].includes(detectedLang)) {
+      // Check if country suggests a language
       detectedLang = COUNTRY_LANGUAGES[regionFromLocale] || 'en';
     }
     
-    // For now, we only have full translations for EN and FR
-    // Others will fallback to EN with some key translations
+    // Final supported locale
     const supportedLocale = ['en', 'fr'].includes(detectedLang) ? detectedLang : 'en';
     setLocale(supportedLocale);
     localStorage.setItem('kolo_locale', supportedLocale);
@@ -81,6 +83,11 @@ export const LocaleProvider = ({ children }) => {
         setCurrency('USD');
         setSymbol('$');
       }
+    } else if (browserLang === 'fr') {
+      // If browser is French but no region, assume France
+      setCountry('FR');
+      setCurrency('EUR');
+      setSymbol('€');
     }
 
     // Fetch geo info from backend (will override if available)
@@ -131,6 +138,7 @@ export const LocaleProvider = ({ children }) => {
     if (['en', 'fr'].includes(newLocale)) {
       setLocale(newLocale);
       localStorage.setItem('kolo_locale', newLocale);
+      localStorage.setItem('kolo_locale_manual', 'true'); // Mark as manually changed
     }
   };
 
