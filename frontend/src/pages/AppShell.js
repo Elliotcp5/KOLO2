@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, X, Sparkles, Loader2, MessageSquare } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +24,13 @@ const TodayTab = ({ onOpenProfile }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
+  
+  // AI SMS Modal state
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [aiMessage, setAiMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [sendingSms, setSendingSms] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -46,6 +53,62 @@ const TodayTab = ({ onOpenProfile }) => {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // Generate AI message for SMS
+  const generateAiMessage = async (task) => {
+    if (!task?.prospect) return;
+    setMessageLoading(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${task.prospect_id}/generate-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: 'sms_follow_up' })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAiMessage(data.message || '');
+      }
+    } catch (error) {
+      console.error('Failed to generate message:', error);
+      toast.error(locale === 'fr' ? 'Erreur de génération' : 'Generation error');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  // Open AI SMS modal
+  const openAiSmsModal = (task) => {
+    setSelectedTask(task);
+    setShowSmsModal(true);
+    setAiMessage('');
+    generateAiMessage(task);
+  };
+
+  // Send SMS
+  const sendSms = async () => {
+    if (!selectedTask?.prospect || !aiMessage) return;
+    setSendingSms(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${selectedTask.prospect_id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: aiMessage })
+      });
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
+        setShowSmsModal(false);
+        // Mark task as completed
+        handleCompleteTask(selectedTask.task_id);
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Erreur');
+      }
+    } catch (error) {
+      toast.error(locale === 'fr' ? 'Erreur d\'envoi' : 'Send error');
+    } finally {
+      setSendingSms(false);
+    }
+  };
 
   const handleCompleteTask = async (taskId) => {
     try {
@@ -262,27 +325,29 @@ const TodayTab = ({ onOpenProfile }) => {
                   )}
                 </div>
                 
-                {/* Quick action button based on task type */}
+                {/* Quick action buttons - minimalist design */}
                 {task.prospect && (
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                     {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
                       <a 
                         href={`tel:${task.prospect.phone}`}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '10px',
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: 'white',
-                          textDecoration: 'none'
+                          color: 'var(--text)',
+                          textDecoration: 'none',
+                          transition: 'all 0.2s ease'
                         }}
                         data-testid={`call-${task.task_id}`}
                       >
-                        <Phone size={18} />
+                        <Phone size={16} />
                       </a>
                     )}
                     {task.task_type === 'email' && task.prospect.email && (
@@ -290,40 +355,72 @@ const TodayTab = ({ onOpenProfile }) => {
                         href={`mailto:${task.prospect.email}?subject=${encodeURIComponent(locale === 'fr' ? 'Suivi de votre projet immobilier' : 'Follow-up on your real estate project')}`}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '10px',
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: 'white',
-                          textDecoration: 'none'
+                          color: 'var(--text)',
+                          textDecoration: 'none',
+                          transition: 'all 0.2s ease'
                         }}
                         data-testid={`email-${task.task_id}`}
                       >
-                        <Mail size={18} />
+                        <Mail size={16} />
                       </a>
                     )}
                     {task.task_type === 'sms' && task.prospect.phone && (
-                      <a 
-                        href={`sms:${task.prospect.phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          textDecoration: 'none'
-                        }}
-                        data-testid={`sms-${task.task_id}`}
-                      >
-                        <MessageSquare size={18} />
-                      </a>
+                      <>
+                        {/* SMS natif */}
+                        <a 
+                          href={`sms:${task.prospect.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text)',
+                            textDecoration: 'none',
+                            transition: 'all 0.2s ease'
+                          }}
+                          data-testid={`sms-native-${task.task_id}`}
+                        >
+                          <MessageSquare size={16} />
+                        </a>
+                        {/* SMS avec IA */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAiSmsModal(task);
+                          }}
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: 'rgba(139, 92, 246, 0.15)',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--accent)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'all 0.2s ease'
+                          }}
+                          data-testid={`sms-ai-${task.task_id}`}
+                        >
+                          <MessageSquare size={14} />
+                          <Sparkles size={10} style={{ position: 'absolute', top: '4px', right: '4px' }} />
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -334,6 +431,104 @@ const TodayTab = ({ onOpenProfile }) => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* AI SMS Modal */}
+      {showSmsModal && selectedTask && (
+        <div className="modal-overlay" onClick={() => setShowSmsModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={18} style={{ color: 'var(--accent)' }} />
+                SMS {selectedTask.prospect?.full_name}
+              </h2>
+              <button onClick={() => setShowSmsModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {messageLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)', marginBottom: '12px' }} />
+                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                  {locale === 'fr' ? 'Génération...' : 'Generating...'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={aiMessage}
+                  onChange={(e) => setAiMessage(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '100px',
+                    padding: '14px',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    color: 'var(--text)',
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    resize: 'vertical',
+                    marginBottom: '16px'
+                  }}
+                />
+                
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={() => generateAiMessage(selectedTask)} 
+                    disabled={messageLoading}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      color: 'var(--text)',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <RefreshCw size={14} />
+                    {locale === 'fr' ? 'Régénérer' : 'Regenerate'}
+                  </button>
+                  <button
+                    onClick={sendSms}
+                    disabled={sendingSms || !aiMessage}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: aiMessage ? 'var(--accent)' : 'var(--surface-2)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: aiMessage ? 'white' : 'var(--muted)',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: aiMessage ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {sendingSms ? (
+                      <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <>
+                        <Send size={14} />
+                        {locale === 'fr' ? 'Envoyer' : 'Send'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
