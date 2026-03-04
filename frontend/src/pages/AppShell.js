@@ -225,6 +225,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             const isOverdue = taskDate < now;
             const borderColor = isOverdue ? '#F59E0B' : 'var(--border)';
             
+            // Format time
+            const taskTime = taskDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit'
+            });
+            
             return (
               <div 
                 key={task.task_id} 
@@ -239,13 +245,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               >
                 {/* Task header - always visible */}
                 <div 
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '12px',
-                    padding: '14px 16px',
-                    cursor: 'pointer'
+                    padding: '14px 16px'
                   }}
                 >
                   {/* Complete button */}
@@ -267,30 +271,79 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     }}
                   />
                   
-                  {/* Task content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Task content - clickable to expand */}
+                  <div 
+                    onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
+                    style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                  >
                     <div style={{ fontSize: '15px', fontWeight: '500', color: 'white', marginBottom: '2px' }}>
                       {task.prospect?.full_name || task.title}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                      <IconComponent size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
-                      {task.task_type === 'call' ? (locale === 'fr' ? 'Appeler' : 'Call') : 
-                       task.task_type === 'email' ? 'Email' : 
-                       task.task_type === 'sms' ? 'SMS' : 
-                       (locale === 'fr' ? 'Suivi' : 'Follow-up')}
-                      {isOverdue && <span style={{ color: '#F59E0B', marginLeft: '6px' }}>• {locale === 'fr' ? 'En retard' : 'Overdue'}</span>}
+                    <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <IconComponent size={12} />
+                        {task.task_type === 'call' ? (locale === 'fr' ? 'Appeler' : 'Call') : 
+                         task.task_type === 'email' ? 'Email' : 
+                         task.task_type === 'sms' ? 'SMS' : 
+                         (locale === 'fr' ? 'Suivi' : 'Follow-up')}
+                      </span>
+                      <span style={{ color: 'var(--muted-dark)' }}>•</span>
+                      <span style={{ color: isOverdue ? '#F59E0B' : 'var(--muted)' }}>{taskTime}</span>
+                      {isOverdue && <span style={{ color: '#F59E0B' }}>({locale === 'fr' ? 'En retard' : 'Overdue'})</span>}
                     </div>
                   </div>
                   
+                  {/* Quick action button - only the one matching task type */}
+                  {task.prospect && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      {/* Call button for call/follow_up tasks */}
+                      {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
+                        <a href={`tel:${task.prospect.phone}`} 
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                          <Phone size={18} />
+                        </a>
+                      )}
+                      {/* Email button for email tasks */}
+                      {task.task_type === 'email' && task.prospect.email && (
+                        <a href={`mailto:${task.prospect.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                          <Mail size={18} />
+                        </a>
+                      )}
+                      {/* SMS buttons for sms tasks - native + AI */}
+                      {task.task_type === 'sms' && task.prospect.phone && (
+                        <>
+                          <a href={`sms:${task.prospect.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                            <MessageSquare size={18} />
+                          </a>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
+                            style={{ padding: '8px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <Sparkles size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Expand arrow */}
-                  <ChevronDown 
-                    size={18} 
-                    style={{ 
-                      color: 'var(--muted-dark)', 
-                      transition: 'transform 0.2s ease',
-                      transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                    }} 
-                  />
+                  <div
+                    onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
+                    style={{ padding: '4px', cursor: 'pointer' }}
+                  >
+                    <ChevronDown 
+                      size={18} 
+                      style={{ 
+                        color: 'var(--muted-dark)', 
+                        transition: 'transform 0.2s ease',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }} 
+                    />
+                  </div>
                 </div>
                 
                 {/* Expanded details */}
@@ -312,13 +365,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       )}
                       <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
                         <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
-                        {new Date(task.due_date).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
+                        {taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
                           weekday: 'long', 
                           day: 'numeric', 
-                          month: 'long',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                          month: 'long'
+                        })} {locale === 'fr' ? 'à' : 'at'} {taskTime}
                       </div>
                     </div>
                     
@@ -367,44 +418,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       </div>
                     )}
                     
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {task.prospect?.phone && (
-                        <a href={`tel:${task.prospect.phone}`} 
-                          onClick={(e) => e.stopPropagation()}
-                          className="btn-secondary"
-                          style={{ flex: 1, height: '40px', textDecoration: 'none', fontSize: '13px' }}>
-                          <Phone size={16} />
-                          {locale === 'fr' ? 'Appeler' : 'Call'}
-                        </a>
-                      )}
-                      {task.prospect?.email && (
-                        <a href={`mailto:${task.prospect.email}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="btn-secondary"
-                          style={{ flex: 1, height: '40px', textDecoration: 'none', fontSize: '13px' }}>
-                          <Mail size={16} />
-                          Email
-                        </a>
-                      )}
-                      {task.prospect?.phone && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
-                          className="btn-secondary"
-                          style={{ flex: 1, height: '40px', fontSize: '13px', color: 'var(--accent)' }}>
-                          <MessageSquare size={16} />
-                          SMS
-                        </button>
-                      )}
-                    </div>
-                    
                     {/* View prospect button */}
                     {task.prospect && onSelectProspect && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onSelectProspect(task.prospect); }}
                         style={{ 
                           width: '100%',
-                          marginTop: '8px',
                           padding: '10px',
                           background: 'transparent',
                           border: '1px solid var(--border)',
