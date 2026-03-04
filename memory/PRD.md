@@ -93,17 +93,30 @@ Pour recevoir les réponses SMS dans KOLO :
 3. ✅ Landing page : 3 cards actualisées
 4. ✅ FAQ : 5 questions sur l'IA et les SMS
 5. ✅ Sélecteur de pays pour le téléphone
+6. ✅ **Bug langue corrigé** : Le choix FR/EN sur la landing persiste dans toute l'app
+7. ✅ **Label "Expéditeur SMS" supprimé** dans les paramètres profil
+8. ✅ **Messages d'erreur SMS améliorés** : guide l'utilisateur vers les paramètres
 
 ### Tests effectués :
 - ✅ Webhook reçoit et stocke les réponses
 - ✅ Conversation SMS affiche envoyés/reçus
 - ✅ Landing et FAQ mises à jour visuellement
+- ✅ Changement de langue FR/EN sur landing + persistence après navigation
+- ✅ Endpoint SMS retourne erreurs claires en français
+
+## Note importante sur l'envoi SMS
+Pour que l'envoi SMS fonctionne, l'utilisateur DOIT avoir configuré :
+- Son **nom** dans Paramètres > Profil 
+- Son **téléphone** dans Paramètres > Profil
+
+Sans ces informations, l'API retourne une erreur claire guidant vers les paramètres.
 
 ## Backlog
 
 ### P1 - Prioritaire
 - [ ] Configurer le webhook dans Brevo (côté client)
 - [ ] Déploiement en production
+- [ ] Simplification UI (rendu moins "lourd") - en cours
 
 ### P2 - À faire
 - [ ] Refactoring server.py en modules
