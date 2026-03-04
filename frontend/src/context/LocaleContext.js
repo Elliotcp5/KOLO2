@@ -12,22 +12,32 @@ export const useLocale = () => {
   return context;
 };
 
-// EU countries for pricing
+// EU countries (Euro zone)
 const EU_COUNTRIES = [
   'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
   'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
   'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
 ];
 
+// Language mapping by country
+const COUNTRY_LANGUAGES = {
+  'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr', 'CH': 'fr', // French-speaking
+  'IT': 'it', 'SM': 'it', // Italian
+  'DE': 'de', 'AT': 'de', 'LI': 'de', // German
+  'ES': 'es', 'MX': 'es', 'AR': 'es', // Spanish
+  'PT': 'pt', 'BR': 'pt', // Portuguese
+  'GB': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', // English
+};
+
 export const LocaleProvider = ({ children }) => {
   const [locale, setLocale] = useState('en');
   const [country, setCountry] = useState('US');
   const [currency, setCurrency] = useState('USD');
-  const [amount, setAmount] = useState(999);
+  const [amount, setAmount] = useState(999); // 9.99 in cents
   const [symbol, setSymbol] = useState('$');
 
   useEffect(() => {
-    // Check URL for locale override (for testing and demo)
+    // Check URL for locale override (for testing)
     const urlParams = new URLSearchParams(window.location.search);
     const localeOverride = urlParams.get('locale');
     const countryOverride = urlParams.get('country');
@@ -40,38 +50,42 @@ export const LocaleProvider = ({ children }) => {
     const lang = browserLocale.split('-')[0].toLowerCase();
     const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
     
-    // Set locale (only support en and fr for now)
-    if (lang === 'fr') {
-      setLocale('fr');
-      localStorage.setItem('kolo_locale', 'fr');
-      // Default to France for French speakers
-      if (!regionFromLocale || regionFromLocale === 'FR' || EU_COUNTRIES.includes(regionFromLocale)) {
-        setCountry(regionFromLocale || 'FR');
-        setCurrency('EUR');
-        setSymbol('€');
-      }
-    } else {
-      setLocale('en');
-      localStorage.setItem('kolo_locale', 'en');
+    // Determine language (we support: en, fr, it, de, es, pt - fallback to en)
+    let detectedLang = lang;
+    if (!['en', 'fr', 'it', 'de', 'es', 'pt'].includes(detectedLang)) {
+      // Try to get language from country
+      detectedLang = COUNTRY_LANGUAGES[regionFromLocale] || 'en';
     }
+    
+    // For now, we only have full translations for EN and FR
+    // Others will fallback to EN with some key translations
+    const supportedLocale = ['en', 'fr'].includes(detectedLang) ? detectedLang : 'en';
+    setLocale(supportedLocale);
+    localStorage.setItem('kolo_locale', supportedLocale);
 
-    // Set country/currency based on locale region
+    // Set country/currency based on region
     if (regionFromLocale) {
+      setCountry(regionFromLocale);
+      
       if (regionFromLocale === 'GB') {
-        setCountry('GB');
         setCurrency('GBP');
         setSymbol('£');
-      } else if (EU_COUNTRIES.includes(regionFromLocale)) {
-        setCountry(regionFromLocale);
+      } else if (regionFromLocale === 'CH') {
+        // Switzerland - keep EUR for simplicity (9.99€)
         setCurrency('EUR');
         setSymbol('€');
+      } else if (EU_COUNTRIES.includes(regionFromLocale)) {
+        setCurrency('EUR');
+        setSymbol('€');
+      } else if (regionFromLocale === 'US' || regionFromLocale === 'CA') {
+        setCurrency('USD');
+        setSymbol('$');
       }
     }
 
     // Fetch geo info from backend (will override if available)
     const fetchGeo = async () => {
       try {
-        // Dynamically get API URL
         const hostname = window.location.hostname;
         let apiUrl = '';
         if (hostname === 'trykolo.io' || hostname === 'www.trykolo.io') {
@@ -85,16 +99,22 @@ export const LocaleProvider = ({ children }) => {
         const response = await fetch(`${apiUrl}/api/geo?locale=${browserLocale}&country=${regionFromLocale || ''}`);
         if (response.ok) {
           const data = await response.json();
-          // Only update if backend returns a valid country
-          if (data.country && data.country !== 'US') {
+          if (data.country) {
             setCountry(data.country);
             setCurrency(data.currency);
             setAmount(data.amount);
             setSymbol(data.symbol);
+            
+            // Update locale based on detected country
+            const countryLang = COUNTRY_LANGUAGES[data.country];
+            if (countryLang && ['en', 'fr'].includes(countryLang)) {
+              setLocale(countryLang);
+              localStorage.setItem('kolo_locale', countryLang);
+            }
           }
         }
       } catch (e) {
-        // Silent fail
+        // Silent fail - use browser detection
       }
     };
 

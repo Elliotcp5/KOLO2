@@ -240,9 +240,11 @@ class RecoverAccountRequest(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 def get_currency_for_country(country_code: str) -> str:
+    """Get currency for a country. Switzerland uses EUR for simplicity (9.99€)"""
     if country_code == 'GB':
         return 'GBP'
-    elif country_code in EU_COUNTRIES:
+    elif country_code in EU_COUNTRIES or country_code in ['CH', 'MC', 'AD', 'SM', 'VA']:
+        # EU + Switzerland, Monaco, Andorra, San Marino, Vatican = EUR
         return 'EUR'
     else:
         return 'USD'
