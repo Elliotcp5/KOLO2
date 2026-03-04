@@ -7,10 +7,10 @@ import { useLocale } from '../context/LocaleContext';
 // New K icon logo for landing page only
 const LANDING_LOGO_URL = "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png";
 
-// Language options with flags
+// Language options
 const LANGUAGES = [
-  { code: 'en', flag: '🇬🇧', name: 'English' },
-  { code: 'fr', flag: '🇫🇷', name: 'Français' },
+  { code: 'en', label: 'EN', name: 'English' },
+  { code: 'fr', label: 'FR', name: 'Français' },
 ];
 
 const LandingPage = () => {
@@ -51,7 +51,7 @@ const LandingPage = () => {
       <div className="page-container no-nav">
         {/* Header */}
         <div className="landing-hero">
-          {/* Language selector - discrete, top left */}
+          {/* Language selector - discrete text, top left */}
           <div style={{ 
             position: 'absolute',
             top: 'max(12px, env(safe-area-inset-top))',
@@ -61,21 +61,17 @@ const LandingPage = () => {
             <button 
               onClick={() => setShowLangMenu(!showLangMenu)}
               style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                fontSize: '12px',
+                fontWeight: '400',
                 cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.2s ease'
+                padding: '4px 8px'
               }}
               data-testid="lang-selector"
             >
-              {currentLang.flag}
+              {currentLang.label}
             </button>
             
             {/* Language dropdown */}
@@ -87,10 +83,10 @@ const LandingPage = () => {
                 marginTop: '4px',
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 overflow: 'hidden',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                minWidth: '120px'
+                minWidth: '100px'
               }}>
                 {LANGUAGES.map(lang => (
                   <button
@@ -102,19 +98,20 @@ const LandingPage = () => {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: '8px',
                       width: '100%',
-                      padding: '10px 12px',
+                      padding: '8px 12px',
                       background: locale === lang.code ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
                       border: 'none',
-                      color: 'var(--text)',
+                      color: locale === lang.code ? 'var(--accent)' : 'var(--text)',
                       cursor: 'pointer',
-                      fontSize: '13px',
+                      fontSize: '12px',
                       textAlign: 'left'
                     }}
                   >
-                    <span>{lang.flag}</span>
                     <span>{lang.name}</span>
+                    <span style={{ color: 'var(--muted)', fontWeight: '500' }}>{lang.label}</span>
                   </button>
                 ))}
               </div>
