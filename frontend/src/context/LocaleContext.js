@@ -21,11 +21,11 @@ const EU_COUNTRIES = [
 
 // Language mapping by country
 const COUNTRY_LANGUAGES = {
-  'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr', 'CH': 'fr', // French-speaking
-  'IT': 'it', 'SM': 'it', // Italian
-  'DE': 'de', 'AT': 'de', 'LI': 'de', // German
-  'ES': 'es', 'MX': 'es', 'AR': 'es', // Spanish
-  'PT': 'pt', 'BR': 'pt', // Portuguese
+  'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr', // French-speaking
+  'IT': 'en', 'SM': 'en', // Italian - fallback to English
+  'DE': 'en', 'AT': 'en', 'LI': 'en', 'CH': 'en', // German/Swiss - fallback to English
+  'ES': 'en', 'MX': 'en', 'AR': 'en', // Spanish - fallback to English
+  'PT': 'en', 'BR': 'en', // Portuguese - fallback to English
   'GB': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', // English
 };
 
@@ -126,6 +126,14 @@ export const LocaleProvider = ({ children }) => {
     return translations[locale]?.[key] || translations.en[key] || key;
   };
 
+  // Change language manually
+  const changeLanguage = (newLocale) => {
+    if (['en', 'fr'].includes(newLocale)) {
+      setLocale(newLocale);
+      localStorage.setItem('kolo_locale', newLocale);
+    }
+  };
+
   // Format price (amount is in cents, divide by 100 for display)
   const formatPrice = (value = amount) => {
     const displayValue = value / 100;
@@ -161,6 +169,7 @@ export const LocaleProvider = ({ children }) => {
   const value = {
     locale,
     setLocale,
+    changeLanguage,
     country,
     currency,
     amount,

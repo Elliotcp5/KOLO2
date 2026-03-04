@@ -7,10 +7,19 @@ import { useLocale } from '../context/LocaleContext';
 // New K icon logo for landing page only
 const LANDING_LOGO_URL = "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png";
 
+// Language options with flags
+const LANGUAGES = [
+  { code: 'en', flag: '🇬🇧', name: 'English' },
+  { code: 'fr', flag: '🇫🇷', name: 'Français' },
+];
+
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { t, formatPrice, locale } = useLocale();
+  const { t, formatPrice, locale, changeLanguage } = useLocale();
   const [expandedCard, setExpandedCard] = useState(null);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
 
   const features = [
     {
@@ -42,6 +51,76 @@ const LandingPage = () => {
       <div className="page-container no-nav">
         {/* Header */}
         <div className="landing-hero">
+          {/* Language selector - discrete, top left */}
+          <div style={{ 
+            position: 'absolute',
+            top: 'max(12px, env(safe-area-inset-top))',
+            left: '16px',
+            zIndex: 10
+          }}>
+            <button 
+              onClick={() => setShowLangMenu(!showLangMenu)}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s ease'
+              }}
+              data-testid="lang-selector"
+            >
+              {currentLang.flag}
+            </button>
+            
+            {/* Language dropdown */}
+            {showLangMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                minWidth: '120px'
+              }}>
+                {LANGUAGES.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      changeLanguage(lang.code);
+                      setShowLangMenu(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: locale === lang.code ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                      border: 'none',
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Top right navigation - FAQ | Login */}
           <div style={{ 
             position: 'absolute',
