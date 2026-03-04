@@ -18,7 +18,7 @@ const authFetch = (url, options = {}) => {
 };
 
 // ==================== TODAY TAB ====================
-const TodayTab = ({ onOpenProfile }) => {
+const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const { t, formatDate, locale } = useLocale();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
@@ -227,13 +227,15 @@ const TodayTab = ({ onOpenProfile }) => {
               <div 
                 key={task.task_id} 
                 className="card"
+                onClick={() => task.prospect && onSelectProspect && onSelectProspect(task.prospect)}
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '12px',
                   padding: '14px 16px',
                   borderLeft: isOverdue ? `3px solid ${borderColor}` : 'none',
-                  background: 'var(--surface)'
+                  background: 'var(--surface)',
+                  cursor: task.prospect ? 'pointer' : 'default'
                 }}
                 data-testid={`task-${task.task_id}`}
               >
@@ -256,7 +258,7 @@ const TodayTab = ({ onOpenProfile }) => {
                   }}
                 />
                 
-                {/* Task content - simplified */}
+                {/* Task content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '15px', fontWeight: '500', color: 'white', marginBottom: '2px' }}>
                     {task.prospect?.full_name || task.title}
@@ -271,9 +273,9 @@ const TodayTab = ({ onOpenProfile }) => {
                   </div>
                 </div>
                 
-                {/* Single action button */}
+                {/* Quick action buttons */}
                 {task.prospect && (
-                  <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {(task.task_type === 'call' || task.task_type === 'follow_up') && task.prospect.phone && (
                       <a href={`tel:${task.prospect.phone}`} onClick={(e) => e.stopPropagation()}
                         style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
@@ -293,7 +295,9 @@ const TodayTab = ({ onOpenProfile }) => {
                         <MessageSquare size={18} />
                       </button>
                     )}
-                  </>
+                    {/* Arrow to see more details */}
+                    <ChevronRight size={18} style={{ color: 'var(--muted-dark)', marginLeft: '4px' }} />
+                  </div>
                 )}
               </div>
             );
@@ -3244,7 +3248,7 @@ const AppShell = () => {
       case 'tasks':
         return <TasksTab key={refreshKey} onRefresh={() => setRefreshKey(prev => prev + 1)} />;
       default:
-        return <TodayTab key={refreshKey} onOpenProfile={() => setShowSettings(true)} />;
+        return <TodayTab key={refreshKey} onOpenProfile={() => setShowSettings(true)} onSelectProspect={handleSelectProspect} />;
     }
   };
 
