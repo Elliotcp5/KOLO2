@@ -2989,6 +2989,127 @@ async def toggle_sms_opt_out(request: Request, prospect_id: str):
     return {"sms_opt_out": opt_out}
 
 
+# ==================== BREVO SMS WEBHOOK ====================
+
+@api_router.post("/webhooks/brevo-sms")
+async def brevo_sms_webhook(request: Request):
+    """
+    Receive SMS reply webhook from Brevo.
+    Brevo sends a POST request when a prospect replies to an SMS.
+    The reply is stored in the prospect's sms_history.
+    """
+    try:
+        body = await request.json()
+        logger.info(f"Brevo SMS webhook received: {body}")
+        
+        # Extract webhook data
+        event_status = body.get("status", "")
+        recipient_phone = body.get("to", "")  # The phone that received the original SMS (prospect)
+        reply_text = body.get("reply", "")
+        reference = body.get("reference", "")  # Original SMS ID
+        
+        # Only process reply events
+        if event_status != "replied" or not reply_text:
+            return {"status": "ignored", "reason": "not a reply event"}
+        
+        # Format phone number for lookup
+        if recipient_phone:
+            recipient_phone_clean = recipient_phone.strip().replace(" ", "")
+            if not recipient_phone_clean.startswith("+"):
+                recipient_phone_clean = "+" + recipient_phone_clean
+        else:
+            return {"status": "error", "reason": "no recipient phone"}
+        
+        # Find the prospect by phone number
+        # We search for prospects where we sent SMS to this number
+        prospect = await db.prospects.find_one(
+            {"phone": {"$regex": recipient_phone_clean[-9:]}},  # Match last 9 digits
+            {"_id": 0, "prospect_id": 1, "user_id": 1, "full_name": 1, "sms_history": 1}
+        )
+        
+        if not prospect:
+            logger.warning(f"Prospect not found for phone: {recipient_phone_clean}")
+            return {"status": "error", "reason": "prospect not found"}
+        
+        # Create reply entry
+        reply_entry = {
+            "id": f"sms_reply_{uuid.uuid4().hex[:8]}",
+            "received_at": datetime.now(timezone.utc).isoformat(),
+            "message": reply_text,
+            "sender_phone": recipient_phone_clean,  # The prospect's phone
+            "type": "received",  # Mark as received (not sent)
+            "reference": reference
+        }
+        
+        # Add reply to SMS history
+        await db.prospects.update_one(
+            {"prospect_id": prospect["prospect_id"]},
+            {
+                "$push": {"sms_history": reply_entry},
+                "$set": {
+                    "last_activity_date": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Recalculate score (prospect replied = hot!)
+        await calculate_prospect_score(prospect["prospect_id"], prospect["user_id"])
+        
+        logger.info(f"SMS reply stored for prospect {prospect['prospect_id']}: {reply_text[:50]}...")
+        
+        return {
+            "status": "success",
+            "prospect_id": prospect["prospect_id"],
+            "prospect_name": prospect.get("full_name", "Unknown")
+        }
+        
+    except Exception as e:
+        logger.error(f"Brevo webhook error: {e}")
+        # Always return 200 to acknowledge the webhook
+        return {"status": "error", "message": str(e)}
+
+
+@api_router.get("/webhooks/brevo-sms/setup-info")
+async def brevo_webhook_setup_info(request: Request):
+    """
+    Get the webhook URL to configure in Brevo.
+    This endpoint returns the URL that should be set up in Brevo's webhook settings.
+    """
+    user = await require_auth(request)
+    
+    # Get the base URL from environment or construct it
+    base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    if not base_url:
+        base_url = "https://real-estate-pwa-1.preview.emergentagent.com"
+    
+    webhook_url = f"{base_url}/api/webhooks/brevo-sms"
+    
+    return {
+        "webhook_url": webhook_url,
+        "instructions": {
+            "fr": [
+                "1. Connectez-vous à app.brevo.com",
+                "2. Allez dans Settings > Webhooks",
+                "3. Créez un nouveau webhook avec:",
+                f"   - URL: {webhook_url}",
+                "   - Events: reply (SMS replies)",
+                "   - Type: Transactional SMS",
+                "4. Activez le webhook"
+            ],
+            "en": [
+                "1. Log in to app.brevo.com",
+                "2. Go to Settings > Webhooks",
+                "3. Create a new webhook with:",
+                f"   - URL: {webhook_url}",
+                "   - Events: reply (SMS replies)",
+                "   - Type: Transactional SMS",
+                "4. Enable the webhook"
+            ]
+        }
+    }
+
+
 # ==================== NOTIFICATION ENDPOINTS ====================
 
 class NotificationSubscription(BaseModel):

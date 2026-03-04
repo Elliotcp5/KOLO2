@@ -1257,7 +1257,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MessageSquare size={18} style={{ color: 'var(--accent)' }} />
-                {locale === 'fr' ? 'Historique SMS' : 'SMS History'}
+                {locale === 'fr' ? 'Conversation SMS' : 'SMS Conversation'}
               </h2>
               <button onClick={() => setShowSmsHistory(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
@@ -1266,43 +1266,61 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             
             <div style={{ overflowY: 'auto', maxHeight: 'calc(70vh - 80px)' }}>
               {prospectData.sms_history && prospectData.sms_history.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[...prospectData.sms_history].reverse().map((sms, index) => (
-                    <div 
-                      key={sms.id || index}
-                      style={{
-                        background: 'var(--surface-2)',
-                        borderRadius: '12px',
-                        padding: '12px 14px'
-                      }}
-                    >
-                      <p style={{ 
-                        fontSize: '14px', 
-                        lineHeight: '1.5', 
-                        color: 'var(--text)',
-                        marginBottom: '8px'
-                      }}>
-                        {sms.message}
-                      </p>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '11px', 
-                        color: 'var(--muted)' 
-                      }}>
-                        <span>{sms.sender_name || locale === 'fr' ? 'Vous' : 'You'}</span>
-                        <span>
-                          {new Date(sms.sent_at).toLocaleDateString(locale, { 
-                            day: 'numeric', 
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[...prospectData.sms_history].reverse().map((sms, index) => {
+                    const isReceived = sms.type === 'received';
+                    const timestamp = sms.sent_at || sms.received_at;
+                    
+                    return (
+                      <div 
+                        key={sms.id || index}
+                        style={{
+                          display: 'flex',
+                          justifyContent: isReceived ? 'flex-start' : 'flex-end'
+                        }}
+                      >
+                        <div style={{
+                          background: isReceived ? 'var(--surface-2)' : 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.3) 100%)',
+                          borderRadius: isReceived ? '12px 12px 12px 4px' : '12px 12px 4px 12px',
+                          padding: '10px 14px',
+                          maxWidth: '85%',
+                          border: isReceived ? 'none' : '1px solid rgba(139, 92, 246, 0.3)'
+                        }}>
+                          <p style={{ 
+                            fontSize: '14px', 
+                            lineHeight: '1.5', 
+                            color: 'var(--text)',
+                            marginBottom: '6px'
+                          }}>
+                            {sms.message}
+                          </p>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '12px',
+                            fontSize: '10px', 
+                            color: 'var(--muted)' 
+                          }}>
+                            <span style={{ fontWeight: '500' }}>
+                              {isReceived 
+                                ? prospectData.full_name?.split(' ')[0] || (locale === 'fr' ? 'Prospect' : 'Prospect')
+                                : (locale === 'fr' ? 'Vous' : 'You')
+                              }
+                            </span>
+                            <span>
+                              {timestamp && new Date(timestamp).toLocaleDateString(locale, { 
+                                day: 'numeric', 
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>

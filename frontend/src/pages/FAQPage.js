@@ -15,6 +15,7 @@ const FAQPage = () => {
     { question: t('faqQ2'), answer: t('faqA2') },
     { question: t('faqQ3'), answer: t('faqA3') },
     { question: t('faqQ4'), answer: t('faqA4') },
+    { question: t('faqQ5'), answer: t('faqA5') },
   ];
 
   const toggleFaq = (index) => {
@@ -112,7 +113,7 @@ const FAQPage = () => {
           <div style={{ marginTop: '40px', marginBottom: '40px', textAlign: 'center' }}>
             <button 
               className="btn-primary"
-              onClick={() => navigate('/subscribe')}
+              onClick={() => navigate('/register')}
               data-testid="start-button"
             >
               {t('startButton')}

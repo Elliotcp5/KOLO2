@@ -1,7 +1,7 @@
 // v2.1.0 - Cache bust
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Briefcase, Sparkles, ArrowRight } from 'lucide-react';
+import { Calendar, Bell, Sparkles, ArrowRight } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 
 // New K icon logo for landing page only
@@ -21,7 +21,7 @@ const LandingPage = () => {
     },
     {
       id: 'feature2',
-      icon: Briefcase,
+      icon: Bell,
       title: t('feature2Title'),
       description: t('feature2Desc'),
     },

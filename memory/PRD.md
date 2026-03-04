@@ -5,155 +5,113 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - UI dark mode style iOS avec accents gradient rose-violet
 - Localisation FR/EN automatique
 - Prix régional (9.99 EUR/GBP/USD)
-- Authentification email/password avec Bearer Token (localStorage)
-- **Essai gratuit 7 jours SANS carte bancaire**
+- Authentification email/password avec Bearer Token
+- Essai gratuit 7 jours SANS carte bancaire
 - Gestion prospects et tâches avec suivi automatique
 - Notifications push pour rappels quotidiens
-- Suggestions de tâches IA (Claude)
-- **Scoring visuel des prospects** (🔴 froid / 🟠 tiède / 🟢 chaud)
-- **Rédaction IA des messages de relance**
-- **Envoi SMS via Brevo depuis le nom de l'agent**
+- **Assistant IA** : scoring, génération de messages, suggestions
+- **SMS bidirectionnels** : envoi + réception des réponses
 
 ## Architecture
 ```
 /app/
 ├── backend/          # FastAPI + MongoDB
-│   ├── server.py     # API principale + scheduler intégré
-│   ├── tests/        # Tests pytest
-│   └── .env          # Config (Stripe, VAPID keys, Brevo, Resend)
+│   ├── server.py     # API principale
+│   └── .env          # Config (Stripe, VAPID, Brevo, Resend)
 └── frontend/         # React PWA
-    ├── src/pages/    # Landing, Login, Register, Subscribe, AppShell
-    ├── src/components/  # PWAGuide, NotificationPrompt
-    ├── src/context/  # AuthContext, LocaleContext
+    ├── src/pages/    # Landing, Login, Register, AppShell, FAQ
+    ├── src/i18n/     # Traductions FR/EN
     └── public/       # manifest.json, sw.js
 ```
 
-## Fonctionnalités Implémentées
+## Fonctionnalités Complètes
 
-### Authentification & Utilisateurs
-- [x] Inscription essai gratuit 7 jours sans carte bancaire
-- [x] **Nom complet obligatoire** (utilisé comme expéditeur SMS)
-- [x] **Numéro de téléphone avec sélecteur de pays** (international)
-- [x] Modification nom et téléphone dans les paramètres
-- [x] Auth Email/Password avec Bearer Token
-- [x] Mot de passe oublié via Resend
-- [x] Changement de mot de passe
+### ✅ Authentification & Inscription
+- Nom complet obligatoire (expéditeur SMS)
+- Numéro avec sélecteur de pays (🇫🇷🇺🇸🇬🇧🇩🇪...)
+- Modification nom/téléphone dans paramètres
+- Mot de passe oublié via Resend
 
-### Facturation (Stripe)
-- [x] Flow abonnement Stripe (post-trial)
-- [x] Création client Stripe automatique à l'inscription
-- [x] Portail de facturation Stripe
-- [x] Résiliation abonnement
+### ✅ Prospects & IA
+- CRUD complet
+- Scoring automatique IA (🟢🟠🔴)
+- Modification manuelle du score
+- Historique SMS par prospect
 
-### Prospects
-- [x] CRUD Prospects complet
-- [x] **Scoring automatique IA** (chaud/tiède/froid)
-- [x] Modification manuelle du score
-- [x] Points colorés (🟢🟠🔴) sur la liste
-- [x] **Historique SMS discret** (badge cliquable)
+### ✅ SMS Bidirectionnels
+- Génération de messages IA personnalisés
+- Envoi SMS via Brevo (nom agent = expéditeur)
+- **Réception des réponses** via webhook Brevo
+- Conversation style iMessage/WhatsApp
 
-### Tâches
-- [x] Gestion tâches (manuelles + auto-générées)
-- [x] Suggestions de tâches IA (Claude)
-- [x] Création tâches avec date/heure
-- [x] Vue "Aujourd'hui" et "Toutes les tâches"
-- [x] Complétion avec feedback visuel
+### ✅ Landing & FAQ Actualisées
+- 3 cards : Tâches du Jour, Rappels Intelligents, **Assistant IA**
+- FAQ avec 5 questions sur l'IA et les SMS
 
-### Communication SMS
-- [x] **Génération de messages IA** personnalisés
-- [x] **Envoi SMS via Brevo**
-- [x] **Nom de l'agent comme expéditeur** (ex: "Marie" pas "KOLO")
-- [x] **Historique SMS par prospect** (modal élégant)
-- [x] Copier/Régénérer le message
+## Webhook Brevo SMS
 
-### Interface
-- [x] PWA manifest + guide installation
-- [x] Notifications push
-- [x] Localisation FR/EN
-- [x] Dark mode iOS-style
-- [x] **Interface minimaliste et ergonomique**
+### Configuration
+Pour recevoir les réponses SMS dans KOLO :
+1. Connectez-vous à app.brevo.com
+2. Allez dans Settings > Webhooks
+3. Créez un webhook :
+   - **URL** : `{votre-url}/api/webhooks/brevo-sms`
+   - **Events** : reply
+   - **Type** : Transactional SMS
+4. Activez le webhook
 
-## Fonctionnement des SMS
+### Endpoint
+- `POST /api/webhooks/brevo-sms` - Reçoit les réponses (pas d'auth)
+- `GET /api/webhooks/brevo-sms/setup-info` - Infos de configuration
 
-### Comment ça marche :
-1. **L'agent s'inscrit** avec son nom complet et son numéro de téléphone
-2. **L'IA génère un message** personnalisé pour un prospect
-3. **Le SMS est envoyé via Brevo** avec le **nom de l'agent comme expéditeur**
-4. **Le prospect voit** : Expéditeur "Marie" (ou le prénom de l'agent)
-5. **Le prospect peut répondre** en envoyant un SMS au numéro de l'agent
-
-### Note technique :
-- Brevo utilise le nom de l'agent (max 11 caractères) comme "sender"
-- Les réponses arrivent directement sur le téléphone de l'agent
-- L'historique est enregistré dans la base de données
-
-## Endpoints Clés
-
-### Authentification
-- `POST /api/auth/register` - Inscription avec nom + téléphone + indicatif pays
-- `POST /api/auth/login` - Connexion
-- `GET /api/auth/profile` - Profil avec nom et téléphone
-- `POST /api/auth/update-phone` - Mise à jour téléphone
-- `POST /api/auth/update-name` - Mise à jour nom
-
-### Prospects
-- `POST /api/prospects/{id}/generate-message` - Génération message IA
-- `POST /api/prospects/{id}/send-sms` - Envoi SMS (nom agent = expéditeur)
-
-## Schéma DB (MongoDB)
-
-### users
+## Schéma SMS History
 ```json
 {
-  "user_id": "user_xxx",
-  "email": "...",
-  "name": "Marie Dupont",        // Nom complet (expéditeur SMS)
-  "phone": "+33612345678",       // Format international
-  "subscription_status": "trialing|active|expired|canceled"
-}
-```
-
-### prospects.sms_history
-```json
-{
-  "id": "sms_xxx",
-  "sent_at": "...",
-  "message": "...",
-  "sender_name": "Marie Dupont",   // Nom de l'agent
-  "sender_phone": "+33612345678",  // Téléphone de l'agent
-  "recipient_phone": "+33699999999",
-  "status": "sent"
+  "sms_history": [
+    {
+      "id": "sms_xxx",
+      "sent_at": "...",
+      "message": "Bonjour !",
+      "sender_name": "Marie Dupont",
+      "type": "sent"  // ou absent = sent
+    },
+    {
+      "id": "sms_reply_xxx",
+      "received_at": "...",
+      "message": "Oui, je suis intéressé",
+      "type": "received"
+    }
+  ]
 }
 ```
 
 ## État Actuel (4 mars 2026)
 
-### Complété dans cette session :
-1. ✅ **Nom complet obligatoire** à l'inscription (expéditeur SMS)
-2. ✅ **Sélecteur de pays** avec drapeaux (🇫🇷 🇺🇸 🇬🇧 etc.)
-3. ✅ **SMS envoyés au nom de l'agent** (pas "KOLO")
-4. ✅ **Historique SMS discret** (badge + modal élégant)
-5. ✅ **Interface minimaliste** et ergonomique
-6. ✅ **Modification nom/téléphone** dans les paramètres
+### Complété :
+1. ✅ Webhook Brevo pour réception des réponses SMS
+2. ✅ Interface conversation SMS (style iMessage)
+3. ✅ Landing page : 3 cards actualisées
+4. ✅ FAQ : 5 questions sur l'IA et les SMS
+5. ✅ Sélecteur de pays pour le téléphone
 
-### Fonctionnement confirmé :
-- ✅ Inscription avec nom + téléphone + pays → OK
-- ✅ Profil affiche nom et téléphone → OK
-- ✅ SMS envoyé avec nom agent comme expéditeur → OK
-- ✅ Historique SMS visible dans fiche prospect → OK
+### Tests effectués :
+- ✅ Webhook reçoit et stocke les réponses
+- ✅ Conversation SMS affiche envoyés/reçus
+- ✅ Landing et FAQ mises à jour visuellement
 
 ## Backlog
 
 ### P1 - Prioritaire
-- [ ] Déploiement final en production
+- [ ] Configurer le webhook dans Brevo (côté client)
+- [ ] Déploiement en production
 
 ### P2 - À faire
-- [ ] Refactoriser server.py en modules
-- [ ] Vérifier les notifications push en production
+- [ ] Refactoring server.py en modules
+- [ ] Notifications push en production
 
 ### P3 - Backlog
-- [ ] Export des prospects en CSV
+- [ ] Export CSV prospects
 - [ ] Statistiques de conversion
 
-## Date Dernière Mise à Jour
+## Date Mise à Jour
 4 mars 2026
