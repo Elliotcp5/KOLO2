@@ -584,6 +584,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const [messageContext, setMessageContext] = useState(null);
   const [sendingSms, setSendingSms] = useState(false);
   
+  // SMS History modal state
+  const [showSmsHistory, setShowSmsHistory] = useState(false);
+  
   // Score state
   const [updatingScore, setUpdatingScore] = useState(false);
   const [showScoreMenu, setShowScoreMenu] = useState(false);
@@ -1060,9 +1063,31 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <Phone size={18} style={{ color: 'var(--accent)' }} />
-          <a href={`tel:${prospectData.phone}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
+          <a href={`tel:${prospectData.phone}`} style={{ color: 'var(--text)', textDecoration: 'none', flex: 1 }}>
             {prospectData.phone}
           </a>
+          {/* SMS History button - discrete */}
+          {prospectData.sms_history && prospectData.sms_history.length > 0 && (
+            <button
+              onClick={() => setShowSmsHistory(true)}
+              style={{
+                background: 'var(--surface-light)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              data-testid="sms-history-btn"
+            >
+              <MessageSquare size={14} />
+              {prospectData.sms_history.length}
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Mail size={18} style={{ color: 'var(--accent)' }} />
@@ -1225,6 +1250,70 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </div>
       )}
 
+      {/* SMS History Modal - clean and simple */}
+      {showSmsHistory && (
+        <div className="modal-overlay" onClick={() => setShowSmsHistory(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '70vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MessageSquare size={18} style={{ color: 'var(--accent)' }} />
+                {locale === 'fr' ? 'Historique SMS' : 'SMS History'}
+              </h2>
+              <button onClick={() => setShowSmsHistory(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ overflowY: 'auto', maxHeight: 'calc(70vh - 80px)' }}>
+              {prospectData.sms_history && prospectData.sms_history.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[...prospectData.sms_history].reverse().map((sms, index) => (
+                    <div 
+                      key={sms.id || index}
+                      style={{
+                        background: 'var(--surface-2)',
+                        borderRadius: '12px',
+                        padding: '12px 14px'
+                      }}
+                    >
+                      <p style={{ 
+                        fontSize: '14px', 
+                        lineHeight: '1.5', 
+                        color: 'var(--text)',
+                        marginBottom: '8px'
+                      }}>
+                        {sms.message}
+                      </p>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px', 
+                        color: 'var(--muted)' 
+                      }}>
+                        <span>{sms.sender_name || locale === 'fr' ? 'Vous' : 'You'}</span>
+                        <span>
+                          {new Date(sms.sent_at).toLocaleDateString(locale, { 
+                            day: 'numeric', 
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>
+                  {locale === 'fr' ? 'Aucun SMS envoyé' : 'No SMS sent'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status */}
       <div style={{ marginBottom: '24px' }}>
         <label className="text-caption" style={{ display: 'block', marginBottom: '12px' }}>
@@ -1353,9 +1442,13 @@ const SettingsTab = ({ onClose }) => {
   const [billingLoading, setBillingLoading] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
+  const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [nameLoading, setNameLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1371,7 +1464,7 @@ const SettingsTab = ({ onClose }) => {
     }
   }, []);
 
-  // Fetch user profile (including phone) on mount
+  // Fetch user profile (including phone and name) on mount
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -1379,6 +1472,7 @@ const SettingsTab = ({ onClose }) => {
         if (response.ok) {
           const data = await response.json();
           setUserPhone(data.phone || '');
+          setUserName(data.name || '');
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -1406,7 +1500,7 @@ const SettingsTab = ({ onClose }) => {
   const handleUpdatePhone = async () => {
     if (phoneLoading) return;
     
-    if (!newPhone || newPhone.length < 10) {
+    if (!newPhone || newPhone.length < 6) {
       toast.error(locale === 'fr' ? 'Numéro de téléphone invalide' : 'Invalid phone number');
       return;
     }
@@ -1435,6 +1529,41 @@ const SettingsTab = ({ onClose }) => {
       toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
     } finally {
       setPhoneLoading(false);
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (nameLoading) return;
+    
+    if (!newName || newName.trim().length < 2) {
+      toast.error(locale === 'fr' ? 'Nom invalide' : 'Invalid name');
+      return;
+    }
+    
+    setNameLoading(true);
+    
+    try {
+      const response = await authFetch(`${API_URL}/api/auth/update-name`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserName(data.name);
+        toast.success(locale === 'fr' ? 'Nom mis à jour' : 'Name updated');
+        setShowNameModal(false);
+        setNewName('');
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating name'));
+      }
+    } catch (error) {
+      console.error('Update name error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setNameLoading(false);
     }
   };
 
@@ -1623,13 +1752,26 @@ const SettingsTab = ({ onClose }) => {
         {t('profile')}
       </h3>
       <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
-        <div className="settings-row">
+        {/* Name row - clickable to edit */}
+        <div 
+          className="settings-row" 
+          onClick={() => {
+            setNewName(userName);
+            setShowNameModal(true);
+          }}
+          style={{ cursor: 'pointer' }}
+          data-testid="edit-name"
+        >
           <User className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: '500', marginBottom: '4px' }}>{user?.name || user?.email}</div>
-            <div className="text-muted" style={{ fontSize: '14px' }}>{user?.email}</div>
+            <span className="label">{locale === 'fr' ? 'Nom (expéditeur SMS)' : 'Name (SMS sender)'}</span>
+            <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+              {userName || user?.email || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
+            </div>
           </div>
+          <ChevronRight className="chevron" size={20} />
         </div>
+        {/* Phone row */}
         <div 
           className="settings-row" 
           onClick={() => {
@@ -1639,11 +1781,9 @@ const SettingsTab = ({ onClose }) => {
           style={{ cursor: 'pointer', borderBottom: 'none' }}
           data-testid="edit-phone"
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg>
+          <Phone className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
           <div style={{ flex: 1 }}>
-            <span className="label">{locale === 'fr' ? 'Téléphone SMS' : 'SMS Phone'}</span>
+            <span className="label">{locale === 'fr' ? 'Téléphone' : 'Phone'}</span>
             <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
               {userPhone || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
             </div>
@@ -1946,12 +2086,12 @@ const SettingsTab = ({ onClose }) => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '600' }}>
-                {locale === 'fr' ? 'Téléphone SMS' : 'SMS Phone'}
+                {locale === 'fr' ? 'Téléphone' : 'Phone'}
               </h2>
               <button
                 className="btn-primary"
                 onClick={handleUpdatePhone}
-                disabled={!newPhone || newPhone.length < 10 || phoneLoading}
+                disabled={!newPhone || newPhone.length < 6 || phoneLoading}
                 style={{ 
                   width: 'auto', 
                   height: '40px', 
@@ -1970,21 +2110,96 @@ const SettingsTab = ({ onClose }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
-                  {locale === 'fr' ? 'Numéro de téléphone' : 'Phone number'}
+                  {locale === 'fr' ? 'Numéro avec indicatif pays' : 'Number with country code'}
                 </label>
                 <input
                   type="tel"
                   className="input-dark"
-                  placeholder={locale === 'fr' ? 'Ex: 06 12 34 56 78' : 'E.g. 06 12 34 56 78'}
+                  placeholder={locale === 'fr' ? 'Ex: +33 6 12 34 56 78' : 'E.g. +33 6 12 34 56 78'}
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   data-testid="phone-input-modal"
                 />
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
                 {locale === 'fr' 
-                  ? 'Ce numéro sera utilisé comme expéditeur pour les SMS envoyés à vos prospects. Les réponses seront reçues directement sur ce numéro.'
-                  : 'This number will be used as the sender for SMS sent to your prospects. Replies will be received directly on this number.'
+                  ? 'Les prospects pourront vous répondre directement sur ce numéro.'
+                  : 'Prospects will be able to reply directly to this number.'
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Name update modal */}
+      {showNameModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowNameModal(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>
+                {locale === 'fr' ? 'Nom' : 'Name'}
+              </h2>
+              <button
+                className="btn-primary"
+                onClick={handleUpdateName}
+                disabled={!newName || newName.trim().length < 2 || nameLoading}
+                style={{ 
+                  width: 'auto', 
+                  height: '40px', 
+                  padding: '0 20px',
+                  fontSize: '15px'
+                }}
+              >
+                {nameLoading ? (
+                  <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                ) : (
+                  t('save')
+                )}
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                  {locale === 'fr' ? 'Prénom et Nom' : 'Full Name'}
+                </label>
+                <input
+                  type="text"
+                  className="input-dark"
+                  placeholder={locale === 'fr' ? 'Ex: Jean Dupont' : 'E.g. John Smith'}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  data-testid="name-input-modal"
+                />
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                {locale === 'fr' 
+                  ? 'Votre nom apparaîtra comme expéditeur des SMS envoyés à vos prospects.'
+                  : 'Your name will appear as the sender of SMS sent to your prospects.'
                 }
               </p>
             </div>
