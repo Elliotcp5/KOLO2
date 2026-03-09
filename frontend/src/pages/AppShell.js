@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
 import { API_URL } from '../config/api';
+import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 
 // Helper for authenticated fetch
 const authFetch = (url, options = {}) => {
@@ -96,6 +97,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         body: JSON.stringify({ message: aiMessage })
       });
       if (response.ok) {
+        trackSmsSent();
         toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
         setShowSmsModal(false);
         // Mark task as completed
@@ -116,11 +118,14 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 
   const handleCompleteTask = async (taskId) => {
     try {
+      const task = tasks.find(t => t.task_id === taskId);
       const response = await authFetch(`${API_URL}/api/tasks/${taskId}/complete`, {
         method: 'POST'
       });
       
       if (response.ok) {
+        // Track task completion
+        trackTaskCompleted(task?.task_type || 'unknown');
         // Remove task from list with animation
         setTasks(prev => prev.filter(t => t.task_id !== taskId));
         toast.success(t('taskCompleted'));
@@ -2047,6 +2052,7 @@ const SettingsTab = ({ onClose }) => {
   };
 
   const handleLogout = async () => {
+    trackLogout();
     await logout();
     navigate('/');
   };

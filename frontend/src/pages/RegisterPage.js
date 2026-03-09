@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import { trackSignUp, trackTrialStarted, setUserId } from '../utils/analytics';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -97,6 +98,11 @@ const RegisterPage = () => {
         if (data.token) {
           localStorage.setItem('kolo_token', data.token);
         }
+        
+        // Track signup and trial start
+        trackSignUp('email');
+        trackTrialStarted();
+        setUserId(data.user_id);
         
         login({
           user_id: data.user_id,

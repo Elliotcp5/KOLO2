@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "./context/LocaleContext";
 import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
+import { trackPageView } from "./utils/analytics";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -15,6 +16,33 @@ import AppShell from "./pages/AppShell";
 import NewProspectPage from "./pages/NewProspectPage";
 import FAQPage from "./pages/FAQPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+
+// Analytics - track page views on route change
+const AnalyticsTracker = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Track page view on route change
+    const pageTitles = {
+      '/': 'Landing Page',
+      '/login': 'Login',
+      '/register': 'Register',
+      '/subscribe': 'Subscribe',
+      '/create-account': 'Create Account',
+      '/faq': 'FAQ',
+      '/forgot-password': 'Forgot Password',
+      '/app': 'Dashboard',
+      '/app/prospects': 'Prospects',
+      '/app/settings': 'Settings',
+      '/app/prospects/new': 'New Prospect'
+    };
+    
+    const title = pageTitles[location.pathname] || 'KOLO';
+    trackPageView(location.pathname + location.search, title);
+  }, [location]);
+  
+  return null;
+};
 
 // Router component that checks for session_id in URL
 const AppRouter = () => {
@@ -83,6 +111,7 @@ function App() {
       <LocaleProvider>
         <BrowserRouter>
           <AuthProvider>
+            <AnalyticsTracker />
             <AppRouter />
             <Toaster 
               position="top-center" 

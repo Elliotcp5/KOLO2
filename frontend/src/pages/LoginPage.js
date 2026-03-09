@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import { trackLogin, setUserId } from '../utils/analytics';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -49,6 +50,10 @@ const LoginPage = () => {
         if (data.token) {
           localStorage.setItem('kolo_token', data.token);
         }
+        
+        // Track login
+        trackLogin('email');
+        setUserId(data.user_id);
         
         // Create clean user data with token
         const userData = {
