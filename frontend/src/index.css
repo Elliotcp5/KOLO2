@@ -113,3 +113,33 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* Task completion animation */
+@keyframes taskComplete {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.02);
+        background: var(--success);
+    }
+    100% {
+        transform: scale(0.95) translateX(100%);
+        opacity: 0;
+    }
+}
+
+.task-completing {
+    animation: taskComplete 0.4s ease-out forwards;
+}
+
+/* Spin animation for loaders */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

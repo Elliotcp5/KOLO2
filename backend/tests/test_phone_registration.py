@@ -14,7 +14,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://kolo-real-estate-pwa.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://crm-ui-stage.preview.emergentagent.com').rstrip('/')
 
 class TestPhoneRegistration:
     """Test registration with phone number requirement"""

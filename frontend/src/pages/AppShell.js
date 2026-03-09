@@ -26,6 +26,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const [loading, setLoading] = useState(true);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [stats, setStats] = useState({ completedToday: 0, totalToday: 0, activeProspects: 0, streak: 0 });
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [swipingTaskId, setSwipingTaskId] = useState(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const [completedTaskId, setCompletedTaskId] = useState(null);
   
   // AI SMS Modal state
   const [showSmsModal, setShowSmsModal] = useState(false);
@@ -33,6 +38,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const [aiMessage, setAiMessage] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
+  
+  // Proactive AI message for overdue tasks
+  const [proactiveAiTaskId, setProactiveAiTaskId] = useState(null);
+  const [proactiveAiMessage, setProactiveAiMessage] = useState('');
+  const [proactiveAiLoading, setProactiveAiLoading] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -51,9 +61,49 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       setLoading(false);
     }
   };
+  
+  // Fetch stats for dashboard
+  const fetchStats = async () => {
+    try {
+      // Get all tasks for today stats
+      const allTasksResponse = await authFetch(`${API_URL}/api/tasks`);
+      if (allTasksResponse.ok) {
+        const data = await allTasksResponse.json();
+        const today = new Date().toDateString();
+        const todayTasks = data.tasks.filter(t => new Date(t.due_date).toDateString() === today);
+        const completedToday = todayTasks.filter(t => t.completed).length;
+        
+        setStats(prev => ({
+          ...prev,
+          completedToday,
+          totalToday: todayTasks.length
+        }));
+      }
+      
+      // Get prospects count
+      const prospectsResponse = await authFetch(`${API_URL}/api/prospects`);
+      if (prospectsResponse.ok) {
+        const data = await prospectsResponse.json();
+        setStats(prev => ({
+          ...prev,
+          activeProspects: data.prospects?.length || 0
+        }));
+      }
+      
+      // Fetch AI suggestions
+      const suggestionsResponse = await authFetch(`${API_URL}/api/tasks/ai-suggestions`);
+      if (suggestionsResponse.ok) {
+        const data = await suggestionsResponse.json();
+        setAiSuggestions(data.suggestions || []);
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
+    fetchStats();
   }, []);
 
   // Generate AI message for SMS
@@ -84,6 +134,57 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     setShowSmsModal(true);
     setAiMessage('');
     generateAiMessage(task);
+  };
+  
+  // Proactive AI: Generate message for overdue task directly in card
+  const generateProactiveAiMessage = async (task) => {
+    if (!task?.prospect || proactiveAiLoading) return;
+    setProactiveAiTaskId(task.task_id);
+    setProactiveAiLoading(true);
+    setProactiveAiMessage('');
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${task.prospect_id}/generate-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: 'overdue_follow_up' })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProactiveAiMessage(data.message || '');
+      }
+    } catch (error) {
+      console.error('Proactive AI message error:', error);
+    } finally {
+      setProactiveAiLoading(false);
+    }
+  };
+  
+  // Send proactive SMS directly
+  const sendProactiveSms = async (task) => {
+    if (!task?.prospect || !proactiveAiMessage) return;
+    setSendingSms(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${task.prospect_id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: proactiveAiMessage })
+      });
+      if (response.ok) {
+        trackSmsSent();
+        toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
+        setProactiveAiTaskId(null);
+        setProactiveAiMessage('');
+        // Mark task as completed
+        handleCompleteTask(task.task_id);
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || (locale === 'fr' ? 'Erreur d\'envoi SMS' : 'SMS send error'));
+      }
+    } catch (error) {
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setSendingSms(false);
+    }
   };
 
   // Send SMS
@@ -126,14 +227,61 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       if (response.ok) {
         // Track task completion
         trackTaskCompleted(task?.task_type || 'unknown');
-        // Remove task from list with animation
-        setTasks(prev => prev.filter(t => t.task_id !== taskId));
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          completedToday: prev.completedToday + 1
+        }));
+        // Animation: show completed state briefly
+        setCompletedTaskId(taskId);
+        setTimeout(() => {
+          setCompletedTaskId(null);
+          // Remove task from list
+          setTasks(prev => prev.filter(t => t.task_id !== taskId));
+        }, 400);
         toast.success(t('taskCompleted'));
       }
     } catch (error) {
       console.error('Failed to complete task:', error);
       toast.error(t('taskError'));
     }
+  };
+  
+  // Swipe handlers
+  const handleTouchStart = (e, taskId) => {
+    setSwipingTaskId(taskId);
+    setSwipeX(e.touches[0].clientX);
+  };
+  
+  const handleTouchMove = (e, taskId) => {
+    if (swipingTaskId !== taskId) return;
+    const diff = e.touches[0].clientX - swipeX;
+    // Only allow right swipe (positive diff) up to 100px
+    const element = e.currentTarget;
+    if (diff > 0 && diff < 100) {
+      element.style.transform = `translateX(${diff}px)`;
+      element.style.opacity = 1 - (diff / 150);
+    }
+  };
+  
+  const handleTouchEnd = (e, taskId) => {
+    if (swipingTaskId !== taskId) return;
+    const element = e.currentTarget;
+    const currentX = parseFloat(element.style.transform?.replace('translateX(', '').replace('px)', '') || 0);
+    
+    if (currentX > 60) {
+      // Complete the task
+      element.style.transform = 'translateX(100%)';
+      element.style.opacity = 0;
+      setTimeout(() => handleCompleteTask(taskId), 200);
+    } else {
+      // Reset
+      element.style.transform = 'translateX(0)';
+      element.style.opacity = 1;
+    }
+    
+    setSwipingTaskId(null);
+    setSwipeX(0);
   };
 
   // Get icon for task type - returns null if type not recognized
@@ -169,27 +317,179 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: '20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <h1 className="text-headline" style={{ fontSize: '28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+        <h1 className="text-headline" style={{ fontSize: '26px' }}>
           {t('today')}
         </h1>
         <button 
           className="btn-ghost" 
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0' }}
           onClick={onOpenProfile}
           data-testid="my-profile-button"
         >
-          <User size={18} strokeWidth={1.5} color="white" />
-          <span style={{ color: 'white', fontSize: '14px' }}>{t('myProfile')}</span>
+          <User size={16} strokeWidth={1.5} color="white" />
+          <span style={{ color: 'white', fontSize: '13px' }}>{t('myProfile')}</span>
         </button>
       </div>
 
       {/* Date */}
-      <p className="text-muted" style={{ marginBottom: '32px', textTransform: 'capitalize' }}>
+      <p className="text-muted" style={{ marginBottom: '16px', textTransform: 'capitalize', fontSize: '13px' }}>
         {formatDate(new Date())}
       </p>
+      
+      {/* Mini Dashboard Stats */}
+      {!loading && !subscriptionBlocked && (
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '10px', 
+          marginBottom: '20px' 
+        }}>
+          {/* Tasks Progress */}
+          <div style={{ 
+            background: 'var(--surface)', 
+            borderRadius: '12px', 
+            padding: '12px',
+            border: '1px solid var(--border)'
+          }}>
+            <div style={{ fontSize: '22px', fontWeight: '600', color: 'var(--accent)' }}>
+              {stats.completedToday}/{stats.totalToday || tasks.length}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+              {locale === 'fr' ? 'Tâches' : 'Tasks'}
+            </div>
+          </div>
+          
+          {/* Active Prospects */}
+          <div style={{ 
+            background: 'var(--surface)', 
+            borderRadius: '12px', 
+            padding: '12px',
+            border: '1px solid var(--border)'
+          }}>
+            <div style={{ fontSize: '22px', fontWeight: '600', color: 'white' }}>
+              {stats.activeProspects}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+              {locale === 'fr' ? 'Prospects' : 'Prospects'}
+            </div>
+          </div>
+          
+          {/* Pending */}
+          <div style={{ 
+            background: 'var(--surface)', 
+            borderRadius: '12px', 
+            padding: '12px',
+            border: '1px solid var(--border)'
+          }}>
+            <div style={{ fontSize: '22px', fontWeight: '600', color: tasks.length > 0 ? '#F59E0B' : 'var(--success)' }}>
+              {tasks.length}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+              {locale === 'fr' ? 'À faire' : 'To do'}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* AI Suggestions Banner - Enhanced visibility */}
+      {!loading && !subscriptionBlocked && aiSuggestions.length > 0 && (
+        <div 
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            borderRadius: '14px', 
+            padding: '14px 16px',
+            marginBottom: '16px',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Sparkles size={16} style={{ color: 'white' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
+                {aiSuggestions.length} {locale === 'fr' ? 'suggestion' : 'suggestion'}{aiSuggestions.length > 1 ? 's' : ''} IA
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                {locale === 'fr' ? 'Prospects inactifs à relancer' : 'Inactive prospects to follow up'}
+              </div>
+            </div>
+          </div>
+          
+          {/* First suggestion preview */}
+          <div 
+            onClick={() => {
+              const suggestion = aiSuggestions[0];
+              if (suggestion) {
+                trackAiSuggestionAccepted();
+                authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(suggestion)
+                }).then(() => {
+                  toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+                  fetchTasks();
+                  setAiSuggestions(prev => prev.slice(1));
+                });
+              }
+            }}
+            style={{ 
+              background: 'rgba(0, 0, 0, 0.2)', 
+              borderRadius: '10px', 
+              padding: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', color: 'white', fontWeight: '500', marginBottom: '2px' }}>
+                {aiSuggestions[0]?.prospect_name}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                {aiSuggestions[0]?.reason}
+              </div>
+            </div>
+            <button style={{
+              background: 'var(--accent)',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              color: 'white',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <Plus size={14} />
+              {locale === 'fr' ? 'Ajouter' : 'Add'}
+            </button>
+          </div>
+          
+          {/* Show more if multiple suggestions */}
+          {aiSuggestions.length > 1 && (
+            <div style={{ textAlign: 'center', marginTop: '8px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
@@ -241,7 +541,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           <p className="subtitle">{t('noPendingTask')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <>
+          {/* Swipe hint */}
+          <p style={{ fontSize: '11px', color: 'var(--muted-dark)', marginBottom: '8px', textAlign: 'center' }}>
+            {locale === 'fr' ? '← Glissez pour compléter →' : '← Swipe to complete →'}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
             const taskLabel = getTaskTypeLabel(task.task_type);
@@ -262,16 +567,41 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             
             return (
               <div 
-                key={task.task_id} 
-                className="card"
-                style={{ 
-                  padding: '0',
-                  borderLeft: isOverdue ? `3px solid ${borderColor}` : 'none',
-                  background: 'var(--surface)',
-                  overflow: 'hidden'
-                }}
-                data-testid={`task-${task.task_id}`}
+                key={task.task_id}
+                style={{ position: 'relative', overflow: 'hidden' }}
               >
+                {/* Swipe background */}
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '100%',
+                  background: 'linear-gradient(90deg, var(--success) 0%, var(--success) 50%, transparent 50%)',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: '16px'
+                }}>
+                  <Check size={20} style={{ color: 'white' }} />
+                </div>
+                
+                {/* Task card */}
+                <div 
+                  className={`card ${completedTaskId === task.task_id ? 'task-completing' : ''}`}
+                  onTouchStart={(e) => handleTouchStart(e, task.task_id)}
+                  onTouchMove={(e) => handleTouchMove(e, task.task_id)}
+                  onTouchEnd={(e) => handleTouchEnd(e, task.task_id)}
+                  style={{ 
+                    padding: '0',
+                    borderLeft: isOverdue ? `3px solid ${borderColor}` : 'none',
+                    background: completedTaskId === task.task_id ? 'var(--success)' : 'var(--surface)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    transition: swipingTaskId === task.task_id ? 'none' : 'transform 0.2s ease, opacity 0.2s ease, background 0.2s ease'
+                  }}
+                  data-testid={`task-${task.task_id}`}
+                >
                 {/* Task header - always visible */}
                 <div 
                   style={{ 
@@ -453,6 +783,120 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       </div>
                     )}
                     
+                    {/* Proactive AI SMS for overdue tasks */}
+                    {isOverdue && task.prospect?.phone && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        {proactiveAiTaskId !== task.task_id ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); generateProactiveAiMessage(task); }}
+                            disabled={proactiveAiLoading}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
+                              border: 'none',
+                              borderRadius: '8px',
+                              color: 'white',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                            data-testid={`proactive-ai-btn-${task.task_id}`}
+                          >
+                            <Sparkles size={16} />
+                            {locale === 'fr' ? 'Générer une relance IA' : 'Generate AI follow-up'}
+                          </button>
+                        ) : proactiveAiLoading ? (
+                          <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                            <p style={{ color: 'var(--muted)', fontSize: '13px', marginTop: '8px' }}>
+                              {locale === 'fr' ? 'Génération...' : 'Generating...'}
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ fontSize: '12px', color: 'var(--accent)', marginBottom: '8px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Sparkles size={12} />
+                              {locale === 'fr' ? 'Message suggéré par l\'IA' : 'AI suggested message'}
+                            </div>
+                            <textarea
+                              value={proactiveAiMessage}
+                              onChange={(e) => setProactiveAiMessage(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: '100%',
+                                minHeight: '70px',
+                                padding: '10px',
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                color: 'var(--text)',
+                                fontSize: '13px',
+                                lineHeight: '1.4',
+                                resize: 'none',
+                                marginBottom: '10px'
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setProactiveAiTaskId(null); setProactiveAiMessage(''); }}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px',
+                                  background: 'var(--surface)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '8px',
+                                  color: 'var(--muted)',
+                                  fontSize: '13px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); sendProactiveSms(task); }}
+                                disabled={sendingSms || !proactiveAiMessage}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px',
+                                  background: proactiveAiMessage ? 'var(--accent)' : 'var(--surface)',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  color: proactiveAiMessage ? 'white' : 'var(--muted)',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  cursor: proactiveAiMessage ? 'pointer' : 'not-allowed',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                {sendingSms ? (
+                                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                                ) : (
+                                  <>
+                                    <Send size={14} />
+                                    {locale === 'fr' ? 'Envoyer' : 'Send'}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     {/* View prospect button */}
                     {task.prospect && onSelectProspect && (
                       <button
@@ -478,9 +922,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                   </div>
                 )}
               </div>
+              </div>
             );
           })}
         </div>
+        </>
       )}
 
       {/* AI SMS Modal */}
@@ -585,7 +1031,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 };
 
 // ==================== PROSPECTS TAB ====================
-const ProspectsTab = ({ onSelectProspect }) => {
+const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed }) => {
   const { t } = useLocale();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -599,6 +1045,21 @@ const ProspectsTab = ({ onSelectProspect }) => {
     notes: ''
   });
   const [creating, setCreating] = useState(false);
+
+  // Open add form when triggered from FAB
+  useEffect(() => {
+    if (showAddFormFromFab) {
+      setShowAddForm(true);
+    }
+  }, [showAddFormFromFab]);
+
+  // Notify parent when form is closed
+  const handleCloseAddForm = () => {
+    setShowAddForm(false);
+    if (onAddFormClosed) {
+      onAddFormClosed();
+    }
+  };
 
   const fetchProspects = async () => {
     try {
@@ -632,7 +1093,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
       if (response.ok) {
         toast.success(t('prospectCreated') || 'Lead créé!');
         setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'new', notes: '' });
-        setShowAddForm(false);
+        handleCloseAddForm();
         fetchProspects();
       } else {
         throw new Error('Failed to create prospect');
@@ -682,7 +1143,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
         }}>
           <h2 style={{ fontSize: '17px', fontWeight: '600' }}>{t('addProspect')}</h2>
           <button 
-            onClick={() => setShowAddForm(false)}
+            onClick={handleCloseAddForm}
             style={{ 
               background: 'none', 
               border: 'none', 
@@ -1748,6 +2209,130 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Timeline / History section */}
+      <div style={{ marginBottom: '24px' }}>
+        <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+          {locale === 'fr' ? 'Historique' : 'History'}
+        </h3>
+        <div style={{ position: 'relative', paddingLeft: '20px' }}>
+          {/* Timeline line */}
+          <div style={{
+            position: 'absolute',
+            left: '6px',
+            top: '8px',
+            bottom: '8px',
+            width: '2px',
+            background: 'var(--border)'
+          }} />
+          
+          {/* Generate timeline events from tasks and SMS */}
+          {(() => {
+            const events = [];
+            
+            // Add tasks to timeline
+            tasks.forEach(task => {
+              events.push({
+                type: task.completed ? 'task_completed' : 'task_created',
+                date: new Date(task.completed ? task.completed_at || task.due_date : task.created_at || task.due_date),
+                title: task.title,
+                icon: task.completed ? '✓' : '○',
+                color: task.completed ? 'var(--success)' : 'var(--muted)'
+              });
+            });
+            
+            // Add SMS to timeline
+            if (prospectData.sms_history) {
+              prospectData.sms_history.forEach(sms => {
+                events.push({
+                  type: sms.type === 'received' ? 'sms_received' : 'sms_sent',
+                  date: new Date(sms.sent_at || sms.received_at || Date.now()),
+                  title: sms.type === 'received' 
+                    ? (locale === 'fr' ? 'SMS reçu' : 'SMS received')
+                    : (locale === 'fr' ? 'SMS envoyé' : 'SMS sent'),
+                  preview: sms.message?.substring(0, 50) + (sms.message?.length > 50 ? '...' : ''),
+                  icon: '💬',
+                  color: sms.type === 'received' ? 'var(--accent)' : 'var(--success)'
+                });
+              });
+            }
+            
+            // Add creation event
+            if (prospectData.created_at) {
+              events.push({
+                type: 'created',
+                date: new Date(prospectData.created_at),
+                title: locale === 'fr' ? 'Prospect créé' : 'Prospect created',
+                icon: '+',
+                color: 'var(--accent)'
+              });
+            }
+            
+            // Sort by date descending
+            events.sort((a, b) => b.date - a.date);
+            
+            // Take last 10 events
+            const recentEvents = events.slice(0, 10);
+            
+            if (recentEvents.length === 0) {
+              return (
+                <p className="text-muted" style={{ textAlign: 'center', padding: '12px' }}>
+                  {locale === 'fr' ? 'Aucune activité' : 'No activity'}
+                </p>
+              );
+            }
+            
+            return recentEvents.map((event, index) => (
+              <div key={index} style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '12px',
+                marginBottom: '16px',
+                position: 'relative'
+              }}>
+                {/* Timeline dot */}
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  background: event.color,
+                  flexShrink: 0,
+                  marginTop: '4px',
+                  marginLeft: '-6px',
+                  fontSize: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}>
+                </div>
+                
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text)' }}>
+                      {event.title}
+                    </span>
+                  </div>
+                  {event.preview && (
+                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                      "{event.preview}"
+                    </p>
+                  )}
+                  <span style={{ fontSize: '11px', color: 'var(--muted-dark)' }}>
+                    {event.date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
+                      day: 'numeric', 
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
       </div>
 
       {/* Notes */}
@@ -3314,29 +3899,61 @@ const TasksTab = ({ onRefresh }) => {
 };
 
 // ==================== BOTTOM NAVIGATION ====================
-const BottomNav = ({ activeTab, setActiveTab }) => {
+const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
+  const { locale } = useLocale();
+  
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" style={{ position: 'relative' }}>
       <div 
         className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
         onClick={() => setActiveTab('today')}
         data-testid="nav-today"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}
       >
-        <Calendar strokeWidth={1.5} />
+        <Calendar strokeWidth={1.5} size={22} />
+        <span style={{ fontSize: '10px', fontWeight: '500' }}>
+          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+        </span>
       </div>
-      <div 
-        className={`nav-item ${activeTab === 'prospects' ? 'active' : ''}`}
-        onClick={() => setActiveTab('prospects')}
-        data-testid="nav-prospects"
-      >
-        <Briefcase strokeWidth={1.5} />
+      
+      {/* Central FAB for adding prospects */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <button
+          onClick={onAddProspect}
+          data-testid="fab-add-prospect"
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: '-28px',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <Plus size={28} strokeWidth={2.5} style={{ color: 'white' }} />
+        </button>
       </div>
+      
       <div 
         className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
         onClick={() => setActiveTab('tasks')}
         data-testid="nav-tasks"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}
       >
-        <Check strokeWidth={1.5} />
+        <Check strokeWidth={1.5} size={22} />
+        <span style={{ fontSize: '10px', fontWeight: '500' }}>
+          {locale === 'fr' ? 'Tâches' : 'Tasks'}
+        </span>
       </div>
     </nav>
   );
@@ -3405,6 +4022,13 @@ const AppShell = () => {
   };
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showAddProspectFromFab, setShowAddProspectFromFab] = useState(false);
+
+  // Handle FAB click to add prospect
+  const handleAddProspectFromFab = () => {
+    setActiveTab('prospects');
+    setShowAddProspectFromFab(true);
+  };
 
   const renderTab = () => {
     if (showSettings) {
@@ -3423,7 +4047,7 @@ const AppShell = () => {
 
     switch (activeTab) {
       case 'prospects':
-        return <ProspectsTab key={refreshKey} onSelectProspect={handleSelectProspect} />;
+        return <ProspectsTab key={refreshKey} onSelectProspect={handleSelectProspect} showAddFormFromFab={showAddProspectFromFab} onAddFormClosed={() => setShowAddProspectFromFab(false)} />;
       case 'tasks':
         return <TasksTab key={refreshKey} onRefresh={() => setRefreshKey(prev => prev + 1)} />;
       default:
@@ -3437,7 +4061,7 @@ const AppShell = () => {
         <div className="scroll-content">
           {renderTab()}
         </div>
-        {!selectedProspect && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />}
+        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
       </div>
       
       {/* Notification Permission Prompt */}
