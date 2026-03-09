@@ -92,7 +92,22 @@ const RegisterPage = () => {
         cache: 'no-store'
       });
       
-      const data = await response.json();
+      // Read as text first to avoid stream issues
+      let data = {};
+      try {
+        const text = await response.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.log('Response parse error:', parseError);
+        // Check if it was a 400 error (likely email exists)
+        if (response.status === 400) {
+          data = { detail: 'EMAIL_EXISTS' };
+        } else {
+          data = { detail: 'PARSE_ERROR' };
+        }
+      }
       
       if (response.ok) {
         if (data.token) {
@@ -116,8 +131,20 @@ const RegisterPage = () => {
         toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
         window.location.href = '/app';
       } else {
-        const errorMsg = data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error');
-        toast.error(errorMsg);
+        // Handle specific error codes
+        if (data.detail === 'EMAIL_EXISTS') {
+          toast.error(locale === 'fr' 
+            ? 'Un compte existe déjà avec cet email. Connectez-vous plutôt !' 
+            : 'An account already exists with this email. Please log in instead!');
+        } else if (data.detail === 'PARSE_ERROR' && !response.ok) {
+          // HTTP error but couldn't parse response - likely email already exists
+          toast.error(locale === 'fr' 
+            ? 'Cet email est peut-être déjà utilisé. Essayez de vous connecter.' 
+            : 'This email may already be in use. Try logging in.');
+        } else {
+          const errorMsg = data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error');
+          toast.error(errorMsg);
+        }
         setLoading(false);
       }
     } catch (error) {

@@ -43,7 +43,19 @@ const LoginPage = () => {
         cache: 'no-store'
       });
       
-      const data = await response.json();
+      // Read as text first to avoid stream issues
+      let data = {};
+      try {
+        const text = await response.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.log('Response parse error:', parseError);
+        if (!response.ok) {
+          data = { detail: locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password' };
+        }
+      }
       
       if (response.ok) {
         // Store token immediately

@@ -1215,7 +1215,7 @@ const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed })
                   onClick={() => setNewProspect({...newProspect, source})}
                   className={`btn-chip ${newProspect.source === source ? 'active' : ''}`}
                 >
-                  {source === 'manual' ? 'Manual' : source === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                  {source === 'manual' ? t('manual') : source === 'whatsapp' ? 'WhatsApp' : 'Email'}
                 </button>
               ))}
             </div>
@@ -3584,7 +3584,9 @@ const TasksTab = ({ onRefresh }) => {
                     } else if (suggestedDate.toDateString() === tomorrow.toDateString()) {
                       dateLabel = locale === 'fr' ? 'Demain' : 'Tomorrow';
                     } else {
-                      const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+                      const days = locale === 'fr' 
+                        ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+                        : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                       dateLabel = `${days[suggestedDate.getDay()]} ${suggestedDate.getDate()}/${suggestedDate.getMonth() + 1}`;
                     }
                   }

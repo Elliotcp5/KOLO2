@@ -135,6 +135,8 @@ Pour recevoir les réponses SMS dans KOLO :
 - ✅ Endpoint SMS retourne erreurs claires en français
 - ✅ UI minimaliste validée visuellement
 - ✅ **8 fonctionnalités UX testées (100% pass rate)** - iteration_9.json
+- ✅ **Traductions FR/EN complètes** sur toutes les pages (Landing, Login, Register, Subscribe, App)
+- ✅ **Message d'erreur clair** quand un email existe déjà : "Un compte existe déjà avec cet email. Connectez-vous plutôt !"
 
 ## Note importante sur l'envoi SMS
 Pour que l'envoi SMS fonctionne, l'utilisateur DOIT avoir configuré :

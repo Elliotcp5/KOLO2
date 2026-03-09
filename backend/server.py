@@ -1720,7 +1720,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     # Check if email already exists
     existing_user = await db.users.find_one({"email": email_clean})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
+        raise HTTPException(status_code=400, detail="EMAIL_EXISTS")
     
     # Calculate trial end date (7 days from now)
     trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
