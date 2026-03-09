@@ -170,6 +170,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         body: JSON.stringify({ message: proactiveAiMessage })
       });
       if (response.ok) {
+        // Haptic feedback on SMS sent
+        if ('vibrate' in navigator) {
+          navigator.vibrate([15, 30, 15]); // Double tap pattern
+        }
         trackSmsSent();
         toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
         setProactiveAiTaskId(null);
@@ -198,6 +202,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         body: JSON.stringify({ message: aiMessage })
       });
       if (response.ok) {
+        // Haptic feedback on SMS sent
+        if ('vibrate' in navigator) {
+          navigator.vibrate([15, 30, 15]); // Double tap pattern
+        }
         trackSmsSent();
         toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
         setShowSmsModal(false);
@@ -225,6 +233,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       });
       
       if (response.ok) {
+        // Haptic feedback on success - satisfying vibration pattern
+        if ('vibrate' in navigator) {
+          navigator.vibrate([10, 50, 20]); // Short-pause-medium pattern
+        }
+        
         // Track task completion
         trackTaskCompleted(task?.task_type || 'unknown');
         // Update stats
@@ -261,6 +274,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     if (diff > 0 && diff < 100) {
       element.style.transform = `translateX(${diff}px)`;
       element.style.opacity = 1 - (diff / 150);
+      
+      // Haptic feedback when reaching threshold (60px)
+      if (diff >= 60 && diff < 65 && 'vibrate' in navigator) {
+        navigator.vibrate(5); // Quick micro-vibration
+      }
     }
   };
   
@@ -1091,6 +1109,10 @@ const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed })
       });
       
       if (response.ok) {
+        // Haptic feedback on prospect created
+        if ('vibrate' in navigator) {
+          navigator.vibrate([10, 40, 20]); // Success pattern
+        }
         toast.success(t('prospectCreated') || 'Lead créé!');
         setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'new', notes: '' });
         handleCloseAddForm();
@@ -3919,7 +3941,13 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
       {/* Central FAB for adding prospects */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <button
-          onClick={onAddProspect}
+          onClick={() => {
+            // Haptic feedback on FAB press
+            if ('vibrate' in navigator) {
+              navigator.vibrate(8);
+            }
+            onAddProspect();
+          }}
           data-testid="fab-add-prospect"
           style={{
             width: '56px',

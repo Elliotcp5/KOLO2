@@ -103,7 +103,7 @@ Pour recevoir les réponses SMS dans KOLO :
    - Inputs plus fins et subtils
    - Modals redesignés
 
-### ✅ Refonte UX majeure (9 mars 2026) - 8 améliorations :
+### ✅ Refonte UX majeure (9 mars 2026) - 8 améliorations + Haptic :
 1. ✅ **Mini dashboard** en haut de la vue "Aujourd'hui" (tâches/prospects/à faire)
 2. ✅ **Swipe-to-complete** avec indication visuelle et animation
 3. ✅ **Historique chronologique** sur la fiche prospect (timeline des événements)
@@ -114,6 +114,12 @@ Pour recevoir les réponses SMS dans KOLO :
 6. ✅ **FAB central** : Bouton flottant violet pour ajouter un prospect rapidement
 7. ✅ **Labels navigation** : Texte sous les icônes (Today, Tasks)
 8. ✅ **Animation de complétion** : Feedback visuel satisfaisant à la complétion d'une tâche
+9. ✅ **Vibrations haptiques** (NEW!) :
+   - Micro-vibration au seuil du swipe (60px) pour confirmer "tu peux relâcher"
+   - Vibration satisfaisante à la complétion d'une tâche [10, 50, 20]ms
+   - Double tap pattern à l'envoi d'un SMS [15, 30, 15]ms
+   - Vibration courte au clic sur le FAB (8ms)
+   - Vibration de succès à la création d'un prospect [10, 40, 20]ms
 
 ### ✅ Icônes et boutons contextuels par type de tâche :
 - **Call** : Icône téléphone + bouton d'appel rapide
