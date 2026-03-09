@@ -85,7 +85,7 @@ Pour recevoir les réponses SMS dans KOLO :
 }
 ```
 
-## État Actuel (4 mars 2026)
+## État Actuel (9 mars 2026)
 
 ### Complété :
 1. ✅ Webhook Brevo pour réception des réponses SMS
@@ -102,16 +102,24 @@ Pour recevoir les réponses SMS dans KOLO :
    - Cartes plus compactes et légères
    - Inputs plus fins et subtils
    - Modals redesignés
-10. ✅ **Backend refactorisé** (fichiers préparés pour migration future)
-    - `/app/backend/routes/auth.py`
-    - `/app/backend/routes/prospects.py`
-    - `/app/backend/routes/tasks.py`
-    - `/app/backend/routes/payments.py`
-    - `/app/backend/routes/webhooks.py`
-    - `/app/backend/routes/notifications.py`
-    - `/app/backend/models.py`
-    - `/app/backend/utils.py`
-    - `/app/backend/database.py`
+
+### ✅ Refonte UX majeure (9 mars 2026) - 8 améliorations :
+1. ✅ **Mini dashboard** en haut de la vue "Aujourd'hui" (tâches/prospects/à faire)
+2. ✅ **Swipe-to-complete** avec indication visuelle et animation
+3. ✅ **Historique chronologique** sur la fiche prospect (timeline des événements)
+4. ✅ **Bouton IA proactif** : Pour les tâches en retard, bouton "Generate AI follow-up" 
+   - Génère automatiquement un SMS de relance personnalisé
+   - Permet d'éditer et envoyer directement depuis la carte de tâche
+5. ✅ **Suggestions IA améliorées** : Bannière redesignée plus visible avec bouton d'action
+6. ✅ **FAB central** : Bouton flottant violet pour ajouter un prospect rapidement
+7. ✅ **Labels navigation** : Texte sous les icônes (Today, Tasks)
+8. ✅ **Animation de complétion** : Feedback visuel satisfaisant à la complétion d'une tâche
+
+### ✅ Icônes et boutons contextuels par type de tâche :
+- **Call** : Icône téléphone + bouton d'appel rapide
+- **SMS** : Icône message + bouton IA sparkle
+- **Email** : Icône email + bouton mail
+- **Visit/Administrative** : Icône seule, PAS de bouton d'action
 
 ### Tests effectués :
 - ✅ Webhook reçoit et stocke les réponses
@@ -120,6 +128,7 @@ Pour recevoir les réponses SMS dans KOLO :
 - ✅ Changement de langue FR/EN sur landing + persistence après navigation
 - ✅ Endpoint SMS retourne erreurs claires en français
 - ✅ UI minimaliste validée visuellement
+- ✅ **8 fonctionnalités UX testées (100% pass rate)** - iteration_9.json
 
 ## Note importante sur l'envoi SMS
 Pour que l'envoi SMS fonctionne, l'utilisateur DOIT avoir configuré :
@@ -132,16 +141,19 @@ Sans ces informations, l'API retourne une erreur claire guidant vers les paramè
 
 ### P1 - Prioritaire
 - [x] Simplification UI (rendu moins "lourd") - **FAIT**
+- [x] Refonte UX majeure (7 points utilisateur) - **FAIT (9 mars 2026)**
 - [ ] Configurer le webhook dans Brevo (côté client)
 - [ ] Déploiement en production
 
 ### P2 - À faire
-- [x] Refactoring server.py en modules - **Fichiers prêts, migration en attente**
+- [ ] Refactoring server.py en modules (backend monolithique ~3800 lignes)
 - [ ] Notifications push en production
+- [ ] Captures d'écran du flow "essai expiré"
 
 ### P3 - Backlog
 - [ ] Export CSV prospects
 - [ ] Statistiques de conversion
+- [ ] Refactoring de TodayTab.js et AppShell.js (composants longs)
 
 ## Date Mise à Jour
-4 mars 2026
+9 mars 2026
