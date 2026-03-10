@@ -85,7 +85,7 @@ Pour recevoir les réponses SMS dans KOLO :
 }
 ```
 
-## État Actuel (9 mars 2026)
+## État Actuel (10 mars 2026)
 
 ### Complété :
 1. ✅ Webhook Brevo pour réception des réponses SMS
@@ -121,6 +121,22 @@ Pour recevoir les réponses SMS dans KOLO :
 - **Email** : Icône email + bouton mail
 - **Visit/Administrative** : Icône seule, PAS de bouton d'action
 
+### ✅ Gestion des Tâches Complétées (10 mars 2026) :
+1. ✅ **Tâches complétées en vert dans "All Tasks"** :
+   - Bordure verte à gauche (3px solid)
+   - Checkmark vert à côté du titre
+   - Titre barré en vert
+   - Badge "(Done)" / "(Fait)" en vert
+   - Opacité réduite (0.7)
+   - Limité aux 10 dernières tâches complétées
+2. ✅ **Tâches complétées PAS dans "Today"** :
+   - Les tâches swipées comme "done" disparaissent de la vue Today
+   - Elles apparaissent uniquement dans la vue All Tasks
+3. ✅ **Swipe désactivé pour tâches complétées** :
+   - Pas de background de swipe pour les tâches terminées
+   - Boutons d'action masqués
+4. ✅ **Bug P0 investigué** : Les tâches en retard s'affichent bien dans Today
+
 ### Tests effectués :
 - ✅ Webhook reçoit et stocke les réponses
 - ✅ Conversation SMS affiche envoyés/reçus
@@ -129,6 +145,7 @@ Pour recevoir les réponses SMS dans KOLO :
 - ✅ Endpoint SMS retourne erreurs claires en français
 - ✅ UI minimaliste validée visuellement
 - ✅ **8 fonctionnalités UX testées (100% pass rate)** - iteration_9.json
+- ✅ **8 fonctionnalités tâches complétées testées (100% pass rate)** - iteration_10.json
 - ✅ **Traductions FR/EN complètes** sur toutes les pages (Landing, Login, Register, Subscribe, App)
 - ✅ **Message d'erreur clair** quand un email existe déjà : "Un compte existe déjà avec cet email. Connectez-vous plutôt !"
 
@@ -144,18 +161,21 @@ Sans ces informations, l'API retourne une erreur claire guidant vers les paramè
 ### P1 - Prioritaire
 - [x] Simplification UI (rendu moins "lourd") - **FAIT**
 - [x] Refonte UX majeure (7 points utilisateur) - **FAIT (9 mars 2026)**
+- [x] Gestion des tâches complétées (vert dans All Tasks) - **FAIT (10 mars 2026)**
 - [ ] Configurer le webhook dans Brevo (côté client)
 - [ ] Déploiement en production
 
 ### P2 - À faire
-- [ ] Refactoring server.py en modules (backend monolithique ~3800 lignes)
+- [ ] Refactoring server.py en modules (backend monolithique ~3200 lignes)
+  - Models extraits dans /app/backend/models/ (démarré)
+  - Routes à extraire: auth, payments, tasks, prospects, webhooks
 - [ ] Notifications push en production
 - [ ] Captures d'écran du flow "essai expiré"
 
 ### P3 - Backlog
 - [ ] Export CSV prospects
 - [ ] Statistiques de conversion
-- [ ] Refactoring de TodayTab.js et AppShell.js (composants longs)
+- [ ] Refactoring de AppShell.js (composant long ~4200 lignes)
 
 ## Date Mise à Jour
-9 mars 2026
+10 mars 2026
