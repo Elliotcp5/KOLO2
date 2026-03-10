@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 class KoloAPITester:
-    def __init__(self, base_url="https://crm-ui-stage.preview.emergentagent.com"):
+    def __init__(self, base_url="https://today-tasks-preview.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
@@ -149,7 +149,7 @@ class KoloAPITester:
             "api/payments/create-checkout",
             200,
             data={
-                "origin_url": "https://crm-ui-stage.preview.emergentagent.com",
+                "origin_url": "https://today-tasks-preview.preview.emergentagent.com",
                 "locale": "en-US",
                 "country": "US"
             }

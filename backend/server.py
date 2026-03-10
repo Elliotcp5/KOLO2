@@ -1955,8 +1955,8 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
 # ==================== TASK ENDPOINTS ====================
 
 @api_router.get("/tasks")
-async def list_tasks(request: Request, include_completed: bool = True):
-    """List all tasks for authenticated user - limits completed tasks to 10 most recent"""
+async def list_tasks(request: Request, include_completed: bool = False):
+    """List all tasks for authenticated user - optionally includes 10 most recent completed tasks"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
@@ -1971,17 +1971,18 @@ async def list_tasks(request: Request, include_completed: bool = True):
         {"_id": 0}
     ).sort("due_date", 1).to_list(1000)
     
-    # Get only the 10 most recently completed tasks
-    completed_tasks = await db.tasks.find(
-        {
-            "user_id": user.user_id,
-            "completed": True
-        },
-        {"_id": 0}
-    ).sort("completed_at", -1).limit(10).to_list(10)
+    tasks = pending_tasks
     
-    # Combine: pending first, then completed
-    tasks = pending_tasks + completed_tasks
+    # Optionally include the 10 most recently completed tasks
+    if include_completed:
+        completed_tasks = await db.tasks.find(
+            {
+                "user_id": user.user_id,
+                "completed": True
+            },
+            {"_id": 0}
+        ).sort("completed_at", -1).limit(10).to_list(10)
+        tasks = pending_tasks + completed_tasks
     
     # Batch fetch prospects to avoid N+1 queries
     prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
@@ -3034,7 +3035,7 @@ async def brevo_webhook_setup_info(request: Request):
     # Get the base URL from environment or construct it
     base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
     if not base_url:
-        base_url = "https://crm-ui-stage.preview.emergentagent.com"
+        base_url = "https://today-tasks-preview.preview.emergentagent.com"
     
     webhook_url = f"{base_url}/api/webhooks/brevo-sms"
     

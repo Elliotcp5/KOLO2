@@ -48,7 +48,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 
   const fetchTasks = async () => {
     try {
-      // Fetch today's tasks
+      // Fetch today's tasks (includes overdue)
       const response = await authFetch(`${API_URL}/api/tasks/today`);
       if (response.ok) {
         const data = await response.json();
@@ -60,16 +60,25 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         setSubscriptionBlocked(true);
       }
       
-      // Also fetch all tasks for the "all" view
-      const allResponse = await authFetch(`${API_URL}/api/tasks`);
+      // Fetch all tasks for the "all" view (including completed)
+      const allResponse = await authFetch(`${API_URL}/api/tasks?include_completed=true`);
       if (allResponse.ok) {
         const allData = await allResponse.json();
         // Filter out follow_up tasks
         const filteredAllTasks = (allData.tasks || []).filter(t => t.task_type !== 'follow_up');
-        setAllTasks(filteredAllTasks);
+        
+        // Separate completed and non-completed
+        const nonCompleted = filteredAllTasks.filter(t => !t.completed);
+        const completed = filteredAllTasks
+          .filter(t => t.completed)
+          .sort((a, b) => new Date(b.completed_at || b.updated_at || 0) - new Date(a.completed_at || a.updated_at || 0))
+          .slice(0, 10); // Last 10 completed
+        
+        // Combine: non-completed first, then completed
+        setAllTasks([...nonCompleted, ...completed]);
       }
     } catch (e) {
-      // Silent fail
+      console.error('fetchTasks error:', e);
     } finally {
       setLoading(false);
     }
@@ -640,12 +649,13 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             const taskLabel = getTaskTypeLabel(task.task_type);
             const showActions = hasActionButtons(task.task_type);
             const isExpanded = expandedTaskId === task.task_id;
+            const isCompleted = task.completed;
             
-            // Calculate if overdue
+            // Calculate if overdue (only for non-completed tasks)
             const now = new Date();
             const taskDate = new Date(task.due_date);
-            const isOverdue = taskDate < now;
-            const borderColor = isOverdue ? '#F59E0B' : 'var(--border)';
+            const isOverdue = !isCompleted && taskDate < now;
+            const borderColor = isCompleted ? 'var(--success)' : (isOverdue ? '#F59E0B' : 'var(--border)');
             
             // Format time
             const taskTime = taskDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
@@ -658,37 +668,41 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 key={task.task_id}
                 style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}
               >
-                {/* Swipe background - clean green, slightly inset to avoid border bleed */}
-                <div style={{
-                  position: 'absolute',
-                  left: '1px',
-                  top: '1px',
-                  bottom: '1px',
-                  right: '1px',
-                  background: 'var(--success)',
-                  borderRadius: '11px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: '20px'
-                }}>
-                  <Check size={24} style={{ color: 'white' }} />
-                  <span style={{ marginLeft: '8px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
-                    {locale === 'fr' ? 'Fait !' : 'Done!'}
-                  </span>
-                </div>
+                {/* Swipe background - only for non-completed tasks */}
+                {!isCompleted && (
+                  <div style={{
+                    position: 'absolute',
+                    left: '1px',
+                    top: '1px',
+                    bottom: '1px',
+                    right: '1px',
+                    background: 'var(--success)',
+                    borderRadius: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    paddingLeft: '20px'
+                  }}>
+                    <Check size={24} style={{ color: 'white' }} />
+                    <span style={{ marginLeft: '8px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
+                      {locale === 'fr' ? 'Fait !' : 'Done!'}
+                    </span>
+                  </div>
+                )}
                 
                 {/* Task card */}
                 <div 
                   className={`card ${completedTaskId === task.task_id ? 'task-completing' : ''}`}
-                  onTouchStart={(e) => handleTouchStart(e, task.task_id)}
-                  onTouchMove={(e) => handleTouchMove(e, task.task_id)}
-                  onTouchEnd={(e) => handleTouchEnd(e, task.task_id)}
+                  onTouchStart={isCompleted ? undefined : (e) => handleTouchStart(e, task.task_id)}
+                  onTouchMove={isCompleted ? undefined : (e) => handleTouchMove(e, task.task_id)}
+                  onTouchEnd={isCompleted ? undefined : (e) => handleTouchEnd(e, task.task_id)}
                   style={{ 
                     padding: '0',
                     background: completedTaskId === task.task_id ? 'var(--success)' : 'var(--surface)',
                     overflow: 'hidden',
                     position: 'relative',
                     borderRadius: '12px',
+                    borderLeft: isCompleted ? '3px solid var(--success)' : 'none',
+                    opacity: isCompleted ? 0.7 : 1,
                     transition: swipingTaskId === task.task_id ? 'none' : 'transform 0.2s ease, opacity 0.2s ease'
                   }}
                   data-testid={`task-${task.task_id}`}
@@ -707,7 +721,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
                     style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
                   >
-                    <div style={{ fontSize: '15px', fontWeight: '500', color: 'white', marginBottom: '2px' }}>
+                    <div style={{ 
+                      fontSize: '15px', 
+                      fontWeight: '500', 
+                      color: isCompleted ? 'var(--success)' : 'white', 
+                      marginBottom: '2px',
+                      textDecoration: isCompleted ? 'line-through' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      {isCompleted && <Check size={14} style={{ color: 'var(--success)' }} />}
                       {task.prospect?.full_name || task.title}
                     </div>
                     <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -725,16 +749,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                         </span>
                       )}
                       <span style={{ color: 'var(--muted-dark)' }}>•</span>
-                      <span style={{ color: isOverdue ? '#F59E0B' : 'var(--muted)' }}>
+                      <span style={{ color: isOverdue ? '#F59E0B' : (isCompleted ? 'var(--success)' : 'var(--muted)') }}>
                         {viewMode === 'all' && taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' }) + ' '}
                         {taskTime}
                       </span>
                       {isOverdue && <span style={{ color: '#F59E0B' }}>({locale === 'fr' ? 'En retard' : 'Overdue'})</span>}
+                      {isCompleted && <span style={{ color: 'var(--success)' }}>({locale === 'fr' ? 'Fait' : 'Done'})</span>}
                     </div>
                   </div>
                   
-                  {/* Quick action buttons - ONLY for call/sms/email tasks */}
-                  {task.prospect && showActions && (
+                  {/* Quick action buttons - ONLY for non-completed call/sms/email tasks */}
+                  {!isCompleted && task.prospect && showActions && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       {/* Call button for call tasks only */}
                       {task.task_type === 'call' && task.prospect.phone && (
