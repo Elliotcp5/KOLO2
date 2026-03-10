@@ -77,48 +77,23 @@ const RegisterPage = () => {
     try {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           email: trimmedEmail, 
           password,
           full_name: trimmedName,
           phone: trimmedPhone,
           country_code: countryCode
-        }),
-        cache: 'no-store'
+        })
       });
       
-      // Read as text first to avoid stream issues
-      let data = {};
-      try {
-        const text = await response.text();
-        if (text) {
-          data = JSON.parse(text);
-        }
-      } catch (parseError) {
-        console.log('Response parse error:', parseError);
-        // Check if it was a 400 error (likely email exists)
-        if (response.status === 400) {
-          data = { detail: 'EMAIL_EXISTS' };
-        } else {
-          data = { detail: 'PARSE_ERROR' };
-        }
-      }
+      const data = await response.json();
       
-      if (response.ok) {
-        if (data.token) {
-          localStorage.setItem('kolo_token', data.token);
-        }
-        
-        // Track signup and trial start
+      if (response.ok && data.token) {
+        localStorage.setItem('kolo_token', data.token);
         trackSignUp('email');
         trackTrialStarted();
         setUserId(data.user_id);
-        
         login({
           user_id: data.user_id,
           email: data.email,
@@ -127,23 +102,15 @@ const RegisterPage = () => {
           trial_ends_at: data.trial_ends_at,
           token: data.token
         });
-        
         toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
         window.location.href = '/app';
       } else {
-        // Handle specific error codes
         if (data.detail === 'EMAIL_EXISTS') {
           toast.error(locale === 'fr' 
             ? 'Un compte existe déjà avec cet email. Connectez-vous plutôt !' 
             : 'An account already exists with this email. Please log in instead!');
-        } else if (data.detail === 'PARSE_ERROR' && !response.ok) {
-          // HTTP error but couldn't parse response - likely email already exists
-          toast.error(locale === 'fr' 
-            ? 'Cet email est peut-être déjà utilisé. Essayez de vous connecter.' 
-            : 'This email may already be in use. Try logging in.');
         } else {
-          const errorMsg = data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error');
-          toast.error(errorMsg);
+          toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
         }
         setLoading(false);
       }

@@ -28,64 +28,33 @@ const LoginPage = () => {
     const trimmedEmail = email.trim().toLowerCase();
 
     try {
-      // Use fetch with cache-busting headers
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-        body: JSON.stringify({ 
-          email: trimmedEmail, 
-          password 
-        }),
-        cache: 'no-store'
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail, password })
       });
       
-      // Read as text first to avoid stream issues
-      let data = {};
-      try {
-        const text = await response.text();
-        if (text) {
-          data = JSON.parse(text);
-        }
-      } catch (parseError) {
-        console.log('Response parse error:', parseError);
-        if (!response.ok) {
-          data = { detail: locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password' };
-        }
-      }
+      const data = await response.json();
       
-      if (response.ok) {
-        // Store token immediately
-        if (data.token) {
-          localStorage.setItem('kolo_token', data.token);
-        }
-        
-        // Track login
+      if (response.ok && data.token) {
+        localStorage.setItem('kolo_token', data.token);
         trackLogin('email');
         setUserId(data.user_id);
-        
-        // Create clean user data with token
-        const userData = {
+        login({
           user_id: data.user_id,
           email: data.email,
           subscription_status: data.subscription_status,
           trial_ends_at: data.trial_ends_at,
           token: data.token
-        };
-        login(userData);
-        
+        });
         window.location.href = '/app';
       } else {
-        const errorMsg = data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password');
-        toast.error(errorMsg);
+        toast.error(data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
         setLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur. Vérifiez votre connexion internet.' : 'Server connection error. Check your internet.');
+      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur' : 'Server connection error');
       setLoading(false);
     }
   };
