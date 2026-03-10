@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -4061,28 +4061,19 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   const { locale } = useLocale();
   
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav symmetric-nav">
       <div 
         className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
         onClick={() => setActiveTab('today')}
         data-testid="nav-today"
       >
-        <Calendar strokeWidth={1.5} size={20} />
+        <Calendar strokeWidth={1.5} size={22} />
         <span>
           {locale === 'fr' ? "Aujourd'hui" : 'Today'}
         </span>
       </div>
       
-      <div 
-        className={`nav-item ${activeTab === 'prospects' ? 'active' : ''}`}
-        onClick={() => setActiveTab('prospects')}
-        data-testid="nav-prospects"
-      >
-        <Briefcase strokeWidth={1.5} size={20} />
-        <span>Prospects</span>
-      </div>
-      
-      {/* Central FAB for adding prospects */}
+      {/* Central FAB - perfectly centered */}
       <div className="nav-item fab-container">
         <button
           onClick={() => {
@@ -4092,19 +4083,17 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
           data-testid="fab-add-prospect"
           className="fab-button"
         >
-          <Plus size={26} strokeWidth={2.5} />
+          <Plus size={28} strokeWidth={2.5} />
         </button>
       </div>
       
       <div 
-        className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
-        onClick={() => setActiveTab('tasks')}
-        data-testid="nav-tasks"
+        className={`nav-item ${activeTab === 'prospects' ? 'active' : ''}`}
+        onClick={() => setActiveTab('prospects')}
+        data-testid="nav-prospects"
       >
-        <Check strokeWidth={1.5} size={20} />
-        <span>
-          {locale === 'fr' ? 'Tâches' : 'Tasks'}
-        </span>
+        <Users strokeWidth={1.5} size={22} />
+        <span>Prospects</span>
       </div>
     </nav>
   );

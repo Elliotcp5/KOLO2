@@ -103,16 +103,17 @@ Pour recevoir les réponses SMS dans KOLO :
    - Inputs plus fins et subtils
    - Modals redesignés
 
-### ✅ Refonte UX majeure (9-10 mars 2026) - Navigation et ergonomie :
-1. ✅ **Navigation 4 éléments** : Today | Prospects | **FAB +** | Tasks
-   - Accès direct aux Prospects en 1 clic
-   - FAB central pour ajouter un prospect rapidement
-2. ✅ **Modal d'ajout rapide** : Formulaire simplifié (nom + téléphone) en bottom sheet
-3. ✅ **Dashboard explicite** : "X / Y Faites" au lieu de "X/Y"
-4. ✅ **Swipe amélioré** : Plus fluide, seuil à 50px, animation verte propre
-5. ✅ **Couleurs de tâches** : Plus de superposition bordure/fond
-6. ✅ **Navigation fixe** : Reste toujours en bas, ne bouge jamais
-7. ✅ **IA optimisée** : Prompt réduit, temps de réponse ~3-4s
+### ✅ Refonte UX majeure (10 mars 2026) - Navigation et design :
+1. ✅ **Navigation symétrique** : Today | **[FAB +]** | Prospects
+   - FAB parfaitement centré avec gradient rose/violet
+   - Accès direct à Today et Prospects en 1 clic
+2. ✅ **Nouvelle couleur d'accent** : Gradient rose/magenta (#D946EF → #EC4899) 
+   - Remplace le violet pur
+   - Cohérent avec le bouton FAB
+3. ✅ **Modal d'ajout rapide** : Bottom sheet épuré (nom + téléphone)
+4. ✅ **Swipe fluide** : Seuil à 50px, animation verte propre
+5. ✅ **Couleurs de tâches** : Plus de superposition, fond de swipe vert uniforme
+6. ✅ **IA optimisée** : Prompt réduit, ~3-4s de réponse
 
 ### ✅ Icônes et boutons contextuels par type de tâche :
 - **Call** : Icône téléphone + bouton d'appel rapide
