@@ -2760,28 +2760,11 @@ async def generate_followup_message(request: Request, prospect_id: str):
         
         chat = LlmChat(
             api_key=api_key,
-            session_id=f"message_gen_{prospect_id}_{datetime.now().timestamp()}",
-            system_message=f"""Tu es un agent immobilier professionnel. Rédige un message de relance SMS/WhatsApp court et efficace.
-
-RÈGLES:
-- Maximum 160 caractères (1 SMS)
-- Tutoie le prospect si jeune, vouvoie sinon (déduire de la situation)
-- Personnalise avec le prénom
-- {tone}
-- Pas de formules génériques type "J'espère que vous allez bien"
-- Termine par une question ou une proposition concrète
-
-Réponds UNIQUEMENT avec le message, sans guillemets, sans explication."""
+            session_id=f"msg_{prospect_id}",
+            system_message=f"""SMS immobilier max 100 caractères. {tone}"""
         ).with_model("anthropic", "claude-sonnet-4-5-20250929")
         
-        context_text = f"""Prospect: {first_name}
-Source: {context['source']}
-Score: {score}
-Inactif depuis: {days_inactive} jours
-Dernière action: {context['last_action'] or 'Aucune'}
-Notes: {context['notes'] or 'Aucune'}
-
-Génère un message de relance adapté."""
+        context_text = f"{first_name}, {score}, {days_inactive}j inactif. Notes: {context['notes'] or '-'}. Génère 1 SMS."
         
         user_message = UserMessage(text=context_text)
         message = await chat.send_message(user_message)

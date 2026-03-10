@@ -103,17 +103,16 @@ Pour recevoir les réponses SMS dans KOLO :
    - Inputs plus fins et subtils
    - Modals redesignés
 
-### ✅ Refonte UX majeure (9-10 mars 2026) - Améliorations ergonomiques :
-1. ✅ **Mini dashboard** en haut de la vue "Aujourd'hui" - Format "X / Y Faites" plus explicite
-2. ✅ **Swipe-to-complete amélioré** - Plus fluide avec seuil abaissé à 50px et retour visuel vert
-3. ✅ **Historique chronologique** sur la fiche prospect (timeline des événements)
-4. ✅ **Bouton IA proactif** : Pour les tâches en retard, bouton "Generate AI follow-up" 
-5. ✅ **Suggestions IA améliorées** : Bannière redesignée plus visible avec bouton d'action
-6. ✅ **Navigation 3 onglets** : Today | Prospects | Tasks - accès direct en un clic
-7. ✅ **Navigation fixe** : Reste toujours en bas de l'écran, ne bouge plus
-8. ✅ **Animation de complétion** : Feedback visuel satisfaisant à la complétion d'une tâche
-9. ✅ **Vibrations haptiques** : Retour tactile sur mobile
-10. ✅ **Padding contenu** : Le contenu ne se cache plus derrière la navigation
+### ✅ Refonte UX majeure (9-10 mars 2026) - Navigation et ergonomie :
+1. ✅ **Navigation 4 éléments** : Today | Prospects | **FAB +** | Tasks
+   - Accès direct aux Prospects en 1 clic
+   - FAB central pour ajouter un prospect rapidement
+2. ✅ **Modal d'ajout rapide** : Formulaire simplifié (nom + téléphone) en bottom sheet
+3. ✅ **Dashboard explicite** : "X / Y Faites" au lieu de "X/Y"
+4. ✅ **Swipe amélioré** : Plus fluide, seuil à 50px, animation verte propre
+5. ✅ **Couleurs de tâches** : Plus de superposition bordure/fond
+6. ✅ **Navigation fixe** : Reste toujours en bas, ne bouge jamais
+7. ✅ **IA optimisée** : Prompt réduit, temps de réponse ~3-4s
 
 ### ✅ Icônes et boutons contextuels par type de tâche :
 - **Call** : Icône téléphone + bouton d'appel rapide

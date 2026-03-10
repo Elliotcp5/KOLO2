@@ -1088,15 +1088,45 @@ button.payment-method-card {
 .bottom-nav {
   height: 70px !important;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+  justify-content: space-evenly !important;
 }
 
 .bottom-nav .nav-item {
-  padding: 8px 16px !important;
+  padding: 8px 12px !important;
+  flex: 1;
+  max-width: 80px;
+}
+
+.bottom-nav .nav-item.fab-container {
+  flex: 0;
+  padding: 0 !important;
+  margin-top: -20px;
+}
+
+.bottom-nav .fab-button {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, #EC4899 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bottom-nav .fab-button:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .bottom-nav .nav-item span {
   color: inherit;
   opacity: 0.7;
+  font-size: 10px;
 }
 
 .bottom-nav .nav-item.active span {

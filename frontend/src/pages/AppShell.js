@@ -278,15 +278,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       element.style.transform = `translateX(${easedDiff}px)`;
       element.style.opacity = Math.max(0.3, 1 - (easedDiff / 150));
       
-      // Show visual indicator when threshold reached (50px - lower threshold for easier swipe)
-      if (diff >= 50) {
-        element.style.background = 'rgba(34, 197, 94, 0.2)'; // Green tint
-        // Haptic feedback once when crossing threshold
-        if (diff < 55 && 'vibrate' in navigator) {
-          navigator.vibrate(8);
-        }
-      } else {
-        element.style.background = 'var(--surface)';
+      // Haptic feedback once when crossing threshold (50px)
+      if (diff >= 50 && diff < 55 && 'vibrate' in navigator) {
+        navigator.vibrate(8);
       }
     }
   };
@@ -299,24 +293,21 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     // Lower threshold (50px) for easier completion
     if (currentX > 50) {
       // Complete the task with smooth animation
-      element.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
+      element.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
       element.style.transform = 'translateX(100%)';
       element.style.opacity = 0;
       setTimeout(() => {
         handleCompleteTask(taskId);
-        // Reset element styles
-        element.style.transition = '';
-        element.style.background = 'var(--surface)';
-      }, 250);
-    } else {
-      // Reset with smooth animation
-      element.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out, background 0.2s ease';
-      element.style.transform = 'translateX(0)';
-      element.style.opacity = 1;
-      element.style.background = 'var(--surface)';
-      setTimeout(() => {
         element.style.transition = '';
       }, 200);
+    } else {
+      // Reset with smooth animation
+      element.style.transition = 'transform 0.15s ease-out, opacity 0.15s ease-out';
+      element.style.transform = 'translateX(0)';
+      element.style.opacity = 1;
+      setTimeout(() => {
+        element.style.transition = '';
+      }, 150);
     }
     
     setSwipingTaskId(null);
@@ -604,22 +595,25 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             return (
               <div 
                 key={task.task_id}
-                style={{ position: 'relative', overflow: 'hidden' }}
+                style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}
               >
-                {/* Swipe background */}
+                {/* Swipe background - clean green */}
                 <div style={{
                   position: 'absolute',
                   left: 0,
                   top: 0,
                   bottom: 0,
                   width: '100%',
-                  background: 'linear-gradient(90deg, var(--success) 0%, var(--success) 50%, transparent 50%)',
+                  background: 'var(--success)',
                   borderRadius: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  paddingLeft: '16px'
+                  paddingLeft: '20px'
                 }}>
-                  <Check size={20} style={{ color: 'white' }} />
+                  <Check size={24} style={{ color: 'white' }} />
+                  <span style={{ marginLeft: '8px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
+                    {locale === 'fr' ? 'Fait !' : 'Done!'}
+                  </span>
                 </div>
                 
                 {/* Task card */}
@@ -630,11 +624,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                   onTouchEnd={(e) => handleTouchEnd(e, task.task_id)}
                   style={{ 
                     padding: '0',
-                    borderLeft: isOverdue ? `3px solid ${borderColor}` : 'none',
                     background: completedTaskId === task.task_id ? 'var(--success)' : 'var(--surface)',
                     overflow: 'hidden',
                     position: 'relative',
-                    transition: swipingTaskId === task.task_id ? 'none' : 'transform 0.2s ease, opacity 0.2s ease, background 0.2s ease'
+                    borderRadius: '12px',
+                    transition: swipingTaskId === task.task_id ? 'none' : 'transform 0.2s ease, opacity 0.2s ease'
                   }}
                   data-testid={`task-${task.task_id}`}
                 >
@@ -3925,8 +3919,145 @@ const TasksTab = ({ onRefresh }) => {
   );
 };
 
+// ==================== QUICK ADD PROSPECT MODAL ====================
+const QuickAddProspectModal = ({ onClose, onSuccess }) => {
+  const { t, locale } = useLocale();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    
+    setCreating(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: name.trim(),
+          phone: phone.trim() || '',
+          email: '',
+          source: 'manual',
+          status: 'new',
+          notes: ''
+        })
+      });
+
+      if (response.ok) {
+        if ('vibrate' in navigator) navigator.vibrate([10, 40, 20]);
+        trackProspectCreated();
+        toast.success(locale === 'fr' ? 'Prospect ajouté !' : 'Prospect added!');
+        onSuccess();
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+      }
+    } catch (error) {
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.7)',
+      zIndex: 10000,
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'center'
+    }} onClick={onClose}>
+      <div 
+        style={{
+          background: 'var(--bg)',
+          borderRadius: '20px 20px 0 0',
+          width: '100%',
+          maxWidth: '430px',
+          padding: '20px',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ 
+          width: '40px', 
+          height: '4px', 
+          background: 'var(--border)', 
+          borderRadius: '2px', 
+          margin: '0 auto 16px' 
+        }} />
+        
+        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', textAlign: 'center' }}>
+          {locale === 'fr' ? 'Nouveau prospect' : 'New prospect'}
+        </h3>
+        
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder={locale === 'fr' ? 'Nom complet *' : 'Full name *'}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              color: 'var(--text)',
+              fontSize: '16px',
+              marginBottom: '12px'
+            }}
+          />
+          
+          <input
+            type="tel"
+            placeholder={locale === 'fr' ? 'Téléphone (optionnel)' : 'Phone (optional)'}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              color: 'var(--text)',
+              fontSize: '16px',
+              marginBottom: '16px'
+            }}
+          />
+          
+          <button
+            type="submit"
+            disabled={!name.trim() || creating}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: name.trim() ? 'var(--accent)' : 'var(--surface)',
+              border: 'none',
+              borderRadius: '10px',
+              color: name.trim() ? 'white' : 'var(--muted)',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: name.trim() ? 'pointer' : 'not-allowed'
+            }}
+          >
+            {creating ? (
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              locale === 'fr' ? 'Ajouter' : 'Add'
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ==================== BOTTOM NAVIGATION ====================
-const BottomNav = ({ activeTab, setActiveTab }) => {
+const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   const { locale } = useLocale();
   
   return (
@@ -3936,7 +4067,7 @@ const BottomNav = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab('today')}
         data-testid="nav-today"
       >
-        <Calendar strokeWidth={1.5} size={22} />
+        <Calendar strokeWidth={1.5} size={20} />
         <span>
           {locale === 'fr' ? "Aujourd'hui" : 'Today'}
         </span>
@@ -3947,8 +4078,22 @@ const BottomNav = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab('prospects')}
         data-testid="nav-prospects"
       >
-        <Briefcase strokeWidth={1.5} size={22} />
+        <Briefcase strokeWidth={1.5} size={20} />
         <span>Prospects</span>
+      </div>
+      
+      {/* Central FAB for adding prospects */}
+      <div className="nav-item fab-container">
+        <button
+          onClick={() => {
+            if ('vibrate' in navigator) navigator.vibrate(8);
+            onAddProspect();
+          }}
+          data-testid="fab-add-prospect"
+          className="fab-button"
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
       </div>
       
       <div 
@@ -3956,7 +4101,7 @@ const BottomNav = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab('tasks')}
         data-testid="nav-tasks"
       >
-        <Check strokeWidth={1.5} size={22} />
+        <Check strokeWidth={1.5} size={20} />
         <span>
           {locale === 'fr' ? 'Tâches' : 'Tasks'}
         </span>
@@ -4028,6 +4173,12 @@ const AppShell = () => {
   };
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showAddProspectModal, setShowAddProspectModal] = useState(false);
+
+  // Handle FAB click to add prospect
+  const handleAddProspectFromFab = () => {
+    setShowAddProspectModal(true);
+  };
 
   const renderTab = () => {
     if (showSettings) {
@@ -4060,8 +4211,16 @@ const AppShell = () => {
         <div className="scroll-content" style={{ paddingBottom: '80px' }}>
           {renderTab()}
         </div>
-        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />}
+        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
       </div>
+      
+      {/* Quick Add Prospect Modal from FAB */}
+      {showAddProspectModal && (
+        <QuickAddProspectModal onClose={() => setShowAddProspectModal(false)} onSuccess={() => {
+          setShowAddProspectModal(false);
+          setRefreshKey(prev => prev + 1);
+        }} />
+      )}
       
       {/* Notification Permission Prompt */}
       {showNotificationPrompt && (
