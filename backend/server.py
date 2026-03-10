@@ -214,6 +214,9 @@ class RegisterRequest(BaseModel):
     """Request for free trial registration (no payment required)"""
     email: str
     password: str
+    full_name: str
+    phone: str
+    country_code: str = "+33"
 
 class LoginRequest(BaseModel):
     email: str
@@ -1407,6 +1410,8 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     user_doc = {
         "user_id": user_id,
         "email": request.email.lower().strip(),
+        "name": request.full_name.strip(),
+        "phone": request.phone.strip(),
         "auth_provider": "email",
         "password_hash": hash_password(request.password),
         "subscription_status": "trialing",

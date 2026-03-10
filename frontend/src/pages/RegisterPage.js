@@ -13,6 +13,8 @@ const RegisterPage = () => {
   const { t, locale } = useLocale();
   const { login } = useAuth();
   
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,8 +24,10 @@ const RegisterPage = () => {
     e.preventDefault();
     
     const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName = fullName.trim();
+    const trimmedPhone = phone.trim();
     
-    if (!trimmedEmail || !password) {
+    if (!trimmedEmail || !password || !trimmedName || !trimmedPhone) {
       toast.error(locale === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill all fields');
       return;
     }
@@ -36,30 +40,25 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      // Use fetch with cache-busting and no-cache headers
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           email: trimmedEmail, 
-          password 
-        }),
-        cache: 'no-store'
+          password,
+          full_name: trimmedName,
+          phone: trimmedPhone,
+          country_code: '+33'
+        })
       });
       
       const data = await response.json();
       
       if (response.ok) {
-        // Store token immediately
         if (data.token) {
           localStorage.setItem('kolo_token', data.token);
         }
         
-        // Login with returned data
         login({
           user_id: data.user_id,
           email: data.email,
@@ -71,14 +70,12 @@ const RegisterPage = () => {
         toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
         window.location.href = '/app';
       } else {
-        // Handle specific error messages
-        const errorMsg = data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error');
-        toast.error(errorMsg);
+        toast.error(data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
         setLoading(false);
       }
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur. Vérifiez votre connexion internet.' : 'Server connection error. Check your internet.');
+      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur' : 'Server connection error');
       setLoading(false);
     }
   };
@@ -159,6 +156,32 @@ const RegisterPage = () => {
           </p>
 
           <form onSubmit={handleRegister}>
+            {/* Full Name input */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <input
+                type="text"
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Nom complet' : 'Full name'}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                data-testid="fullname-input"
+                autoComplete="name"
+              />
+            </div>
+
+            {/* Phone input */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <input
+                type="tel"
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Téléphone' : 'Phone'}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                data-testid="phone-input"
+                autoComplete="tel"
+              />
+            </div>
+
             {/* Email input */}
             <div style={{ position: 'relative', marginBottom: '16px' }}>
               <Mail 
