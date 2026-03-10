@@ -1697,128 +1697,105 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     """Register for free 7-day trial without payment"""
     logger.info(f"Free trial registration attempt for: {request.email}")
     
-    try:
-        # Validate email format
-        if not request.email or '@' not in request.email:
-            raise HTTPException(status_code=400, detail="Email invalide")
-        
-        # Validate password
-        if not request.password or len(request.password) < 6:
-            raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
-        
-        # Validate name
-        if not request.full_name or len(request.full_name.strip()) < 2:
-            raise HTTPException(status_code=400, detail="Nom requis")
-        
-        # Validate phone number (at least 6 digits for international)
-        if not request.phone or len(request.phone.replace(" ", "").replace("-", "")) < 6:
-            raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
-        
-        email_clean = request.email.lower().strip()
-        name_clean = request.full_name.strip()
-        phone_clean = format_phone_number_with_country(request.phone, request.country_code)
-        
-        # Check if email already exists
-        existing_user = await db.users.find_one({"email": email_clean})
-        if existing_user:
-            logger.warning(f"Registration failed - email exists: {email_clean}")
-            raise HTTPException(status_code=400, detail="EMAIL_EXISTS")
-        
-        # Calculate trial end date (7 days from now)
-        trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
-        
-        # Create Stripe customer immediately for tracking
-        stripe_customer_id = None
-        try:
-            stripe.api_key = STRIPE_API_KEY
-            if STRIPE_API_KEY:
-                customer = stripe.Customer.create(
-                    email=email_clean,
-                    name=name_clean,
-                    phone=phone_clean,
-                    metadata={
-                        "source": "free_trial",
-                        "trial_start": datetime.now(timezone.utc).isoformat(),
-                        "trial_ends": trial_ends_at.isoformat()
-                    }
-                )
-                stripe_customer_id = customer.id
-                logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
-        except Exception as e:
-            logger.warning(f"Failed to create Stripe customer for {email_clean}: {e}")
-            # Continue without Stripe customer - not critical for trial
-        
-        # Create user with trialing status
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        user_doc = {
-            "user_id": user_id,
-            "email": email_clean,
-            "name": name_clean,
-            "phone": phone_clean,
-            "auth_provider": "email",
-            "password_hash": hash_password(request.password),
-            "subscription_status": "trialing",
-            "trial_ends_at": trial_ends_at.isoformat(),
-            "stripe_customer_id": stripe_customer_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-        
-        await db.users.insert_one(user_doc)
-        logger.info(f"Free trial account created for {email_clean}, phone: {phone_clean}, trial ends: {trial_ends_at}")
-        
-        # Create session
-        session_token = f"sess_{uuid.uuid4().hex}"
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        user_session = UserSession(
-            user_id=user_id,
-            session_token=session_token,
-            expires_at=expires_at
-        )
-        session_doc = user_session.model_dump()
-        session_doc['expires_at'] = session_doc['expires_at'].isoformat()
-        session_doc['created_at'] = session_doc['created_at'].isoformat()
-        await db.user_sessions.insert_one(session_doc)
-        
-        # Set cookie
-        response.set_cookie(
-            key="session_token",
-            value=session_token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            path="/",
-            max_age=7 * 24 * 60 * 60
-        )
-        
-        return {
-            "user_id": user_id,
-            "email": email_clean,
-            "subscription_status": "trialing",
-            "trial_ends_at": trial_ends_at.isoformat(),
-            "token": session_token
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Registration error for {request.email}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
-
-# TEMPORARY: Admin password reset endpoint - DELETE AFTER USE
-@api_router.post("/auth/admin-reset-pwd")
-async def admin_reset_password(email: str, new_password: str, secret: str):
-    """Temporary admin endpoint to reset password"""
-    if secret != "KOLO_RESET_2026_TEMP":
-        raise HTTPException(status_code=403, detail="Invalid secret")
+    # Validate email format
+    if not request.email or '@' not in request.email:
+        raise HTTPException(status_code=400, detail="Email invalide")
     
-    hashed = hash_password(new_password)
-    result = await db.users.update_one(
-        {"email": email.lower().strip()},
-        {"$set": {"password_hash": hashed}}
+    # Validate password
+    if not request.password or len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    
+    # Validate name
+    if not request.full_name or len(request.full_name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Nom requis")
+    
+    # Validate phone number (at least 6 digits for international)
+    if not request.phone or len(request.phone.replace(" ", "").replace("-", "")) < 6:
+        raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
+    
+    email_clean = request.email.lower().strip()
+    name_clean = request.full_name.strip()
+    phone_clean = format_phone_number_with_country(request.phone, request.country_code)
+    
+    # Check if email already exists
+    existing_user = await db.users.find_one({"email": email_clean})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="EMAIL_EXISTS")
+    
+    # Calculate trial end date (7 days from now)
+    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    # Create Stripe customer immediately for tracking
+    stripe_customer_id = None
+    try:
+        stripe.api_key = STRIPE_API_KEY
+        if STRIPE_API_KEY:
+            customer = stripe.Customer.create(
+                email=email_clean,
+                name=name_clean,
+                phone=phone_clean,
+                metadata={
+                    "source": "free_trial",
+                    "trial_start": datetime.now(timezone.utc).isoformat(),
+                    "trial_ends": trial_ends_at.isoformat()
+                }
+            )
+            stripe_customer_id = customer.id
+            logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
+    except Exception as e:
+        logger.warning(f"Failed to create Stripe customer for {email_clean}: {e}")
+        # Continue without Stripe customer - not critical for trial
+    
+    # Create user with trialing status
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    user_doc = {
+        "user_id": user_id,
+        "email": email_clean,
+        "name": name_clean,
+        "phone": phone_clean,
+        "auth_provider": "email",
+        "password_hash": hash_password(request.password),
+        "subscription_status": "trialing",
+        "trial_ends_at": trial_ends_at.isoformat(),
+        "stripe_customer_id": stripe_customer_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    logger.info(f"Free trial account created for {email_clean}, phone: {phone_clean}, trial ends: {trial_ends_at}")
+    
+    # Create session
+    session_token = f"sess_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    user_session = UserSession(
+        user_id=user_id,
+        session_token=session_token,
+        expires_at=expires_at
     )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"status": "ok", "message": f"Password reset for {email}"}
+    session_doc = user_session.model_dump()
+    session_doc['expires_at'] = session_doc['expires_at'].isoformat()
+    session_doc['created_at'] = session_doc['created_at'].isoformat()
+    await db.user_sessions.insert_one(session_doc)
+    
+    # Set cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60
+    )
+    
+    return {
+        "user_id": user_id,
+        "email": email_clean,
+        "subscription_status": "trialing",
+        "trial_ends_at": trial_ends_at.isoformat(),
+        "token": session_token
+    }
 
 # Email/Password Login
 @api_router.post("/auth/login")
@@ -3177,41 +3154,6 @@ async def get_vapid_public_key():
 @api_router.get("/")
 async def root():
     return {"message": "KOLO API v1.0.0"}
-
-@api_router.get("/health")
-async def health_check():
-    """Health check endpoint with DB status"""
-    try:
-        # Test DB connection
-        await db.command("ping")
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    
-    return {
-        "status": "ok",
-        "db": db_status,
-        "mongo_url_set": bool(os.environ.get('MONGO_URL')),
-        "db_name": os.environ.get('DB_NAME', 'not_set')
-    }
-
-@api_router.get("/debug/auth-test")
-async def debug_auth_test(email: str):
-    """Debug endpoint to check if user exists"""
-    try:
-        user = await db.users.find_one({"email": email.lower().strip()}, {"_id": 0, "email": 1, "user_id": 1, "subscription_status": 1, "password_hash": 1})
-        if user:
-            has_password = bool(user.get("password_hash"))
-            return {
-                "exists": True,
-                "email": user.get("email"),
-                "user_id": user.get("user_id"),
-                "subscription_status": user.get("subscription_status"),
-                "has_password": has_password
-            }
-        return {"exists": False, "email": email}
-    except Exception as e:
-        return {"error": str(e)}
 
 # Include the router in the main app
 app.include_router(api_router)
