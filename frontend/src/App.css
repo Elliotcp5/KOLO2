@@ -1117,23 +1117,23 @@ button.payment-method-card {
 }
 
 .bottom-nav .fab-button {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
-  border: 3px solid var(--bg);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4), 0 2px 8px rgba(236, 72, 153, 0.3);
+  background: #FFFFFF;
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #000000;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .bottom-nav .fab-button:active {
-  transform: scale(0.92);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+  transform: scale(0.94);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
 }
 
 .bottom-nav .nav-item span {
