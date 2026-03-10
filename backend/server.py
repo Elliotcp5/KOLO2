@@ -1797,6 +1797,22 @@ async def register_free_trial(request: RegisterRequest, response: Response):
         "token": session_token
     }
 
+# TEMPORARY: Admin password reset endpoint - DELETE AFTER USE
+@api_router.post("/auth/admin-reset-pwd")
+async def admin_reset_password(email: str, new_password: str, secret: str):
+    """Temporary admin endpoint to reset password"""
+    if secret != "KOLO_RESET_2026_TEMP":
+        raise HTTPException(status_code=403, detail="Invalid secret")
+    
+    hashed = hash_password(new_password)
+    result = await db.users.update_one(
+        {"email": email.lower().strip()},
+        {"$set": {"password_hash": hashed}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "ok", "message": f"Password reset for {email}"}
+
 # Email/Password Login
 @api_router.post("/auth/login")
 async def login_with_password(request: LoginRequest, response: Response):
