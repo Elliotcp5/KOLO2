@@ -702,25 +702,6 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     padding: '14px 16px'
                   }}
                 >
-                  {/* Complete button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCompleteTask(task.task_id);
-                    }}
-                    className="task-complete-btn"
-                    data-testid={`complete-task-${task.task_id}`}
-                    style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      border: '1.5px solid var(--muted-dark)',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      flexShrink: 0
-                    }}
-                  />
-                  
                   {/* Task content - clickable to expand */}
                   <div 
                     onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
