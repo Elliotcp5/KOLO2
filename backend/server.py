@@ -5,7 +5,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import secrets
-import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict
@@ -13,8 +12,6 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
 import hashlib
-import resend
-import stripe
 
 ROOT_DIR = Path(__file__).parent
 
@@ -82,7 +79,6 @@ class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     user_id: str = Field(default_factory=lambda: f"user_{uuid.uuid4().hex[:12]}")
     email: str
-    phone: Optional[str] = None  # Agent's phone number for SMS
     name: Optional[str] = None
     picture: Optional[str] = None
     auth_provider: str = "google"
@@ -133,13 +129,6 @@ class Prospect(BaseModel):
     next_task_id: Optional[str] = None
     next_task_date: Optional[datetime] = None
     next_task_title: Optional[str] = None
-    # Scoring fields
-    score: Optional[str] = None  # chaud, tiede, froid
-    score_calculated_at: Optional[datetime] = None
-    score_manual_override: bool = False
-    # SMS opt-out
-    sms_opt_out: bool = False
-    sms_history: Optional[List[Dict]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -225,9 +214,6 @@ class RegisterRequest(BaseModel):
     """Request for free trial registration (no payment required)"""
     email: str
     password: str
-    full_name: str  # Agent's name (used as SMS sender)
-    phone: str  # Agent's phone number
-    country_code: str = "+33"  # Country dial code
 
 class LoginRequest(BaseModel):
     email: str
@@ -240,11 +226,9 @@ class RecoverAccountRequest(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 def get_currency_for_country(country_code: str) -> str:
-    """Get currency for a country. Switzerland uses EUR for simplicity (9.99€)"""
     if country_code == 'GB':
         return 'GBP'
-    elif country_code in EU_COUNTRIES or country_code in ['CH', 'MC', 'AD', 'SM', 'VA']:
-        # EU + Switzerland, Monaco, Andorra, San Marino, Vatican = EUR
+    elif country_code in EU_COUNTRIES:
         return 'EUR'
     else:
         return 'USD'
@@ -371,118 +355,6 @@ async def update_prospect_next_task(prospect_id: str, user_id: str):
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
-
-async def calculate_prospect_score(prospect_id: str, user_id: str, force_score: str = None):
-    """
-    Calculate prospect score (chaud/tiede/froid) based on:
-    - Last interaction freshness (40%)
-    - Profile completeness (30%)
-    - Completed tasks (30%)
-    
-    If force_score is provided, use it as manual override.
-    21+ days inactive = automatically froid.
-    """
-    now = datetime.now(timezone.utc)
-    
-    # Get prospect
-    prospect = await db.prospects.find_one(
-        {"prospect_id": prospect_id, "user_id": user_id},
-        {"_id": 0}
-    )
-    if not prospect:
-        return None
-    
-    # If force_score provided, use manual override
-    if force_score and force_score in ["chaud", "tiede", "froid"]:
-        await db.prospects.update_one(
-            {"prospect_id": prospect_id},
-            {"$set": {
-                "score": force_score,
-                "score_calculated_at": now.isoformat(),
-                "score_manual_override": True,
-                "updated_at": now.isoformat()
-            }}
-        )
-        return force_score
-    
-    # Calculate freshness score (40%)
-    last_activity = prospect.get("last_activity_date") or prospect.get("created_at")
-    days_inactive = 0
-    if last_activity:
-        if isinstance(last_activity, str):
-            last_activity = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
-        if last_activity.tzinfo is None:
-            last_activity = last_activity.replace(tzinfo=timezone.utc)
-        days_inactive = (now - last_activity).days
-    
-    # 21+ days = automatic froid
-    if days_inactive >= 21:
-        await db.prospects.update_one(
-            {"prospect_id": prospect_id},
-            {"$set": {
-                "score": "froid",
-                "score_calculated_at": now.isoformat(),
-                "score_manual_override": False,
-                "updated_at": now.isoformat()
-            }}
-        )
-        return "froid"
-    
-    # Freshness score: 0-7 days = 100%, 8-14 days = 60%, 15-21 days = 30%
-    if days_inactive <= 7:
-        freshness_score = 100
-    elif days_inactive <= 14:
-        freshness_score = 60
-    else:
-        freshness_score = 30
-    
-    # Calculate profile completeness score (30%)
-    # Fields: full_name, phone, email, source, notes
-    completeness_fields = 0
-    if prospect.get("full_name"): completeness_fields += 1
-    if prospect.get("phone"): completeness_fields += 1
-    if prospect.get("email"): completeness_fields += 1
-    if prospect.get("source") and prospect.get("source") != "manual": completeness_fields += 1
-    if prospect.get("notes") and len(prospect.get("notes", "")) > 10: completeness_fields += 1
-    completeness_score = (completeness_fields / 5) * 100
-    
-    # Calculate completed tasks score (30%)
-    completed_tasks = await db.tasks.count_documents({
-        "prospect_id": prospect_id,
-        "user_id": user_id,
-        "completed": True
-    })
-    # 0 tasks = 0%, 1 task = 50%, 2+ tasks = 100%
-    if completed_tasks == 0:
-        tasks_score = 0
-    elif completed_tasks == 1:
-        tasks_score = 50
-    else:
-        tasks_score = 100
-    
-    # Weighted total
-    total_score = (freshness_score * 0.4) + (completeness_score * 0.3) + (tasks_score * 0.3)
-    
-    # Determine score label
-    if total_score >= 70:
-        score_label = "chaud"
-    elif total_score >= 40:
-        score_label = "tiede"
-    else:
-        score_label = "froid"
-    
-    # Update prospect
-    await db.prospects.update_one(
-        {"prospect_id": prospect_id},
-        {"$set": {
-            "score": score_label,
-            "score_calculated_at": now.isoformat(),
-            "score_manual_override": False,
-            "updated_at": now.isoformat()
-        }}
-    )
-    
-    return score_label
 
 async def generate_follow_up_tasks_for_user(user_id: str):
     """Generate automatic follow-up tasks for inactive prospects"""
@@ -660,14 +532,7 @@ async def get_current_user(request: Request):
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
-    # Check for session token in cookies first, then in Authorization header
     session_token = request.cookies.get('session_token')
-    
-    if not session_token:
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            session_token = auth_header[7:]
-    
     if session_token:
         await db.user_sessions.delete_many({"session_token": session_token})
     
@@ -1021,38 +886,34 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
     """Create a Stripe Customer Portal session for billing management"""
     user = await require_active_subscription(http_request)
     
-    import stripe
-    stripe.api_key = STRIPE_API_KEY
-    
     # Check if user has a stripe customer ID
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
     stripe_customer_id = user_doc.get("stripe_customer_id") if user_doc else None
     
     if not stripe_customer_id:
-        # Try to find or create customer
+        # Try to find customer by email using Stripe API
         try:
-            # First, check if customer exists by email
+            import stripe
+            stripe.api_key = STRIPE_API_KEY
+            
             customers = stripe.Customer.list(email=user.email, limit=1)
             if customers.data:
                 stripe_customer_id = customers.data[0].id
-            else:
-                # Create a new Stripe customer
-                customer = stripe.Customer.create(
-                    email=user.email,
-                    metadata={"user_id": user.user_id}
+                # Save customer ID for future use
+                await db.users.update_one(
+                    {"user_id": user.user_id},
+                    {"$set": {"stripe_customer_id": stripe_customer_id}}
                 )
-                stripe_customer_id = customer.id
-            
-            # Save customer ID for future use
-            await db.users.update_one(
-                {"user_id": user.user_id},
-                {"$set": {"stripe_customer_id": stripe_customer_id}}
-            )
         except Exception as e:
-            logger.error(f"Stripe customer creation error: {e}")
-            raise HTTPException(status_code=400, detail="Impossible de créer le profil de facturation. Veuillez réessayer.")
+            logger.error(f"Stripe customer lookup error: {e}")
+    
+    if not stripe_customer_id:
+        raise HTTPException(status_code=400, detail="No billing information found. Please contact support.")
     
     try:
+        import stripe
+        stripe.api_key = STRIPE_API_KEY
+        
         # Get origin URL for return
         referer = http_request.headers.get('referer', '')
         if referer:
@@ -1071,7 +932,7 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
         return {"url": portal_session.url}
     except Exception as e:
         logger.error(f"Billing portal error: {e}")
-        raise HTTPException(status_code=500, detail="Impossible d'accéder au portail de facturation. Veuillez réessayer.")
+        raise HTTPException(status_code=500, detail="Unable to access billing portal. Please try again later.")
 
 @api_router.get("/subscription/status")
 async def get_subscription_status(http_request: Request):
@@ -1253,175 +1114,17 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
     
     return {"message": "Mot de passe modifié avec succès"}
 
-class UpdatePhoneRequest(BaseModel):
-    phone: str
-
-@api_router.post("/auth/update-phone")
-async def update_phone(request: UpdatePhoneRequest, http_request: Request):
-    """Update user's phone number"""
-    user = await require_auth(http_request)
-    
-    if not request.phone or len(request.phone) < 10:
-        raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
-    
-    phone_clean = format_phone_number(request.phone)
-    
-    await db.users.update_one(
-        {"user_id": user.user_id},
-        {"$set": {
-            "phone": phone_clean,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    return {"message": "Numéro de téléphone mis à jour", "phone": phone_clean}
-
-class UpdateNameRequest(BaseModel):
-    name: str
-
-@api_router.post("/auth/update-name")
-async def update_name(request: UpdateNameRequest, http_request: Request):
-    """Update user's name"""
-    user = await require_auth(http_request)
-    
-    if not request.name or len(request.name.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Nom invalide")
-    
-    name_clean = request.name.strip()
-    
-    await db.users.update_one(
-        {"user_id": user.user_id},
-        {"$set": {
-            "name": name_clean,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    return {"message": "Nom mis à jour", "name": name_clean}
-
-@api_router.get("/auth/profile")
-async def get_profile(request: Request):
-    """Get user profile including phone number"""
-    user = await require_auth(request)
-    
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
-    return {
-        "user_id": user_doc.get("user_id"),
-        "email": user_doc.get("email"),
-        "name": user_doc.get("name"),
-        "phone": user_doc.get("phone"),
-        "subscription_status": user_doc.get("subscription_status"),
-        "trial_ends_at": user_doc.get("trial_ends_at")
-    }
-
-# Resend email configuration
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@trykolo.io')
-
-# Initialize Resend
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
-
-async def send_password_reset_email(to_email: str, reset_token: str, base_url: str):
-    """Send password reset email via Resend"""
-    reset_link = f"{base_url}/reset-password?token={reset_token}"
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #0B0B0F; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0B0B0F; padding: 40px 20px;">
-            <tr>
-                <td align="center">
-                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #1A1A1F; border-radius: 16px; padding: 32px;">
-                        <tr>
-                            <td align="center" style="padding-bottom: 24px;">
-                                <img src="https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png" alt="KOLO" style="height: 40px;">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding-bottom: 16px;">
-                                <h1 style="margin: 0; color: #FFFFFF; font-size: 22px; font-weight: 600;">Réinitialisez votre mot de passe</h1>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding-bottom: 24px;">
-                                <p style="margin: 0; color: #9CA3AF; font-size: 15px; line-height: 1.5;">
-                                    Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour continuer.
-                                </p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding-bottom: 24px;">
-                                <a href="{reset_link}" style="display: inline-block; background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: #FFFFFF; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 600;">
-                                    Réinitialiser mon mot de passe
-                                </a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" style="padding-bottom: 16px;">
-                                <p style="margin: 0; color: #6B7280; font-size: 13px;">
-                                    Ce lien expire dans 1 heure.
-                                </p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center">
-                                <p style="margin: 0; color: #6B7280; font-size: 12px;">
-                                    Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-    
-    params = {
-        "from": f"KOLO <{SENDER_EMAIL}>",
-        "to": [to_email],
-        "subject": "Réinitialisez votre mot de passe KOLO",
-        "html": html_content
-    }
-    
-    try:
-        email_result = await asyncio.to_thread(resend.Emails.send, params)
-        logger.info(f"Password reset email sent to {to_email}, id: {email_result.get('id')}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send password reset email to {to_email}: {str(e)}")
-        return False
-
 class ForgotPasswordRequest(BaseModel):
     email: str
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, http_request: Request):
+async def forgot_password(request: ForgotPasswordRequest):
     """Send password reset email"""
     if not request.email:
         raise HTTPException(status_code=400, detail="Email requis")
     
-    # Get base URL for reset link
-    referer = http_request.headers.get('referer', '')
-    if referer:
-        from urllib.parse import urlparse
-        parsed = urlparse(referer)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-    else:
-        base_url = str(http_request.base_url).rstrip('/')
-    
     # Check if user exists
-    user_doc = await db.users.find_one({"email": request.email.lower().strip()}, {"_id": 0})
+    user_doc = await db.users.find_one({"email": request.email}, {"_id": 0})
     
     # Always return success to prevent email enumeration
     if not user_doc:
@@ -1433,23 +1136,19 @@ async def forgot_password(request: ForgotPasswordRequest, http_request: Request)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     
     # Store reset token
-    await db.password_resets.delete_many({"email": request.email.lower().strip()})
+    await db.password_resets.delete_many({"email": request.email})  # Remove old tokens
     await db.password_resets.insert_one({
-        "email": request.email.lower().strip(),
+        "email": request.email,
         "token": reset_token,
         "expires_at": expires_at,
         "created_at": datetime.now(timezone.utc)
     })
     
-    # Send email via Resend
-    if RESEND_API_KEY:
-        email_sent = await send_password_reset_email(request.email.lower().strip(), reset_token, base_url)
-        if not email_sent:
-            logger.warning(f"Email sending failed for {request.email}, but token was created")
-    else:
-        logger.warning(f"RESEND_API_KEY not configured, password reset token: {reset_token}")
+    # In production, send email here
+    # For now, log the reset link
+    logger.info(f"Password reset token for {request.email}: {reset_token}")
     
-    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation"}
+    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation", "reset_token": reset_token}
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -1670,27 +1369,6 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
-# Helper function to format phone number with country code
-def format_phone_number_with_country(phone: str, country_code: str = "+33") -> str:
-    """Format phone number to international format with country code"""
-    phone = phone.strip().replace(" ", "").replace(".", "").replace("-", "")
-    # Remove leading zeros
-    phone = phone.lstrip("0")
-    # Ensure country code starts with +
-    if not country_code.startswith("+"):
-        country_code = "+" + country_code
-    return f"{country_code}{phone}"
-
-# Legacy function for backward compatibility
-def format_phone_number(phone: str) -> str:
-    """Format phone number to international format (+33...)"""
-    phone = phone.strip().replace(" ", "").replace(".", "").replace("-", "")
-    if phone.startswith("0"):
-        phone = "+33" + phone[1:]
-    elif not phone.startswith("+"):
-        phone = "+33" + phone
-    return phone
-
 # Free Trial Registration (no payment required)
 @api_router.post("/auth/register")
 async def register_free_trial(request: RegisterRequest, response: Response):
@@ -1705,65 +1383,29 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     if not request.password or len(request.password) < 6:
         raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
     
-    # Validate name
-    if not request.full_name or len(request.full_name.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Nom requis")
-    
-    # Validate phone number (at least 6 digits for international)
-    if not request.phone or len(request.phone.replace(" ", "").replace("-", "")) < 6:
-        raise HTTPException(status_code=400, detail="Numéro de téléphone invalide")
-    
-    email_clean = request.email.lower().strip()
-    name_clean = request.full_name.strip()
-    phone_clean = format_phone_number_with_country(request.phone, request.country_code)
-    
     # Check if email already exists
-    existing_user = await db.users.find_one({"email": email_clean})
+    existing_user = await db.users.find_one({"email": request.email.lower().strip()})
     if existing_user:
-        raise HTTPException(status_code=400, detail="EMAIL_EXISTS")
+        raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
     
     # Calculate trial end date (7 days from now)
     trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
-    
-    # Create Stripe customer immediately for tracking
-    stripe_customer_id = None
-    try:
-        stripe.api_key = STRIPE_API_KEY
-        if STRIPE_API_KEY:
-            customer = stripe.Customer.create(
-                email=email_clean,
-                name=name_clean,
-                phone=phone_clean,
-                metadata={
-                    "source": "free_trial",
-                    "trial_start": datetime.now(timezone.utc).isoformat(),
-                    "trial_ends": trial_ends_at.isoformat()
-                }
-            )
-            stripe_customer_id = customer.id
-            logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
-    except Exception as e:
-        logger.warning(f"Failed to create Stripe customer for {email_clean}: {e}")
-        # Continue without Stripe customer - not critical for trial
     
     # Create user with trialing status
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     user_doc = {
         "user_id": user_id,
-        "email": email_clean,
-        "name": name_clean,
-        "phone": phone_clean,
+        "email": request.email.lower().strip(),
         "auth_provider": "email",
         "password_hash": hash_password(request.password),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
-        "stripe_customer_id": stripe_customer_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.users.insert_one(user_doc)
-    logger.info(f"Free trial account created for {email_clean}, phone: {phone_clean}, trial ends: {trial_ends_at}")
+    logger.info(f"Free trial account created for {request.email}, trial ends: {trial_ends_at}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -1791,7 +1433,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     
     return {
         "user_id": user_id,
-        "email": email_clean,
+        "email": request.email.lower().strip(),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
         "token": session_token
@@ -1955,34 +1597,26 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
 # ==================== TASK ENDPOINTS ====================
 
 @api_router.get("/tasks")
-async def list_tasks(request: Request, include_completed: bool = False):
-    """List all tasks for authenticated user - optionally includes 10 most recent completed tasks"""
+async def list_tasks(request: Request, include_completed: bool = True):
+    """List all tasks for authenticated user - includes completed tasks from last 2 weeks"""
     user = await require_active_subscription(request)
     
     # Generate follow-up tasks for inactive prospects
     await generate_follow_up_tasks_for_user(user.user_id)
     
-    # Get non-completed tasks
-    pending_tasks = await db.tasks.find(
+    two_weeks_ago = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    
+    # Get non-completed tasks + completed tasks from last 2 weeks
+    tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
-            "completed": False
+            "$or": [
+                {"completed": False},
+                {"completed": True, "completed_at": {"$gte": two_weeks_ago}}
+            ]
         },
         {"_id": 0}
-    ).sort("due_date", 1).to_list(1000)
-    
-    tasks = pending_tasks
-    
-    # Optionally include the 10 most recently completed tasks
-    if include_completed:
-        completed_tasks = await db.tasks.find(
-            {
-                "user_id": user.user_id,
-                "completed": True
-            },
-            {"_id": 0}
-        ).sort("completed_at", -1).limit(10).to_list(10)
-        tasks = pending_tasks + completed_tasks
+    ).sort("due_date", -1).to_list(1000)
     
     # Batch fetch prospects to avoid N+1 queries
     prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
@@ -2010,17 +1644,15 @@ async def list_today_tasks(request: Request):
     await generate_follow_up_tasks_for_user(user.user_id)
     
     now = datetime.now(timezone.utc)
-    # End of today - use tomorrow midnight to catch all today's tasks regardless of timezone
-    tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Get overdue tasks (before today, not completed) and today's tasks
-    # Use $lte with tomorrow start to be inclusive of all today's times
     tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
             "completed": False,
-            "due_date": {"$lt": tomorrow_start.isoformat()}
+            "due_date": {"$lte": end_of_today.isoformat()}
         },
         {"_id": 0}
     ).sort("due_date", 1).to_list(1000)
@@ -2036,13 +1668,12 @@ async def list_today_tasks(request: Request):
         prospects_map = {p["prospect_id"]: p for p in prospects}
     
     # Mark tasks as overdue or today and enrich with prospect info
-    tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     for task in tasks:
         task_date = datetime.fromisoformat(task["due_date"].replace('Z', '+00:00'))
         if task_date.tzinfo is None:
             task_date = task_date.replace(tzinfo=timezone.utc)
         task["is_overdue"] = task_date < start_of_today
-        task["is_today"] = start_of_today <= task_date < tomorrow_start
+        task["is_today"] = start_of_today <= task_date <= end_of_today
         
         # Enrich with prospect info from batch
         if task.get("prospect_id"):
@@ -2202,75 +1833,28 @@ async def complete_task(request: Request, task_id: str):
 
 @api_router.get("/tasks/ai-suggestions")
 async def get_ai_task_suggestions(request: Request):
-    """Get AI-powered task suggestions with intelligent scheduling based on workload and prospect context"""
+    """Get AI-powered task suggestions based on inactive prospects"""
     user = await require_active_subscription(request)
     
-    now = datetime.now(timezone.utc)
+    # Get prospects with no recent activity (no task in last 7 days)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     
-    # Get user's workload for the next 7 days
-    next_week = now + timedelta(days=7)
-    existing_tasks = await db.tasks.find(
-        {
-            "user_id": user.user_id,
-            "completed": False,
-            "due_date": {"$gte": now.isoformat(), "$lte": next_week.isoformat()}
-        },
-        {"_id": 0, "due_date": 1}
-    ).to_list(100)
-    
-    # Count tasks per day
-    tasks_per_day = {}
-    for task in existing_tasks:
-        task_date = task.get("due_date", "")[:10]  # YYYY-MM-DD
-        tasks_per_day[task_date] = tasks_per_day.get(task_date, 0) + 1
-    
-    # Build workload context
-    workload_context = []
-    for i in range(7):
-        date = (now + timedelta(days=i)).strftime("%Y-%m-%d")
-        day_name = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"][(now + timedelta(days=i)).weekday()]
-        count = tasks_per_day.get(date, 0)
-        workload_context.append(f"{day_name} {date}: {count} tâches")
-    
-    # Get all active prospects with their full history
+    # Get all active prospects
     prospects = await db.prospects.find(
         {
             "user_id": user.user_id,
             "status": {"$nin": ["closed", "lost"]}
         },
-        {"_id": 0}
+        {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1, "status": 1, "source": 1, "notes": 1, "last_activity_date": 1, "created_at": 1}
     ).to_list(100)
     
     if not prospects:
         return {"suggestions": [], "message": "Aucun prospect à analyser"}
     
-    # Get task history for each prospect
-    prospect_ids = [p["prospect_id"] for p in prospects]
-    all_tasks = await db.tasks.find(
-        {
-            "user_id": user.user_id,
-            "prospect_id": {"$in": prospect_ids}
-        },
-        {"_id": 0, "prospect_id": 1, "title": 1, "task_type": 1, "due_date": 1, "completed": 1, "completed_at": 1, "created_at": 1}
-    ).sort("created_at", -1).to_list(500)
-    
-    # Group tasks by prospect
-    tasks_by_prospect = {}
-    for task in all_tasks:
-        pid = task.get("prospect_id")
-        if pid not in tasks_by_prospect:
-            tasks_by_prospect[pid] = []
-        tasks_by_prospect[pid].append(task)
-    
-    # Build detailed prospect context
-    prospects_context = []
+    # Find inactive prospects (no activity in last 7 days)
+    inactive_prospects = []
     for p in prospects:
-        pid = p["prospect_id"]
-        prospect_tasks = tasks_by_prospect.get(pid, [])
-        
-        # Calculate inactivity
         last_activity = p.get("last_activity_date") or p.get("created_at")
-        days_inactive = 0
         if last_activity:
             if isinstance(last_activity, str):
                 last_activity_date = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
@@ -2278,58 +1862,20 @@ async def get_ai_task_suggestions(request: Request):
                 last_activity_date = last_activity
             if last_activity_date.tzinfo is None:
                 last_activity_date = last_activity_date.replace(tzinfo=timezone.utc)
-            days_inactive = (now - last_activity_date).days
-        
-        # Build task history summary
-        completed_tasks = [t for t in prospect_tasks if t.get("completed")]
-        # For pending tasks, ignore auto-generated "Suivi" tasks (they are generic placeholders)
-        pending_tasks = [t for t in prospect_tasks if not t.get("completed") and not (t.get("auto_generated") and t.get("title", "").startswith("Suivi "))]
-        
-        
-        # Include prospect if:
-        # 1. Has NO meaningful pending tasks (needs action regardless of age)
-        # 2. OR has been inactive for 2+ days
-        has_no_pending_tasks = len(pending_tasks) == 0
-        is_inactive = days_inactive >= 2
-        
-        
-        if not has_no_pending_tasks and not is_inactive:
-            continue
-        
-        task_history = ""
-        if completed_tasks:
-            recent_completed = completed_tasks[:3]
-            task_history = "Tâches passées: " + ", ".join([f"{t['title']} ({t.get('task_type', 'autre')})" for t in recent_completed])
-        
-        pending_info = ""
-        if pending_tasks:
-            pending_info = f"⚠️ {len(pending_tasks)} tâche(s) en attente"
-        
-        # Priority score: prospects without pending tasks are highest priority
-        priority_score = 100 if has_no_pending_tasks else days_inactive
-        
-        prospect_info = {
-            "prospect_id": pid,
-            "full_name": p["full_name"],
-            "status": p.get("status", "nouveau"),
-            "source": p.get("source", "inconnu"),
-            "notes": (p.get("notes", "") or "")[:150],
-            "days_inactive": days_inactive,
-            "has_no_pending_tasks": has_no_pending_tasks,
-            "task_count": len(prospect_tasks),
-            "task_history": task_history,
-            "pending_info": pending_info if pending_tasks else "Aucune tâche programmée",
-            "priority_score": priority_score,
-            "created_days_ago": (now - datetime.fromisoformat(p.get("created_at", now.isoformat()).replace('Z', '+00:00'))).days if p.get("created_at") else 0
-        }
-        prospects_context.append(prospect_info)
+            
+            days_inactive = (datetime.now(timezone.utc) - last_activity_date).days
+            if days_inactive >= 3:  # At least 3 days inactive
+                inactive_prospects.append({
+                    **p,
+                    "days_inactive": days_inactive
+                })
     
-    if not prospects_context:
-        return {"suggestions": [], "message": "Tous vos prospects ont des tâches programmées !"}
+    if not inactive_prospects:
+        return {"suggestions": [], "message": "Tous vos prospects sont actifs !"}
     
-    # Sort by priority (no pending tasks first, then by inactivity)
-    prospects_context.sort(key=lambda x: x["priority_score"], reverse=True)
-    prospects_context = prospects_context[:6]
+    # Limit to 5 most inactive prospects
+    inactive_prospects.sort(key=lambda x: x["days_inactive"], reverse=True)
+    inactive_prospects = inactive_prospects[:5]
     
     # Generate AI suggestions
     try:
@@ -2342,52 +1888,43 @@ async def get_ai_task_suggestions(request: Request):
         chat = LlmChat(
             api_key=api_key,
             session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Tu es un assistant CRM immobilier. Suggère des actions de suivi.
-
-TYPES D'ACTIONS:
-- call: appel téléphonique (négociation, questions complexes)
-- sms: message court (relance rapide, rappel RDV)
-- email: infos détaillées, documents
-- meeting: visite, rendez-vous physique
-
-RÈGLES:
-- Si prospect inactif 2-5 jours → SMS de relance
-- Si prospect inactif 5-10 jours → Appel
-- Si prospect inactif >10 jours → Email ou SMS doux
-- Prospect chaud/récent → Action rapide
-- Évite le week-end
-
-Réponds UNIQUEMENT en JSON:
-{"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|meeting", "suggested_date": "YYYY-MM-DD", "urgency": "haute|moyenne|basse", "reason": "..."}]}"""
+            system_message="""Tu es un assistant commercial expert en immobilier. 
+Tu analyses les prospects inactifs et suggères des actions de suivi pertinentes.
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans ```json```, juste le JSON pur.
+Format: {"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|email|meeting|follow_up", "reason": "..."}]}
+task_type doit être exactement un de: call, email, meeting, follow_up
+Limite-toi à 1 suggestion par prospect."""
         ).with_model("anthropic", "claude-sonnet-4-5-20250929")
         
-        # Build concise context
-        today = now.strftime("%Y-%m-%d")
-        context_lines = [f"Aujourd'hui: {today}", "PROSPECTS:"]
+        # Build context
+        prospects_context = "\n".join([
+            f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_inactive']} jours sans contact, statut: {p.get('status', 'nouveau')}, source: {p.get('source', 'inconnu')}, notes: {p.get('notes', 'aucune')[:100] if p.get('notes') else 'aucune'}"
+            for p in inactive_prospects
+        ])
         
-        for p in prospects_context[:5]:  # Limit to 5 prospects for speed
-            has_phone = "phone" in str(prospects_context)
-            context_lines.append(
-                f"- {p['full_name']} (ID:{p['prospect_id']}) | "
-                f"Inactif {p['days_inactive']}j | "
-                f"Statut:{p['status']} | "
-                f"{'Aucune tâche!' if p.get('has_no_pending_tasks') else p['pending_info']}"
-            )
+        user_message = UserMessage(
+            text=f"""Voici les prospects inactifs à relancer:
+
+{prospects_context}
+
+Suggère une action de suivi appropriée pour chaque prospect. Sois concis et actionnable."""
+        )
         
-        user_message = UserMessage(text="\n".join(context_lines))
         response = await chat.send_message(user_message)
         
         # Parse JSON response
         import json
         import re
         
+        # Clean response - remove markdown code blocks
         response_clean = response.strip()
         
-        # Remove markdown code blocks
+        # Remove ```json ... ``` or ``` ... ```
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_clean)
         if json_match:
             response_clean = json_match.group(1).strip()
         
+        # Also try to find JSON object directly
         if not response_clean.startswith('{'):
             json_obj_match = re.search(r'\{[\s\S]*\}', response_clean)
             if json_obj_match:
@@ -2397,55 +1934,47 @@ Réponds UNIQUEMENT en JSON:
         
         return {
             "suggestions": suggestions_data.get("suggestions", []),
-            "inactive_count": len(prospects_context),
-            "workload": tasks_per_day
+            "inactive_count": len(inactive_prospects)
         }
         
     except json.JSONDecodeError as e:
-        logger.error(f"AI response parsing error: {e}, response: {response[:500] if response else 'None'}")
-        # Fallback suggestions with SMS for quick follow-ups
+        logger.error(f"AI response parsing error: {e}, response: {response[:200] if response else 'None'}")
+        # Fallback: generate simple suggestions without AI
         fallback_suggestions = []
-        for i, p in enumerate(prospects_context[:3]):
-            task_type = "sms" if p['days_inactive'] < 5 else "call"
+        for p in inactive_prospects[:3]:
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
-                "task_title": f"Relancer {p['full_name']}" if task_type == "call" else f"SMS à {p['full_name']}",
-                "task_type": task_type,
-                "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "urgency": "haute" if p['days_inactive'] < 3 else "moyenne",
-                "reason": f"Inactif depuis {p['days_inactive']} jours"
+                "task_title": f"Relancer {p['full_name']}",
+                "task_type": "call",
+                "reason": f"Aucun contact depuis {p['days_inactive']} jours"
             })
-        return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
+        return {"suggestions": fallback_suggestions, "inactive_count": len(inactive_prospects)}
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
+        # Fallback suggestions
         fallback_suggestions = []
-        for i, p in enumerate(prospects_context[:3]):
-            task_type = "sms" if p['days_inactive'] < 5 else "call"
+        for p in inactive_prospects[:3]:
             fallback_suggestions.append({
                 "prospect_id": p["prospect_id"],
                 "prospect_name": p["full_name"],
-                "task_title": f"Relancer {p['full_name']}" if task_type == "call" else f"SMS à {p['full_name']}",
-                "task_type": task_type,
-                "suggested_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "urgency": "haute" if p['days_inactive'] < 3 else "moyenne",
-                "reason": f"Inactif depuis {p['days_inactive']} jours"
+                "task_title": f"Relancer {p['full_name']}",
+                "task_type": "call",
+                "reason": f"Aucun contact depuis {p['days_inactive']} jours"
             })
-        return {"suggestions": fallback_suggestions, "inactive_count": len(prospects_context)}
+        return {"suggestions": fallback_suggestions, "inactive_count": len(inactive_prospects)}
 
 @api_router.post("/tasks/ai-suggestions/accept")
 async def accept_ai_suggestion(request: Request):
-    """Create a task from an AI suggestion with intelligent date"""
+    """Create a task from an AI suggestion"""
     user = await require_active_subscription(request)
     
     body = await request.json()
     prospect_id = body.get("prospect_id")
     task_title = body.get("task_title")
     task_type = body.get("task_type", "follow_up")
-    suggested_date = body.get("suggested_date")  # YYYY-MM-DD from AI
-    urgency = body.get("urgency", "moyenne")
     
     if not prospect_id or not task_title:
         raise HTTPException(status_code=400, detail="prospect_id and task_title required")
@@ -2458,43 +1987,9 @@ async def accept_ai_suggestion(request: Request):
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
-    now = datetime.now(timezone.utc)
-    
-    # Use AI suggested date if provided, otherwise smart default
-    if suggested_date:
-        try:
-            # Parse the suggested date
-            due_date = datetime.strptime(suggested_date, "%Y-%m-%d")
-            due_date = due_date.replace(tzinfo=timezone.utc)
-            
-            # Set appropriate time based on urgency
-            # Hours in UTC that correspond to French working hours (9h-18h Paris = 8h-17h UTC winter, 7h-16h UTC summer)
-            if urgency == "haute":
-                due_hour = 8  # 9h-10h Paris (urgent = first thing in the morning)
-            elif urgency == "basse":
-                due_hour = 14  # 15h-16h Paris (low priority = afternoon)
-            else:
-                due_hour = 9  # 10h-11h Paris (normal = mid-morning)
-            
-            due_date = due_date.replace(hour=due_hour, minute=0, second=0, microsecond=0)
-            
-            # If date is TODAY and time has passed, use end of day (so it appears in Today tab)
-            # Don't automatically push to tomorrow - let the user decide
-            if due_date.date() == now.date() and due_date <= now:
-                # Set to end of working day so it still shows as "today" task
-                due_date = due_date.replace(hour=17, minute=0, second=0, microsecond=0)
-                
-        except ValueError:
-            # Invalid date format, fall back to today end of day
-            due_date = now.replace(hour=17, minute=0, second=0, microsecond=0)
-    else:
-        # No suggested date - use today
-        # If within working hours, use next hour; otherwise end of day
-        if 8 <= now.hour < 17:
-            due_date = now.replace(hour=now.hour + 1, minute=0, second=0, microsecond=0)
-        else:
-            # Outside working hours - set to end of today's working day
-            due_date = now.replace(hour=17, minute=0, second=0, microsecond=0)
+    # Create task for tomorrow
+    due_date = datetime.now(timezone.utc) + timedelta(days=1)
+    due_date = due_date.replace(hour=10, minute=0, second=0, microsecond=0)
     
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     task_doc = {
@@ -2506,7 +2001,6 @@ async def accept_ai_suggestion(request: Request):
         "due_date": due_date.isoformat(),
         "completed": False,
         "auto_generated": True,
-        "ai_urgency": urgency,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
@@ -2516,14 +2010,7 @@ async def accept_ai_suggestion(request: Request):
     # Update prospect next task
     await update_prospect_next_task(prospect_id, user.user_id)
     
-    # Format response with readable date
-    date_label = "Aujourd'hui" if due_date.date() == now.date() else due_date.strftime("%d/%m")
-    
-    return {
-        "task_id": task_id, 
-        "message": f"Tâche créée pour {date_label}",
-        "due_date": due_date.isoformat()
-    }
+    return {"task_id": task_id, "message": "Tâche créée avec succès"}
 
 # ==================== PROSPECT ENDPOINTS ====================
 
@@ -2568,14 +2055,7 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     await db.prospects.insert_one(doc)
     
     # Auto-create follow-up task for the new prospect
-    # Schedule for later today if within working hours, otherwise tomorrow morning
-    paris_offset = timedelta(hours=1)  # UTC+1 for France
-    local_hour = (now + paris_offset).hour
-    
-    if local_hour < 17:  # Before 5 PM Paris time, schedule for today
-        follow_up_date = now.replace(hour=16, minute=0, second=0, microsecond=0)  # 17h Paris
-    else:  # After 5 PM, schedule for tomorrow morning
-        follow_up_date = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)  # 9h Paris
+    follow_up_date = now + timedelta(days=1)  # Follow up tomorrow
     task = Task(
         user_id=user.user_id,
         prospect_id=prospect.prospect_id,
@@ -2588,9 +2068,6 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     task_doc['created_at'] = task_doc['created_at'].isoformat()
     task_doc['due_date'] = task_doc['due_date'].isoformat()
     await db.tasks.insert_one(task_doc)
-    
-    # Calculate initial score
-    await calculate_prospect_score(prospect.prospect_id, user.user_id)
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 
@@ -2606,23 +2083,6 @@ async def get_prospect(request: Request, prospect_id: str):
     
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    # Auto-recalculate score if missing or stale (> 1 day) and not manually overridden
-    should_recalculate = False
-    if not prospect.get("score"):
-        should_recalculate = True
-    elif not prospect.get("score_manual_override"):
-        score_date = prospect.get("score_calculated_at")
-        if score_date:
-            if isinstance(score_date, str):
-                score_date = datetime.fromisoformat(score_date.replace('Z', '+00:00'))
-            if (datetime.now(timezone.utc) - score_date).days >= 1:
-                should_recalculate = True
-    
-    if should_recalculate:
-        new_score = await calculate_prospect_score(prospect_id, user.user_id)
-        prospect["score"] = new_score
-        prospect["score_calculated_at"] = datetime.now(timezone.utc).isoformat()
     
     # Get tasks for this prospect
     tasks = await db.tasks.find(
@@ -2651,9 +2111,6 @@ async def update_prospect(request: Request, prospect_id: str, update_data: Updat
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
-    # Recalculate score after update
-    await calculate_prospect_score(prospect_id, user.user_id)
-    
     return {"message": "Prospect updated"}
 
 @api_router.delete("/prospects/{prospect_id}")
@@ -2674,394 +2131,6 @@ async def delete_prospect(request: Request, prospect_id: str):
     )
     
     return {"message": "Prospect deleted"}
-
-@api_router.post("/prospects/{prospect_id}/score")
-async def update_prospect_score(request: Request, prospect_id: str):
-    """Calculate or manually set prospect score"""
-    user = await require_active_subscription(request)
-    
-    body = await request.json()
-    force_score = body.get("force_score")  # Optional: chaud, tiede, froid
-    
-    score = await calculate_prospect_score(prospect_id, user.user_id, force_score)
-    
-    if not score:
-        raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    return {"score": score, "manual_override": force_score is not None}
-
-@api_router.post("/prospects/{prospect_id}/generate-message")
-async def generate_followup_message(request: Request, prospect_id: str):
-    """Generate AI-powered follow-up message for a prospect"""
-    user = await require_active_subscription(request)
-    
-    # Get prospect
-    prospect = await db.prospects.find_one(
-        {"prospect_id": prospect_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
-    if not prospect:
-        raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    # Calculate score if not present
-    score = prospect.get("score")
-    if not score:
-        score = await calculate_prospect_score(prospect_id, user.user_id)
-    
-    # Get last completed task
-    last_task = await db.tasks.find_one(
-        {"prospect_id": prospect_id, "user_id": user.user_id, "completed": True},
-        {"_id": 0},
-        sort=[("completed_at", -1)]
-    )
-    
-    # Calculate days inactive
-    now = datetime.now(timezone.utc)
-    last_activity = prospect.get("last_activity_date") or prospect.get("created_at")
-    days_inactive = 0
-    if last_activity:
-        if isinstance(last_activity, str):
-            last_activity = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
-        if last_activity.tzinfo is None:
-            last_activity = last_activity.replace(tzinfo=timezone.utc)
-        days_inactive = (now - last_activity).days
-    
-    # Extract first name
-    full_name = prospect.get("full_name", "")
-    first_name = full_name.split()[0] if full_name else "Client"
-    
-    # Build context
-    context = {
-        "first_name": first_name,
-        "full_name": full_name,
-        "source": prospect.get("source", "inconnu"),
-        "notes": prospect.get("notes", ""),
-        "score": score,
-        "days_inactive": days_inactive,
-        "last_action": last_task.get("title") if last_task else None,
-        "last_action_date": last_task.get("completed_at") if last_task else None
-    }
-    
-    # Generate message with AI
-    try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="AI service not configured")
-        
-        # Tone based on score
-        tone_instructions = {
-            "chaud": "Ton direct et orienté action. Propose un RDV rapidement. Le prospect est engagé.",
-            "tiede": "Ton professionnel avec apport de valeur. Rappelle les bénéfices, propose d'avancer sans pression.",
-            "froid": "Ton léger et non-intrusif. Simple prise de nouvelles, pas de pression commerciale."
-        }
-        
-        tone = tone_instructions.get(score, tone_instructions["tiede"])
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"msg_{prospect_id}",
-            system_message=f"""SMS immobilier max 100 caractères. {tone}"""
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
-        context_text = f"{first_name}, {score}, {days_inactive}j inactif. Notes: {context['notes'] or '-'}. Génère 1 SMS."
-        
-        user_message = UserMessage(text=context_text)
-        message = await chat.send_message(user_message)
-        
-        return {
-            "message": message.strip(),
-            "context": context,
-            "tone": score
-        }
-        
-    except Exception as e:
-        logger.error(f"AI message generation error: {e}")
-        # Fallback message
-        fallback = f"Bonjour {first_name}, je me permets de vous recontacter concernant votre projet immobilier. Êtes-vous toujours en recherche ?"
-        return {
-            "message": fallback,
-            "context": context,
-            "tone": score,
-            "fallback": True
-        }
-
-@api_router.post("/prospects/{prospect_id}/send-sms")
-async def send_sms_to_prospect(request: Request, prospect_id: str):
-    """Send SMS to prospect via Brevo API using agent's name as sender"""
-    user = await require_active_subscription(request)
-    
-    body = await request.json()
-    message = body.get("message")
-    
-    if not message:
-        raise HTTPException(status_code=400, detail="Message required")
-    
-    # Get user's info (name and phone)
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
-    agent_name = user_doc.get("name") if user_doc else None
-    agent_phone = user_doc.get("phone") if user_doc else None
-    
-    if not agent_phone:
-        raise HTTPException(
-            status_code=400, 
-            detail="Numéro de téléphone non configuré. Ajoutez votre numéro dans les paramètres."
-        )
-    
-    if not agent_name:
-        raise HTTPException(
-            status_code=400,
-            detail="Nom non configuré. Ajoutez votre nom dans les paramètres."
-        )
-    
-    # Get prospect
-    prospect = await db.prospects.find_one(
-        {"prospect_id": prospect_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
-    if not prospect:
-        raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    # Check opt-out
-    if prospect.get("sms_opt_out"):
-        raise HTTPException(status_code=400, detail="Ce prospect a demandé à ne plus recevoir de SMS")
-    
-    # Get prospect phone number
-    prospect_phone = prospect.get("phone")
-    if not prospect_phone:
-        raise HTTPException(status_code=400, detail="Numéro de téléphone du prospect manquant")
-    
-    # Format phone number
-    prospect_phone = format_phone_number(prospect_phone)
-    
-    # Prepare sender name (max 11 chars for alphanumeric sender)
-    # Use first name or truncate full name
-    sender_name = agent_name.split()[0][:11] if agent_name else "Agent"
-    
-    # Send SMS via Brevo
-    brevo_api_key = os.environ.get("BREVO_API_KEY")
-    if not brevo_api_key:
-        raise HTTPException(status_code=500, detail="SMS service not configured")
-    
-    try:
-        # Send SMS using httpx directly (Brevo REST API)
-        # Using agent's name as sender - prospect sees "Jean" or "Marie" as sender
-        # The message should include the agent's phone for replies
-        async with httpx.AsyncClient() as http_client:
-            sms_response = await http_client.post(
-                "https://api.brevo.com/v3/transactionalSMS/sms",
-                headers={
-                    "api-key": brevo_api_key,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "sender": sender_name,  # Use agent's name (max 11 chars)
-                    "recipient": prospect_phone,
-                    "content": message[:160],
-                    "type": "transactional"
-                },
-                timeout=30.0
-            )
-            sms_response.raise_for_status()
-            response_data = sms_response.json()
-        
-        # Log SMS in prospect history
-        sms_entry = {
-            "id": f"sms_{uuid.uuid4().hex[:8]}",
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "message": message[:160],
-            "sender_name": agent_name,
-            "sender_phone": agent_phone,
-            "recipient_phone": prospect_phone,
-            "status": "sent",
-            "brevo_message_id": response_data.get("messageId")
-        }
-        
-        # Update prospect with SMS history
-        # First ensure sms_history is an array
-        current_prospect = await db.prospects.find_one({"prospect_id": prospect_id}, {"sms_history": 1})
-        if current_prospect and current_prospect.get("sms_history") is None:
-            await db.prospects.update_one(
-                {"prospect_id": prospect_id},
-                {"$set": {"sms_history": []}}
-            )
-        
-        await db.prospects.update_one(
-            {"prospect_id": prospect_id},
-            {
-                "$push": {"sms_history": sms_entry},
-                "$set": {
-                    "last_activity_date": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        )
-        
-        # Recalculate score after activity
-        await calculate_prospect_score(prospect_id, user.user_id)
-        
-        logger.info(f"SMS sent from {sender_name} to {prospect_phone} for prospect {prospect_id}")
-        
-        return {
-            "success": True,
-            "message_id": sms_entry["id"],
-            "status": "sent",
-            "sender_name": agent_name
-        }
-        
-    except httpx.HTTPStatusError as e:
-        error_body = e.response.json() if e.response.content else {}
-        error_msg = error_body.get("message", str(e))
-        if "not_enough_credits" in str(error_body):
-            error_msg = "Crédits SMS insuffisants. Rechargez sur app.brevo.com"
-        logger.error(f"SMS sending error: {error_msg}")
-        raise HTTPException(status_code=400, detail=error_msg)
-    except Exception as e:
-        logger.error(f"SMS sending error: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur d'envoi SMS: {str(e)}")
-
-@api_router.post("/prospects/{prospect_id}/sms-opt-out")
-async def toggle_sms_opt_out(request: Request, prospect_id: str):
-    """Toggle SMS opt-out status for a prospect"""
-    user = await require_active_subscription(request)
-    
-    body = await request.json()
-    opt_out = body.get("opt_out", True)
-    
-    result = await db.prospects.update_one(
-        {"prospect_id": prospect_id, "user_id": user.user_id},
-        {"$set": {
-            "sms_opt_out": opt_out,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    return {"sms_opt_out": opt_out}
-
-
-# ==================== BREVO SMS WEBHOOK ====================
-
-@api_router.post("/webhooks/brevo-sms")
-async def brevo_sms_webhook(request: Request):
-    """
-    Receive SMS reply webhook from Brevo.
-    Brevo sends a POST request when a prospect replies to an SMS.
-    The reply is stored in the prospect's sms_history.
-    """
-    try:
-        body = await request.json()
-        logger.info(f"Brevo SMS webhook received: {body}")
-        
-        # Extract webhook data
-        event_status = body.get("status", "")
-        recipient_phone = body.get("to", "")  # The phone that received the original SMS (prospect)
-        reply_text = body.get("reply", "")
-        reference = body.get("reference", "")  # Original SMS ID
-        
-        # Only process reply events
-        if event_status != "replied" or not reply_text:
-            return {"status": "ignored", "reason": "not a reply event"}
-        
-        # Format phone number for lookup
-        if recipient_phone:
-            recipient_phone_clean = recipient_phone.strip().replace(" ", "")
-            if not recipient_phone_clean.startswith("+"):
-                recipient_phone_clean = "+" + recipient_phone_clean
-        else:
-            return {"status": "error", "reason": "no recipient phone"}
-        
-        # Find the prospect by phone number
-        # We search for prospects where we sent SMS to this number
-        prospect = await db.prospects.find_one(
-            {"phone": {"$regex": recipient_phone_clean[-9:]}},  # Match last 9 digits
-            {"_id": 0, "prospect_id": 1, "user_id": 1, "full_name": 1, "sms_history": 1}
-        )
-        
-        if not prospect:
-            logger.warning(f"Prospect not found for phone: {recipient_phone_clean}")
-            return {"status": "error", "reason": "prospect not found"}
-        
-        # Create reply entry
-        reply_entry = {
-            "id": f"sms_reply_{uuid.uuid4().hex[:8]}",
-            "received_at": datetime.now(timezone.utc).isoformat(),
-            "message": reply_text,
-            "sender_phone": recipient_phone_clean,  # The prospect's phone
-            "type": "received",  # Mark as received (not sent)
-            "reference": reference
-        }
-        
-        # Add reply to SMS history
-        await db.prospects.update_one(
-            {"prospect_id": prospect["prospect_id"]},
-            {
-                "$push": {"sms_history": reply_entry},
-                "$set": {
-                    "last_activity_date": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        )
-        
-        # Recalculate score (prospect replied = hot!)
-        await calculate_prospect_score(prospect["prospect_id"], prospect["user_id"])
-        
-        logger.info(f"SMS reply stored for prospect {prospect['prospect_id']}: {reply_text[:50]}...")
-        
-        return {
-            "status": "success",
-            "prospect_id": prospect["prospect_id"],
-            "prospect_name": prospect.get("full_name", "Unknown")
-        }
-        
-    except Exception as e:
-        logger.error(f"Brevo webhook error: {e}")
-        # Always return 200 to acknowledge the webhook
-        return {"status": "error", "message": str(e)}
-
-
-@api_router.get("/webhooks/brevo-sms/setup-info")
-async def brevo_webhook_setup_info(request: Request):
-    """
-    Get the webhook URL to configure in Brevo.
-    This endpoint returns the URL that should be set up in Brevo's webhook settings.
-    """
-    user = await require_auth(request)
-    
-    # Get the base URL from environment or construct it
-    base_url = os.environ.get("REACT_APP_BACKEND_URL", "")
-    if not base_url:
-        base_url = "https://today-tasks-preview.preview.emergentagent.com"
-    
-    webhook_url = f"{base_url}/api/webhooks/brevo-sms"
-    
-    return {
-        "webhook_url": webhook_url,
-        "instructions": {
-            "fr": [
-                "1. Connectez-vous à app.brevo.com",
-                "2. Allez dans Settings > Webhooks",
-                "3. Créez un nouveau webhook avec:",
-                f"   - URL: {webhook_url}",
-                "   - Events: reply (SMS replies)",
-                "   - Type: Transactional SMS",
-                "4. Activez le webhook"
-            ],
-            "en": [
-                "1. Log in to app.brevo.com",
-                "2. Go to Settings > Webhooks",
-                "3. Create a new webhook with:",
-                f"   - URL: {webhook_url}",
-                "   - Events: reply (SMS replies)",
-                "   - Type: Transactional SMS",
-                "4. Enable the webhook"
-            ]
-        }
-    }
 
 
 # ==================== NOTIFICATION ENDPOINTS ====================
@@ -3158,15 +2227,34 @@ async def root():
 # Include the router in the main app
 app.include_router(api_router)
 
-# CORS configuration - simplified since we don't use cookies anymore
+# CORS configuration - must list explicit origins when using credentials
+ALLOWED_ORIGINS = [
+    "https://trykolo.io",
+    "https://www.trykolo.io",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# Add any additional origins from environment
+env_origins = os.environ.get('CORS_ORIGINS', '')
+if env_origins:
+    ALLOWED_ORIGINS.extend([o.strip() for o in env_origins.split(',') if o.strip()])
+
+# Also include the preview URL pattern
+import re
+preview_pattern = re.compile(r'https://.*\.preview\.emergentagent\.com')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r'https://.*\.preview\.emergentagent\.com',
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ==================== BACKGROUND SCHEDULER ====================
+import asyncio
 import threading
 
 async def run_background_scheduler():

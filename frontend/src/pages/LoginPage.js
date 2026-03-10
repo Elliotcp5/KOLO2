@@ -5,7 +5,6 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
-import { trackLogin, setUserId } from '../utils/analytics';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -24,37 +23,36 @@ const LoginPage = () => {
     if (!email || !password) return;
     
     setLoading(true);
-    
-    const trimmedEmail = email.trim().toLowerCase();
 
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password })
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
       });
-      
+
       const data = await response.json();
       
-      if (response.ok && data.token) {
-        localStorage.setItem('kolo_token', data.token);
-        trackLogin('email');
-        setUserId(data.user_id);
-        login({
-          user_id: data.user_id,
-          email: data.email,
-          subscription_status: data.subscription_status,
-          trial_ends_at: data.trial_ends_at,
-          token: data.token
-        });
-        window.location.href = '/app';
-      } else {
+      if (!response.ok) {
         toast.error(data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
         setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur' : 'Server connection error');
+      
+      // Create clean user data with token
+      const userData = {
+        user_id: data.user_id,
+        email: data.email,
+        subscription_status: data.subscription_status,
+        trial_ends_at: data.trial_ends_at,
+        token: data.token
+      };
+      login(userData);
+      
+      window.location.href = '/app';
+    } catch (err) {
+      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
       setLoading(false);
     }
   };
