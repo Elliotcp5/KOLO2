@@ -23,36 +23,52 @@ const LoginPage = () => {
     if (!email || !password) return;
     
     setLoading(true);
+    
+    const trimmedEmail = email.trim().toLowerCase();
 
     try {
+      // Use fetch with cache-busting headers
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ 
+          email: trimmedEmail, 
+          password 
+        }),
+        cache: 'no-store'
       });
-
+      
       const data = await response.json();
       
-      if (!response.ok) {
-        toast.error(data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password'));
+      if (response.ok) {
+        // Store token immediately
+        if (data.token) {
+          localStorage.setItem('kolo_token', data.token);
+        }
+        
+        // Create clean user data with token
+        const userData = {
+          user_id: data.user_id,
+          email: data.email,
+          subscription_status: data.subscription_status,
+          trial_ends_at: data.trial_ends_at,
+          token: data.token
+        };
+        login(userData);
+        
+        window.location.href = '/app';
+      } else {
+        const errorMsg = data.detail || (locale === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password');
+        toast.error(errorMsg);
         setLoading(false);
-        return;
       }
-      
-      // Create clean user data with token
-      const userData = {
-        user_id: data.user_id,
-        email: data.email,
-        subscription_status: data.subscription_status,
-        trial_ends_at: data.trial_ends_at,
-        token: data.token
-      };
-      login(userData);
-      
-      window.location.href = '/app';
-    } catch (err) {
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error(locale === 'fr' ? 'Erreur de connexion au serveur. Vérifiez votre connexion internet.' : 'Server connection error. Check your internet.');
       setLoading(false);
     }
   };

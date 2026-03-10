@@ -532,7 +532,14 @@ async def get_current_user(request: Request):
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
+    # Check for session token in cookies first, then in Authorization header
     session_token = request.cookies.get('session_token')
+    
+    if not session_token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            session_token = auth_header[7:]
+    
     if session_token:
         await db.user_sessions.delete_many({"session_token": session_token})
     
@@ -886,34 +893,38 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
     """Create a Stripe Customer Portal session for billing management"""
     user = await require_active_subscription(http_request)
     
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+    
     # Check if user has a stripe customer ID
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
     stripe_customer_id = user_doc.get("stripe_customer_id") if user_doc else None
     
     if not stripe_customer_id:
-        # Try to find customer by email using Stripe API
+        # Try to find or create customer
         try:
-            import stripe
-            stripe.api_key = STRIPE_API_KEY
-            
+            # First, check if customer exists by email
             customers = stripe.Customer.list(email=user.email, limit=1)
             if customers.data:
                 stripe_customer_id = customers.data[0].id
-                # Save customer ID for future use
-                await db.users.update_one(
-                    {"user_id": user.user_id},
-                    {"$set": {"stripe_customer_id": stripe_customer_id}}
+            else:
+                # Create a new Stripe customer
+                customer = stripe.Customer.create(
+                    email=user.email,
+                    metadata={"user_id": user.user_id}
                 )
+                stripe_customer_id = customer.id
+            
+            # Save customer ID for future use
+            await db.users.update_one(
+                {"user_id": user.user_id},
+                {"$set": {"stripe_customer_id": stripe_customer_id}}
+            )
         except Exception as e:
-            logger.error(f"Stripe customer lookup error: {e}")
-    
-    if not stripe_customer_id:
-        raise HTTPException(status_code=400, detail="No billing information found. Please contact support.")
+            logger.error(f"Stripe customer creation error: {e}")
+            raise HTTPException(status_code=400, detail="Impossible de créer le profil de facturation. Veuillez réessayer.")
     
     try:
-        import stripe
-        stripe.api_key = STRIPE_API_KEY
-        
         # Get origin URL for return
         referer = http_request.headers.get('referer', '')
         if referer:
@@ -932,7 +943,7 @@ async def create_billing_portal(request: BillingPortalRequest, http_request: Req
         return {"url": portal_session.url}
     except Exception as e:
         logger.error(f"Billing portal error: {e}")
-        raise HTTPException(status_code=500, detail="Unable to access billing portal. Please try again later.")
+        raise HTTPException(status_code=500, detail="Impossible d'accéder au portail de facturation. Veuillez réessayer.")
 
 @api_router.get("/subscription/status")
 async def get_subscription_status(http_request: Request):
@@ -2227,28 +2238,10 @@ async def root():
 # Include the router in the main app
 app.include_router(api_router)
 
-# CORS configuration - must list explicit origins when using credentials
-ALLOWED_ORIGINS = [
-    "https://trykolo.io",
-    "https://www.trykolo.io",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
-# Add any additional origins from environment
-env_origins = os.environ.get('CORS_ORIGINS', '')
-if env_origins:
-    ALLOWED_ORIGINS.extend([o.strip() for o in env_origins.split(',') if o.strip()])
-
-# Also include the preview URL pattern
-import re
-preview_pattern = re.compile(r'https://.*\.preview\.emergentagent\.com')
-
+# CORS configuration - simplified since we don't use cookies anymore
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r'https://.*\.preview\.emergentagent\.com',
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
