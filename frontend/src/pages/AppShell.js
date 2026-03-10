@@ -1165,7 +1165,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
   }, []);
 
   const handleCreateProspect = async () => {
-    if (!newProspect.full_name || !newProspect.phone) return;
+    if (!newProspect.full_name || !newProspect.phone || !newProspect.email || !newProspect.notes.trim()) return;
     
     setCreating(true);
     try {
@@ -1304,21 +1304,25 @@ const ProspectsTab = ({ onSelectProspect }) => {
             </div>
           </div>
 
-          {/* Notes */}
-          <textarea
-            className="input-dark"
-            placeholder={t('addNotes')}
-            value={newProspect.notes}
-            onChange={(e) => setNewProspect({...newProspect, notes: e.target.value})}
-            rows={3}
-            style={{ resize: 'none' }}
-          />
+          {/* Notes - Required */}
+          <div>
+            <label className="text-caption" style={{ marginBottom: '8px', display: 'block' }}>{t('addNotes')}</label>
+            <textarea
+              className="input-dark"
+              placeholder={t('notesPlaceholder')}
+              value={newProspect.notes}
+              onChange={(e) => setNewProspect({...newProspect, notes: e.target.value})}
+              rows={4}
+              style={{ resize: 'none' }}
+              data-testid="prospect-notes-input"
+            />
+          </div>
 
           {/* Save button at the bottom */}
           <button
             className="btn-primary"
             onClick={handleCreateProspect}
-            disabled={!newProspect.full_name || !newProspect.phone || !newProspect.email || creating}
+            disabled={!newProspect.full_name || !newProspect.phone || !newProspect.email || !newProspect.notes.trim() || creating}
             data-testid="save-prospect-button"
             style={{ marginTop: '8px' }}
           >
@@ -3994,11 +3998,15 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const { t, locale } = useLocale();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
+
+  const isFormValid = name.trim() && phone.trim() && email.trim() && notes.trim();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!isFormValid) return;
     
     setCreating(true);
     try {
@@ -4007,11 +4015,11 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: name.trim(),
-          phone: phone.trim() || '',
-          email: '',
+          phone: phone.trim(),
+          email: email.trim(),
           source: 'manual',
           status: 'new',
-          notes: ''
+          notes: notes.trim()
         })
       });
 
@@ -4047,7 +4055,9 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           width: '100%',
           maxWidth: '430px',
           padding: '20px',
-          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))'
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -4070,6 +4080,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
+            data-testid="quick-prospect-name"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -4084,9 +4095,10 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           
           <input
             type="tel"
-            placeholder={locale === 'fr' ? 'Téléphone (optionnel)' : 'Phone (optional)'}
+            placeholder={locale === 'fr' ? 'Téléphone *' : 'Phone *'}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            data-testid="quick-prospect-phone"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -4095,23 +4107,72 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               borderRadius: '10px',
               color: 'var(--text)',
               fontSize: '16px',
-              marginBottom: '16px'
+              marginBottom: '12px'
             }}
           />
+
+          <input
+            type="email"
+            placeholder={locale === 'fr' ? 'Email *' : 'Email *'}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            data-testid="quick-prospect-email"
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              color: 'var(--text)',
+              fontSize: '16px',
+              marginBottom: '12px'
+            }}
+          />
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginBottom: '6px', 
+              display: 'block' 
+            }}>
+              {locale === 'fr' ? 'Description du projet *' : 'Project description *'}
+            </label>
+            <textarea
+              placeholder={locale === 'fr' 
+                ? 'Décrivez le projet : type de bien, budget, délai, besoins...' 
+                : 'Describe the project: property type, budget, timeline, needs...'}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              data-testid="quick-prospect-notes"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                color: 'var(--text)',
+                fontSize: '16px',
+                resize: 'none'
+              }}
+            />
+          </div>
           
           <button
             type="submit"
-            disabled={!name.trim() || creating}
+            disabled={!isFormValid || creating}
+            data-testid="quick-prospect-submit"
             style={{
               width: '100%',
               padding: '14px',
-              background: name.trim() ? 'var(--accent)' : 'var(--surface)',
+              background: isFormValid ? 'var(--accent)' : 'var(--surface)',
               border: 'none',
               borderRadius: '10px',
-              color: name.trim() ? 'white' : 'var(--muted)',
+              color: isFormValid ? 'white' : 'var(--muted)',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: name.trim() ? 'pointer' : 'not-allowed'
+              cursor: isFormValid ? 'pointer' : 'not-allowed'
             }}
           >
             {creating ? (

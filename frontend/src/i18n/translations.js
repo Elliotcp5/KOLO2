@@ -135,7 +135,8 @@ const translations = {
     statusInProgress: "In Progress",
     statusClosed: "Closed",
     statusLost: "Lost",
-    addNotes: "Add notes (optional)",
+    addNotes: "Project description *",
+    notesPlaceholder: "Describe the prospect's project in detail: property type, budget, timeline, specific needs... The more detailed, the better our AI can help you!",
     
     // Payment
     processing: "Processing...",
@@ -143,6 +144,7 @@ const translations = {
     paymentFailed: "Payment failed. Please try again.",
     alreadySubscribed: "You already have an active subscription. Please log in.",
     enterEmail: "Enter your email (optional)",
+    fillAllFields: "Please fill all required fields",
     
     // Auth
     subscriptionRequired: "Active subscription required",
@@ -312,7 +314,8 @@ const translations = {
     statusInProgress: "En cours",
     statusClosed: "Conclu",
     statusLost: "Perdu",
-    addNotes: "Ajouter des notes (optionnel)",
+    addNotes: "Description du projet *",
+    notesPlaceholder: "Décrivez le projet du prospect en détail : type de bien recherché, budget, délai, besoins spécifiques... Plus vous êtes précis, mieux notre IA pourra vous aider !",
     
     // Payment
     processing: "Traitement...",
@@ -320,6 +323,7 @@ const translations = {
     paymentFailed: "Échec du paiement. Veuillez réessayer.",
     alreadySubscribed: "Vous avez déjà un abonnement actif. Veuillez vous connecter.",
     enterEmail: "Entrez votre email (optionnel)",
+    fillAllFields: "Veuillez remplir tous les champs obligatoires",
     
     // Auth
     subscriptionRequired: "Abonnement actif requis",

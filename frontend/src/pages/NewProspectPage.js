@@ -24,8 +24,8 @@ const NewProspectPage = () => {
 
   const handleSave = async () => {
     // Validate required fields
-    if (!formData.full_name || !formData.phone || !formData.email) {
-      toast.error('Please fill all required fields');
+    if (!formData.full_name || !formData.phone || !formData.email || !formData.notes.trim()) {
+      toast.error(t('fillAllFields') || 'Please fill all required fields');
       return;
     }
 
@@ -85,7 +85,7 @@ const NewProspectPage = () => {
           <button 
             className="save"
             onClick={handleSave}
-            disabled={saving || !formData.full_name || !formData.phone || !formData.email}
+            disabled={saving || !formData.full_name || !formData.phone || !formData.email || !formData.notes.trim()}
             data-testid="save-button"
           >
             {saving ? '...' : t('save')}
@@ -160,13 +160,18 @@ const NewProspectPage = () => {
             ))}
           </div>
 
-          {/* Notes */}
+          {/* Notes - Required */}
+          <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('addNotes')}
+          </label>
           <textarea
             className="textarea-dark"
-            placeholder={t('addNotes')}
+            placeholder={t('notesPlaceholder')}
             value={formData.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
             data-testid="notes-input"
+            rows={4}
+            style={{ marginBottom: '16px' }}
           />
         </div>
       </div>
