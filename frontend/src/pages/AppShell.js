@@ -269,15 +269,24 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const handleTouchMove = (e, taskId) => {
     if (swipingTaskId !== taskId) return;
     const diff = e.touches[0].clientX - swipeX;
-    // Only allow right swipe (positive diff) up to 100px
     const element = e.currentTarget;
-    if (diff > 0 && diff < 100) {
-      element.style.transform = `translateX(${diff}px)`;
-      element.style.opacity = 1 - (diff / 150);
+    
+    // Allow right swipe (positive diff) with smooth response
+    if (diff > 0) {
+      // Use easing for more natural feel
+      const easedDiff = Math.min(diff * 1.2, 120);
+      element.style.transform = `translateX(${easedDiff}px)`;
+      element.style.opacity = Math.max(0.3, 1 - (easedDiff / 150));
       
-      // Haptic feedback when reaching threshold (60px)
-      if (diff >= 60 && diff < 65 && 'vibrate' in navigator) {
-        navigator.vibrate(5); // Quick micro-vibration
+      // Show visual indicator when threshold reached (50px - lower threshold for easier swipe)
+      if (diff >= 50) {
+        element.style.background = 'rgba(34, 197, 94, 0.2)'; // Green tint
+        // Haptic feedback once when crossing threshold
+        if (diff < 55 && 'vibrate' in navigator) {
+          navigator.vibrate(8);
+        }
+      } else {
+        element.style.background = 'var(--surface)';
       }
     }
   };
@@ -287,15 +296,27 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     const element = e.currentTarget;
     const currentX = parseFloat(element.style.transform?.replace('translateX(', '').replace('px)', '') || 0);
     
-    if (currentX > 60) {
-      // Complete the task
+    // Lower threshold (50px) for easier completion
+    if (currentX > 50) {
+      // Complete the task with smooth animation
+      element.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
       element.style.transform = 'translateX(100%)';
       element.style.opacity = 0;
-      setTimeout(() => handleCompleteTask(taskId), 200);
+      setTimeout(() => {
+        handleCompleteTask(taskId);
+        // Reset element styles
+        element.style.transition = '';
+        element.style.background = 'var(--surface)';
+      }, 250);
     } else {
-      // Reset
+      // Reset with smooth animation
+      element.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out, background 0.2s ease';
       element.style.transform = 'translateX(0)';
       element.style.opacity = 1;
+      element.style.background = 'var(--surface)';
+      setTimeout(() => {
+        element.style.transition = '';
+      }, 200);
     }
     
     setSwipingTaskId(null);
@@ -365,18 +386,19 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           gap: '10px', 
           marginBottom: '20px' 
         }}>
-          {/* Tasks Progress */}
+          {/* Tasks Progress - More explicit */}
           <div style={{ 
             background: 'var(--surface)', 
             borderRadius: '12px', 
             padding: '12px',
             border: '1px solid var(--border)'
           }}>
-            <div style={{ fontSize: '22px', fontWeight: '600', color: 'var(--accent)' }}>
-              {stats.completedToday}/{stats.totalToday || tasks.length}
+            <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--accent)' }}>
+              {stats.completedToday}
+              <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--muted)' }}> / {stats.totalToday || tasks.length + stats.completedToday}</span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
-              {locale === 'fr' ? 'Tâches' : 'Tasks'}
+              {locale === 'fr' ? 'Faites' : 'Done'}
             </div>
           </div>
           
@@ -387,11 +409,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             padding: '12px',
             border: '1px solid var(--border)'
           }}>
-            <div style={{ fontSize: '22px', fontWeight: '600', color: 'white' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: 'white' }}>
               {stats.activeProspects}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
-              {locale === 'fr' ? 'Prospects' : 'Prospects'}
+              Prospects
             </div>
           </div>
           
@@ -402,7 +424,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             padding: '12px',
             border: '1px solid var(--border)'
           }}>
-            <div style={{ fontSize: '22px', fontWeight: '600', color: tasks.length > 0 ? '#F59E0B' : 'var(--success)' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: tasks.length > 0 ? '#F59E0B' : 'var(--success)' }}>
               {tasks.length}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
@@ -560,10 +582,6 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         </div>
       ) : (
         <>
-          {/* Swipe hint */}
-          <p style={{ fontSize: '11px', color: 'var(--muted-dark)', marginBottom: '8px', textAlign: 'center' }}>
-            {locale === 'fr' ? '← Glissez pour compléter →' : '← Swipe to complete →'}
-          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {tasks.map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
@@ -1049,7 +1067,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 };
 
 // ==================== PROSPECTS TAB ====================
-const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed }) => {
+const ProspectsTab = ({ onSelectProspect }) => {
   const { t } = useLocale();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1063,21 +1081,6 @@ const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed })
     notes: ''
   });
   const [creating, setCreating] = useState(false);
-
-  // Open add form when triggered from FAB
-  useEffect(() => {
-    if (showAddFormFromFab) {
-      setShowAddForm(true);
-    }
-  }, [showAddFormFromFab]);
-
-  // Notify parent when form is closed
-  const handleCloseAddForm = () => {
-    setShowAddForm(false);
-    if (onAddFormClosed) {
-      onAddFormClosed();
-    }
-  };
 
   const fetchProspects = async () => {
     try {
@@ -1115,7 +1118,7 @@ const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed })
         }
         toast.success(t('prospectCreated') || 'Lead créé!');
         setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'new', notes: '' });
-        handleCloseAddForm();
+        setShowAddForm(false);
         fetchProspects();
       } else {
         throw new Error('Failed to create prospect');
@@ -1165,7 +1168,7 @@ const ProspectsTab = ({ onSelectProspect, showAddFormFromFab, onAddFormClosed })
         }}>
           <h2 style={{ fontSize: '17px', fontWeight: '600' }}>{t('addProspect')}</h2>
           <button 
-            onClick={handleCloseAddForm}
+            onClick={() => setShowAddForm(false)}
             style={{ 
               background: 'none', 
               border: 'none', 
@@ -3923,65 +3926,38 @@ const TasksTab = ({ onRefresh }) => {
 };
 
 // ==================== BOTTOM NAVIGATION ====================
-const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
+const BottomNav = ({ activeTab, setActiveTab }) => {
   const { locale } = useLocale();
   
   return (
-    <nav className="bottom-nav" style={{ position: 'relative' }}>
+    <nav className="bottom-nav">
       <div 
         className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
         onClick={() => setActiveTab('today')}
         data-testid="nav-today"
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}
       >
         <Calendar strokeWidth={1.5} size={22} />
-        <span style={{ fontSize: '10px', fontWeight: '500' }}>
+        <span>
           {locale === 'fr' ? "Aujourd'hui" : 'Today'}
         </span>
       </div>
       
-      {/* Central FAB for adding prospects */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <button
-          onClick={() => {
-            // Haptic feedback on FAB press
-            if ('vibrate' in navigator) {
-              navigator.vibrate(8);
-            }
-            onAddProspect();
-          }}
-          data-testid="fab-add-prospect"
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: '-28px',
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-          }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <Plus size={28} strokeWidth={2.5} style={{ color: 'white' }} />
-        </button>
+      <div 
+        className={`nav-item ${activeTab === 'prospects' ? 'active' : ''}`}
+        onClick={() => setActiveTab('prospects')}
+        data-testid="nav-prospects"
+      >
+        <Briefcase strokeWidth={1.5} size={22} />
+        <span>Prospects</span>
       </div>
       
       <div 
         className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
         onClick={() => setActiveTab('tasks')}
         data-testid="nav-tasks"
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}
       >
         <Check strokeWidth={1.5} size={22} />
-        <span style={{ fontSize: '10px', fontWeight: '500' }}>
+        <span>
           {locale === 'fr' ? 'Tâches' : 'Tasks'}
         </span>
       </div>
@@ -4052,13 +4028,6 @@ const AppShell = () => {
   };
 
   const [showSettings, setShowSettings] = useState(false);
-  const [showAddProspectFromFab, setShowAddProspectFromFab] = useState(false);
-
-  // Handle FAB click to add prospect
-  const handleAddProspectFromFab = () => {
-    setActiveTab('prospects');
-    setShowAddProspectFromFab(true);
-  };
 
   const renderTab = () => {
     if (showSettings) {
@@ -4077,7 +4046,7 @@ const AppShell = () => {
 
     switch (activeTab) {
       case 'prospects':
-        return <ProspectsTab key={refreshKey} onSelectProspect={handleSelectProspect} showAddFormFromFab={showAddProspectFromFab} onAddFormClosed={() => setShowAddProspectFromFab(false)} />;
+        return <ProspectsTab key={refreshKey} onSelectProspect={handleSelectProspect} />;
       case 'tasks':
         return <TasksTab key={refreshKey} onRefresh={() => setRefreshKey(prev => prev + 1)} />;
       default:
@@ -4088,10 +4057,10 @@ const AppShell = () => {
   return (
     <div className="mobile-frame">
       <div className="page-container safe-area-top">
-        <div className="scroll-content">
+        <div className="scroll-content" style={{ paddingBottom: '80px' }}>
           {renderTab()}
         </div>
-        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
+        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />}
       </div>
       
       {/* Notification Permission Prompt */}
