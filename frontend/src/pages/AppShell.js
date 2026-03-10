@@ -658,15 +658,15 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 key={task.task_id}
                 style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}
               >
-                {/* Swipe background - clean green */}
+                {/* Swipe background - clean green, slightly inset to avoid border bleed */}
                 <div style={{
                   position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '100%',
+                  left: '1px',
+                  top: '1px',
+                  bottom: '1px',
+                  right: '1px',
                   background: 'var(--success)',
-                  borderRadius: '12px',
+                  borderRadius: '11px',
                   display: 'flex',
                   alignItems: 'center',
                   paddingLeft: '20px'
