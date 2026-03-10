@@ -10,12 +10,12 @@
   --muted: #8E8E93;
   --muted-dark: #48484A;
   --border: rgba(255, 255, 255, 0.06);
-  --accent: #D946EF;
-  --accent-2: #E879F9;
+  --accent: #8B5CF6;
+  --accent-2: #A78BFA;
   --accent-pink: #EC4899;
-  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
-  --accent-gradient-hover: linear-gradient(135deg, #A78BFA 0%, #F472B6 100%);
-  --accent-glow: rgba(217, 70, 239, 0.25);
+  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+  --accent-glow: rgba(139, 92, 246, 0.2);
   --shadow: rgba(0, 0, 0, 0.4);
   --success: #22C55E;
   --error: #EF4444;

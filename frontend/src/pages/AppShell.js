@@ -23,6 +23,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const { t, formatDate, locale } = useLocale();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -31,6 +32,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const [swipingTaskId, setSwipingTaskId] = useState(null);
   const [swipeX, setSwipeX] = useState(0);
   const [completedTaskId, setCompletedTaskId] = useState(null);
+  const [viewMode, setViewMode] = useState('today'); // 'today' or 'all'
   
   // AI SMS Modal state
   const [showSmsModal, setShowSmsModal] = useState(false);
@@ -46,14 +48,21 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 
   const fetchTasks = async () => {
     try {
+      // Fetch today's tasks
       const response = await authFetch(`${API_URL}/api/tasks/today`);
       if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks || []);
         setSubscriptionBlocked(false);
       } else if (response.status === 403) {
-        // Subscription required
         setSubscriptionBlocked(true);
+      }
+      
+      // Also fetch all tasks for the "all" view
+      const allResponse = await authFetch(`${API_URL}/api/tasks`);
+      if (allResponse.ok) {
+        const allData = await allResponse.json();
+        setAllTasks(allData.tasks || []);
       }
     } catch (e) {
       // Silent fail
@@ -351,7 +360,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
         <h1 className="text-headline" style={{ fontSize: '26px' }}>
-          {t('today')}
+          {viewMode === 'today' ? t('today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
         </h1>
         <button 
           className="btn-ghost" 
@@ -365,12 +374,58 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       </div>
 
       {/* Date */}
-      <p className="text-muted" style={{ marginBottom: '16px', textTransform: 'capitalize', fontSize: '13px' }}>
+      <p className="text-muted" style={{ marginBottom: '12px', textTransform: 'capitalize', fontSize: '13px' }}>
         {formatDate(new Date())}
       </p>
       
-      {/* Mini Dashboard Stats */}
-      {!loading && !subscriptionBlocked && (
+      {/* Segment Control - Today / All Tasks */}
+      <div style={{ 
+        display: 'flex', 
+        background: 'var(--surface)', 
+        borderRadius: '10px', 
+        padding: '4px',
+        marginBottom: '16px'
+      }}>
+        <button
+          onClick={() => setViewMode('today')}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: 'none',
+            background: viewMode === 'today' ? 'var(--accent)' : 'transparent',
+            color: viewMode === 'today' ? 'white' : 'var(--muted)',
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          data-testid="segment-today"
+        >
+          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+        </button>
+        <button
+          onClick={() => setViewMode('all')}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: 'none',
+            background: viewMode === 'all' ? 'var(--accent)' : 'transparent',
+            color: viewMode === 'all' ? 'white' : 'var(--muted)',
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          data-testid="segment-all-tasks"
+        >
+          {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+        </button>
+      </div>
+      
+      {/* Mini Dashboard Stats - Only in Today view */}
+      {!loading && !subscriptionBlocked && viewMode === 'today' && (
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -425,8 +480,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         </div>
       )}
       
-      {/* AI Suggestions Banner - Enhanced visibility */}
-      {!loading && !subscriptionBlocked && aiSuggestions.length > 0 && (
+      {/* AI Suggestions Banner - Enhanced visibility - Only in Today view */}
+      {!loading && !subscriptionBlocked && viewMode === 'today' && aiSuggestions.length > 0 && (
         <div 
           style={{ 
             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
@@ -563,18 +618,18 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             {locale === 'fr' ? "S'abonner maintenant" : 'Subscribe now'}
           </button>
         </div>
-      ) : tasks.length === 0 ? (
+      ) : (viewMode === 'today' ? tasks : allTasks).length === 0 ? (
         <div className="empty-state">
           <div className="icon-wrapper">
             <Check strokeWidth={2} />
           </div>
-          <h3 className="title">{t('allCaughtUp')}</h3>
-          <p className="subtitle">{t('noPendingTask')}</p>
+          <h3 className="title">{viewMode === 'today' ? t('allCaughtUp') : (locale === 'fr' ? 'Aucune tâche' : 'No tasks')}</h3>
+          <p className="subtitle">{viewMode === 'today' ? t('noPendingTask') : (locale === 'fr' ? 'Créez votre première tâche' : 'Create your first task')}</p>
         </div>
       ) : (
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {tasks.map((task) => {
+          {(viewMode === 'today' ? tasks : allTasks).map((task) => {
             const IconComponent = getTaskTypeIcon(task.task_type);
             const taskLabel = getTaskTypeLabel(task.task_type);
             const showActions = hasActionButtons(task.task_type);
@@ -683,7 +738,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                         </span>
                       )}
                       <span style={{ color: 'var(--muted-dark)' }}>•</span>
-                      <span style={{ color: isOverdue ? '#F59E0B' : 'var(--muted)' }}>{taskTime}</span>
+                      <span style={{ color: isOverdue ? '#F59E0B' : 'var(--muted)' }}>
+                        {viewMode === 'all' && taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' }) + ' '}
+                        {taskTime}
+                      </span>
                       {isOverdue && <span style={{ color: '#F59E0B' }}>({locale === 'fr' ? 'En retard' : 'Overdue'})</span>}
                     </div>
                   </div>
