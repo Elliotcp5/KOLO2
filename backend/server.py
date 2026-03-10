@@ -1383,6 +1383,37 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
+# ADMIN: Force reset password for specific users (production fix)
+@api_router.get("/auth/force-reset")
+async def force_reset_passwords():
+    """Force reset passwords for admin accounts - ONE TIME USE"""
+    results = []
+    accounts = [
+        ("pressardelliot@gmail.com", "Test123"),
+        ("pressardhugo@gmail.com", "Test123")
+    ]
+    for email, pwd in accounts:
+        hashed = hash_password(pwd)
+        result = await db.users.update_one(
+            {"email": email},
+            {"$set": {"password_hash": hashed}},
+            upsert=False
+        )
+        if result.matched_count > 0:
+            results.append(f"{email}: OK")
+        else:
+            # Create user if not exists
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            await db.users.insert_one({
+                "user_id": user_id,
+                "email": email,
+                "password_hash": hashed,
+                "subscription_status": "active",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            results.append(f"{email}: CREATED")
+    return {"status": "done", "results": results}
+
 # Free Trial Registration (no payment required)
 @api_router.post("/auth/register")
 async def register_free_trial(request: RegisterRequest, response: Response):
