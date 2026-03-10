@@ -3178,6 +3178,41 @@ async def get_vapid_public_key():
 async def root():
     return {"message": "KOLO API v1.0.0"}
 
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint with DB status"""
+    try:
+        # Test DB connection
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "ok",
+        "db": db_status,
+        "mongo_url_set": bool(os.environ.get('MONGO_URL')),
+        "db_name": os.environ.get('DB_NAME', 'not_set')
+    }
+
+@api_router.get("/debug/auth-test")
+async def debug_auth_test(email: str):
+    """Debug endpoint to check if user exists"""
+    try:
+        user = await db.users.find_one({"email": email.lower().strip()}, {"_id": 0, "email": 1, "user_id": 1, "subscription_status": 1, "password_hash": 1})
+        if user:
+            has_password = bool(user.get("password_hash"))
+            return {
+                "exists": True,
+                "email": user.get("email"),
+                "user_id": user.get("user_id"),
+                "subscription_status": user.get("subscription_status"),
+                "has_password": has_password
+            }
+        return {"exists": False, "email": email}
+    except Exception as e:
+        return {"error": str(e)}
+
 # Include the router in the main app
 app.include_router(api_router)
 
