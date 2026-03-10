@@ -52,7 +52,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       const response = await authFetch(`${API_URL}/api/tasks/today`);
       if (response.ok) {
         const data = await response.json();
-        setTasks(data.tasks || []);
+        // Filter out follow_up tasks (replaced by AI)
+        const filteredTasks = (data.tasks || []).filter(t => t.task_type !== 'follow_up');
+        setTasks(filteredTasks);
         setSubscriptionBlocked(false);
       } else if (response.status === 403) {
         setSubscriptionBlocked(true);
@@ -62,7 +64,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       const allResponse = await authFetch(`${API_URL}/api/tasks`);
       if (allResponse.ok) {
         const allData = await allResponse.json();
-        setAllTasks(allData.tasks || []);
+        // Filter out follow_up tasks
+        const filteredAllTasks = (allData.tasks || []).filter(t => t.task_type !== 'follow_up');
+        setAllTasks(filteredAllTasks);
       }
     } catch (e) {
       // Silent fail
@@ -78,8 +82,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
       const allTasksResponse = await authFetch(`${API_URL}/api/tasks`);
       if (allTasksResponse.ok) {
         const data = await allTasksResponse.json();
+        // Filter out follow_up tasks
+        const filteredTasks = data.tasks.filter(t => t.task_type !== 'follow_up');
         const today = new Date().toDateString();
-        const todayTasks = data.tasks.filter(t => new Date(t.due_date).toDateString() === today);
+        const todayTasks = filteredTasks.filter(t => new Date(t.due_date).toDateString() === today);
         const completedToday = todayTasks.filter(t => t.completed).length;
         
         setStats(prev => ({
