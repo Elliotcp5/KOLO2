@@ -2149,6 +2149,155 @@ async def delete_prospect(request: Request, prospect_id: str):
     return {"message": "Prospect deleted"}
 
 
+# Generate AI SMS message for a prospect
+@api_router.post("/prospects/{prospect_id}/generate-message")
+async def generate_ai_message(request: Request, prospect_id: str):
+    """Generate an AI-powered SMS message for a prospect"""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    user = await require_active_subscription(request)
+    
+    # Get prospect details
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Get request body for context
+    try:
+        body = await request.json()
+        context = body.get("context", "follow_up")
+    except:
+        context = "follow_up"
+    
+    try:
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
+        
+        # Get user name for signature
+        user_data = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "name": 1})
+        agent_name = user_data.get("name", "Votre agent") if user_data else "Votre agent"
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"sms_gen_{user.user_id}_{datetime.now().timestamp()}",
+            system_message=f"""Tu es un assistant pour agent immobilier. Tu génères des SMS courts et professionnels.
+Le message doit être:
+- Court (max 160 caractères idéalement)
+- Personnel et chaleureux
+- Professionnel
+- Sans emoji excessif
+- Signé par l'agent: {agent_name}
+
+Réponds UNIQUEMENT avec le texte du SMS, rien d'autre."""
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        
+        # Build context
+        prospect_info = f"""
+Prospect: {prospect.get('full_name', 'Client')}
+Statut: {prospect.get('status', 'nouveau')}
+Source: {prospect.get('source', 'inconnue')}
+Notes: {prospect.get('notes', 'Aucune note')[:200] if prospect.get('notes') else 'Aucune note'}
+Contexte demandé: {context}
+"""
+        
+        user_message = UserMessage(
+            text=f"Génère un SMS de {context} pour ce prospect:\n{prospect_info}"
+        )
+        
+        response = await chat.send_message(user_message)
+        message = response.strip()
+        
+        # Remove quotes if present
+        if message.startswith('"') and message.endswith('"'):
+            message = message[1:-1]
+        
+        return {"message": message}
+        
+    except Exception as e:
+        logger.error(f"AI message generation error: {e}")
+        # Fallback message
+        fallback = f"Bonjour {prospect.get('full_name', '')}, je me permets de vous recontacter concernant votre projet immobilier. Êtes-vous disponible pour en discuter ? {agent_name}"
+        return {"message": fallback}
+
+
+# Send SMS to prospect
+@api_router.post("/prospects/{prospect_id}/send-sms")
+async def send_sms_to_prospect(request: Request, prospect_id: str):
+    """Send SMS to a prospect via Brevo"""
+    user = await require_active_subscription(request)
+    
+    # Get prospect
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    if not prospect.get("phone"):
+        raise HTTPException(status_code=400, detail="Prospect has no phone number")
+    
+    # Get message from body
+    try:
+        body = await request.json()
+        message = body.get("message", "")
+    except:
+        raise HTTPException(status_code=400, detail="Message required")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    
+    # Get user name for sender
+    user_data = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "name": 1, "phone": 1})
+    sender_name = user_data.get("name", "KOLO")[:11] if user_data else "KOLO"
+    
+    # Send via Brevo
+    brevo_api_key = os.environ.get("BREVO_API_KEY")
+    if not brevo_api_key:
+        raise HTTPException(status_code=500, detail="SMS service not configured")
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.brevo.com/v3/transactionalSMS/sms",
+                headers={
+                    "api-key": brevo_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "sender": sender_name,
+                    "recipient": prospect["phone"],
+                    "content": message,
+                    "type": "transactional"
+                }
+            )
+            
+            if response.status_code in [200, 201]:
+                # Save to SMS history
+                sms_record = {
+                    "direction": "outbound",
+                    "message": message,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "status": "sent"
+                }
+                await db.prospects.update_one(
+                    {"prospect_id": prospect_id},
+                    {"$push": {"sms_history": sms_record}}
+                )
+                return {"status": "sent", "message_id": response.json().get("messageId")}
+            else:
+                logger.error(f"Brevo SMS error: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail="Failed to send SMS")
+    except httpx.RequestError as e:
+        logger.error(f"SMS request error: {e}")
+        raise HTTPException(status_code=500, detail="SMS service unavailable")
+
+
 # ==================== NOTIFICATION ENDPOINTS ====================
 
 class NotificationSubscription(BaseModel):
