@@ -2184,16 +2184,8 @@ async def generate_ai_message(request: Request, prospect_id: str):
         chat = LlmChat(
             api_key=api_key,
             session_id=f"sms_gen_{user.user_id}_{datetime.now().timestamp()}",
-            system_message=f"""Tu es un assistant pour agent immobilier. Tu génères des SMS courts et professionnels.
-Le message doit être:
-- Court (max 160 caractères idéalement)
-- Personnel et chaleureux
-- Professionnel
-- Sans emoji excessif
-- Signé par l'agent: {agent_name}
-
-Réponds UNIQUEMENT avec le texte du SMS, rien d'autre."""
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+            system_message=f"""Agent immobilier. SMS court (<160 car), pro, signé: {agent_name}. Texte seul."""
+        ).with_model("openai", "gpt-4.1-nano")
         
         # Build context
         prospect_info = f"""

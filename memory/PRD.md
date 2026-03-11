@@ -40,7 +40,7 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - **Barre de recherche** pour filtrer les prospects
 
 ### SMS Bidirectionnels
-- Generation de messages IA personnalises
+- Generation de messages IA personnalises (GPT-4.1-nano - rapide ~2s)
 - Envoi SMS via Brevo (nom agent = expediteur)
 - **Reception des reponses** via webhook Brevo
 - Conversation style iMessage/WhatsApp
@@ -51,18 +51,20 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - Titre obligatoire + Date obligatoire
 - Heure et adresse optionnelles
 - Liaison optionnelle a un prospect existant
-- Swipe pour marquer comme terminee
+- Swipe pour marquer comme terminee (seuil 100px pour eviter accidents)
 - **Taches auto-generees (follow_up) desactivees**
 
-### Suggestions IA
-- Bloc "Suggestions IA" dans la vue Aujourd'hui
-- Affiche les prospects inactifs a relancer (3+ jours)
-- Bouton "+ Add" pour creer une tache de suivi
+### Suggestions IA - TOUJOURS VISIBLE
+- Bloc "Assistant IA" TOUJOURS visible dans la vue Aujourd'hui
+- Si suggestions: affiche prospects inactifs a relancer (3+ jours)
+- Si pas de suggestions: affiche "A jour" avec badge vert
+- Bouton "+ Ajouter" pour creer une tache de suivi
 
 ### UX Mobile Optimisee
 - **App figee** : pas de zoom, pas de bounce
 - Modal avec padding pour eviter la navigation du bas
 - Navigation : Today | [FAB +] | Prospects
+- Swipe moins sensible (100px au lieu de 50px)
 
 ## Endpoints API Cles
 - `POST /api/auth/login` - Authentification
@@ -70,32 +72,22 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - `GET /api/prospects` - Liste prospects
 - `POST /api/prospects` - Creation prospect
 - `GET /api/tasks/ai-suggestions` - Suggestions IA (prospects inactifs 3+ jours)
-- `POST /api/prospects/{id}/generate-message` - Generation SMS IA
+- `POST /api/prospects/{id}/generate-message` - Generation SMS IA (GPT-4.1-nano)
 - `POST /api/tasks` - Creation tache manuelle
 - `GET /api/tasks` - Liste taches
 
 ## Integrations 3rd Party
 - **Stripe** : Paiements & suivi client
-- **Anthropic Claude** : Fonctionnalites IA (via EMERGENT_LLM_KEY)
+- **OpenAI GPT-4.1-nano** : Generation SMS rapide (~2s)
+- **Anthropic Claude** : Suggestions IA
 - **Resend** : Emails transactionnels
 - **Brevo** : SMS bidirectionnels
 - **Google Analytics 4** : Analytics
 
-## Etat Actuel (11 mars 2026)
-
-### Complet et Teste (100% pass rate):
-- Authentification (login/register)
-- Generation SMS IA
-- Suggestions IA pour prospects inactifs
-- Creation taches manuelles
-- Barre de recherche prospects
-- Viewport mobile (pas de zoom/scroll)
-- Interface dark mode iOS
-
-### Tests Effectues:
-- Backend: 15/15 tests (100%)
-- Frontend: Toutes fonctionnalites verifiees
-- Rapport: /app/test_reports/iteration_11.json
+## Corrections 11 mars 2026
+- SMS IA: Modele change pour GPT-4.1-nano (2s vs 5s avec Sonnet)
+- Swipe: Seuil augmente de 50px a 100px (moins d'accidents)
+- Bloc IA: TOUJOURS visible, affiche "A jour" si pas de suggestions
 
 ## Backlog
 
@@ -103,27 +95,19 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - [x] Suggestions IA pour prospects inactifs - **FAIT**
 - [x] Creation taches manuelles - **FAIT**
 - [x] Barre de recherche prospects - **FAIT**
-- [x] Generation SMS IA - **FAIT**
-- [x] Fix viewport mobile - **FAIT**
+- [x] Generation SMS IA rapide - **FAIT (GPT-4.1-nano)**
+- [x] Bloc IA toujours visible - **FAIT**
+- [x] Swipe moins sensible - **FAIT (100px)**
 - [ ] Deploiement en production (attente utilisateur)
-- [ ] Configurer webhook Brevo (cote client)
 
 ### P2 - A faire
-- [ ] Refactoring server.py en modules (backend monolithique ~2450 lignes)
-  - Routes a extraire: auth, payments, tasks, prospects, webhooks
-- [ ] Refactoring AppShell.js (composant tres large)
+- [ ] Refactoring server.py en modules
+- [ ] Refactoring AppShell.js
 - [ ] Notifications push en production
-- [ ] Captures d'ecran du flow "essai expire"
 
 ### P3 - Backlog
 - [ ] Export CSV prospects
 - [ ] Statistiques de conversion
-- [ ] Verifier VAPID Keys en production
-
-## Credentials Test
-- User: test@test.com / testtest
-- User: pressardelliot@gmail.com / Test123
-- User: pressardhugo@gmail.com / Test123
 
 ## Date Mise a Jour
 11 mars 2026

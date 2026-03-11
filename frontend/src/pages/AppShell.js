@@ -365,14 +365,14 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     
     // Allow right swipe (positive diff) with smooth response
     if (diff > 0) {
-      // Use easing for more natural feel
-      const easedDiff = Math.min(diff * 1.2, 120);
+      // Use easing for more natural feel - require more deliberate swipe
+      const easedDiff = Math.min(diff * 0.8, 150);
       element.style.transform = `translateX(${easedDiff}px)`;
-      element.style.opacity = Math.max(0.3, 1 - (easedDiff / 150));
+      element.style.opacity = Math.max(0.3, 1 - (easedDiff / 200));
       
-      // Haptic feedback once when crossing threshold (50px)
-      if (diff >= 50 && diff < 55 && 'vibrate' in navigator) {
-        navigator.vibrate(8);
+      // Haptic feedback once when crossing threshold (100px)
+      if (diff >= 100 && diff < 110 && 'vibrate' in navigator) {
+        navigator.vibrate(10);
       }
     }
   };
@@ -382,8 +382,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     const element = e.currentTarget;
     const currentX = parseFloat(element.style.transform?.replace('translateX(', '').replace('px)', '') || 0);
     
-    // Lower threshold (50px) for easier completion
-    if (currentX > 50) {
+    // Higher threshold (100px) to prevent accidental completion
+    if (currentX > 100) {
       // Complete the task with smooth animation
       element.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
       element.style.transform = 'translateX(100%)';
@@ -590,19 +590,19 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         </div>
       )}
       
-      {/* AI Suggestions Banner - Enhanced visibility - Only in Today view */}
-      {!loading && !subscriptionBlocked && viewMode === 'today' && aiSuggestions.length > 0 && (
+      {/* AI Suggestions Banner - ALWAYS VISIBLE in Today view - Core feature of KOLO */}
+      {!loading && !subscriptionBlocked && viewMode === 'today' && (
         <div 
+          data-testid="ai-suggestions-block"
           style={{ 
             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
             border: '1px solid rgba(139, 92, 246, 0.3)',
             borderRadius: '14px', 
             padding: '14px 16px',
-            marginBottom: '16px',
-            cursor: 'pointer'
+            marginBottom: '16px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: aiSuggestions.length > 0 ? '10px' : '0' }}>
             <div style={{
               width: '32px',
               height: '32px',
@@ -616,65 +616,87 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
-                {aiSuggestions.length} {locale === 'fr' ? 'suggestion' : 'suggestion'}{aiSuggestions.length > 1 ? 's' : ''} IA
+                {aiSuggestions.length > 0 
+                  ? `${aiSuggestions.length} ${locale === 'fr' ? 'suggestion' : 'suggestion'}${aiSuggestions.length > 1 ? 's' : ''} IA`
+                  : (locale === 'fr' ? 'Assistant IA' : 'AI Assistant')
+                }
               </div>
               <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                {locale === 'fr' ? 'Prospects inactifs à relancer' : 'Inactive prospects to follow up'}
+                {aiSuggestions.length > 0 
+                  ? (locale === 'fr' ? 'Prospects inactifs à relancer' : 'Inactive prospects to follow up')
+                  : (locale === 'fr' ? 'Tous vos prospects sont bien suivis !' : 'All your prospects are well followed!')
+                }
               </div>
             </div>
+            {aiSuggestions.length === 0 && (
+              <div style={{
+                background: 'rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(34, 197, 94, 0.4)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                color: '#22c55e',
+                fontWeight: '600'
+              }}>
+                ✓ {locale === 'fr' ? 'À jour' : 'Up to date'}
+              </div>
+            )}
           </div>
           
-          {/* First suggestion preview */}
-          <div 
-            onClick={() => {
-              const suggestion = aiSuggestions[0];
-              if (suggestion) {
-                trackAiSuggestionAccepted();
-                authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(suggestion)
-                }).then(() => {
-                  toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
-                  fetchTasks();
-                  setAiSuggestions(prev => prev.slice(1));
-                });
-              }
-            }}
-            style={{ 
-              background: 'rgba(0, 0, 0, 0.2)', 
-              borderRadius: '10px', 
-              padding: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', color: 'white', fontWeight: '500', marginBottom: '2px' }}>
-                {aiSuggestions[0]?.prospect_name}
+          {/* First suggestion preview - only if suggestions exist */}
+          {aiSuggestions.length > 0 && (
+            <div 
+              onClick={() => {
+                const suggestion = aiSuggestions[0];
+                if (suggestion) {
+                  trackAiSuggestionAccepted();
+                  authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(suggestion)
+                  }).then(() => {
+                    toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+                    fetchTasks();
+                    setAiSuggestions(prev => prev.slice(1));
+                  });
+                }
+              }}
+              style={{ 
+                background: 'rgba(0, 0, 0, 0.2)', 
+                borderRadius: '10px', 
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', color: 'white', fontWeight: '500', marginBottom: '2px' }}>
+                  {aiSuggestions[0]?.prospect_name}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                  {aiSuggestions[0]?.reason}
+                </div>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                {aiSuggestions[0]?.reason}
-              </div>
+              <button style={{
+                background: 'var(--accent)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <Plus size={14} />
+                {locale === 'fr' ? 'Ajouter' : 'Add'}
+              </button>
             </div>
-            <button style={{
-              background: 'var(--accent)',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <Plus size={14} />
-              {locale === 'fr' ? 'Ajouter' : 'Add'}
-            </button>
-          </div>
+          )}
           
           {/* Show more if multiple suggestions */}
           {aiSuggestions.length > 1 && (
