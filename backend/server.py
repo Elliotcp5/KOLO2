@@ -1617,8 +1617,8 @@ async def list_tasks(request: Request, include_completed: bool = True):
     """List all tasks for authenticated user - includes completed tasks from last 2 weeks"""
     user = await require_active_subscription(request)
     
-    # Generate follow-up tasks for inactive prospects
-    await generate_follow_up_tasks_for_user(user.user_id)
+    # NOTE: Auto-generation of follow-up tasks disabled - user requested manual task creation only
+    # await generate_follow_up_tasks_for_user(user.user_id)
     
     two_weeks_ago = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
     
@@ -1656,8 +1656,8 @@ async def list_today_tasks(request: Request):
     """List tasks due today or overdue (not completed)"""
     user = await require_active_subscription(request)
     
-    # Generate follow-up tasks for inactive prospects
-    await generate_follow_up_tasks_for_user(user.user_id)
+    # NOTE: Auto-generation of follow-up tasks disabled - user requested manual task creation only
+    # await generate_follow_up_tasks_for_user(user.user_id)
     
     now = datetime.now(timezone.utc)
     end_of_today = now.replace(hour=23, minute=59, second=59, microsecond=999999)

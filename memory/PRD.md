@@ -37,12 +37,32 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - Scoring automatique IA (🟢🟠🔴)
 - Modification manuelle du score
 - Historique SMS par prospect
+- **Barre de recherche** pour filtrer les prospects
 
 ### ✅ SMS Bidirectionnels
 - Génération de messages IA personnalisés
 - Envoi SMS via Brevo (nom agent = expéditeur)
 - **Réception des réponses** via webhook Brevo
 - Conversation style iMessage/WhatsApp
+
+### ✅ Tâches Manuelles
+- **Création manuelle de tâches** avec modal dédié
+- Types : Appel, SMS, Email, Visite, Autre
+- Titre obligatoire + Date obligatoire
+- Heure et adresse optionnelles
+- Liaison optionnelle à un prospect existant
+- Swipe pour marquer comme terminée
+- **Tâches auto-générées (follow_up) désactivées**
+
+### ✅ Suggestions IA
+- Bloc "Suggestions IA" dans la vue Aujourd'hui
+- Affiche les prospects inactifs à relancer
+- Bouton "+ Add" pour créer une tâche de suivi
+
+### ✅ UX Mobile Optimisée
+- **App figée** : pas de zoom, pas de bounce
+- Modal avec padding pour éviter la navigation du bas
+- Navigation : Today | [FAB +] | Prospects
 
 ### ✅ Landing & FAQ Actualisées
 - 3 cards : Tâches du Jour, Rappels Intelligents, **Assistant IA**

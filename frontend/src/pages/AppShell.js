@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -45,6 +45,19 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const [proactiveAiTaskId, setProactiveAiTaskId] = useState(null);
   const [proactiveAiMessage, setProactiveAiMessage] = useState('');
   const [proactiveAiLoading, setProactiveAiLoading] = useState(false);
+  
+  // Add Task Modal state
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [prospects, setProspects] = useState([]);
+  const [newTask, setNewTask] = useState({
+    prospect_id: '',
+    title: '',
+    due_date: '',
+    due_time: '',
+    address: '',
+    task_type: 'call'
+  });
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -112,22 +125,77 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           ...prev,
           activeProspects: data.prospects?.length || 0
         }));
+        setProspects(data.prospects || []);
       }
       
       // Fetch AI suggestions
       const suggestionsResponse = await authFetch(`${API_URL}/api/tasks/ai-suggestions`);
       if (suggestionsResponse.ok) {
         const data = await suggestionsResponse.json();
+        console.log('AI Suggestions loaded:', data.suggestions?.length || 0, data.suggestions);
         setAiSuggestions(data.suggestions || []);
       }
     } catch (e) {
-      // Silent fail
+      console.error('Error fetching stats/suggestions:', e);
+    }
+  };
+
+  // Create manual task
+  const handleCreateTask = async () => {
+    if (!newTask.title || !newTask.due_date) return;
+    
+    setCreatingTask(true);
+    try {
+      // Combine date and time
+      let dueDateTime = newTask.due_date;
+      if (newTask.due_time) {
+        dueDateTime = `${newTask.due_date}T${newTask.due_time}:00`;
+      } else {
+        dueDateTime = `${newTask.due_date}T09:00:00`;
+      }
+      
+      const taskData = {
+        title: newTask.title,
+        due_date: new Date(dueDateTime).toISOString(),
+        task_type: newTask.task_type,
+        description: newTask.address || null
+      };
+      
+      if (newTask.prospect_id) {
+        taskData.prospect_id = newTask.prospect_id;
+      }
+      
+      const response = await authFetch(`${API_URL}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+      });
+      
+      if (response.ok) {
+        if ('vibrate' in navigator) navigator.vibrate([10, 40, 20]);
+        toast.success(locale === 'fr' ? 'Tâche créée !' : 'Task created!');
+        setShowAddTaskModal(false);
+        setNewTask({ prospect_id: '', title: '', due_date: '', due_time: '', address: '', task_type: 'call' });
+        fetchTasks();
+        fetchStats();
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+      }
+    } catch (error) {
+      console.error('Create task error:', error);
+      toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+    } finally {
+      setCreatingTask(false);
     }
   };
 
   useEffect(() => {
-    fetchTasks();
-    fetchStats();
+    // Wait for token to be set before fetching
+    const token = localStorage.getItem('kolo_token');
+    if (token) {
+      fetchTasks();
+      fetchStats();
+    }
   }, []);
 
   // Generate AI message for SMS
@@ -393,49 +461,76 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         {formatDate(new Date())}
       </p>
       
-      {/* Segment Control - Today / All Tasks */}
+      {/* Segment Control - Today / All Tasks + Add Task Button */}
       <div style={{ 
         display: 'flex', 
-        background: 'var(--surface)', 
-        borderRadius: '10px', 
-        padding: '4px',
-        marginBottom: '16px'
+        gap: '8px',
+        marginBottom: '16px',
+        alignItems: 'center'
       }}>
+        <div style={{ 
+          display: 'flex', 
+          background: 'var(--surface)', 
+          borderRadius: '10px', 
+          padding: '4px',
+          flex: 1
+        }}>
+          <button
+            onClick={() => setViewMode('today')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'today' ? 'var(--accent)' : 'transparent',
+              color: viewMode === 'today' ? 'white' : 'var(--muted)',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            data-testid="segment-today"
+          >
+            {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'all' ? 'var(--accent)' : 'transparent',
+              color: viewMode === 'all' ? 'white' : 'var(--muted)',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            data-testid="segment-all-tasks"
+          >
+            {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+          </button>
+        </div>
+        
+        {/* Add Task Button */}
         <button
-          onClick={() => setViewMode('today')}
+          onClick={() => setShowAddTaskModal(true)}
           style={{
-            flex: 1,
-            padding: '8px 12px',
-            borderRadius: '8px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
             border: 'none',
-            background: viewMode === 'today' ? 'var(--accent)' : 'transparent',
-            color: viewMode === 'today' ? 'white' : 'var(--muted)',
-            fontSize: '13px',
-            fontWeight: '500',
+            background: 'var(--surface)',
+            color: 'var(--accent)',
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
-          data-testid="segment-today"
+          data-testid="add-task-button"
         >
-          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
-        </button>
-        <button
-          onClick={() => setViewMode('all')}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            borderRadius: '8px',
-            border: 'none',
-            background: viewMode === 'all' ? 'var(--accent)' : 'transparent',
-            color: viewMode === 'all' ? 'white' : 'var(--muted)',
-            fontSize: '13px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          data-testid="segment-all-tasks"
-        >
-          {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+          <Plus size={20} />
         </button>
       </div>
       
@@ -1126,6 +1221,152 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           </div>
         </div>
       )}
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && (
+        <div className="modal-overlay" onClick={() => setShowAddTaskModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto', paddingBottom: '100px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600' }}>
+                {locale === 'fr' ? 'Nouvelle tâche' : 'New task'}
+              </h2>
+              <button onClick={() => setShowAddTaskModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Task Type Selection */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Type de tâche' : 'Task type'}
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { value: 'call', label: locale === 'fr' ? 'Appel' : 'Call', icon: Phone },
+                  { value: 'sms', label: 'SMS', icon: MessageSquare },
+                  { value: 'email', label: 'Email', icon: Mail },
+                  { value: 'visit', label: locale === 'fr' ? 'Visite' : 'Visit', icon: MapPin },
+                  { value: 'other', label: locale === 'fr' ? 'Autre' : 'Other', icon: FileText }
+                ].map(type => {
+                  const Icon = type.icon;
+                  return (
+                    <button
+                      key={type.value}
+                      onClick={() => setNewTask({...newTask, task_type: type.value})}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: newTask.task_type === type.value ? '2px solid var(--accent)' : '1px solid var(--border)',
+                        background: newTask.task_type === type.value ? 'rgba(139, 92, 246, 0.1)' : 'var(--surface)',
+                        color: newTask.task_type === type.value ? 'var(--accent)' : 'var(--muted)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <Icon size={14} />
+                      {type.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Title - Required */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Titre *' : 'Title *'}
+              </label>
+              <input
+                type="text"
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Ex: Appeler pour suivi' : 'Ex: Call for follow-up'}
+                value={newTask.title}
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                data-testid="new-task-title"
+              />
+            </div>
+            
+            {/* Prospect - Optional */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Lier à un prospect (optionnel)' : 'Link to prospect (optional)'}
+              </label>
+              <select
+                className="input-dark"
+                value={newTask.prospect_id}
+                onChange={(e) => setNewTask({...newTask, prospect_id: e.target.value})}
+                style={{ cursor: 'pointer' }}
+                data-testid="new-task-prospect"
+              >
+                <option value="">{locale === 'fr' ? '-- Aucun prospect --' : '-- No prospect --'}</option>
+                {prospects.map(p => (
+                  <option key={p.prospect_id} value={p.prospect_id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Due Date - Required */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Date *' : 'Date *'}
+              </label>
+              <input
+                type="date"
+                className="input-dark"
+                value={newTask.due_date}
+                onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
+                data-testid="new-task-date"
+              />
+            </div>
+            
+            {/* Due Time - Optional */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Heure (optionnel)' : 'Time (optional)'}
+              </label>
+              <input
+                type="time"
+                className="input-dark"
+                value={newTask.due_time}
+                onChange={(e) => setNewTask({...newTask, due_time: e.target.value})}
+                data-testid="new-task-time"
+              />
+            </div>
+            
+            {/* Address - Optional */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+                {locale === 'fr' ? 'Adresse (optionnel)' : 'Address (optional)'}
+              </label>
+              <input
+                type="text"
+                className="input-dark"
+                placeholder={locale === 'fr' ? 'Ex: 123 Rue de Paris' : 'Ex: 123 Main Street'}
+                value={newTask.address}
+                onChange={(e) => setNewTask({...newTask, address: e.target.value})}
+                data-testid="new-task-address"
+              />
+            </div>
+            
+            {/* Submit Button */}
+            <button
+              className="btn-primary"
+              onClick={handleCreateTask}
+              disabled={!newTask.title || !newTask.due_date || creatingTask}
+              data-testid="create-task-submit"
+            >
+              {creatingTask ? (
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+              ) : (
+                locale === 'fr' ? 'Créer la tâche' : 'Create task'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1136,6 +1377,8 @@ const ProspectsTab = ({ onSelectProspect }) => {
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [newProspect, setNewProspect] = useState({
     full_name: '',
     phone: '',
@@ -1340,19 +1583,74 @@ const ProspectsTab = ({ onSelectProspect }) => {
   return (
     <div style={{ padding: '24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 className="text-headline" style={{ fontSize: '28px' }}>
           {t('prospects')}
         </h1>
-        <button 
-          className="btn-primary"
-          onClick={() => setShowAddForm(true)}
-          style={{ width: 'auto', height: '44px', padding: '0 20px' }}
-          data-testid="add-prospect-button"
-        >
-          {t('addProspect')}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={() => setShowSearch(!showSearch)}
+            style={{ 
+              background: showSearch ? 'var(--accent)' : 'var(--surface)', 
+              border: 'none', 
+              borderRadius: '10px',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: showSearch ? 'white' : 'var(--muted)'
+            }}
+            data-testid="search-toggle-button"
+          >
+            <Search size={20} />
+          </button>
+          <button 
+            className="btn-primary"
+            onClick={() => setShowAddForm(true)}
+            style={{ width: 'auto', height: '44px', padding: '0 20px' }}
+            data-testid="add-prospect-button"
+          >
+            {t('addProspect')}
+          </button>
+        </div>
       </div>
+
+      {/* Search bar */}
+      {showSearch && (
+        <div style={{ marginBottom: '16px', position: 'relative' }}>
+          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+          <input
+            type="text"
+            className="input-dark"
+            placeholder={t('searchProspects') || 'Rechercher un prospect...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ paddingLeft: '44px' }}
+            autoFocus
+            data-testid="search-prospects-input"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ 
+                position: 'absolute', 
+                right: '14px', 
+                top: '50%', 
+                transform: 'translateY(-50%)', 
+                background: 'none', 
+                border: 'none', 
+                color: 'var(--muted)', 
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
@@ -1368,7 +1666,17 @@ const ProspectsTab = ({ onSelectProspect }) => {
         </div>
       ) : (
         <div>
-          {prospects.map((prospect) => {
+          {prospects
+            .filter(p => {
+              if (!searchQuery) return true;
+              const query = searchQuery.toLowerCase();
+              return (
+                p.full_name?.toLowerCase().includes(query) ||
+                p.phone?.toLowerCase().includes(query) ||
+                p.email?.toLowerCase().includes(query)
+              );
+            })
+            .map((prospect) => {
             const nextTask = formatNextTask(prospect);
             // Score indicator - just a small dot
             const scoreColor = prospect.score === 'chaud' ? '#22C55E' : prospect.score === 'tiede' ? '#F59E0B' : prospect.score === 'froid' ? '#EF4444' : null;

@@ -75,6 +75,7 @@ const translations = {
     noProspects: "No prospects yet",
     addFirstProspect: "Add your first prospect to get started",
     prospectCreated: "Prospect created!",
+    searchProspects: "Search prospects...",
     
     // App - Prospect Detail
     nextScheduledTask: "Next Scheduled Task",
@@ -254,6 +255,7 @@ const translations = {
     noProspects: "Aucun prospect",
     addFirstProspect: "Ajoutez votre premier prospect pour commencer",
     prospectCreated: "Prospect créé !",
+    searchProspects: "Rechercher un prospect...",
     
     // App - Prospect Detail
     nextScheduledTask: "Prochaine Tâche Programmée",
