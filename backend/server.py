@@ -1925,13 +1925,16 @@ async def get_ai_task_suggestions(request: Request):
         chat = LlmChat(
             api_key=api_key,
             session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Tu es un coach commercial immobilier. Tu anticipes TOUJOURS la prochaine action.
-Réponds UNIQUEMENT en JSON: {"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit|prospection", "reason": "...", "priority": "high|medium|low"}]}
-IMPORTANT: 
-- Utilise EXACTEMENT les prospect_id fournis dans le contexte
-- Pour une tâche générique sans prospect, utilise prospect_id: null
-- task_type: call, sms, email, visit, prospection
-- Max 3 suggestions, concis."""
+            system_message="""Coach commercial IMMOBILIER. Suggère la prochaine action selon l'étape du cycle de vente:
+- Nouveau prospect → Appel découverte / qualifier le projet
+- Projet qualifié → Proposer des biens correspondants
+- Biens proposés → Organiser une visite
+- Visite faite → Recueillir les impressions / ajuster la recherche
+- Intéressé → Accompagner vers l'offre
+- Inactif → Relancer avec une nouveauté du marché
+
+JSON uniquement: {"suggestions": [{"prospect_id": "ID_EXACT", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
+Utilise EXACTEMENT les prospect_id fournis. Pour prospection: prospect_id=null. Max 3, concis."""
         ).with_model("openai", "gpt-4.1-nano")
         
         if prospects_needing_action:
