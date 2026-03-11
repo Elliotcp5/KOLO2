@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
+import OnboardingFlow from '../components/OnboardingFlow';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
+
+// Status configuration
+const PROSPECT_STATUSES = {
+  nouveau: { fr: 'Nouveau', en: 'New' },
+  contacte: { fr: 'Contacte', en: 'Contacted' },
+  qualifie: { fr: 'Qualifie', en: 'Qualified' },
+  offre: { fr: 'Offre', en: 'Offer' },
+  signe: { fr: 'Signe', en: 'Signed' }
+};
 
 // Helper for authenticated fetch
 const authFetch = (url, options = {}) => {
@@ -2774,6 +2785,7 @@ const SettingsTab = ({ onClose }) => {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const { user, logout } = useAuth();
+  const { theme, changeTheme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -2793,6 +2805,7 @@ const SettingsTab = ({ onClose }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showCancelSubscriptionModal, setShowCancelSubscriptionModal] = useState(false);
 
   // Check notification status on mount
   useEffect(() => {
@@ -3295,6 +3308,67 @@ const SettingsTab = ({ onClose }) => {
         </div>
       </div>
 
+      {/* Appearance section - Theme toggle */}
+      <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+        {locale === 'fr' ? 'Apparence' : 'Appearance'}
+      </h3>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+        <div 
+          className="settings-row" 
+          style={{ borderBottom: 'none' }}
+          data-testid="theme-toggle"
+        >
+          {theme === 'light' ? (
+            <Sun className="icon" strokeWidth={1.5} style={{ color: 'var(--text)' }} />
+          ) : (
+            <Moon className="icon" strokeWidth={1.5} style={{ color: 'var(--text)' }} />
+          )}
+          <span className="label">{locale === 'fr' ? 'Theme' : 'Theme'}</span>
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-2)', borderRadius: '10px', padding: '4px' }}>
+            <button
+              onClick={() => changeTheme('light')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: theme === 'light' ? 'var(--accent)' : 'transparent',
+                color: theme === 'light' ? 'white' : 'var(--muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Sun size={14} />
+              {locale === 'fr' ? 'Clair' : 'Light'}
+            </button>
+            <button
+              onClick={() => changeTheme('dark')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: theme === 'dark' ? 'var(--accent)' : 'transparent',
+                color: theme === 'dark' ? 'white' : 'var(--muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Moon size={14} />
+              {locale === 'fr' ? 'Sombre' : 'Dark'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Logout button */}
       <button 
         className="btn-secondary"
@@ -3304,6 +3378,94 @@ const SettingsTab = ({ onClose }) => {
       >
         {t('logout')}
       </button>
+
+      {/* Cancel subscription button */}
+      <button 
+        onClick={() => setShowCancelSubscriptionModal(true)}
+        style={{ 
+          background: 'none', 
+          border: 'none', 
+          color: '#DC2626', 
+          fontSize: '14px', 
+          cursor: 'pointer',
+          marginTop: '16px',
+          padding: '8px 0',
+          width: '100%',
+          textAlign: 'center'
+        }}
+        data-testid="cancel-subscription-final"
+      >
+        {locale === 'fr' ? 'Resilier l\'abonnement' : 'Cancel subscription'}
+      </button>
+
+      {/* Cancel Subscription Modal */}
+      {showCancelSubscriptionModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'var(--modal-overlay)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setShowCancelSubscriptionModal(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '340px',
+              textAlign: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text)', marginBottom: '12px' }}>
+              {locale === 'fr' ? 'Resilier l\'abonnement ?' : 'Cancel subscription?'}
+            </h3>
+            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '24px', lineHeight: '1.5' }}>
+              {locale === 'fr' 
+                ? 'Vous perdrez l\'acces a KOLO a la fin de votre periode en cours. Cette action est irreversible.'
+                : 'You will lose access to KOLO at the end of your current period. This action is irreversible.'}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                className="btn-primary"
+                onClick={() => setShowCancelSubscriptionModal(false)}
+                style={{ flex: 1 }}
+              >
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    await handleCancelSubscription();
+                    setShowCancelSubscriptionModal(false);
+                  } catch (e) { }
+                }}
+                style={{ 
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  color: '#DC2626',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                {locale === 'fr' ? 'Confirmer la resiliation' : 'Confirm cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {showPasswordModal && (
@@ -4561,10 +4723,40 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
 // ==================== MAIN APP SHELL ====================
 const AppShell = () => {
   const location = useLocation();
+  const { theme, changeTheme, initializeFromUser } = useTheme();
   const [activeTab, setActiveTab] = useState('today');
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userStreak, setUserStreak] = useState(0);
+  const [userPrefsLoaded, setUserPrefsLoaded] = useState(false);
+
+  // Load user preferences on mount
+  useEffect(() => {
+    const loadUserPrefs = async () => {
+      try {
+        const response = await authFetch(`${API_URL}/api/auth/me`);
+        if (response.ok) {
+          const userData = await response.json();
+          // Initialize theme from user preference
+          if (userData.theme_preference) {
+            initializeFromUser(userData.theme_preference);
+          }
+          // Check if onboarding needed
+          if (!userData.didacticiel_completed) {
+            setShowOnboarding(true);
+          }
+          // Set streak
+          setUserStreak(userData.streak_current || 0);
+        }
+      } catch (e) {
+        console.error('Failed to load user preferences:', e);
+      }
+      setUserPrefsLoaded(true);
+    };
+    loadUserPrefs();
+  }, [initializeFromUser]);
 
   useEffect(() => {
     if (location.pathname.includes('/prospects')) {
@@ -4655,6 +4847,14 @@ const AppShell = () => {
 
   return (
     <div className="mobile-frame">
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OnboardingFlow 
+          onComplete={() => setShowOnboarding(false)} 
+          authFetch={authFetch}
+        />
+      )}
+      
       <div className="page-container safe-area-top">
         <div className="scroll-content" style={{ paddingBottom: '80px' }}>
           {renderTab()}

@@ -80,8 +80,9 @@ class User(BaseModel):
     user_id: str = Field(default_factory=lambda: f"user_{uuid.uuid4().hex[:12]}")
     email: str
     name: Optional[str] = None
+    phone: Optional[str] = None
     picture: Optional[str] = None
-    auth_provider: str = "google"
+    auth_provider: str = "email"
     locale: Optional[str] = None
     country: Optional[str] = None
     stripe_customer_id: Optional[str] = None
@@ -89,6 +90,13 @@ class User(BaseModel):
     subscription_id: Optional[str] = None
     trial_ends_at: Optional[datetime] = None
     subscription_ends_at: Optional[datetime] = None
+    # Theme & Onboarding
+    theme_preference: str = "light"  # light, dark
+    didacticiel_completed: bool = False
+    tooltips_seen: List[str] = Field(default_factory=list)  # List of tooltip IDs seen
+    # Streak tracking
+    streak_current: int = 0
+    streak_last_activity_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -122,8 +130,8 @@ class Prospect(BaseModel):
     full_name: str
     phone: str
     email: str
-    source: str = "manual"
-    status: str = "new"  # new, in_progress, closed, lost
+    source: str = "manual"  # seloger, leboncoin, reseau, recommandation, autre, manual
+    status: str = "nouveau"  # nouveau, contacte, qualifie, offre, signe
     notes: Optional[str] = None
     last_activity_date: Optional[datetime] = None
     next_task_id: Optional[str] = None
@@ -529,9 +537,105 @@ async def get_current_user(request: Request):
         "user_id": user.user_id,
         "email": user.email,
         "name": user.name,
+        "phone": getattr(user, 'phone', None),
         "picture": user.picture,
-        "subscription_status": user.subscription_status
+        "subscription_status": user.subscription_status,
+        "theme_preference": getattr(user, 'theme_preference', 'light'),
+        "didacticiel_completed": getattr(user, 'didacticiel_completed', False),
+        "tooltips_seen": getattr(user, 'tooltips_seen', []),
+        "streak_current": getattr(user, 'streak_current', 0),
     }
+
+@api_router.put("/auth/preferences")
+async def update_user_preferences(request: Request):
+    """Update user preferences (theme, etc.)"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    body = await request.json()
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    # Theme preference
+    if "theme_preference" in body:
+        if body["theme_preference"] in ["light", "dark"]:
+            update_data["theme_preference"] = body["theme_preference"]
+    
+    # Didacticiel completed
+    if "didacticiel_completed" in body:
+        update_data["didacticiel_completed"] = bool(body["didacticiel_completed"])
+    
+    # Tooltips seen
+    if "tooltip_seen" in body:
+        # Add to list if not already there
+        tooltips = getattr(user, 'tooltips_seen', []) or []
+        if body["tooltip_seen"] not in tooltips:
+            tooltips.append(body["tooltip_seen"])
+        update_data["tooltips_seen"] = tooltips
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Preferences updated", "updated": update_data}
+
+@api_router.get("/auth/streak")
+async def get_user_streak(request: Request):
+    """Get user's current streak"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    streak = getattr(user, 'streak_current', 0)
+    last_activity = getattr(user, 'streak_last_activity_date', None)
+    
+    return {
+        "streak": streak,
+        "last_activity_date": last_activity.isoformat() if last_activity else None
+    }
+
+async def update_user_streak(user_id: str):
+    """Update streak when a task is completed"""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_doc:
+        return
+    
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    last_activity = user_doc.get('streak_last_activity_date')
+    current_streak = user_doc.get('streak_current', 0)
+    
+    if last_activity:
+        if isinstance(last_activity, str):
+            last_activity = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
+        if last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        
+        last_activity_day = last_activity.replace(hour=0, minute=0, second=0, microsecond=0)
+        days_diff = (today - last_activity_day).days
+        
+        if days_diff == 0:
+            # Same day, don't increment
+            return
+        elif days_diff == 1:
+            # Consecutive day, increment streak
+            current_streak += 1
+        else:
+            # Streak broken, reset to 1
+            current_streak = 1
+    else:
+        # First activity
+        current_streak = 1
+    
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "streak_current": current_streak,
+            "streak_last_activity_date": now.isoformat()
+        }}
+    )
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
@@ -1843,6 +1947,9 @@ async def complete_task(request: Request, task_id: str):
         )
         await update_prospect_next_task(task["prospect_id"], user.user_id)
     
+    # Update user streak
+    await update_user_streak(user.user_id)
+    
     return {"message": "Task completed"}
 
 # ==================== AI TASK SUGGESTIONS ====================
@@ -2140,6 +2247,41 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     await db.tasks.insert_one(task_doc)
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
+
+@api_router.post("/prospects/batch")
+async def create_prospects_batch(request: Request):
+    """Import multiple prospects at once (for contact import)"""
+    user = await require_active_subscription(request)
+    
+    body = await request.json()
+    prospects_data = body.get("prospects", [])
+    
+    if not prospects_data:
+        raise HTTPException(status_code=400, detail="No prospects provided")
+    
+    now = datetime.now(timezone.utc)
+    created_ids = []
+    
+    for p in prospects_data:
+        prospect = Prospect(
+            user_id=user.user_id,
+            full_name=p.get("full_name", ""),
+            phone=p.get("phone", ""),
+            email=p.get("email", ""),
+            source=p.get("source", "import"),
+            status="nouveau",
+            notes=p.get("notes", ""),
+            last_activity_date=now
+        )
+        
+        doc = prospect.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        doc['updated_at'] = doc['updated_at'].isoformat()
+        doc['last_activity_date'] = doc['last_activity_date'].isoformat()
+        await db.prospects.insert_one(doc)
+        created_ids.append(prospect.prospect_id)
+    
+    return {"created": len(created_ids), "prospect_ids": created_ids}
 
 @api_router.get("/prospects/{prospect_id}")
 async def get_prospect(request: Request, prospect_id: str):

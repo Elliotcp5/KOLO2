@@ -3,11 +3,12 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "./context/LocaleContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
 import { trackPageView } from "./utils/analytics";
 
 // Pages
-import LandingPage from "./pages/LandingPage";
+import LandingPageNew from "./pages/LandingPageNew";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import SubscribePage from "./pages/SubscribePage";
@@ -44,6 +45,24 @@ const AnalyticsTracker = () => {
   return null;
 };
 
+// Theme-aware Toaster
+const ThemedToaster = () => {
+  const { isDark } = useTheme();
+  
+  return (
+    <Toaster 
+      position="top-center" 
+      toastOptions={{
+        style: {
+          background: isDark ? '#14141A' : '#FFFFFF',
+          color: isDark ? '#F5F5F7' : '#111827',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E5E7EB',
+        },
+      }}
+    />
+  );
+};
+
 // Router component that checks for session_id in URL
 const AppRouter = () => {
   const location = useLocation();
@@ -57,7 +76,7 @@ const AppRouter = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<LandingPageNew />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
@@ -108,24 +127,17 @@ const AppRouter = () => {
 function App() {
   return (
     <div className="App">
-      <LocaleProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <AnalyticsTracker />
-            <AppRouter />
-            <Toaster 
-              position="top-center" 
-              toastOptions={{
-                style: {
-                  background: '#14141A',
-                  color: '#F5F5F7',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                },
-              }}
-            />
-          </AuthProvider>
-        </BrowserRouter>
-      </LocaleProvider>
+      <ThemeProvider>
+        <LocaleProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <AnalyticsTracker />
+              <AppRouter />
+              <ThemedToaster />
+            </AuthProvider>
+          </BrowserRouter>
+        </LocaleProvider>
+      </ThemeProvider>
     </div>
   );
 }
