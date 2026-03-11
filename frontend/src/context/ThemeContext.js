@@ -14,15 +14,31 @@ export const useTheme = () => {
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(() => {
     // Check localStorage first for immediate render without flash
+    // Default to 'light' if nothing stored
     const stored = localStorage.getItem('kolo_theme');
     return stored || 'light';
   });
 
-  // Apply theme class to document
+  // Apply theme class to document immediately on mount and on change
   useEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
+    
+    // Remove both classes first
     root.classList.remove('theme-light', 'theme-dark');
+    body.classList.remove('theme-light', 'theme-dark');
+    
+    // Add the current theme class
     root.classList.add(`theme-${theme}`);
+    body.classList.add(`theme-${theme}`);
+    
+    // Also set on mobile-frame elements
+    const mobileFrames = document.querySelectorAll('.mobile-frame:not(.theme-dark):not([class*="landing"])');
+    mobileFrames.forEach(el => {
+      el.classList.remove('theme-light', 'theme-dark');
+      el.classList.add(`theme-${theme}`);
+    });
+    
     localStorage.setItem('kolo_theme', theme);
   }, [theme]);
 
@@ -42,7 +58,7 @@ export const ThemeProvider = ({ children }) => {
     
     // Try to persist to backend
     try {
-      const token = localStorage.getItem('session_token');
+      const token = localStorage.getItem('kolo_token');
       if (token) {
         await fetch(`${API_URL}/api/auth/preferences`, {
           method: 'PUT',

@@ -13,10 +13,37 @@ import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreat
 // Status configuration
 const PROSPECT_STATUSES = {
   nouveau: { fr: 'Nouveau', en: 'New' },
-  contacte: { fr: 'Contacte', en: 'Contacted' },
-  qualifie: { fr: 'Qualifie', en: 'Qualified' },
+  contacte: { fr: 'Contacté', en: 'Contacted' },
+  qualifie: { fr: 'Qualifié', en: 'Qualified' },
   offre: { fr: 'Offre', en: 'Offer' },
-  signe: { fr: 'Signe', en: 'Signed' }
+  signe: { fr: 'Signé', en: 'Signed' }
+};
+
+// Theme-aware color helper
+const getThemeColor = (theme, type) => {
+  const colors = {
+    light: {
+      bg: '#F9FAFB',
+      surface: '#FFFFFF',
+      text: '#111827',
+      muted: '#6B7280',
+      border: '#E5E7EB',
+      cardBg: '#FFFFFF',
+      cardBorder: '#E5E7EB',
+      navBg: 'rgba(255, 255, 255, 0.95)'
+    },
+    dark: {
+      bg: '#0A0A0C',
+      surface: '#111114',
+      text: '#FAFAFA',
+      muted: '#8E8E93',
+      border: 'rgba(255, 255, 255, 0.06)',
+      cardBg: '#111114',
+      cardBorder: 'rgba(255, 255, 255, 0.06)',
+      navBg: 'rgba(11, 11, 15, 0.98)'
+    }
+  };
+  return colors[theme]?.[type] || colors.light[type];
 };
 
 // Helper for authenticated fetch
@@ -32,6 +59,7 @@ const authFetch = (url, options = {}) => {
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const { t, formatDate, locale } = useLocale();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -450,10 +478,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: '20px', backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <h1 className="text-headline" style={{ fontSize: '26px' }}>
+        <h1 className="text-headline" style={{ fontSize: '26px', color: theme === 'dark' ? '#FAFAFA' : '#111827' }}>
           {viewMode === 'today' ? t('today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
         </h1>
         <button 
@@ -462,8 +490,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           onClick={onOpenProfile}
           data-testid="my-profile-button"
         >
-          <User size={16} strokeWidth={1.5} color="white" />
-          <span style={{ color: 'white', fontSize: '13px' }}>{t('myProfile')}</span>
+          <User size={16} strokeWidth={1.5} color={theme === 'dark' ? '#FAFAFA' : '#111827'} />
+          <span style={{ color: theme === 'dark' ? '#FAFAFA' : '#111827', fontSize: '13px' }}>{t('myProfile')}</span>
         </button>
       </div>
 
@@ -4846,7 +4874,7 @@ const AppShell = () => {
   };
 
   return (
-    <div className="mobile-frame">
+    <div className={`mobile-frame theme-${theme}`} style={{ backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
       {/* Onboarding Flow */}
       {showOnboarding && (
         <OnboardingFlow 
@@ -4855,8 +4883,8 @@ const AppShell = () => {
         />
       )}
       
-      <div className="page-container safe-area-top">
-        <div className="scroll-content" style={{ paddingBottom: '80px' }}>
+      <div className="page-container safe-area-top" style={{ backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
+        <div className="scroll-content" style={{ paddingBottom: '80px', backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
           {renderTab()}
         </div>
         {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
