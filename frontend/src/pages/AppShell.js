@@ -1591,20 +1591,18 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <button 
             onClick={() => setShowSearch(!showSearch)}
             style={{ 
-              background: showSearch ? 'var(--accent)' : 'var(--surface)', 
+              background: 'none', 
               border: 'none', 
-              borderRadius: '10px',
-              width: '44px',
-              height: '44px',
+              padding: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: showSearch ? 'white' : 'var(--muted)'
+              color: showSearch ? 'var(--accent)' : 'var(--muted)'
             }}
             data-testid="search-toggle-button"
           >
-            <Search size={20} />
+            <Search size={22} />
           </button>
           <button 
             className="btn-primary"
