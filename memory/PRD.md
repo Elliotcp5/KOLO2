@@ -54,11 +54,15 @@ Application CRM mobile-first PWA pour agents immobiliers avec:
 - Swipe pour marquer comme terminee (seuil 100px pour eviter accidents)
 - **Taches auto-generees (follow_up) desactivees**
 
-### Suggestions IA - TOUJOURS VISIBLE
+### Suggestions IA - TOUJOURS VISIBLE & INTELLIGENTES
 - Bloc "Assistant IA" TOUJOURS visible dans la vue Aujourd'hui
-- Si suggestions: affiche prospects inactifs a relancer (3+ jours)
-- Si pas de suggestions: affiche "A jour" avec badge vert
-- Bouton "+ Ajouter" pour creer une tache de suivi
+- **Analyse intelligente** :
+  - Prospects inactifs (3+ jours) → suggestions de relance
+  - Prospects actifs sans tâche → prochaine étape logique selon le projet
+  - Tous suivis → suggestions de prospection pour développer le portefeuille
+- Prend en compte le **projet du prospect** (T3, maison, investissement...)
+- Bouton "+ Ajouter" pour créer la tâche suggérée
+- Support des tâches génériques (prospection) sans prospect lié
 
 ### UX Mobile Optimisee
 - **App figee** : pas de zoom, pas de bounce
