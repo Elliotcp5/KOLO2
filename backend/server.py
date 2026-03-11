@@ -1849,24 +1849,26 @@ async def complete_task(request: Request, task_id: str):
 
 @api_router.get("/tasks/ai-suggestions")
 async def get_ai_task_suggestions(request: Request):
-    """Get AI-powered task suggestions - ALWAYS returns suggestions"""
+    """Get AI-powered task suggestions - ALWAYS returns proactive suggestions"""
     user = await require_active_subscription(request)
     
-    # Get all prospects (active and inactive)
+    # Get all active prospects
     all_prospects = await db.prospects.find(
-        {"user_id": user.user_id},
+        {
+            "user_id": user.user_id,
+            "status": {"$nin": ["closed", "lost"]}
+        },
         {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1, "status": 1, "source": 1, "notes": 1, "last_activity_date": 1, "created_at": 1}
     ).to_list(100)
     
-    # Get upcoming tasks
+    # Get ALL upcoming tasks (not just today)
     upcoming_tasks = await db.tasks.find(
         {
             "user_id": user.user_id,
-            "completed": False,
-            "due_date": {"$gte": datetime.now(timezone.utc)}
+            "completed": False
         },
-        {"_id": 0, "prospect_id": 1, "task_type": 1, "due_date": 1}
-    ).to_list(100)
+        {"_id": 0, "prospect_id": 1, "task_type": 1, "due_date": 1, "title": 1}
+    ).to_list(200)
     
     # Group tasks by prospect
     tasks_by_prospect = {}
@@ -1877,20 +1879,16 @@ async def get_ai_task_suggestions(request: Request):
                 tasks_by_prospect[pid] = []
             tasks_by_prospect[pid].append(t)
     
-    # Categorize prospects
-    inactive_prospects = []  # No activity in 3+ days
-    active_prospects = []    # Active prospects with no upcoming tasks
-    prospects_with_tasks = []  # Already have upcoming tasks
+    # Find prospects WITHOUT any upcoming task - these need suggestions
+    prospects_needing_action = []
+    prospects_with_tasks = []
     
     for p in all_prospects:
-        if p.get("status") in ["closed", "lost"]:
-            continue
-            
         prospect_id = p.get("prospect_id")
-        has_upcoming_task = prospect_id in tasks_by_prospect
         
+        # Calculate days since last activity
         last_activity = p.get("last_activity_date") or p.get("created_at")
-        days_inactive = 0
+        days_since_activity = 0
         if last_activity:
             if isinstance(last_activity, str):
                 last_activity_date = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
@@ -1898,19 +1896,21 @@ async def get_ai_task_suggestions(request: Request):
                 last_activity_date = last_activity
             if last_activity_date.tzinfo is None:
                 last_activity_date = last_activity_date.replace(tzinfo=timezone.utc)
-            days_inactive = (datetime.now(timezone.utc) - last_activity_date).days
+            days_since_activity = (datetime.now(timezone.utc) - last_activity_date).days
         
-        prospect_data = {**p, "days_inactive": days_inactive, "has_upcoming_task": has_upcoming_task}
+        prospect_data = {
+            **p, 
+            "days_since_activity": days_since_activity,
+            "upcoming_tasks": tasks_by_prospect.get(prospect_id, [])
+        }
         
-        if has_upcoming_task:
+        if prospect_id in tasks_by_prospect:
             prospects_with_tasks.append(prospect_data)
-        elif days_inactive >= 3:
-            inactive_prospects.append(prospect_data)
         else:
-            active_prospects.append(prospect_data)
+            prospects_needing_action.append(prospect_data)
     
-    # Sort inactive by days
-    inactive_prospects.sort(key=lambda x: x["days_inactive"], reverse=True)
+    # Sort by days since activity (most inactive first)
+    prospects_needing_action.sort(key=lambda x: x["days_since_activity"], reverse=True)
     
     # Build AI context
     try:
@@ -1922,63 +1922,51 @@ async def get_ai_task_suggestions(request: Request):
         if not api_key:
             raise HTTPException(status_code=500, detail="AI service not configured")
         
-        # Determine context type for AI
-        if inactive_prospects:
-            context_type = "inactive"
-            target_prospects = inactive_prospects[:5]
-        elif active_prospects:
-            context_type = "active_no_task"
-            target_prospects = active_prospects[:5]
-        elif prospects_with_tasks:
-            context_type = "all_followed"
-            target_prospects = prospects_with_tasks[:3]
-        else:
-            context_type = "no_prospects"
-            target_prospects = []
-        
         chat = LlmChat(
             api_key=api_key,
             session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Tu es un coach commercial expert en immobilier. Tu DOIS TOUJOURS suggérer des actions.
-Réponds UNIQUEMENT en JSON valide: {"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit|prospection", "reason": "..."}]}
-- prospect_id: null si tâche générique (prospection)
-- task_type: call, sms, email, visit, ou prospection
-- Sois concis et actionnable. Max 3 suggestions."""
+            system_message="""Tu es un coach commercial immobilier. Tu anticipes TOUJOURS la prochaine action.
+Réponds UNIQUEMENT en JSON: {"suggestions": [{"prospect_id": "...", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit|prospection", "reason": "...", "priority": "high|medium|low"}]}
+IMPORTANT: 
+- Utilise EXACTEMENT les prospect_id fournis dans le contexte
+- Pour une tâche générique sans prospect, utilise prospect_id: null
+- task_type: call, sms, email, visit, prospection
+- Max 3 suggestions, concis."""
         ).with_model("openai", "gpt-4.1-nano")
         
-        if context_type == "inactive":
+        if prospects_needing_action:
+            # Prospects without tasks - suggest next actions
+            target = prospects_needing_action[:5]
             prospects_context = "\n".join([
-                f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_inactive']}j sans contact, statut: {p.get('status', 'new')}, source: {p.get('source', '?')}, projet: {p.get('notes', 'non précisé')[:80] if p.get('notes') else 'non précisé'}"
-                for p in target_prospects
+                f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']}j depuis dernier contact, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:100] if p.get('notes') else 'non précisé'}"
+                for p in target
             ])
-            prompt = f"""PROSPECTS INACTIFS à relancer:
+            prompt = f"""PROSPECTS SANS TÂCHE PLANIFIÉE - anticipe leur prochaine action:
+
 {prospects_context}
 
-Suggère des actions de relance adaptées au projet de chaque prospect."""
+Suggère la prochaine étape logique pour faire avancer chaque projet. Pense à l'étape suivante dans le cycle de vente immobilier."""
 
-        elif context_type == "active_no_task":
-            prospects_context = "\n".join([
-                f"- {p['full_name']} (ID: {p['prospect_id']}): actif depuis {p['days_inactive']}j, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:80] if p.get('notes') else 'non précisé'}"
-                for p in target_prospects
+        elif prospects_with_tasks:
+            # All have tasks - suggest future actions for existing prospects OR prospection
+            target = prospects_with_tasks[:3]
+            tasks_context = "\n".join([
+                f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} tâche(s) planifiée(s), projet: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
+                for p in target
             ])
-            prompt = f"""PROSPECTS ACTIFS sans tâche planifiée:
-{prospects_context}
+            prompt = f"""Tous les prospects ont des tâches planifiées. Anticipe les PROCHAINES étapes:
 
-Suggère la prochaine étape logique pour faire avancer chaque projet."""
+{tasks_context}
 
-        elif context_type == "all_followed":
-            prompt = f"""Tous les {len(prospects_with_tasks)} prospects ont des tâches planifiées. Bravo !
-
-Suggère:
-1. Une action de prospection pour trouver de nouveaux clients
-2. Une action pour anticiper les besoins futurs (ex: préparer des biens à proposer)"""
+Suggère des actions FUTURES pour ces prospects (après leurs tâches actuelles) OU une action de prospection.
+IMPORTANT: Utilise les IDs exacts fournis ci-dessus, ou prospect_id=null pour prospection générique."""
 
         else:
-            prompt = """Aucun prospect dans le CRM.
-
-Suggère des actions de prospection pour démarrer:
-1. Prospection téléphonique
-2. Prospection terrain ou porte-à-porte"""
+            # No prospects
+            prompt = """Aucun prospect actif. Suggère des actions de prospection:
+1. Prospection téléphonique (pige immo)
+2. Prospection terrain
+3. Réseaux sociaux / annonces"""
         
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
@@ -1998,10 +1986,8 @@ Suggère des actions de prospection pour démarrer:
         
         return {
             "suggestions": suggestions,
-            "context_type": context_type,
             "stats": {
-                "inactive": len(inactive_prospects),
-                "active_no_task": len(active_prospects),
+                "needing_action": len(prospects_needing_action),
                 "with_tasks": len(prospects_with_tasks),
                 "total": len(all_prospects)
             }
@@ -2009,39 +1995,40 @@ Suggère des actions de prospection pour démarrer:
         
     except json.JSONDecodeError as e:
         logger.error(f"AI response parsing error: {e}")
-        # Fallback suggestions based on context
+        # Fallback - always return something
         fallback = []
-        if inactive_prospects:
-            for p in inactive_prospects[:2]:
+        if prospects_needing_action:
+            for p in prospects_needing_action[:2]:
                 fallback.append({
                     "prospect_id": p["prospect_id"],
                     "prospect_name": p["full_name"],
-                    "task_title": f"Relancer {p['full_name']}",
+                    "task_title": f"Suivre {p['full_name']}",
                     "task_type": "call",
-                    "reason": f"Aucun contact depuis {p['days_inactive']} jours"
+                    "reason": "Planifier la prochaine étape",
+                    "priority": "medium"
                 })
-        else:
+        if not fallback:
             fallback.append({
                 "prospect_id": None,
                 "prospect_name": "Prospection",
                 "task_title": "Session de prospection",
                 "task_type": "prospection",
-                "reason": "Tous vos prospects sont suivis - développez votre portefeuille"
+                "reason": "Développer votre portefeuille",
+                "priority": "medium"
             })
-        return {"suggestions": fallback, "context_type": "fallback"}
+        return {"suggestions": fallback}
         
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
-        # Always return something useful
         return {
             "suggestions": [{
                 "prospect_id": None,
                 "prospect_name": "Prospection",
                 "task_title": "Prospection nouveaux clients",
                 "task_type": "prospection",
-                "reason": "Développez votre portefeuille de prospects"
-            }],
-            "context_type": "error_fallback"
+                "reason": "Développez votre portefeuille",
+                "priority": "medium"
+            }]
         }
 
 @api_router.post("/tasks/ai-suggestions/accept")
