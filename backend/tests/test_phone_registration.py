@@ -14,7 +14,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://kolo-ai-features.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://kolo-refactor.preview.emergentagent.com').rstrip('/')
 
 class TestPhoneRegistration:
     """Test registration with phone number requirement"""

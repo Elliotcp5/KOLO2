@@ -10,13 +10,34 @@ import OnboardingFlow from '../components/OnboardingFlow';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 
-// Status configuration
+// Status configuration with colors
 const PROSPECT_STATUSES = {
-  nouveau: { fr: 'Nouveau', en: 'New' },
-  contacte: { fr: 'Contacté', en: 'Contacted' },
-  qualifie: { fr: 'Qualifié', en: 'Qualified' },
-  offre: { fr: 'Offre', en: 'Offer' },
-  signe: { fr: 'Signé', en: 'Signed' }
+  nouveau: { fr: 'Nouveau', en: 'New', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' },
+  contacte: { fr: 'Contacté', en: 'Contacted', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
+  qualifie: { fr: 'Qualifié', en: 'Qualified', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' },
+  offre: { fr: 'Offre', en: 'Offer', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
+  signe: { fr: 'Signé', en: 'Signed', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' }
+};
+
+// Helper to get status info (handles legacy status names)
+const getProspectStatusInfo = (status, locale = 'fr') => {
+  // Map legacy statuses to new ones
+  const legacyMapping = {
+    'new': 'nouveau',
+    'in_progress': 'contacte',
+    'closed': 'signe',
+    'lost': 'nouveau'
+  };
+  
+  const mappedStatus = legacyMapping[status] || status;
+  const statusInfo = PROSPECT_STATUSES[mappedStatus];
+  
+  if (!statusInfo) return { label: status, color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' };
+  return {
+    label: statusInfo[locale] || statusInfo.fr,
+    color: statusInfo.color,
+    bg: statusInfo.bg
+  };
 };
 
 // Theme-aware color helper
@@ -25,25 +46,59 @@ const getThemeColor = (theme, type) => {
     light: {
       bg: '#F9FAFB',
       surface: '#FFFFFF',
+      surface2: '#F3F4F6',
       text: '#111827',
+      textSecondary: '#374151',
       muted: '#6B7280',
+      mutedDark: '#9CA3AF',
       border: '#E5E7EB',
       cardBg: '#FFFFFF',
       cardBorder: '#E5E7EB',
-      navBg: 'rgba(255, 255, 255, 0.95)'
+      navBg: 'rgba(255, 255, 255, 0.95)',
+      inputBg: '#FFFFFF',
+      inputBorder: '#D1D5DB',
+      accent: '#7C3AED',
+      accentGlow: 'rgba(124, 58, 237, 0.12)',
+      success: '#22C55E',
+      successBg: 'rgba(34, 197, 94, 0.1)',
+      error: '#EF4444',
+      warning: '#F59E0B',
+      warningBg: 'rgba(245, 158, 11, 0.1)'
     },
     dark: {
       bg: '#0A0A0C',
       surface: '#111114',
+      surface2: '#17171A',
       text: '#FAFAFA',
+      textSecondary: '#E5E7EB',
       muted: '#8E8E93',
+      mutedDark: '#48484A',
       border: 'rgba(255, 255, 255, 0.06)',
       cardBg: '#111114',
       cardBorder: 'rgba(255, 255, 255, 0.06)',
-      navBg: 'rgba(11, 11, 15, 0.98)'
+      navBg: 'rgba(11, 11, 15, 0.98)',
+      inputBg: '#17171A',
+      inputBorder: 'rgba(255, 255, 255, 0.08)',
+      accent: '#8B5CF6',
+      accentGlow: 'rgba(139, 92, 246, 0.2)',
+      success: '#22C55E',
+      successBg: 'rgba(34, 197, 94, 0.15)',
+      error: '#EF4444',
+      warning: '#F59E0B',
+      warningBg: 'rgba(245, 158, 11, 0.15)'
     }
   };
   return colors[theme]?.[type] || colors.light[type];
+};
+
+// Custom hook for theme colors
+const useThemeColors = () => {
+  const { theme } = useTheme();
+  return {
+    theme,
+    c: (type) => getThemeColor(theme, type),
+    isDark: theme === 'dark'
+  };
 };
 
 // Helper for authenticated fetch
@@ -59,7 +114,7 @@ const authFetch = (url, options = {}) => {
 // ==================== TODAY TAB ====================
 const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const { t, formatDate, locale } = useLocale();
-  const { theme } = useTheme();
+  const { c, isDark } = useThemeColors();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -97,6 +152,34 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
     task_type: 'call'
   });
   const [creatingTask, setCreatingTask] = useState(false);
+
+  // Generate contextual greeting message
+  const getContextualMessage = () => {
+    const hour = new Date().getHours();
+    const overdueTasks = tasks.filter(t => !t.completed && new Date(t.due_date) < new Date());
+    const pendingTasks = tasks.filter(t => !t.completed);
+    
+    // Priority: Overdue > Pending count > Time of day
+    if (overdueTasks.length > 0) {
+      return locale === 'fr' 
+        ? `${overdueTasks.length} tâche${overdueTasks.length > 1 ? 's' : ''} en retard à traiter.`
+        : `${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''} to handle.`;
+    }
+    
+    if (pendingTasks.length === 0 && stats.completedToday > 0) {
+      return locale === 'fr' 
+        ? 'Journée parfaite ! Tout est fait.'
+        : 'Perfect day! All done.';
+    }
+    
+    if (hour >= 5 && hour < 12) {
+      return locale === 'fr' ? 'Belle journée devant vous.' : 'Great day ahead.';
+    } else if (hour >= 12 && hour < 18) {
+      return locale === 'fr' ? 'Bon après-midi !' : 'Good afternoon!';
+    } else {
+      return locale === 'fr' ? 'Bonsoir !' : 'Good evening!';
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -165,6 +248,16 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           activeProspects: data.prospects?.length || 0
         }));
         setProspects(data.prospects || []);
+      }
+      
+      // Fetch streak
+      const streakResponse = await authFetch(`${API_URL}/api/auth/streak`);
+      if (streakResponse.ok) {
+        const data = await streakResponse.json();
+        setStats(prev => ({
+          ...prev,
+          streak: data.streak || 0
+        }));
       }
       
       // Fetch AI suggestions
@@ -478,42 +571,55 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   };
 
   return (
-    <div style={{ padding: '20px', backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB', minHeight: '100vh' }}>
+    <div style={{ padding: '20px', backgroundColor: c('bg'), minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <h1 className="text-headline" style={{ fontSize: '26px', color: theme === 'dark' ? '#FAFAFA' : '#111827' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: '700', color: c('text') }}>
           {viewMode === 'today' ? t('today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
         </h1>
         <button 
-          className="btn-ghost" 
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', background: 'none', border: 'none', cursor: 'pointer' }}
           onClick={onOpenProfile}
           data-testid="my-profile-button"
         >
-          <User size={16} strokeWidth={1.5} color={theme === 'dark' ? '#FAFAFA' : '#111827'} />
-          <span style={{ color: theme === 'dark' ? '#FAFAFA' : '#111827', fontSize: '13px' }}>{t('myProfile')}</span>
+          <User size={16} strokeWidth={1.5} color={c('text')} />
+          <span style={{ color: c('text'), fontSize: '13px' }}>{t('myProfile')}</span>
         </button>
       </div>
 
-      {/* Date */}
-      <p className="text-muted" style={{ marginBottom: '12px', textTransform: 'capitalize', fontSize: '13px' }}>
-        {formatDate(new Date())}
-      </p>
+      {/* Date + Contextual Message + Streak */}
+      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ textTransform: 'capitalize', fontSize: '13px', color: c('muted'), marginBottom: '4px' }}>
+            {formatDate(new Date())}
+          </p>
+          <p style={{ fontSize: '14px', color: c('text'), fontWeight: '500' }}>
+            {getContextualMessage()}
+          </p>
+        </div>
+        {/* Streak Counter - only show if >= 2 days */}
+        {stats.streak >= 2 && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            background: c('warningBg'),
+            padding: '6px 12px',
+            borderRadius: '20px'
+          }}>
+            <Flame size={16} color={c('warning')} />
+            <span style={{ fontSize: '13px', fontWeight: '600', color: c('warning') }}>
+              {stats.streak >= 7 
+                ? `${Math.floor(stats.streak / 7)} ${locale === 'fr' ? 'sem.' : 'wk'}` 
+                : stats.streak}
+            </span>
+          </div>
+        )}
+      </div>
       
       {/* Segment Control - Today / All Tasks + Add Task Button */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px',
-        marginBottom: '16px',
-        alignItems: 'center'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          background: 'var(--surface)', 
-          borderRadius: '10px', 
-          padding: '4px',
-          flex: 1
-        }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', background: c('surface'), borderRadius: '10px', padding: '4px', flex: 1, border: `1px solid ${c('border')}` }}>
           <button
             onClick={() => setViewMode('today')}
             style={{
@@ -521,8 +627,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               padding: '8px 12px',
               borderRadius: '8px',
               border: 'none',
-              background: viewMode === 'today' ? 'var(--accent)' : 'transparent',
-              color: viewMode === 'today' ? 'white' : 'var(--muted)',
+              background: viewMode === 'today' ? c('accent') : 'transparent',
+              color: viewMode === 'today' ? 'white' : c('muted'),
               fontSize: '13px',
               fontWeight: '500',
               cursor: 'pointer',
@@ -539,8 +645,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               padding: '8px 12px',
               borderRadius: '8px',
               border: 'none',
-              background: viewMode === 'all' ? 'var(--accent)' : 'transparent',
-              color: viewMode === 'all' ? 'white' : 'var(--muted)',
+              background: viewMode === 'all' ? c('accent') : 'transparent',
+              color: viewMode === 'all' ? 'white' : c('muted'),
               fontSize: '13px',
               fontWeight: '500',
               cursor: 'pointer',
@@ -558,18 +664,18 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           style={{
             width: '40px',
             height: '40px',
-            borderRadius: '10px',
+            borderRadius: '12px',
             border: 'none',
-            background: 'var(--surface)',
-            color: 'var(--accent)',
-            cursor: 'pointer',
+            background: c('accent'),
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0
           }}
           data-testid="add-task-button"
         >
-          <Plus size={20} />
+          <Plus size={20} color="white" />
         </button>
       </div>
       
@@ -583,59 +689,63 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
         }}>
           {/* Tasks Progress - More explicit */}
           <div style={{ 
-            background: 'var(--surface)', 
+            background: c('cardBg'), 
             borderRadius: '12px', 
             padding: '12px',
-            border: '1px solid var(--border)'
+            border: `1px solid ${c('cardBorder')}`
           }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--accent)' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: c('accent') }}>
               {stats.completedToday}
-              <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--muted)' }}> / {stats.totalToday || tasks.length + stats.completedToday}</span>
+              <span style={{ fontSize: '14px', fontWeight: '400', color: c('muted') }}> / {stats.totalToday || tasks.length + stats.completedToday}</span>
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
               {locale === 'fr' ? 'Faites' : 'Done'}
             </div>
           </div>
           
           {/* Active Prospects */}
           <div style={{ 
-            background: 'var(--surface)', 
+            background: c('cardBg'), 
             borderRadius: '12px', 
             padding: '12px',
-            border: '1px solid var(--border)'
+            border: `1px solid ${c('cardBorder')}`
           }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: 'white' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: c('text') }}>
               {stats.activeProspects}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
               Prospects
             </div>
           </div>
           
           {/* Pending */}
           <div style={{ 
-            background: 'var(--surface)', 
+            background: c('cardBg'), 
             borderRadius: '12px', 
             padding: '12px',
-            border: '1px solid var(--border)'
+            border: `1px solid ${c('cardBorder')}`
           }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: tasks.length > 0 ? '#F59E0B' : 'var(--success)' }}>
+            <div style={{ fontSize: '20px', fontWeight: '600', color: tasks.length > 0 ? c('warning') : c('success') }}>
               {tasks.length}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
               {locale === 'fr' ? 'À faire' : 'To do'}
             </div>
           </div>
         </div>
       )}
       
-      {/* AI Suggestions Banner - ALWAYS VISIBLE in Today view - Core feature of KOLO */}
+      {/* AI Suggestions Banner - ALWAYS VISIBLE in Today view */}
       {!loading && !subscriptionBlocked && viewMode === 'today' && (
         <div 
           data-testid="ai-suggestions-block"
           style={{ 
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
+            background: isDark 
+              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)'
+              : 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
+            border: isDark 
+              ? '1px solid rgba(139, 92, 246, 0.3)'
+              : '1px solid rgba(124, 58, 237, 0.2)',
             borderRadius: '14px', 
             padding: '14px 16px',
             marginBottom: '16px'
@@ -646,7 +756,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               width: '32px',
               height: '32px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
+              background: 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -654,13 +764,13 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               <Sparkles size={16} style={{ color: 'white' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
+              <div style={{ fontSize: '14px', color: c('text'), fontWeight: '600' }}>
                 {aiSuggestions.length > 0 
                   ? `${aiSuggestions.length} ${locale === 'fr' ? 'suggestion' : 'suggestion'}${aiSuggestions.length > 1 ? 's' : ''} IA`
                   : (locale === 'fr' ? 'Assistant IA' : 'AI Assistant')
                 }
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+              <div style={{ fontSize: '12px', color: c('muted') }}>
                 {aiSuggestions.length > 0 
                   ? (locale === 'fr' ? 'Prospects inactifs à relancer' : 'Inactive prospects to follow up')
                   : (locale === 'fr' ? 'Tous vos prospects sont bien suivis !' : 'All your prospects are well followed!')
@@ -669,7 +779,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             </div>
             {aiSuggestions.length === 0 && (
               <div style={{
-                background: 'rgba(34, 197, 94, 0.2)',
+                background: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
                 border: '1px solid rgba(34, 197, 94, 0.4)',
                 borderRadius: '8px',
                 padding: '4px 10px',
@@ -701,7 +811,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 }
               }}
               style={{ 
-                background: 'rgba(0, 0, 0, 0.2)', 
+                background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.6)', 
                 borderRadius: '10px', 
                 padding: '12px',
                 display: 'flex',
@@ -711,15 +821,15 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', color: 'white', fontWeight: '500', marginBottom: '2px' }}>
+                <div style={{ fontSize: '13px', color: c('text'), fontWeight: '500', marginBottom: '2px' }}>
                   {aiSuggestions[0]?.prospect_name}
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                <div style={{ fontSize: '12px', color: c('muted') }}>
                   {aiSuggestions[0]?.reason}
                 </div>
               </div>
               <button style={{
-                background: 'var(--accent)',
+                background: c('accent'),
                 border: 'none',
                 borderRadius: '8px',
                 padding: '8px 12px',
@@ -740,7 +850,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           {/* Show more if multiple suggestions */}
           {aiSuggestions.length > 1 && (
             <div style={{ textAlign: 'center', marginTop: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+              <span style={{ fontSize: '11px', color: c('muted') }}>
                 +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''}
               </span>
             </div>
@@ -811,7 +921,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             const now = new Date();
             const taskDate = new Date(task.due_date);
             const isOverdue = !isCompleted && taskDate < now;
-            const borderColor = isCompleted ? 'var(--success)' : (isOverdue ? '#F59E0B' : 'var(--border)');
+            const borderColor = isCompleted ? c('success') : (isOverdue ? c('warning') : c('border'));
             
             // Format time
             const taskTime = taskDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
@@ -832,7 +942,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     top: '1px',
                     bottom: '1px',
                     right: '1px',
-                    background: 'var(--success)',
+                    background: c('success'),
                     borderRadius: '11px',
                     display: 'flex',
                     alignItems: 'center',
@@ -853,11 +963,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                   onTouchEnd={isCompleted ? undefined : (e) => handleTouchEnd(e, task.task_id)}
                   style={{ 
                     padding: '0',
-                    background: completedTaskId === task.task_id ? 'var(--success)' : 'var(--surface)',
+                    background: completedTaskId === task.task_id ? c('success') : c('cardBg'),
                     overflow: 'hidden',
                     position: 'relative',
                     borderRadius: '12px',
-                    borderLeft: isCompleted ? '3px solid var(--success)' : 'none',
+                    border: `1px solid ${c('cardBorder')}`,
+                    borderLeft: isCompleted ? `3px solid ${c('success')}` : `1px solid ${c('cardBorder')}`,
                     opacity: isCompleted ? 0.7 : 1,
                     transition: swipingTaskId === task.task_id ? 'none' : 'transform 0.2s ease, opacity 0.2s ease'
                   }}
@@ -880,17 +991,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     <div style={{ 
                       fontSize: '15px', 
                       fontWeight: '500', 
-                      color: isCompleted ? 'var(--success)' : 'white', 
+                      color: isCompleted ? c('success') : c('text'), 
                       marginBottom: '2px',
                       textDecoration: isCompleted ? 'line-through' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px'
                     }}>
-                      {isCompleted && <Check size={14} style={{ color: 'var(--success)' }} />}
+                      {isCompleted && <Check size={14} style={{ color: c('success') }} />}
                       {task.prospect?.full_name || task.title}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '13px', color: c('muted'), display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {/* Icon + label only if recognized type */}
                       {IconComponent && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -904,12 +1015,32 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                           {task.title}
                         </span>
                       )}
-                      <span style={{ color: 'var(--muted-dark)' }}>•</span>
-                      <span style={{ color: isOverdue ? '#F59E0B' : (isCompleted ? 'var(--success)' : 'var(--muted)') }}>
+                      <span style={{ color: c('mutedDark') }}>•</span>
+                      <span style={{ color: isOverdue ? c('warning') : (isCompleted ? c('success') : c('muted')) }}>
                         {viewMode === 'all' && taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' }) + ' '}
                         {taskTime}
                       </span>
-                      {isOverdue && <span style={{ color: '#F59E0B' }}>({locale === 'fr' ? 'En retard' : 'Overdue'})</span>}
+                      {isOverdue && !isCompleted && (
+                        <button
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (task.prospect) {
+                              openAiSmsModal(task);
+                            }
+                          }}
+                          style={{ 
+                            color: c('warning'), 
+                            background: 'none', 
+                            border: 'none', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            textDecoration: 'underline',
+                            padding: 0
+                          }}
+                        >
+                          {locale === 'fr' ? 'En retard — Relancer maintenant' : 'Overdue — Follow up now'}
+                        </button>
+                      )}
                       {isCompleted && <span style={{ color: 'var(--success)' }}>({locale === 'fr' ? 'Fait' : 'Done'})</span>}
                     </div>
                   </div>
@@ -1201,9 +1332,25 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             
             {messageLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)', marginBottom: '12px' }} />
-                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-                  {locale === 'fr' ? 'Génération...' : 'Generating...'}
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}>
+                  <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                </div>
+                <p style={{ color: 'var(--text)', fontSize: '15px', fontWeight: '500', marginBottom: '4px' }}>
+                  {locale === 'fr' 
+                    ? `Analyse du projet de ${selectedTask.prospect?.full_name?.split(' ')[0] || 'votre prospect'}...` 
+                    : `Analyzing ${selectedTask.prospect?.full_name?.split(' ')[0] || 'your prospect'}'s project...`}
+                </p>
+                <p style={{ color: 'var(--muted)', fontSize: '13px' }}>
+                  {locale === 'fr' ? 'Rédaction du message parfait' : 'Writing the perfect message'}
                 </p>
               </div>
             ) : (
@@ -1434,7 +1581,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 
 // ==================== PROSPECTS TAB ====================
 const ProspectsTab = ({ onSelectProspect }) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1445,7 +1592,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
     phone: '',
     email: '',
     source: 'manual',
-    status: 'new',
+    status: 'nouveau',
     notes: ''
   });
   const [creating, setCreating] = useState(false);
@@ -1485,7 +1632,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
           navigator.vibrate([10, 40, 20]); // Success pattern
         }
         toast.success(t('prospectCreated') || 'Lead créé!');
-        setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'new', notes: '' });
+        setNewProspect({ full_name: '', phone: '', email: '', source: 'manual', status: 'nouveau', notes: '' });
         setShowAddForm(false);
         fetchProspects();
       } else {
@@ -1500,13 +1647,9 @@ const ProspectsTab = ({ onSelectProspect }) => {
   };
 
   const getStatusLabel = (status) => {
-    const labels = {
-      new: t('statusNew'),
-      in_progress: t('statusInProgress'),
-      closed: t('statusClosed'),
-      lost: t('statusLost'),
-    };
-    return labels[status] || status;
+    // Use the PROSPECT_STATUSES config
+    const statusInfo = getProspectStatusInfo(status, locale);
+    return statusInfo.label;
   };
 
   const formatNextTask = (prospect) => {
@@ -1580,13 +1723,19 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <div>
             <label className="text-caption" style={{ marginBottom: '8px', display: 'block' }}>{t('source')}</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {['manual', 'whatsapp', 'email'].map(source => (
+              {[
+                { value: 'manual', label: locale === 'fr' ? 'Manuel' : 'Manual' },
+                { value: 'leboncoin', label: 'Leboncoin' },
+                { value: 'seloger', label: 'SeLoger' },
+                { value: 'reseau', label: locale === 'fr' ? 'Réseau' : 'Network' },
+                { value: 'recommandation', label: locale === 'fr' ? 'Recommandation' : 'Referral' }
+              ].map(opt => (
                 <button
-                  key={source}
-                  onClick={() => setNewProspect({...newProspect, source})}
-                  className={`btn-chip ${newProspect.source === source ? 'active' : ''}`}
+                  key={opt.value}
+                  onClick={() => setNewProspect({...newProspect, source: opt.value})}
+                  className={`btn-chip ${newProspect.source === opt.value ? 'active' : ''}`}
                 >
-                  {source === 'manual' ? t('manual') : source === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -1596,13 +1745,22 @@ const ProspectsTab = ({ onSelectProspect }) => {
           <div>
             <label className="text-caption" style={{ marginBottom: '8px', display: 'block' }}>{t('status')}</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {['new', 'in_progress', 'closed', 'lost'].map(status => (
+              {Object.entries(PROSPECT_STATUSES).map(([value, statusInfo]) => (
                 <button
-                  key={status}
-                  onClick={() => setNewProspect({...newProspect, status})}
-                  className={`btn-chip ${newProspect.status === status ? 'active' : ''}`}
+                  key={value}
+                  onClick={() => setNewProspect({...newProspect, status: value})}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '20px',
+                    border: newProspect.status === value ? 'none' : '1px solid var(--border)',
+                    background: newProspect.status === value ? statusInfo.color : 'transparent',
+                    color: newProspect.status === value ? 'white' : 'var(--text)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
                 >
-                  {getStatusLabel(status)}
+                  {statusInfo[locale] || statusInfo.fr}
                 </button>
               ))}
             </div>
@@ -1768,9 +1926,21 @@ const ProspectsTab = ({ onSelectProspect }) => {
                   <ChevronRight size={20} style={{ color: 'var(--muted-dark)' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                  <span className={`status-badge ${prospect.status}`}>
-                    {getStatusLabel(prospect.status)}
-                  </span>
+                  {(() => {
+                    const statusInfo = getProspectStatusInfo(prospect.status, locale);
+                    return (
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        background: statusInfo.bg,
+                        color: statusInfo.color
+                      }}>
+                        {statusInfo.label}
+                      </span>
+                    );
+                  })()}
                   {nextTask && (
                     <span style={{ 
                       fontSize: '12px', 
@@ -2045,20 +2215,18 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   };
 
   const getStatusLabel = (status) => {
-    const labels = {
-      new: t('statusNew'),
-      in_progress: t('statusInProgress'),
-      closed: t('statusClosed'),
-      lost: t('statusLost'),
-    };
-    return labels[status] || status;
+    // Use the PROSPECT_STATUSES config
+    const statusInfo = getProspectStatusInfo(status, locale);
+    return statusInfo.label;
   };
 
+  // New status options for prospect pipeline
   const statusOptions = [
-    { value: 'new', label: t('statusNew') },
-    { value: 'in_progress', label: t('statusInProgress') },
-    { value: 'closed', label: t('statusClosed') },
-    { value: 'lost', label: t('statusLost') },
+    { value: 'nouveau', label: locale === 'fr' ? 'Nouveau' : 'New', color: '#6B7280' },
+    { value: 'contacte', label: locale === 'fr' ? 'Contacté' : 'Contacted', color: '#3B82F6' },
+    { value: 'qualifie', label: locale === 'fr' ? 'Qualifié' : 'Qualified', color: '#8B5CF6' },
+    { value: 'offre', label: locale === 'fr' ? 'Offre' : 'Offer', color: '#F59E0B' },
+    { value: 'signe', label: locale === 'fr' ? 'Signé' : 'Signed', color: '#22C55E' }
   ];
 
   if (loading) {
@@ -2566,22 +2734,35 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </div>
       )}
 
-      {/* Status */}
+      {/* Status Pipeline */}
       <div style={{ marginBottom: '24px' }}>
         <label className="text-caption" style={{ display: 'block', marginBottom: '12px' }}>
           {t('status')}
         </label>
-        <div className="segmented-control">
-          {statusOptions.map((option) => (
-            <button
-              key={option.value}
-              className={`segment-option ${prospectData.status === option.value ? 'active' : ''}`}
-              onClick={() => handleStatusChange(option.value)}
-              data-testid={`status-${option.value}`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {statusOptions.map((option) => {
+            const isActive = prospectData.status === option.value;
+            return (
+              <button
+                key={option.value}
+                onClick={() => handleStatusChange(option.value)}
+                data-testid={`status-${option.value}`}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: isActive ? 'none' : '1px solid var(--border)',
+                  background: isActive ? option.color : 'transparent',
+                  color: isActive ? 'white' : 'var(--text)',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -4518,9 +4699,20 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [source, setSource] = useState('');
   const [creating, setCreating] = useState(false);
 
   const isFormValid = name.trim() && phone.trim() && email.trim() && notes.trim();
+
+  const sourceOptions = [
+    { value: '', label: locale === 'fr' ? 'Source (optionnel)' : 'Source (optional)' },
+    { value: 'leboncoin', label: 'Leboncoin' },
+    { value: 'seloger', label: 'SeLoger' },
+    { value: 'pap', label: 'PAP' },
+    { value: 'reseau', label: locale === 'fr' ? 'Réseau' : 'Network' },
+    { value: 'recommandation', label: locale === 'fr' ? 'Recommandation' : 'Referral' },
+    { value: 'autre', label: locale === 'fr' ? 'Autre' : 'Other' }
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -4535,8 +4727,8 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           full_name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
-          source: 'manual',
-          status: 'new',
+          source: source || 'manual',
+          status: 'nouveau',
           notes: notes.trim()
         })
       });
@@ -4676,6 +4868,29 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               }}
             />
           </div>
+          
+          {/* Source field */}
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            data-testid="quick-prospect-source"
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              color: source ? 'var(--text)' : 'var(--muted)',
+              fontSize: '16px',
+              marginBottom: '16px',
+              appearance: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {sourceOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           
           <button
             type="submit"
@@ -4874,7 +5089,7 @@ const AppShell = () => {
   };
 
   return (
-    <div className={`mobile-frame theme-${theme}`} style={{ backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
+    <div className={`mobile-frame theme-${theme}`} style={{ backgroundColor: 'var(--bg)' }}>
       {/* Onboarding Flow */}
       {showOnboarding && (
         <OnboardingFlow 
@@ -4883,8 +5098,8 @@ const AppShell = () => {
         />
       )}
       
-      <div className="page-container safe-area-top" style={{ backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
-        <div className="scroll-content" style={{ paddingBottom: '80px', backgroundColor: theme === 'dark' ? '#0A0A0C' : '#F9FAFB' }}>
+      <div className="page-container safe-area-top" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="scroll-content" style={{ paddingBottom: '80px', backgroundColor: 'var(--bg)' }}>
           {renderTab()}
         </div>
         {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
