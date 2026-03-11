@@ -1,107 +1,172 @@
-# KOLO - CRM Immobilier Mobile-First PWA
+# KOLO - CRM Immobilier
 
-## Probleme Original
-Application CRM mobile-first PWA pour agents immobiliers avec:
-- UI dark mode / light mode avec accents violet #7C3AED
-- Localisation FR/EN automatique
-- Prix regional (9.99 EUR/GBP/USD)
-- Authentification email/password avec Bearer Token
-- Essai gratuit 7 jours SANS carte bancaire
-- Gestion prospects et taches avec suivi automatique
-- **Assistant IA** : scoring, generation de messages, suggestions
-- **SMS bidirectionnels** : envoi + reception des reponses
+## Problem Statement
+Application de gestion de prospects immobiliers avec suivi automatisé, suggestions IA et communication SMS/Email.
 
-## Architecture v2.0
-```
-/app/
-├── backend/
-│   ├── server.py          # API FastAPI (~2500 lignes)
-│   └── .env               # Config
-└── frontend/
-    ├── src/
-    │   ├── context/
-    │   │   ├── ThemeContext.js    # NEW - Gestion theme light/dark
-    │   │   ├── AuthContext.js
-    │   │   └── LocaleContext.js
-    │   ├── components/
-    │   │   ├── OnboardingFlow.js  # NEW - Didacticiel 5 ecrans
-    │   │   └── ...
-    │   ├── pages/
-    │   │   ├── AppShell.js        # Composant principal
-    │   │   ├── LandingPageNew.js  # NEW - Landing refonte
-    │   │   └── ...
-    │   └── styles/
-    │       └── themes.css         # NEW - Variables CSS themes
-    └── package.json
-```
+## User Personas
+- Agents immobiliers indépendants
+- Petites agences immobilières
+- Professionnels de l'immobilier souhaitant automatiser leur suivi client
 
-## Fonctionnalites v2.0 (11 Mars 2026)
+## Core Requirements
 
-### Mode Clair / Sombre
-- Light mode par defaut pour nouveaux utilisateurs
-- Variables CSS: --bg, --surface, --text, --accent, etc.
-- Toggle dans Mon Profil avec icones Sun/Moon
-- Sauvegarde en base via `theme_preference`
+### Authentication
+- Email/password login
+- Session management
+- User preferences (theme, locale)
 
-### Statuts Prospect Pipeline
-- `nouveau` → `contacte` → `qualifie` → `offre` → `signe`
-- Badge sur chaque card prospect
-- Badge vert pour "signe"
+### Prospect Management
+- CRUD prospects
+- 5 statuts : nouveau, contacté, qualifié, offre, signé
+- Température (froid, tiède, chaud)
+- Import contacts natif
+- Notes et historique
 
-### Onboarding Didacticiel
-- 5 ecrans avec progress bar
-- Import contacts (Android only)
-- Choix theme obligatoire
-- Confetti a la fin
+### Task Management
+- Création/completion de tâches
+- Tâches en retard avec relance rapide
+- Suggestions IA automatiques
+- Streak de jours consécutifs
 
-### Streak de Suivi
-- Compteur jours consecutifs
-- Affiche si >= 2 jours
-- "X semaines de suivi parfait" si >= 7 jours
+### Communication
+- Génération de messages IA (SMS/Email)
+- Templates personnalisés
+- Historique des interactions
 
-### Ameliorations UX
-- Message contextuel dynamique (matin/retards/complet)
-- Animation "Analyse du projet de [prenom]..."
+## Implementation Status
+
+### Phase 1 - Theme System ✅ COMPLETE (March 11, 2026)
+- Light mode par défaut pour nouveaux utilisateurs
+- Toggle Light/Dark dans My Profile
+- CSS variables pour les deux thèmes
+- Persistance en backend
+
+### Phase 2 - Prospect Statuses ✅ COMPLETE (March 11, 2026)
+- 5 statuts : nouveau, contacté, qualifié, offre, signé
+- Badges colorés sur les cartes
+- Sélecteur pipeline sur page détail
+- Mapping des anciens statuts
+
+### Phase 3 - UX Improvements ✅ COMPLETE (March 11, 2026)
+- Message contextuel dynamique sur Today
+- Streak counter (>=2 jours)
 - Lien "En retard — Relancer maintenant"
-- Bouton resilisation avec modale
+- Animation IA "Analyse du projet de [prénom]..."
+- Formulaire prospect amélioré avec Source
+- Bouton résiliation d'abonnement
 
-### Landing Page Refonte
-- Headline: "Vos prospects vous oublient..."
-- 7 sections: Hero, Probleme, How, Temoignages, Pricing, FAQ, CTA
-- FAQ en accordion
+### Phase 4 - Welcome Tutorial ✅ COMPLETE (March 11, 2026)
+- 5 étapes : Bienvenue, Import, Tâche, Thème, Complétion
+- Confetti à la fin
+- Non-bloquant avec bouton Skip
+- Actions réelles sauvegardées en DB
 
-## Integrations
-- **Stripe** : Paiements
-- **OpenAI GPT-4.1-nano** : Generation SMS rapide
-- **Anthropic Claude** : Suggestions IA
-- **Resend** : Emails
-- **Brevo** : SMS
-- **GA4** : Analytics
+### Phase 5 - Native Contact Import ✅ COMPLETE (March 11, 2026)
+- Contact Picker API
+- Fallback pour navigateurs non supportés
+- Import batch via /api/prospects/batch
+
+### Phase 6 - Landing Page ✅ COMPLETE (March 11, 2026)
+- Design dark premium
+- Sections : Hero, How it works, Testimonials, Pricing, FAQ
+- CTA "Try for free"
+
+## Architecture
+
+### Frontend
+- React 18 avec hooks
+- Tailwind CSS + CSS variables pour thèmes
+- Lucide React icons
+- Shadcn/UI components
+- canvas-confetti pour animations
+
+### Backend
+- FastAPI (Python)
+- MongoDB pour persistence
+- JWT sessions
+- Emergent LLM integration (GPT-4.1-nano)
+
+### Key Files
+- `/app/frontend/src/pages/AppShell.js` - Composant principal (~5000 lignes)
+- `/app/frontend/src/styles/themes.css` - Variables CSS thèmes
+- `/app/frontend/src/components/OnboardingFlow.js` - Tutoriel
+- `/app/frontend/src/pages/LandingPageNew.js` - Landing Page
+- `/app/backend/server.py` - API backend
+
+## Database Schema
+
+### users
+- user_id, email, password_hash
+- theme_preference: 'light' | 'dark'
+- didacticiel_completed: boolean
+- streak_current: number
+- subscription_status: 'none' | 'trialing' | 'active' | 'canceled'
+
+### prospects
+- prospect_id, user_id
+- full_name, phone, email
+- status: 'nouveau' | 'contacte' | 'qualifie' | 'offre' | 'signe'
+- source: string
+- score: 'froid' | 'tiède' | 'chaud'
+- notes: string
+
+### tasks
+- task_id, user_id, prospect_id
+- title, task_type
+- due_date, completed
+- completed_at
+
+## API Endpoints
+
+### Auth
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/me
+- PUT /api/auth/preferences
+- GET /api/auth/streak
+
+### Prospects
+- GET /api/prospects
+- POST /api/prospects
+- GET /api/prospects/:id
+- PATCH /api/prospects/:id
+- DELETE /api/prospects/:id
+- POST /api/prospects/batch
+
+### Tasks
+- GET /api/tasks
+- POST /api/tasks
+- PUT /api/tasks/:id/complete
+- DELETE /api/tasks/:id
+
+### AI
+- POST /api/ai/suggestions
+- POST /api/prospects/:id/generate-sms
 
 ## Backlog
 
-### Complete v2.0
-- [x] Mode clair/sombre avec toggle
-- [x] Statuts prospects (nouveau→signe)
-- [x] Onboarding 5 ecrans
-- [x] Streak de suivi
-- [x] Message contextuel
-- [x] Landing page refonte
-- [x] Animation generation IA
-- [x] Bouton resilisation
+### P1 - High Priority
+- Refactoring AppShell.js (modularisation)
+- Refactoring server.py (séparation en routers)
+- Tests automatisés
 
-### Reste a faire
-- [ ] Tooltips premiers pas (apres onboarding)
-- [ ] Import contacts natif (necessite React Native pour iOS)
-- [ ] Formulaire prospect ameliore (source, helper text)
-- [ ] Tests complets
-- [ ] Deploiement production
+### P2 - Medium Priority
+- Notifications push (VAPID keys)
+- Analytics dashboard
+- Export prospects CSV
 
-### Future (P2-P3)
-- [ ] Refactoring server.py
-- [ ] Refactoring AppShell.js
-- [ ] Export CSV
-- [ ] Statistiques conversion
+### P3 - Low Priority
+- Multi-langue complète
+- Intégration calendrier
+- Templates email personnalisables
 
-## Date Mise a Jour
-11 mars 2026
+## Integrations
+- Stripe (paiements)
+- Brevo (SMS)
+- Resend (emails)
+- OpenAI GPT-4.1-nano via Emergent (génération IA)
+- Google Analytics 4
+
+## Test Credentials
+- test@test.com / testtest
+- pressardelliot@gmail.com / Test123
