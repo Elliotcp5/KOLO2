@@ -112,6 +112,7 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - ✅ Bottom navigation - exact match to design mockups
 - ✅ Profile initials - dynamic based on user name
 - ✅ Theme toggle - sun/moon switch
+- ✅ AI Suggestions card - enhanced violet gradient (dark & light modes)
 
 **Landing Page:**
 - ✅ "Essayer gratuitement" button
@@ -133,16 +134,37 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - ✅ Input sanitization
 - ✅ XSS prevention
 
+### v2.0.1 (March 14, 2026) - AI Card Enhancement & Fork Verification ✅
+
+**AI Card Improvements:**
+- ✅ Darkened AI Suggestions card background in both themes
+- ✅ Dark mode: rgba(139, 92, 246, 0.25) -> rgba(236, 72, 153, 0.2) gradient
+- ✅ Light mode: rgba(124, 58, 237, 0.15) -> rgba(236, 72, 153, 0.12) gradient
+- ✅ Enhanced border visibility with stronger alpha values
+
+**Fork Verification (All Passed):**
+- ✅ Onboarding flow triggers for new users (5 steps)
+- ✅ AI Suggestions API returns personalized suggestions
+- ✅ AI Generate Message API creates context-aware SMS
+- ✅ Theme toggle works in Settings
+- ✅ Bottom navigation functional
+- ✅ All core APIs operational
+
 ## Testing Status
 - **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
+- **Last Test Report**: /app/test_reports/iteration_15.json (100% pass rate)
 
 ## Remaining Tasks (Backlog)
-1. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
+1. **P1**: Fix remaining 3 UI bugs from user feedback #425:
+   - Modal "Ajouter une tâche" illisible en mode sombre
+   - Dropdown "Source" non fonctionnel dans création prospect
+   - Nettoyer l'en-tête de l'onglet Prospects
+2. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
    - Extract TodayTab into separate file
    - Extract ProspectsTab into separate file
    - Extract SettingsTab into separate file
    - Extract ProspectDetail into separate file
-2. **P2**: Refactor server.py into separate routers
-3. **P2**: Add more languages (ES, IT, DE)
-4. **P3**: Verify VAPID keys in production
+3. **P2**: Refactor server.py into separate routers
+4. **P2**: Add more languages (ES, IT, DE)
+5. **P3**: Verify VAPID keys in production
