@@ -44,9 +44,8 @@ const LandingPage = () => {
   const handleCTA = (e) => {
     e.preventDefault();
     if (email) {
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 4000);
-      setTimeout(() => navigate('/register', { state: { email } }), 1500);
+      // Redirect to register with email pre-filled
+      navigate('/register', { state: { email } });
     } else {
       navigate('/register');
     }
@@ -453,18 +452,18 @@ const LandingPage = () => {
               <div className="feature-tag">📱 Mobile first</div>
               <h3 className="feature-title">
                 {locale === 'fr' ? (
-                  <>Swipez votre journée.<br/>En une main.</>
+                  <>Swipez votre journée.<br/>D'une main.</>
                 ) : (
                   <>Swipe your day.<br/>One-handed.</>
                 )}
               </h3>
               <p className="feature-body">
                 {locale === 'fr' 
-                  ? "Vous sortez d'une visite, vous swipez le contact vers la droite — c'est marqué comme fait, et la tâche suivante s'affiche. Votre journée avance toute seule, sans rien taper."
+                  ? "Vous sortez d'une visite, vous glissez le contact vers la droite — c'est marqué comme fait, et la tâche suivante s'affiche. Votre journée avance toute seule, sans rien taper."
                   : "You leave a visit, swipe the contact right — it's marked as done, and the next task appears. Your day moves forward on its own, without typing."}
               </p>
               <ul className="feature-points">
-                <li>{locale === 'fr' ? 'Swipe droite pour valider une action en une seconde' : 'Swipe right to validate an action in one second'}</li>
+                <li>{locale === 'fr' ? 'Glissez vers la droite pour valider une action en une seconde' : 'Swipe right to validate an action in one second'}</li>
                 <li>{locale === 'fr' ? 'La prochaine tâche s\'affiche automatiquement' : 'The next task appears automatically'}</li>
                 <li>{locale === 'fr' ? 'Zéro saisie — juste un geste, et c\'est dans l\'historique' : 'Zero typing — just a gesture, and it\'s in the history'}</li>
               </ul>

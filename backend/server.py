@@ -617,6 +617,70 @@ async def update_user_preferences(request: Request):
     
     return {"message": "Preferences updated", "updated": update_data}
 
+@api_router.get("/auth/profile")
+async def get_user_profile(request: Request):
+    """Get full user profile including phone and name"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return {
+        "user_id": user.user_id,
+        "email": user.email,
+        "name": user.name or "",
+        "phone": getattr(user, 'phone', "") or "",
+        "picture": user.picture,
+        "subscription_status": user.subscription_status,
+    }
+
+@api_router.post("/auth/update-phone")
+async def update_user_phone(request: Request):
+    """Update user's phone number"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    body = await request.json()
+    phone = body.get("phone", "").strip()
+    
+    if not phone or len(phone) < 6:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    # Basic phone validation
+    if not validate_phone_format(phone):
+        raise HTTPException(status_code=400, detail="Invalid phone format")
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"phone": phone, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Phone updated", "phone": phone}
+
+@api_router.post("/auth/update-name")
+async def update_user_name(request: Request):
+    """Update user's name"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    body = await request.json()
+    name = body.get("name", "").strip()
+    
+    if not name or len(name) < 2:
+        raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
+    
+    # Sanitize name
+    import re
+    name = re.sub(r'[<>"\']', '', name)[:100]  # Remove dangerous chars, limit length
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"name": name, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Name updated", "name": name}
+
 @api_router.get("/auth/streak")
 async def get_user_streak(request: Request):
     """Get user's current streak"""

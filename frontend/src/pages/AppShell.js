@@ -692,14 +692,14 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           onClick={() => setViewMode('today')}
           style={{
             flex: 1,
-            padding: '12px 20px',
+            padding: '12px 16px',
             borderRadius: '999px',
             border: 'none',
             background: viewMode === 'today' 
               ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
               : c('surface'),
             color: viewMode === 'today' ? 'white' : c('muted'),
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: '600',
             cursor: 'pointer',
             boxShadow: viewMode !== 'today' ? `inset 0 0 0 1px ${c('border')}` : 'none'
@@ -712,21 +712,21 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           onClick={() => setViewMode('all')}
           style={{
             flex: 1,
-            padding: '12px 20px',
+            padding: '12px 16px',
             borderRadius: '999px',
             border: 'none',
             background: viewMode === 'all' 
               ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
               : c('surface'),
             color: viewMode === 'all' ? 'white' : c('muted'),
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: '600',
             cursor: 'pointer',
             boxShadow: viewMode !== 'all' ? `inset 0 0 0 1px ${c('border')}` : 'none'
           }}
           data-testid="segment-all-tasks"
         >
-          {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+          {locale === 'fr' ? 'Toutes mes tâches' : 'All my tasks'}
         </button>
         {/* Add Task Button */}
         <button
@@ -798,7 +798,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#F59E0B', fontFamily: 'var(--font-heading)' }}>
-            {stats.totalToday - stats.completedToday}
+            {Math.max(0, stats.totalToday - stats.completedToday)}
           </div>
           <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
             {locale === 'fr' ? 'À faire' : 'To do'}
@@ -920,8 +920,33 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           
           {/* Show more if multiple suggestions */}
           {aiSuggestions.length > 1 && (
-            <div style={{ textAlign: 'center', marginTop: '8px' }}>
-              <span style={{ fontSize: '11px', color: isDark ? '#8A2BE2' : c('muted') }}>
+            <div 
+              onClick={() => {
+                // Accept all remaining suggestions
+                aiSuggestions.slice(1).forEach((suggestion, index) => {
+                  setTimeout(() => {
+                    authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(suggestion)
+                    }).then(() => {
+                      if (index === aiSuggestions.length - 2) {
+                        toast.success(locale === 'fr' ? 'Tâches ajoutées !' : 'Tasks added!');
+                        fetchTasks();
+                        setAiSuggestions([]);
+                      }
+                    });
+                  }, index * 200);
+                });
+              }}
+              style={{ textAlign: 'center', marginTop: '8px', cursor: 'pointer' }}
+              data-testid="show-more-suggestions"
+            >
+              <span style={{ 
+                fontSize: '11px', 
+                color: isDark ? '#CB6CE6' : '#004AAD',
+                fontWeight: '500'
+              }}>
                 +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''} <ChevronRight size={12} style={{ display: 'inline' }} />
               </span>
             </div>
@@ -1692,10 +1717,25 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             
             {/* Submit Button */}
             <button
-              className="btn-primary"
               onClick={handleCreateTask}
               disabled={!newTask.title || !newTask.due_date || creatingTask}
               data-testid="create-task-submit"
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: (!newTask.title || !newTask.due_date || creatingTask) 
+                  ? c('surface') 
+                  : 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+                border: 'none',
+                borderRadius: '999px',
+                color: (!newTask.title || !newTask.due_date || creatingTask) ? c('muted') : 'white',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: (!newTask.title || !newTask.due_date || creatingTask) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               {creatingTask ? (
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
@@ -2590,13 +2630,14 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                   marginTop: '8px',
                   width: '100%',
                   padding: '14px',
-                  background: c('accent'),
+                  background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
                   border: 'none',
-                  borderRadius: '10px',
+                  borderRadius: '999px',
                   color: 'white',
                   fontSize: '15px',
                   fontWeight: '600',
                   cursor: editLoading ? 'not-allowed' : 'pointer',
+                  opacity: editLoading ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -2629,34 +2670,53 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           padding: '24px'
         }}>
           <div style={{
-            background: 'var(--surface)',
+            background: c('bg'),
             borderRadius: '16px',
             padding: '24px',
             maxWidth: '320px',
             width: '100%',
-            textAlign: 'center'
+            textAlign: 'center',
+            border: `1px solid ${c('border')}`
           }}>
-            <h3 style={{ marginBottom: '12px', fontSize: '18px' }}>
+            <h3 style={{ marginBottom: '12px', fontSize: '18px', color: c('text') }}>
               {t('confirmStatusChange')}
             </h3>
-            <p style={{ color: 'var(--muted)', marginBottom: '24px', fontSize: '14px' }}>
+            <p style={{ color: c('muted'), marginBottom: '24px', fontSize: '14px' }}>
               {t('prospectWillDisappear')}
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
-                className="btn-ghost"
                 onClick={() => {
                   setShowConfirmDialog(false);
                   setPendingStatus(null);
                 }}
-                style={{ flex: 1 }}
+                style={{ 
+                  flex: 1,
+                  padding: '12px',
+                  background: c('surface'),
+                  border: `1px solid ${c('border')}`,
+                  borderRadius: '999px',
+                  color: c('text'),
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
               >
                 {t('cancel')}
               </button>
               <button
-                className="btn-primary"
                 onClick={confirmStatusChange}
-                style={{ flex: 1, background: pendingStatus === 'lost' ? '#ef4444' : 'var(--success)' }}
+                style={{ 
+                  flex: 1,
+                  padding: '12px',
+                  background: pendingStatus === 'lost' ? '#ef4444' : '#22c55e',
+                  border: 'none',
+                  borderRadius: '999px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
               >
                 {t('confirm')}
               </button>
@@ -3791,6 +3851,66 @@ const SettingsTab = ({ onClose }) => {
         </div>
       </div>
 
+      {/* Permissions section */}
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
+        {locale === 'fr' ? 'Autorisations' : 'Permissions'}
+      </h3>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
+        {/* Contacts access */}
+        <div 
+          className="settings-row" 
+          style={{ cursor: 'pointer', borderBottom: 'none' }}
+          onClick={() => {
+            // Open system settings for contacts permission
+            if (navigator.permissions) {
+              navigator.permissions.query({ name: 'contacts' }).catch(() => {
+                toast.info(locale === 'fr' 
+                  ? 'Accédez aux paramètres de votre navigateur pour modifier cette autorisation' 
+                  : 'Access your browser settings to change this permission');
+              });
+            } else {
+              toast.info(locale === 'fr' 
+                ? 'Accédez aux paramètres de votre navigateur pour modifier cette autorisation' 
+                : 'Access your browser settings to change this permission');
+            }
+          }}
+          data-testid="contacts-permission"
+        >
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
+            {locale === 'fr' ? 'Accès aux contacts' : 'Contacts access'}
+          </span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
+        </div>
+      </div>
+
+      {/* Contact us section */}
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
+        {locale === 'fr' ? 'Support' : 'Support'}
+      </h3>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
+        <div 
+          className="settings-row" 
+          style={{ cursor: 'pointer', borderBottom: 'none' }}
+          onClick={() => {
+            window.location.href = 'mailto:contact@trykolo.io?subject=Contact%20KOLO%20Support';
+          }}
+          data-testid="contact-us"
+        >
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
+            {locale === 'fr' ? 'Nous contacter' : 'Contact us'}
+          </span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
+        </div>
+      </div>
+
       {/* Logout button */}
       <button 
         onClick={handleLogout}
@@ -3845,7 +3965,7 @@ const SettingsTab = ({ onClose }) => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'var(--modal-overlay)',
+            background: 'rgba(0, 0, 0, 0.8)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -3856,28 +3976,38 @@ const SettingsTab = ({ onClose }) => {
         >
           <div 
             style={{
-              background: 'var(--surface)',
+              background: c('bg'),
               borderRadius: '20px',
               padding: '24px',
               width: '100%',
               maxWidth: '340px',
-              textAlign: 'center'
+              textAlign: 'center',
+              border: `1px solid ${c('border')}`
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text)', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: c('text'), marginBottom: '12px' }}>
               {locale === 'fr' ? 'Resilier l\'abonnement ?' : 'Cancel subscription?'}
             </h3>
-            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '24px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '14px', color: c('muted'), marginBottom: '24px', lineHeight: '1.5' }}>
               {locale === 'fr' 
                 ? 'Vous perdrez l\'acces a KOLO a la fin de votre periode en cours. Cette action est irreversible.'
                 : 'You will lose access to KOLO at the end of your current period. This action is irreversible.'}
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
-                className="btn-primary"
                 onClick={() => setShowCancelSubscriptionModal(false)}
-                style={{ flex: 1 }}
+                style={{ 
+                  flex: 1,
+                  padding: '12px',
+                  background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+                  border: 'none',
+                  borderRadius: '999px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
               >
                 {locale === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
@@ -3890,15 +4020,17 @@ const SettingsTab = ({ onClose }) => {
                 }}
                 style={{ 
                   flex: 1,
-                  background: 'none',
-                  border: 'none',
+                  padding: '12px',
+                  background: c('surface'),
+                  border: `1px solid #DC2626`,
+                  borderRadius: '999px',
                   color: '#DC2626',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
                 }}
               >
-                {locale === 'fr' ? 'Confirmer la resiliation' : 'Confirm cancellation'}
+                {locale === 'fr' ? 'Confirmer' : 'Confirm'}
               </button>
             </div>
           </div>
@@ -3924,25 +4056,32 @@ const SettingsTab = ({ onClose }) => {
         >
           <div 
             style={{
-              background: 'var(--surface)',
+              background: c('bg'),
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              border: `1px solid ${c('border')}`
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>{t('changePassword')}</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: c('text') }}>{t('changePassword')}</h2>
               <button
-                className="btn-primary"
                 onClick={handleChangePassword}
                 disabled={!currentPassword || !newPassword || !confirmPassword || passwordLoading}
                 style={{ 
                   width: 'auto', 
                   height: '40px', 
                   padding: '0 20px',
-                  fontSize: '15px'
+                  fontSize: '15px',
+                  background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+                  border: 'none',
+                  borderRadius: '999px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: (!currentPassword || !newPassword || !confirmPassword || passwordLoading) ? 'not-allowed' : 'pointer',
+                  opacity: (!currentPassword || !newPassword || !confirmPassword || passwordLoading) ? 0.5 : 1
                 }}
               >
                 {passwordLoading ? (
@@ -3955,39 +4094,66 @@ const SettingsTab = ({ onClose }) => {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
                   {t('currentPassword')}
                 </label>
                 <input
                   type="password"
-                  className="input-dark"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   data-testid="current-password-input"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    color: c('text'),
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               <div>
-                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
                   {t('newPassword')}
                 </label>
                 <input
                   type="password"
-                  className="input-dark"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   data-testid="new-password-input"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    color: c('text'),
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               <div>
-                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
                   {t('confirmNewPassword')}
                 </label>
                 <input
                   type="password"
-                  className="input-dark"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   data-testid="confirm-password-input"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    color: c('text'),
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
             </div>
@@ -4014,27 +4180,34 @@ const SettingsTab = ({ onClose }) => {
         >
           <div 
             style={{
-              background: 'var(--surface)',
+              background: c('bg'),
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              border: `1px solid ${c('border')}`
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: c('text') }}>
                 {locale === 'fr' ? 'Téléphone' : 'Phone'}
               </h2>
               <button
-                className="btn-primary"
                 onClick={handleUpdatePhone}
                 disabled={!newPhone || newPhone.length < 6 || phoneLoading}
                 style={{ 
                   width: 'auto', 
                   height: '40px', 
                   padding: '0 20px',
-                  fontSize: '15px'
+                  fontSize: '15px',
+                  background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+                  border: 'none',
+                  borderRadius: '999px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: (!newPhone || newPhone.length < 6 || phoneLoading) ? 'not-allowed' : 'pointer',
+                  opacity: (!newPhone || newPhone.length < 6 || phoneLoading) ? 0.5 : 1
                 }}
               >
                 {phoneLoading ? (
@@ -4047,19 +4220,28 @@ const SettingsTab = ({ onClose }) => {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
                   {locale === 'fr' ? 'Numéro avec indicatif pays' : 'Number with country code'}
                 </label>
                 <input
                   type="tel"
-                  className="input-dark"
                   placeholder={locale === 'fr' ? 'Ex: +33 6 12 34 56 78' : 'E.g. +33 6 12 34 56 78'}
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   data-testid="phone-input-modal"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    color: c('text'),
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '12px', color: c('muted'), lineHeight: '1.5' }}>
                 {locale === 'fr' 
                   ? 'Les prospects pourront vous répondre directement sur ce numéro.'
                   : 'Prospects will be able to reply directly to this number.'
@@ -4089,27 +4271,34 @@ const SettingsTab = ({ onClose }) => {
         >
           <div 
             style={{
-              background: 'var(--surface)',
+              background: c('bg'),
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              border: `1px solid ${c('border')}`
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: c('text') }}>
                 {locale === 'fr' ? 'Nom' : 'Name'}
               </h2>
               <button
-                className="btn-primary"
                 onClick={handleUpdateName}
                 disabled={!newName || newName.trim().length < 2 || nameLoading}
                 style={{ 
                   width: 'auto', 
                   height: '40px', 
                   padding: '0 20px',
-                  fontSize: '15px'
+                  fontSize: '15px',
+                  background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+                  border: 'none',
+                  borderRadius: '999px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: (!newName || newName.trim().length < 2 || nameLoading) ? 'not-allowed' : 'pointer',
+                  opacity: (!newName || newName.trim().length < 2 || nameLoading) ? 0.5 : 1
                 }}
               >
                 {nameLoading ? (
@@ -4122,19 +4311,28 @@ const SettingsTab = ({ onClose }) => {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-caption" style={{ display: 'block', marginBottom: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
                   {locale === 'fr' ? 'Prénom et Nom' : 'Full Name'}
                 </label>
                 <input
                   type="text"
-                  className="input-dark"
                   placeholder={locale === 'fr' ? 'Ex: Jean Dupont' : 'E.g. John Smith'}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   data-testid="name-input-modal"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    color: c('text'),
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '12px', color: c('muted'), lineHeight: '1.5' }}>
                 {locale === 'fr' 
                   ? 'Votre nom sera utilisé pour personnaliser vos communications.'
                   : 'Your name will be used to personalize your communications.'
@@ -4925,6 +5123,7 @@ const TasksTab = ({ onRefresh }) => {
 const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const { t, locale } = useLocale();
   const { c, isDark } = useThemeColors();
+  const [mode, setMode] = useState('manual'); // 'manual' or 'import'
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -4932,6 +5131,35 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const [creating, setCreating] = useState(false);
 
   const isFormValid = name.trim() && phone.trim() && email.trim() && notes.trim();
+
+  const handleImportFromContacts = async () => {
+    // Check if Contact Picker API is supported
+    if ('contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'email', 'tel'];
+        const opts = { multiple: false };
+        const contacts = await navigator.contacts.select(props, opts);
+        
+        if (contacts && contacts.length > 0) {
+          const contact = contacts[0];
+          if (contact.name && contact.name[0]) setName(contact.name[0]);
+          if (contact.tel && contact.tel[0]) setPhone(contact.tel[0]);
+          if (contact.email && contact.email[0]) setEmail(contact.email[0]);
+          setMode('manual'); // Switch to manual to complete the form
+          toast.success(locale === 'fr' ? 'Contact importé !' : 'Contact imported!');
+        }
+      } catch (err) {
+        console.error('Contact picker error:', err);
+        toast.error(locale === 'fr' 
+          ? 'Impossible d\'accéder aux contacts. Vérifiez les autorisations.' 
+          : 'Unable to access contacts. Check permissions.');
+      }
+    } else {
+      toast.info(locale === 'fr' 
+        ? 'L\'import de contacts n\'est pas disponible sur ce navigateur. Utilisez Chrome sur Android.' 
+        : 'Contact import is not available in this browser. Use Chrome on Android.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -5001,6 +5229,47 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
         <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', textAlign: 'center', color: c('text') }}>
           {locale === 'fr' ? 'Nouveau prospect' : 'New prospect'}
         </h3>
+        
+        {/* Import from contacts button */}
+        <button
+          onClick={handleImportFromContacts}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+            border: 'none',
+            borderRadius: '999px',
+            color: 'white',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            marginBottom: '16px'
+          }}
+          data-testid="import-contacts-btn"
+        >
+          <svg style={{ width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          {locale === 'fr' ? 'Importer depuis mes contacts' : 'Import from my contacts'}
+        </button>
+        
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px', 
+          marginBottom: '16px' 
+        }}>
+          <div style={{ flex: 1, height: '1px', background: c('border') }}></div>
+          <span style={{ fontSize: '13px', color: c('muted') }}>
+            {locale === 'fr' ? 'ou saisie manuelle' : 'or manual entry'}
+          </span>
+          <div style={{ flex: 1, height: '1px', background: c('border') }}></div>
+        </div>
         
         <form onSubmit={handleSubmit}>
           {/* Nom complet */}
@@ -5136,13 +5405,18 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
             style={{
               width: '100%',
               padding: '14px',
-              background: isFormValid ? c('accent') : c('surface'),
+              background: (isFormValid && !creating) 
+                ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)' 
+                : c('surface'),
               border: 'none',
-              borderRadius: '10px',
-              color: isFormValid ? 'white' : c('muted'),
+              borderRadius: '999px',
+              color: (isFormValid && !creating) ? 'white' : c('muted'),
               fontSize: '16px',
               fontWeight: '600',
-              cursor: isFormValid ? 'pointer' : 'not-allowed'
+              cursor: (isFormValid && !creating) ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
             {creating ? (
