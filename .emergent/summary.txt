@@ -1,159 +1,210 @@
 <analysis>**original_problem_statement:**
-You are an expert full-stack product engineer tasked with building a mobile-first Progressive Web App (PWA) named KOLO. The application is a CRM for real estate agents with an iOS-style dark-mode UI, purple accents, and must support EN/FR localization.
+The user initiated a major redesign of the KOLO application, providing HTML files for a new landing page and dashboard, along with an extremely detailed list of UI/UX polish requirements, bug fixes, and security hardening measures. The goal is to achieve the high-quality finish of an application like Linear or Notion, applying a strict new design system across the entire app.
 
-A critical production issue preventing user login and registration on  was the top priority and has been resolved.
+**PRODUCT REQUIREMENTS (Summary of user requests from messages #192, #301, #365):**
 
-Following the resolution, the user requested a new set of features:
-1.  **AI Suggestions:** Display AI-generated task suggestions on the Today view for prospects who have no scheduled follow-ups.
-2.  **Disable Auto-Tasks:** Permanently disable the automatic creation of suivi (follow-up) tasks by the system.
-3.  **Manual Task Creation:** Add a feature to create tasks manually, linkable to a prospect, with a mandatory title and due date.
-4.  **Prospect Search:** Implement a search bar on the Prospects list.
-5.  **UI/UX Fixes:**
-    *   Make the application feel native by preventing page zoom and scroll, while allowing scrolling within content areas.
-    *   Ensure all buttons on modals are accessible on mobile and not hidden by the navigation bar.
-    *   Improve the UI by removing the border around the search icon.
-6.  **Fix AI SMS Generation:** The SMS with AI feature was not working; the generated message was always empty.
+1.  **Full UI Redesign:** Implement the new design from the provided HTML files (, , ) across the entire application. This includes new fonts (League Spartan, DM Sans), color palettes, and component styles.
+2.  **Global Polish (Design System):** Systematically apply strict design rules everywhere:
+    *   **Spacing:** Use multiples of 8px.
+    *   **Shadows:** Use specific, subtle  values for light mode; no shadows in dark mode.
+    *   **Typography:** Adhere to a strict 5-level text size hierarchy and specific color values.
+    *   **Buttons:** Use only two defined styles (Primary/Secondary) with specific , height, and transitions.
+    *   **Icons:** Use a single, consistent icon set (outline, ).
+    *   **Border Radius:** Use only four defined values for cards, buttons, inputs, and badges.
+    *   **Inputs:** Adhere to specific height, padding, border, focus states, and label styles.
+    *   **Transitions:** Apply  transitions to all interactions.
+3.  **Specific Component Fixes:**
+    *   **Auth Pages:** Redesign Login/Register pages to match the new style, fix invisible buttons, and use the correct logo.
+    *   **Landing Page:** Make mockups symmetrical, simplify the header (remove FAQ/Tarif/Fonctionnalités, add language selector), fix text phrasing and add missing accents, change Un prix. Zéro friction to Un prix. Zéro surprise.
+    *   **Dashboard ():**
+        *   Fix broken push notification pop-up.
+        *   Fix task swipe gesture (less sensitive, remove ugly hover effect, completed tasks should disappear from Today).
+        *   Rename Toutes les taches to Toutes mes taches and limit to the 10 most recent.
+        *   Fix invisible buttons/icons in Prospects, Profile, and field editing modes.
+        *   Fix broken Source dropdown in the New Prospect modal.
+        *   Fix modifier prospect view showing a blank screen.
+        *   Fix broken dark/light mode toggle (text invisible in dark mode). Implement a sun/moon icon switch.
+        *   Update app version to .
+4.  **Security Hardening:**
+    *   Implement rate limiting on all public API endpoints (auth, general, AI).
+    *   Implement strict, schema-based validation and sanitization for all user inputs on the backend.
+    *   Audit the codebase for any hardcoded secrets and move them to environment variables.
+5.  **Verification:**
+    *   Verify the entire onboarding/tutorial flow is functional.
+    *   Verify all AI features are fast, functional, and high-quality.
 
 **User's preferred language**: French. The next agent MUST respond in French.
 
 **what currently exists?**
-The application is a full-stack PWA (React/FastAPI/MongoDB). A major, production-only authentication crisis that prevented all logins and registrations has been successfully diagnosed and resolved. The root cause was a combination of incorrect frontend API URL handling in the production build and DNS/deployment configuration issues, which are all now fixed.
-
-All new feature requests from the user have been implemented in the preview environment:
-*   **AI Suggestions:** The Today view now correctly fetches and displays AI-powered task suggestions for inactive prospects.
-*   **Manual Tasks:** A + button on the Today view opens a modal to create new tasks.
-*   **Prospect Search:** A functional search bar has been added to the Prospects tab.
-*   **Backend:** Automatic follow-up task generation has been disabled in . The missing backend endpoint for AI SMS generation () has been created.
-*   **UI/UX:** The app layout is now fixed to prevent unwanted zooming/scrolling, modal buttons are accessible, and the prospect detail page scrolls correctly.
+The application is in a partially broken state in the middle of a massive UI overhaul and bug-fixing phase.
+-   **Frontend:** New  and  components have been created but not fully integrated or styled. The  has been rewritten based on user HTML but still requires corrections. The  file was updated with a new design system, but it has not been correctly applied throughout the monolithic , resulting in a mix of old and new styles and numerous visual bugs. The dark/light mode toggle is broken.
+-   **Backend:** The agent attempted to implement security hardening by adding , , and . However, the rate-limiting was implemented incorrectly, causing dependency injection errors in FastAPI. **The backend server is currently broken and will not start.**
 
 **Last working item**:
-- **Last item agent was working:** The agent identified and created the missing backend endpoint () needed for the SMS with AI feature. The user had reported this feature was broken in production.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** N (The endpoint was created, but an end-to-end test has not been performed, especially in production).
-- **Which testing method agent to use?** The user must test this on the production environment after deploying the changes. The agent can perform a preliminary check using  against the preview environment.
-- **User Testing Done:** N
+-   **Last item agent was working:** Implementing the massive list of corrections and the full UI redesign requested by the user. The agent had just created new Auth pages, updated the Landing Page, and was about to tackle the numerous bugs in  and fix the broken backend.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N (The last successful test run is now obsolete due to the subsequent breaking changes).
+-   **Which testing method agent to use?** Both. First, the main agent must fix the backend and test it with . After the backend is stable, and significant frontend changes are made, the  must be used for a full regression test of the UI.
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: (CRITICAL - P0) AI-powered features (SMS Generation & Task Suggestions) are not working in Production.**
-  - **Description:** The user reported that both the SMS with AI and AI task suggestions features were failing in the production environment ().
-  - **Attempted fixes:**
-    1.  **SMS with AI:** The agent discovered the backend endpoint () was completely missing and has now created it in .
-    2.  **AI Suggestions:** The agent fixed a frontend state update bug that prevented suggestions from rendering and confirmed the API returns suggestions when prospects are inactive.
-  - **Next debug checklist:**
-    1.  Instruct the user to deploy the latest changes to production.
-    2.  Ask the user to test both features on .
-    3.  If issues persist, check the production logs for errors related to  and .
-    4.  Verify that the user has prospects without any upcoming tasks in their production data, which is a condition for AI suggestions to appear.
-  - **Why fix this issue and what will be achieved with the fix?** These are core AI features central to the app's value proposition. Fixing them is critical for user satisfaction.
-  - **Status:** USER VERIFICATION PENDING
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** Both (User needs to test the frontend flow in production).
+-   **Issue 1: Backend Server is Down (P0 - BLOCKER)**
+-   **Issue 2: Dark/Light Mode is Broken (P0)**
+-   **Issue 3: Inconsistent UI/UX across the app (P0)**
+-   **Issue 4: Auth Pages (/) have major UI flaws (P1)**
+-   **Issue 5: Landing Page requires significant corrections (P1)**
+-   **Issue 6: Numerous bugs on the Today (Dashboard) screen (P1)**
+-   **Issue 7: Bugs in Prospect list, detail, and creation views (P1)**
+-   **Issue 8: Bugs and invisible elements on the My Profile screen (P1)**
+
+**Issues Detail:**
+-   **Issue 1: Backend Server is Down (P0 - BLOCKER)**
+    -   **Attempted fixes:** The agent added  to endpoint signatures alongside Pydantic models, which conflicts with FastAPI's dependency injection. The server fails to start with .
+    -   **Next debug checklist:**
+        1.  View .
+        2.  Locate all endpoints modified for rate limiting (e.g., , , , ).
+        3.  Correct the function signatures. The  object needed by  must be correctly injected as a dependency, for example: . Do NOT have two separate  parameters.
+        4.  Restart the backend backend: stopped
+backend: started and check logs ==> /var/log/supervisor/backend.err.log <==
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [185] using WatchFiles
+
+==> /var/log/supervisor/backend.out.log <== to confirm it starts without errors.
+    -   **Why fix this issue and what will be achieved with the fix?** The entire application is non-functional without the backend. This is a complete blocker.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None. This is the primary blocker.
+
+-   **Issue 2: Dark/Light Mode is Broken (P0)**
+    -   **Details:** The user reports text is black on a dark background in dark mode, making it invisible. This is due to hardcoded colors and incompletely applied theme variables in .
+    -   **Next debug checklist:**
+        1.  Fix the backend first (Issue 1).
+        2.  Review  and .
+        3.  Systematically replace hardcoded colors (e.g., ) with the new theme variables (e.g., ).
+        4.  Implement the sun/moon icon toggle for the theme switcher in the My Profile section as requested.
+    -   **Why fix this issue and what will be achieved with the fix?** The dark mode is a core feature and is currently unusable.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Frontend
+
+-   *(The remaining issues 3-8 are all consequences of the incomplete UI overhaul and can be addressed as part of the main  below.)*
 
 **In progress Task List**:
-- None.
+-   **Task 1: Implement Full UI/UX Redesign and Polish (P0)**
+    -   **Where to resume:** After fixing the backend (Issue 1), systematically work through the user's detailed feedback from message #365. This involves refactoring , , , and  to perfectly match the new design system and fix all listed bugs.
+    -   **What will be achieved with this?** A fully functional, visually consistent, and polished application that meets the user's high-quality standards.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** Issue 1 (Backend Server is Down).
+
+-   **Task 2: Complete and Correct Security Hardening (P1)**
+    -   **Where to resume:** After fixing the initial implementation error in , ensure rate limiting is correctly applied to all required endpoints. Then, implement the strict, schema-based input validation for all API routes that accept user data. Finally, audit the codebase for any hardcoded keys.
+    -   **What will be achieved with this?** A more secure and production-ready backend.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on something:** Issue 1 (Backend Server is Down).
 
 **Upcoming and Future Tasks**
-- **Future Tasks:**
-    - **P2: Refactor monolithic :** This file is over 3200 lines and is a significant source of technical debt. It should be broken down into modular routers (e.g., , , ).
-    - **P3: Verify VAPID Key Fix in Production:** A long-standing task from a previous session that has not been tested in a real deployment environment.
-    - **P2: Fulfill Screenshot Request:** The user had previously asked for screenshots of the expired trial flow, which was never fulfilled.
+-   **Upcoming Tasks:**
+    -   **P0: Full Onboarding/Tutorial Verification:** After the UI is stable, perform a full run-through of the new user onboarding flow to ensure it works flawlessly.
+    -   **P0: AI Feature Quality Check:** Verify that all AI-powered features are fast and produce high-quality suggestions.
+-   **Future Tasks:**
+    -   **P1: Refactor  and :** The monolithic nature of these files remains a major source of technical debt. They must be broken down into smaller, manageable modules (React components, FastAPI routers).
+    -   **P2: Verify VAPID Key Fix in Production:** A long-standing task from a previous session.
 
 **Completed work in this session**
-- **CRITICAL: Production Authentication Fixed:**
-  - Resolved a severe production-only bug that blocked all user logins and new account registrations. The fix involved correcting the frontend API URL handling () to use  and guiding the user through resolving a DNS/deployment linking issue.
-- **New Feature: Manual Task Creation:**
-  - Implemented a modal for creating tasks manually, accessible via a + button on the Today view.
-- **New Feature: Prospect Search Bar:**
-  - Added a toggleable search bar to the Prospects tab for real-time filtering.
-- **Feature/Bug Fixes:**
-  - **AI SMS:** Created the missing  backend endpoint.
-  - **AI Suggestions:** Fixed a frontend bug preventing AI suggestions from rendering on the Today view.
-  - **Disabled Auto-Tasks:** Commented out the logic for auto-generating follow-up tasks in the backend.
-- **UI/UX Improvements:**
-  - **Fixed App Layout:** Implemented CSS to prevent unwanted page zoom/scroll, allowing only content areas to scroll.
-  - **Modal Accessibility:** Added padding to modals to ensure buttons are not obscured by mobile navigation bars.
-  - **UI Cleanup:** Removed the border around the prospect search icon for a cleaner look.
-- **Account Management:**
-  - Created the  user account and reset passwords for both user accounts in the preview database.
-
-**Earlier issues found/mentioned but not fixed**
-- None. All recent user-reported issues have been addressed and are pending verification.
-
-**Known issue recurrence from previous fork**
-- **Production vs. Preview Environment Mismatch:** The agent spent a significant amount of time debugging an issue that only existed because changes were made in the preview database but tested by the user on production. The next agent must be acutely aware of this separation and clearly communicate that database changes do not carry over upon deployment.
+-   **Initial Feature Implementation (Phases 1-6):** Completed a first pass of all major features, including theme-switching, prospect statuses, and UX improvements. This work is now being superseded by the full redesign.
+-   **UI Redesign (Started):**
+    -   Created new  and  components.
+    -   Re-wrote  based on new user requirements.
+    -   Created a new  file for auth and landing page styles.
+    -   Updated  with a detailed new design system from user-provided HTML.
+-   **Security Hardening (Started, but failed):** Added dependencies (, , ) and made breaking changes to .
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Production Debugging:** The session involved extensive debugging of production-only issues without direct access, relying on creating diagnostic endpoints, analyzing user feedback, and understanding environment differences (preview vs. production).
-- **Monolithic Frontend Component:** Nearly all application logic resides within the  component, making it very large and complex.
-- **Environment-Specific Configuration:** The critical fix for authentication involved making the frontend API calls robust enough to work across different domains ( and ) by using .
+-   **UI/UX Refactoring:** A complete overhaul of the frontend to implement a new, strict design system.
+-   **Security Hardening:** Implementing rate limiting and schema-based input validation in a FastAPI application.
+-   **Monolith Refactoring:** The core challenge is applying sweeping changes to the large, brittle  and  files.
 
 **key DB schema**
-- No schema changes were made.
+-   No changes in this session.
+
+**changes in tech stack**
+-   , ,  added to .
 
 **All files of reference**
-- **/app/frontend/src/pages/AppShell.js**: The most critical and heavily modified frontend file. Contains the logic for the Today/Prospects tabs, the new task modal, the search bar, and the AI suggestions display.
-- **/app/frontend/src/api.js**: Contains the vital fix for the production API URL.
-- **/app/backend/server.py**: The monolithic backend where the new AI SMS endpoint was added and auto-tasks were disabled.
-- **/app/frontend/src/pages/LoginPage.js**: Simplified and corrected to resolve production login failures.
-- **/app/frontend/src/pages/RegisterPage.js**: Simplified and corrected to resolve production registration failures.
+-   **/app/backend/server.py**: **CRITICAL - BROKEN**. Must be fixed first.
+-   **/app/frontend/src/pages/AppShell.js**: **CRITICAL**. The source of most frontend bugs. Needs a major overhaul.
+-   **/app/frontend/src/styles/themes.css**: Source of truth for the new design system variables.
+-   **/app/frontend/src/pages/LandingPage.js**: The new landing page component.
+-   **/app/frontend/src/pages/LoginPage.js**: The new login page component.
+-   **/app/frontend/src/pages/RegisterPage.js**: The new register page component.
+-   **/app/frontend/src/styles/landing.css**: New CSS for the landing and auth pages.
 
 **Areas that need refactoring**:
-- ** (Critical):** This component has become a god component managing state and rendering for almost the entire application. It urgently needs to be broken down into smaller, self-contained components (e.g., , , , ).
-- ** (Critical):** Remains a monolithic file and is the top priority for technical debt reduction on the backend.
+-   ** (IMMEDIATE):** The security implementation must be fixed. After that, it should be broken into separate routers.
+-   ** (CRITICAL):** The current component is an unmaintainable mix of logic and UI with inconsistent styling. It needs to be broken down into smaller, self-contained components that follow the new design system.
 
 **key api endpoints**
-- : **NEW**. Generates an AI-powered SMS message.
-- : Fetches AI suggestions for inactive prospects.
-- : Heavily debugged and stabilized for production.
-- : Heavily debugged and stabilized for production.
+-   The following endpoints were modified for security hardening but are **currently broken**:
+    -   
+    -   
+    -   
+    -   
 
 **Critical Info for New Agent**
-- **MUST RESPOND IN FRENCH.**
-- **PRIORITY 1: PRODUCTION VERIFICATION.** Your first action should be to ask the user to deploy the latest changes and then test the two key AI features in production: **1. AI-powered SMS generation** and **2. AI task suggestions on the Today view**. These were the user's last reported problems.
-- **PRODUCTION vs. PREVIEW:** Be extremely clear that your work environment (preview) is separate from the user's live site (production). Database changes you make will **not** be in production. All code changes require the user to **deploy** the app to see them live.
-- **MONOLITHIC CODEBASE:** The frontend is almost entirely in  and the backend is in . Tread carefully when making changes. Propose refactoring these files as a future task after addressing any immediate user requests.
-- **DO NOT TOUCH NAVIGATION:** The user explicitly requested to keep the current bottom navigation ( |  | ) as is.
+-   **MUST RESPOND IN FRENCH.**
+-   **TOP PRIORITY (BLOCKER):** The backend server is down. You must fix the incorrect rate-limiter implementation in  before you can do anything else. Check the function signatures of the API endpoints.
+-   **MAIN TASK:** After fixing the backend, your main task is to implement the user's massive list of UI/UX polish requests and bug fixes from message #365. This is a complete redesign and refactoring of the frontend.
+-   **SOURCE OF TRUTH:** The user-provided HTML files () and the detailed instructions in message #365 are the new source of truth for the entire application's design. Follow them precisely.
+-   **HIGH-QUALITY EXPECTATIONS:** The user has extremely high standards. Focus on global polish and ensure every detail (spacing, fonts, colors, borders, icons) is consistent with the new design system.
 
 **documents and test reports created in this job**
-- : Updated with the latest completed features.
-- : A temporary debug file in . This should be removed.
+-   : Updated to reflect the completed and upcoming phases.
+-   : **Outdated.** Shows 100% success from *before* the latest breaking changes and UI overhaul requests.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (latest):** Reported they cannot scroll up and down on the prospect detail page. (Status: **RESOLVED**)
-2.  **User:** Requested removing the square border around the search icon. (Status: **RESOLVED**)
-3.  **User:** Reported that no AI functionality (SMS or suggestions) works in production. (Status: **FIX IMPLEMENTED, PENDING USER VERIFICATION**)
-4.  **User:** Agreed with the agent's plan and emphasized keeping the current navigation and adding a search bar. (Status: **Acknowledged**)
-5.  **User:** Provided a detailed list of new requirements after the login crisis was solved (AI suggestions, manual tasks, disable auto-tasks, fix AI SMS). (Status: **IMPLEMENTED**)
-6.  **User:** Expressed extreme frustration about deployment failing and spending credits on a non-working auth system. (Status: **Superseded by fix**)
-7.  **User:** Stated that after deploying, authentication still does not work for anyone. (Status: **Superseded by fix**)
-8.  **User:** Again confirmed nothing works, neither login nor registration, and expressed deep frustration. (Status: **Superseded by fix**)
-9.  **User:** Confirmed their production domain is linked correctly in the Emergent dashboard. (Status: **Acknowledged, was part of debug**)
-10. **User:** Asked if the domain was pointing correctly on the agent's side. (Status: **Acknowledged, was part of debug**)
+1.  **User (latest):** Provided an extremely long and detailed list of required improvements, bug fixes, and polish for the entire application, from the landing page to the settings screen. **Status: NOT STARTED.**
+2.  **User:** Approved the plan to integrate the new HTML files and stated, Fais tout ça maintenant (Do all of that now). **Status: IN PROGRESS.**
+3.  **User:** Provided 3 HTML files for a complete redesign of the landing page and application dashboard. **Status: IN PROGRESS.**
+4.  **User:** Indicated that the agent could finish the current step, signaling readiness to provide new instructions and files for the major redesign. **Status: ACKNOWLEDGED.**
+5.  ... (Previous messages relate to the prior implementation, which is now being overhauled).
 
 **Project Health Check:**
-*   **Broken:** The AI features (, ) are unverified in production and considered broken by the user until confirmed fixed.
-*   **Mocked:** None.
+-   **Broken:**
+    -   Backend Server ()
+    -   Dark/Light Mode Toggle
+    -   Login & Register Pages
+    -   Prospect creation/editing flow
+    -   My Profile page (icons, buttons, version)
+    -   Push notification UI
+-   **Mocked:**
+    -   None.
 
 **3rd Party Integrations**
-*   **Stripe (Payments & Customer Tracking):** Integrated.
-*   **Anthropic Claude (AI Features):** Integrated and now uses .
-*   **Resend (Transactional Emails):** Integrated.
-*   **Brevo (SMS):** Integrated.
-*   **Google Analytics 4 (Analytics):** Integrated.
+-   **Stripe (Payments & Customer Tracking)**
+-   **Anthropic Claude / OpenAI GPT (AI Features)** - Uses Emergent LLM Key
+-   **Resend (Transactional Emails)**
+-   **Brevo (SMS)**
+-   **Google Analytics 4 (Analytics)**
+-   **canvas-confetti (Frontend Library)**
+-   **redis (Backend Cache for Rate Limiting)**
 
 **Testing status**
-- **Testing agent used after significant changes:** NO. Agent implemented several features without running the testing agent.
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** A major authentication regression occurred and was fixed. The current status of AI features in production is unknown and could be considered a regression by the user.
+-   **Testing agent used after significant changes:** YES, but the test report is now obsolete.
+-   **Test files created:** None.
+-   **Known regressions:** The entire dark mode is broken again, along with many other UI elements due to the partial application of the new design system. The backend is non-functional.
 
 **Credentials to test flow:**
-- **Primary Users:** ,  (password for both is  in the preview environment).
-- **Test User:** , .
+-   **Primary Users:** ,  (password: )
+-   **Test User:**  (password: )
 
 **What agent forgot to execute**
-- The agent did not call the  after implementing a large batch of new features (AI suggestions, search bar, manual task creation).
-- The agent created a temporary debug file, , and did not remove it after the issue was resolved.</analysis>
+-   The agent failed to correctly implement the backend security features, leaving the server in a broken state.
+-   The agent did not fully or correctly implement the new design system across the application, resulting in a host of new UI bugs and inconsistencies.
+-   The agent did not address the majority of the specific bug fixes and polish items requested by the user before the session ended.</analysis>

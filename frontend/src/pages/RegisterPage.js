@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
-
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
+import '../styles/landing.css';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { locale } = useLocale();
   const { login } = useAuth();
   
+  // Get email from landing page if passed
+  const initialEmail = location.state?.email || '';
+  
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,113 +82,238 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="mobile-frame">
-      <div className="page-container no-nav">
-        <div className="header-back">
-          <button className="back-button" onClick={() => navigate('/')}>
-            <ArrowLeft size={20} strokeWidth={1.5} />
-            {locale === 'fr' ? 'Retour' : 'Back'}
-          </button>
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px'
+    }}>
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        {/* Back button */}
+        <button 
+          onClick={() => navigate('/')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'none',
+            border: 'none',
+            fontFamily: 'var(--font-body)',
+            fontSize: '14px',
+            color: 'var(--ink-mid)',
+            cursor: 'pointer',
+            marginBottom: '32px',
+            padding: 0
+          }}
+        >
+          <ArrowLeft size={20} strokeWidth={1.5} />
+          <span>{locale === 'fr' ? 'Retour' : 'Back'}</span>
+        </button>
+
+        {/* Logo - Text KOLO with dot */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '3px',
+          marginBottom: '24px'
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-heading)',
+            fontSize: '36px',
+            fontWeight: '800',
+            color: 'var(--ink)'
+          }}>KOLO</span>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'var(--grad)',
+            marginBottom: '14px'
+          }}></span>
         </div>
 
-        <div style={{ padding: '0 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginTop: '24px', marginBottom: '24px', textAlign: 'center' }}>
-            <img src={LOGO_URL} alt="KOLO" style={{ maxHeight: '50px' }} />
-          </div>
+        {/* Trial badge */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          background: 'linear-gradient(135deg, rgba(0, 74, 173, 0.08) 0%, rgba(203, 108, 230, 0.12) 100%)',
+          border: '1px solid rgba(0, 74, 173, 0.15)',
+          borderRadius: '999px',
+          padding: '10px 20px',
+          margin: '0 auto 24px',
+          width: 'fit-content'
+        }}>
+          <Sparkles size={16} style={{ color: 'var(--blue)' }} />
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--ink-mid)'
+          }}>{locale === 'fr' ? '7 jours gratuits · Sans carte bancaire' : '7 days free · No credit card'}</span>
+        </div>
 
-          {/* Trial badge */}
-          <div style={{ 
-            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
-            border: '1px solid rgba(236, 72, 153, 0.3)',
-            borderRadius: '16px',
-            padding: '16px 20px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px'
-          }}>
-            <div style={{ 
-              width: '44px', height: '44px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Sparkles size={20} color="white" />
-            </div>
-            <div>
-              <p style={{ fontWeight: '600', fontSize: '15px', color: '#EC4899', marginBottom: '2px' }}>
-                {locale === 'fr' ? '7 jours gratuits' : '7 days free'}
-              </p>
-              <p style={{ color: 'var(--muted)', fontSize: '13px' }}>
-                {locale === 'fr' ? 'Accès complet, sans carte bancaire' : 'Full access, no credit card'}
-              </p>
-            </div>
-          </div>
+        {/* Title */}
+        <h1 style={{
+          fontFamily: 'var(--font-heading)',
+          fontSize: '28px',
+          fontWeight: '800',
+          color: 'var(--ink)',
+          textAlign: 'center',
+          marginBottom: '8px'
+        }}>
+          {locale === 'fr' ? 'Créer votre compte' : 'Create your account'}
+        </h1>
+        <p style={{
+          fontSize: '15px',
+          color: 'var(--ink-mid)',
+          textAlign: 'center',
+          marginBottom: '32px'
+        }}>
+          {locale === 'fr' ? 'Rejoignez les agents qui closent plus' : 'Join agents who close more deals'}
+        </p>
 
-          <h1 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '26px', color: 'white' }}>
-            {locale === 'fr' ? 'Créez votre compte' : 'Create your account'}
-          </h1>
-
-          <p style={{ textAlign: 'center', marginBottom: '24px', color: 'var(--muted)' }}>
-            {locale === 'fr' ? 'Commencez votre essai gratuit' : 'Start your free trial'}
-          </p>
-
+        {/* Form */}
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {error && (
-            <div style={{ 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '16px',
-              color: '#ef4444',
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              color: '#EF4444',
               textAlign: 'center'
             }}>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleRegister}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: 'var(--ink-mid)'
+            }}>{locale === 'fr' ? 'Nom complet' : 'Full name'}</label>
             <input
               type="text"
-              className="input-dark"
-              placeholder={locale === 'fr' ? 'Nom complet' : 'Full name'}
+              placeholder={locale === 'fr' ? 'Jean Dupont' : 'John Doe'}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              style={{ marginBottom: '16px' }}
               required
+              autoComplete="name"
+              style={{
+                width: '100%',
+                height: '52px',
+                padding: '0 16px',
+                background: 'var(--bg-alt)',
+                border: '1.5px solid var(--border)',
+                borderRadius: '12px',
+                fontFamily: 'var(--font-body)',
+                fontSize: '15px',
+                color: 'var(--ink)',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
+          </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: 'var(--ink-mid)'
+            }}>{locale === 'fr' ? 'Téléphone' : 'Phone'}</label>
             <input
               type="tel"
-              className="input-dark"
-              placeholder={locale === 'fr' ? 'Téléphone' : 'Phone'}
+              placeholder="+33 6 12 34 56 78"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              style={{ marginBottom: '16px' }}
               required
+              autoComplete="tel"
+              style={{
+                width: '100%',
+                height: '52px',
+                padding: '0 16px',
+                background: 'var(--bg-alt)',
+                border: '1.5px solid var(--border)',
+                borderRadius: '12px',
+                fontFamily: 'var(--font-body)',
+                fontSize: '15px',
+                color: 'var(--ink)',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
+          </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: 'var(--ink-mid)'
+            }}>Email</label>
             <input
               type="email"
-              className="input-dark"
-              placeholder="Email"
+              placeholder="votre@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ marginBottom: '16px' }}
               required
+              autoComplete="email"
+              style={{
+                width: '100%',
+                height: '52px',
+                padding: '0 16px',
+                background: 'var(--bg-alt)',
+                border: '1.5px solid var(--border)',
+                borderRadius: '12px',
+                fontFamily: 'var(--font-body)',
+                fontSize: '15px',
+                color: 'var(--ink)',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
+          </div>
 
-            <div style={{ position: 'relative', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: 'var(--ink-mid)'
+            }}>{locale === 'fr' ? 'Mot de passe' : 'Password'}</label>
+            <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="input-dark"
-                placeholder={locale === 'fr' ? 'Mot de passe (min. 6 caractères)' : 'Password (min. 6 characters)'}
+                placeholder={locale === 'fr' ? '6 caractères minimum' : '6 characters minimum'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingRight: '52px' }}
                 required
+                autoComplete="new-password"
+                style={{
+                  width: '100%',
+                  height: '52px',
+                  padding: '0 48px 0 16px',
+                  background: 'var(--bg-alt)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '12px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '15px',
+                  color: 'var(--ink)',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
-              <button
-                type="button"
+              <button 
+                type="button" 
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: 'absolute',
@@ -194,35 +322,68 @@ const RegisterPage = () => {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: 'var(--muted)',
-                  cursor: 'pointer'
+                  color: 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  padding: '4px'
                 }}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+          </div>
 
-            <button 
-              type="submit"
-              className="btn-primary"
-              disabled={!fullName || !phone || !email || !password || loading}
-              style={{ marginBottom: '24px' }}
-            >
-              {loading ? (
-                <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-              ) : (
-                locale === 'fr' ? 'Commencer l\'essai gratuit' : 'Start free trial'
-              )}
-            </button>
-          </form>
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={{
+              width: '100%',
+              height: '52px',
+              background: 'var(--grad)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              marginTop: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {loading ? (
+              <div style={{
+                width: '20px',
+                height: '20px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                borderTopColor: '#fff',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite'
+              }}></div>
+            ) : (
+              locale === 'fr' ? 'Commencer gratuitement' : 'Start for free'
+            )}
+          </button>
+        </form>
 
-          <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
-            {locale === 'fr' ? 'Déjà un compte ?' : 'Already have an account?'}{' '}
-            <Link to="/login" style={{ color: 'var(--accent)', fontWeight: '500', textDecoration: 'none' }}>
-              {locale === 'fr' ? 'Se connecter' : 'Sign in'}
-            </Link>
-          </p>
-        </div>
+        {/* Footer */}
+        <p style={{
+          textAlign: 'center',
+          marginTop: '24px',
+          fontSize: '14px',
+          color: 'var(--ink-mid)'
+        }}>
+          {locale === 'fr' ? 'Déjà un compte ?' : 'Already have an account?'}{' '}
+          <Link to="/login" style={{
+            color: 'var(--blue)',
+            fontWeight: '600',
+            textDecoration: 'none'
+          }}>
+            {locale === 'fr' ? 'Se connecter' : 'Sign in'}
+          </Link>
+        </p>
       </div>
     </div>
   );

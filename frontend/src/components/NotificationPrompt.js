@@ -52,24 +52,25 @@ const NotificationPrompt = ({ onClose }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'rgba(0, 0, 0, 0.8)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
+        zIndex: 10000,
         padding: '24px'
       }}
       data-testid="notification-prompt-overlay"
     >
       <div 
         style={{
-          background: 'var(--surface)',
+          background: 'var(--bg)',
           borderRadius: '20px',
           padding: '32px 24px',
           maxWidth: '320px',
           width: '100%',
           textAlign: 'center',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.3)'
         }}
         data-testid="notification-prompt-modal"
       >
@@ -82,7 +83,7 @@ const NotificationPrompt = ({ onClose }) => {
             right: '12px',
             background: 'none',
             border: 'none',
-            color: 'var(--muted)',
+            color: 'var(--ink-soft)',
             cursor: 'pointer',
             padding: '8px'
           }}
@@ -97,7 +98,7 @@ const NotificationPrompt = ({ onClose }) => {
             width: '72px',
             height: '72px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--accent), #9333ea)',
+            background: 'var(--grad)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -111,9 +112,10 @@ const NotificationPrompt = ({ onClose }) => {
         <h2 
           style={{
             fontSize: '20px',
-            fontWeight: '600',
-            color: 'var(--text)',
-            marginBottom: '12px'
+            fontWeight: '700',
+            color: 'var(--ink)',
+            marginBottom: '12px',
+            fontFamily: 'var(--font-heading)'
           }}
         >
           {t('enableNotifications')}
@@ -123,7 +125,7 @@ const NotificationPrompt = ({ onClose }) => {
         <p 
           style={{
             fontSize: '15px',
-            color: 'var(--muted)',
+            color: 'var(--ink-mid)',
             lineHeight: '1.5',
             marginBottom: '28px'
           }}
@@ -137,7 +139,7 @@ const NotificationPrompt = ({ onClose }) => {
             className="btn-primary"
             onClick={handleEnable}
             disabled={isLoading}
-            style={{ height: '50px' }}
+            style={{ height: '50px', width: '100%' }}
             data-testid="enable-notifications-btn"
           >
             {isLoading ? (
@@ -147,12 +149,15 @@ const NotificationPrompt = ({ onClose }) => {
             )}
           </button>
           <button
-            className="btn-ghost"
             onClick={handleLater}
             style={{ 
               height: '44px',
-              color: 'var(--muted)',
-              fontSize: '15px'
+              background: 'none',
+              border: 'none',
+              color: 'var(--ink-mid)',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor: 'pointer'
             }}
             data-testid="notifications-later-btn"
           >

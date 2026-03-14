@@ -664,7 +664,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             }}
             data-testid="segment-all-tasks"
           >
-            {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+            {locale === 'fr' ? 'Toutes mes tâches' : 'All my tasks'}
           </button>
         </div>
         
@@ -944,8 +944,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 key={task.task_id}
                 style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}
               >
-                {/* Swipe background - only for non-completed tasks */}
-                {!isCompleted && (
+                {/* Swipe background - only shows during active swipe */}
+                {!isCompleted && swipingTaskId === task.task_id && (
                   <div style={{
                     position: 'absolute',
                     left: '1px',
@@ -956,7 +956,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                     borderRadius: '11px',
                     display: 'flex',
                     alignItems: 'center',
-                    paddingLeft: '20px'
+                    paddingLeft: '20px',
+                    pointerEvents: 'none'
                   }}>
                     <Check size={24} style={{ color: 'white' }} />
                     <span style={{ marginLeft: '8px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
@@ -1983,6 +1984,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
 // ==================== PROSPECT DETAIL ====================
 const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const { t, formatDate, locale } = useLocale();
+  const { c } = useThemeColors();
   const [prospectData, setProspectData] = useState(prospect);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2314,76 +2316,117 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
+          zIndex: 10000,
           padding: '16px'
         }} onClick={() => setShowEditModal(false)}>
           <div style={{
-            background: 'var(--surface)',
+            background: c('bg'),
             borderRadius: '20px',
             padding: '24px',
             width: '100%',
             maxWidth: '400px',
             maxHeight: '90vh',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            border: `1px solid ${c('border')}`
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '600' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: c('text') }}>
                 {locale === 'fr' ? 'Modifier le prospect' : 'Edit prospect'}
               </h2>
-              <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+              <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   {locale === 'fr' ? 'Nom complet' : 'Full name'} *
                 </label>
                 <input
                   type="text"
-                  className="input-dark"
                   value={editForm.full_name}
                   onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
                   data-testid="edit-fullname"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    color: c('text'),
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   {locale === 'fr' ? 'Téléphone' : 'Phone'}
                 </label>
                 <input
                   type="tel"
-                  className="input-dark"
                   value={editForm.phone}
                   onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
                   data-testid="edit-phone"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    color: c('text'),
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   Email
                 </label>
                 <input
                   type="email"
-                  className="input-dark"
                   value={editForm.email}
                   onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
                   data-testid="edit-email"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    color: c('text'),
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   Source
                 </label>
                 <select
-                  className="input-dark"
                   value={editForm.source}
                   onChange={(e) => setEditForm(prev => ({ ...prev, source: e.target.value }))}
                   data-testid="edit-source"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    color: c('text'),
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="leboncoin">Leboncoin</option>
                   <option value="seloger">SeLoger</option>
@@ -2395,25 +2438,49 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--muted)' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   Notes
                 </label>
                 <textarea
-                  className="input-dark"
                   value={editForm.notes}
                   onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
-                  style={{ resize: 'none' }}
                   data-testid="edit-notes"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    color: c('text'),
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    resize: 'none',
+                    fontFamily: 'inherit'
+                  }}
                 />
               </div>
               
               <button
-                className="btn-primary"
                 onClick={handleEditSubmit}
                 disabled={editLoading}
                 data-testid="save-edit-button"
-                style={{ marginTop: '8px' }}
+                style={{ 
+                  marginTop: '8px',
+                  width: '100%',
+                  padding: '14px',
+                  background: c('accent'),
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: editLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
                 {editLoading ? (
                   <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
@@ -2517,44 +2584,82 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       </div>
       
       {/* Score section - discrete inline display */}
-      <div className="card" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+      <div style={{ marginBottom: '16px', padding: '12px 16px', background: c('cardBg'), border: `1px solid ${c('border')}`, borderRadius: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>
+          <span style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
             {locale === 'fr' ? 'Température' : 'Temperature'}
           </span>
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowScoreMenu(!showScoreMenu)}
               disabled={updatingScore}
-              className="btn-minimal"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '6px 12px',
-                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : 'var(--muted)'
+                background: 'transparent',
+                border: `1px solid ${c('border')}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : c('muted'),
+                fontSize: '13px',
+                fontWeight: '500'
               }}
             >
-              <span className={`score-dot ${prospectData.score === 'chaud' ? 'hot' : prospectData.score === 'tiede' ? 'warm' : 'cold'}`} />
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : c('muted')
+              }} />
               {prospectData.score === 'chaud' ? (locale === 'fr' ? 'Chaud' : 'Hot') : 
                prospectData.score === 'tiede' ? (locale === 'fr' ? 'Tiède' : 'Warm') : 
                prospectData.score === 'froid' ? (locale === 'fr' ? 'Froid' : 'Cold') : '—'}
             </button>
             
             {showScoreMenu && (
-              <div className="dropdown-menu">
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '4px',
+                background: c('bg'),
+                border: `1px solid ${c('border')}`,
+                borderRadius: '10px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                minWidth: '120px',
+                overflow: 'hidden',
+                zIndex: 100
+              }}>
                 {[
-                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E', dotClass: 'hot' },
-                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B', dotClass: 'warm' },
-                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444', dotClass: 'cold' }
+                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E' },
+                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B' },
+                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444' }
                 ].map(option => (
                   <button
                     key={option.value}
                     onClick={() => { updateScore(option.value); setShowScoreMenu(false); }}
-                    className={`dropdown-item ${prospectData.score === option.value ? 'active' : ''}`}
-                    style={{ color: option.color }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: prospectData.score === option.value ? 'rgba(0, 74, 173, 0.1)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: option.color,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}
                   >
-                    <span className={`score-dot ${option.dotClass}`} />
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: option.color
+                    }} />
                     {option.label}
                     {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto', opacity: 0.7 }} />}
                   </button>
@@ -3012,6 +3117,7 @@ const SettingsTab = ({ onClose }) => {
   const { t, locale } = useLocale();
   const { user, logout } = useAuth();
   const { theme, changeTheme } = useTheme();
+  const { c } = useThemeColors();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -3303,7 +3409,7 @@ const SettingsTab = ({ onClose }) => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: '24px', background: c('bg'), minHeight: '100vh' }}>
       {/* Header with back button */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <button 
@@ -3311,7 +3417,7 @@ const SettingsTab = ({ onClose }) => {
           style={{ 
             background: 'none', 
             border: 'none', 
-            color: 'var(--text)', 
+            color: c('text'), 
             cursor: 'pointer',
             padding: '8px'
           }}
@@ -3319,16 +3425,16 @@ const SettingsTab = ({ onClose }) => {
         >
           <X size={24} strokeWidth={1.5} />
         </button>
-        <h1 className="text-headline" style={{ fontSize: '28px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '700', color: c('text') }}>
           {t('settings')}
         </h1>
       </div>
 
       {/* Profile section */}
-      <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
         {t('profile')}
       </h3>
-      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         {/* Name row - clickable to edit */}
         <div 
           className="settings-row" 
@@ -3336,17 +3442,17 @@ const SettingsTab = ({ onClose }) => {
             setNewName(userName);
             setShowNameModal(true);
           }}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: `1px solid ${c('border')}` }}
           data-testid="edit-name"
         >
-          <User className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
+          <User size={20} strokeWidth={1.5} style={{ color: c('muted') }} />
           <div style={{ flex: 1 }}>
-            <span className="label">{locale === 'fr' ? 'Nom' : 'Name'}</span>
-            <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+            <span style={{ fontSize: '15px', color: c('text') }}>{locale === 'fr' ? 'Nom' : 'Name'}</span>
+            <div style={{ fontSize: '12px', marginTop: '2px', color: c('muted') }}>
               {userName || user?.email || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
             </div>
           </div>
-          <ChevronRight className="chevron" size={20} />
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
         {/* Phone row */}
         <div 
@@ -3358,80 +3464,80 @@ const SettingsTab = ({ onClose }) => {
           style={{ cursor: 'pointer', borderBottom: 'none' }}
           data-testid="edit-phone"
         >
-          <Phone className="icon" strokeWidth={1.5} style={{ color: 'white' }} />
+          <Phone size={20} strokeWidth={1.5} style={{ color: c('muted') }} />
           <div style={{ flex: 1 }}>
-            <span className="label">{locale === 'fr' ? 'Téléphone' : 'Phone'}</span>
-            <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+            <span style={{ fontSize: '15px', color: c('text') }}>{locale === 'fr' ? 'Téléphone' : 'Phone'}</span>
+            <div style={{ fontSize: '12px', marginTop: '2px', color: c('muted') }}>
               {userPhone || (locale === 'fr' ? 'Non configuré' : 'Not configured')}
             </div>
           </div>
-          <ChevronRight className="chevron" size={20} />
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
       </div>
 
       {/* Billing section */}
-      <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
         {t('billingPayment')}
       </h3>
-      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         <div 
           className="settings-row" 
           data-testid="edit-payment-method"
           onClick={() => handleBillingAction('payment_method')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: `1px solid ${c('border')}` }}
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
             <line x1="1" y1="10" x2="23" y2="10"></line>
           </svg>
-          <span className="label">{t('editPaymentMethod')}</span>
-          <ChevronRight className="chevron" size={20} />
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('editPaymentMethod')}</span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
         <div 
           className="settings-row" 
           data-testid="billing-address"
           onClick={() => handleBillingAction('billing_address')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: `1px solid ${c('border')}` }}
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span className="label">{t('billingAddress')}</span>
-          <ChevronRight className="chevron" size={20} />
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('billingAddress')}</span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
         <div 
           className="settings-row" 
           data-testid="change-email"
           onClick={() => handleBillingAction('change_email')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: 'none' }}
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
             <polyline points="22,6 12,13 2,6"></polyline>
           </svg>
-          <span className="label">{t('changeEmail')}</span>
-          <ChevronRight className="chevron" size={20} />
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('changeEmail')}</span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
       </div>
 
       {/* About section */}
-      <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
         {t('about')}
       </h3>
-      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         {/* Notifications toggle */}
         <div 
           className="settings-row" 
           onClick={handleToggleNotifications}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: `1px solid ${c('border')}` }}
           data-testid="notifications-toggle"
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
-          <span className="label">{t('notifications')}</span>
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('notifications')}</span>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -3443,7 +3549,7 @@ const SettingsTab = ({ onClose }) => {
               <>
                 <span style={{ 
                   fontSize: '14px', 
-                  color: notificationsEnabled ? 'var(--success)' : 'var(--muted)' 
+                  color: notificationsEnabled ? c('success') : c('muted')
                 }}>
                   {notificationsEnabled ? t('notificationsOn') : t('notificationsOff')}
                 </span>
@@ -3451,7 +3557,8 @@ const SettingsTab = ({ onClose }) => {
                   width: '44px',
                   height: '26px',
                   borderRadius: '13px',
-                  background: notificationsEnabled ? 'var(--accent)' : 'var(--surface-2)',
+                  background: notificationsEnabled ? c('accent') : c('surface'),
+                  border: `1.5px solid ${c('border')}`,
                   position: 'relative',
                   transition: 'background 0.2s ease'
                 }}>
@@ -3459,12 +3566,12 @@ const SettingsTab = ({ onClose }) => {
                     width: '22px',
                     height: '22px',
                     borderRadius: '50%',
-                    background: 'white',
+                    background: c('cardBg'),
                     position: 'absolute',
-                    top: '2px',
-                    left: notificationsEnabled ? '20px' : '2px',
+                    top: '1px',
+                    left: notificationsEnabled ? '19px' : '1px',
                     transition: 'left 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                   }}></div>
                 </div>
               </>
@@ -3475,91 +3582,102 @@ const SettingsTab = ({ onClose }) => {
         <div 
           className="settings-row" 
           onClick={() => setShowPasswordModal(true)}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', borderBottom: `1px solid ${c('border')}` }}
           data-testid="change-password"
         >
-          <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+          <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('muted')} strokeWidth="1.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
-          <span className="label">{t('changePassword')}</span>
-          <ChevronRight className="chevron" size={20} />
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('changePassword')}</span>
+          <ChevronRight size={20} style={{ color: c('muted') }} />
         </div>
         {/* Version */}
         <div className="settings-row" style={{ borderBottom: 'none' }}>
-          <span className="label">{t('version')}</span>
-          <span className="value">1.0.0</span>
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>{t('version')}</span>
+          <span style={{ color: c('muted') }}>2.0.0</span>
         </div>
       </div>
 
       {/* Appearance section - Theme toggle */}
-      <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
         {locale === 'fr' ? 'Apparence' : 'Appearance'}
       </h3>
-      <div className="card" style={{ marginBottom: '24px', padding: '0 16px' }}>
+      <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         <div 
           className="settings-row" 
           style={{ borderBottom: 'none' }}
           data-testid="theme-toggle"
         >
           {theme === 'light' ? (
-            <Sun className="icon" strokeWidth={1.5} style={{ color: 'var(--text)' }} />
+            <Sun size={20} strokeWidth={1.5} style={{ color: c('text') }} />
           ) : (
-            <Moon className="icon" strokeWidth={1.5} style={{ color: 'var(--text)' }} />
+            <Moon size={20} strokeWidth={1.5} style={{ color: c('text') }} />
           )}
-          <span className="label">{locale === 'fr' ? 'Theme' : 'Theme'}</span>
-          <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-2)', borderRadius: '10px', padding: '4px' }}>
-            <button
-              onClick={() => changeTheme('light')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: theme === 'light' ? 'var(--accent)' : 'transparent',
-                color: theme === 'light' ? 'white' : 'var(--muted)',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Sun size={14} />
-              {locale === 'fr' ? 'Clair' : 'Light'}
-            </button>
-            <button
-              onClick={() => changeTheme('dark')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: theme === 'dark' ? 'var(--accent)' : 'transparent',
-                color: theme === 'dark' ? 'white' : 'var(--muted)',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Moon size={14} />
-              {locale === 'fr' ? 'Sombre' : 'Dark'}
-            </button>
+          <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
+            {locale === 'fr' ? 'Thème' : 'Theme'}
+          </span>
+          {/* Toggle Switch */}
+          <div 
+            onClick={() => changeTheme(theme === 'light' ? 'dark' : 'light')}
+            style={{
+              width: '56px',
+              height: '30px',
+              borderRadius: '15px',
+              background: theme === 'dark' ? c('accent') : c('surface'),
+              border: `1.5px solid ${c('border')}`,
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              background: c('cardBg'),
+              position: 'absolute',
+              top: '2px',
+              left: theme === 'dark' ? '28px' : '2px',
+              transition: 'left 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {theme === 'light' ? (
+                <Sun size={14} strokeWidth={2} style={{ color: '#F59E0B' }} />
+              ) : (
+                <Moon size={14} strokeWidth={2} style={{ color: '#8B5CF6' }} />
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Logout button */}
       <button 
-        className="btn-secondary"
         onClick={handleLogout}
         data-testid="logout-button"
-        style={{ marginTop: '16px' }}
+        style={{ 
+          marginTop: '16px',
+          width: '100%',
+          padding: '14px 24px',
+          background: c('surface'),
+          border: `1.5px solid ${c('border')}`,
+          borderRadius: '999px',
+          color: c('text'),
+          fontSize: '14px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          transition: 'all 0.2s ease'
+        }}
       >
+        <LogOut size={16} strokeWidth={1.5} />
         {t('logout')}
       </button>
 
@@ -4896,28 +5014,52 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
             }}>
               Source
             </label>
-            <select
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              data-testid="quick-prospect-source"
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: '10px',
-                color: source ? 'var(--text)' : 'var(--muted)',
-                fontSize: '15px',
-                height: '52px',
-                boxSizing: 'border-box',
-                appearance: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {sourceOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                data-testid="quick-prospect-source"
+                style={{
+                  width: '100%',
+                  padding: '14px 40px 14px 16px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  color: source ? 'var(--text)' : 'var(--muted)',
+                  fontSize: '15px',
+                  height: '52px',
+                  boxSizing: 'border-box',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {sourceOptions.map(opt => (
+                  <option key={opt.value} value={opt.value} style={{ color: 'var(--text)' }}>{opt.label}</option>
+                ))}
+              </select>
+              {/* Custom dropdown arrow */}
+              <svg 
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                  width: '18px',
+                  height: '18px'
+                }}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--muted)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
           </div>
           
           <button
@@ -4954,6 +5096,16 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   
   return (
     <nav className="bottom-nav symmetric-nav">
+      {/* SVG gradient definition for active icons */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#004AAD" />
+            <stop offset="100%" stopColor="#CB6CE6" />
+          </linearGradient>
+        </defs>
+      </svg>
+      
       <div 
         className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
         onClick={() => setActiveTab('today')}

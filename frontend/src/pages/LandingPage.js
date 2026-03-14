@@ -1,16 +1,13 @@
-// v2.1.0 - Cache bust
+// v3.0.0 - KOLO Landing Page - Redesigned
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Bell, Sparkles, ArrowRight } from 'lucide-react';
+import { Calendar, Bell, Sparkles, ArrowRight, ChevronDown } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 
-// New K icon logo for landing page only
-const LANDING_LOGO_URL = "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png";
-
-// Language options
+// Language options - format 2 letters
 const LANGUAGES = [
-  { code: 'en', label: 'EN', name: 'English' },
-  { code: 'fr', label: 'FR', name: 'Français' },
+  { code: 'fr', label: 'FR' },
+  { code: 'en', label: 'EN' },
 ];
 
 const LandingPage = () => {
@@ -21,215 +18,313 @@ const LandingPage = () => {
 
   const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
 
+  // Feature cards
   const features = [
     {
       id: 'feature1',
       icon: Calendar,
-      title: t('feature1Title'),
-      description: t('feature1Desc'),
+      title: locale === 'fr' ? 'Tâches du Jour' : "Today's Tasks",
+      description: locale === 'fr' ? 'Sachez exactement qui contacter aujourd\'hui.' : 'Know exactly who to contact today.',
     },
     {
       id: 'feature2',
       icon: Bell,
-      title: t('feature2Title'),
-      description: t('feature2Desc'),
+      title: locale === 'fr' ? 'Rappels Intelligents' : 'Smart Reminders',
+      description: locale === 'fr' ? 'Soyez alerté au bon moment.' : 'Get notified at the right time.',
     },
     {
       id: 'feature3',
       icon: Sparkles,
-      title: t('feature3Title'),
-      description: t('feature3Desc'),
+      title: locale === 'fr' ? 'Relances Pilotées par IA' : 'AI-Powered Follow-ups',
+      description: locale === 'fr' ? 'Rédigez vos messages en 1 clic.' : 'Write messages in 1 click.',
     },
   ];
 
-  const handleFeatureClick = (id) => {
-    setExpandedCard(expandedCard === id ? null : id);
-  };
-
   return (
-    <div className="mobile-frame">
-      <div className="page-container no-nav">
-        {/* Header */}
-        <div className="landing-hero">
-          {/* Language selector - discrete text, top left */}
+    <div className="mobile-frame" style={{ background: 'var(--bg)' }}>
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        padding: 'max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom))'
+      }}>
+        
+        {/* Simplified Header */}
+        <header style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '32px'
+        }}>
+          {/* Logo */}
           <div style={{ 
-            position: 'absolute',
-            top: 'max(12px, env(safe-area-inset-top))',
-            left: '16px',
-            zIndex: 10
-          }}>
-            <button 
-              onClick={() => setShowLangMenu(!showLangMenu)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted)',
-                fontSize: '12px',
-                fontWeight: '400',
-                cursor: 'pointer',
-                padding: '4px 8px'
-              }}
-              data-testid="lang-selector"
-            >
-              {currentLang.label}
-            </button>
-            
-            {/* Language dropdown */}
-            {showLangMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: '4px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                minWidth: '100px'
-              }}>
-                {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.code}
-                    onClick={() => {
-                      changeLanguage(lang.code);
-                      setShowLangMenu(false);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 12px',
-                      background: locale === lang.code ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-                      border: 'none',
-                      color: locale === lang.code ? 'var(--accent)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <span>{lang.name}</span>
-                    <span style={{ color: 'var(--muted)', fontWeight: '500' }}>{lang.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Top right navigation - FAQ | Login */}
-          <div style={{ 
-            position: 'absolute',
-            top: 'max(12px, env(safe-area-inset-top))',
-            right: '16px',
-            zIndex: 10,
+            fontFamily: 'var(--font-heading)', 
+            fontSize: '24px', 
+            fontWeight: '800',
+            color: 'var(--ink)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '3px'
           }}>
-            <button 
-              onClick={() => navigate('/faq')}
-              data-testid="faq-link"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted)',
-                fontSize: '12px',
-                fontWeight: '400',
-                cursor: 'pointer',
-                padding: '4px 8px'
-              }}
-            >
-              {t('faq')}
-            </button>
-            <span style={{ color: 'var(--muted-dark)', fontSize: '12px' }}>|</span>
+            KOLO
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: 'var(--grad)',
+              marginBottom: '10px'
+            }}></span>
+          </div>
+
+          {/* Right side: Language + Login + CTA */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Language Selector - 2 letters format */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                style={{
+                  background: 'var(--bg-alt)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: 'var(--ink-mid)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                data-testid="lang-selector"
+              >
+                {currentLang.label}
+                <ChevronDown size={12} />
+              </button>
+              
+              {/* Language dropdown */}
+              {showLangMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '4px',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: 'var(--shadow-md)',
+                  minWidth: '60px',
+                  zIndex: 100
+                }}>
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        changeLanguage(lang.code);
+                        setShowLangMenu(false);
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '10px 14px',
+                        background: locale === lang.code ? 'rgba(0, 74, 173, 0.1)' : 'transparent',
+                        border: 'none',
+                        color: locale === lang.code ? 'var(--blue)' : 'var(--ink-mid)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Login link */}
             <button 
               onClick={() => navigate('/login')}
               data-testid="login-link"
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--muted)',
-                fontSize: '12px',
-                fontWeight: '400',
-                cursor: 'pointer',
-                padding: '4px 8px'
+                color: 'var(--ink-mid)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer'
               }}
             >
-              {t('loginToKolo')}
+              {locale === 'fr' ? 'Connexion' : 'Login'}
+            </button>
+
+            {/* CTA Button - small version */}
+            <button 
+              onClick={() => navigate('/register')}
+              data-testid="header-cta"
+              style={{
+                background: 'var(--grad)',
+                color: '#fff',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
             </button>
           </div>
+        </header>
 
-          {/* Large K Logo - only on landing page */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            marginBottom: '32px',
-            marginTop: '48px'
+        {/* Hero Section */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          {/* Main headline */}
+          <h1 style={{ 
+            fontFamily: 'var(--font-heading)',
+            fontSize: '32px', 
+            fontWeight: '800',
+            color: 'var(--ink)',
+            lineHeight: '1.2',
+            marginBottom: '12px'
           }}>
-            <img 
-              src={LANDING_LOGO_URL} 
-              alt="KOLO" 
-              style={{ 
-                height: '120px',
-                width: 'auto',
-                objectFit: 'contain'
-              }}
-            />
-          </div>
-
-          {/* Hero headline */}
-          <h2 
-            className="text-headline animate-fade-in" 
-            style={{ textAlign: 'center', marginBottom: '12px', fontSize: '28px', lineHeight: '1.3' }}
-          >
-            {t('heroHeadline')}
-          </h2>
+            {locale === 'fr' ? 'Ne manquez plus jamais une vente !' : 'Never miss a sale again!'}
+          </h1>
 
           {/* Subheadline */}
-          <p 
-            className="text-body text-muted animate-fade-in" 
-            style={{ textAlign: 'center', marginBottom: '40px', animationDelay: '0.1s' }}
-          >
-            {t('heroSubheadline')}
+          <p style={{ 
+            fontSize: '16px', 
+            color: 'var(--ink-mid)',
+            lineHeight: '1.5',
+            marginBottom: '8px'
+          }}>
+            {locale === 'fr' ? 'Concluez plus d\'affaires. Automatiquement.' : 'Close more deals. Automatically.'}
           </p>
         </div>
 
-        {/* Feature cards */}
-        <div className="landing-features animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        {/* Feature cards - clickable */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '12px',
+          marginBottom: '40px'
+        }}>
           {features.map((feature) => (
             <div
               key={feature.id}
-              className={`feature-card ${expandedCard === feature.id ? 'expanded' : ''}`}
-              onClick={() => handleFeatureClick(feature.id)}
+              onClick={() => setExpandedCard(expandedCard === feature.id ? null : feature.id)}
               data-testid={feature.id}
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                padding: '16px 18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: expandedCard === feature.id ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+              }}
             >
-              <feature.icon className="icon" strokeWidth={1.5} />
-              <span className="title">{feature.title}</span>
-              <span className="description">{feature.description}</span>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px' 
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'var(--grad)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <feature.icon size={20} style={{ color: '#fff' }} strokeWidth={1.5} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ 
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: '15px', 
+                    fontWeight: '700',
+                    color: 'var(--ink)',
+                    marginBottom: '2px'
+                  }}>
+                    {feature.title}
+                  </h3>
+                  <p style={{ 
+                    fontSize: '13px', 
+                    color: 'var(--ink-soft)',
+                    margin: 0
+                  }}>
+                    {feature.description}
+                  </p>
+                </div>
+                <ChevronDown 
+                  size={18} 
+                  style={{ 
+                    color: 'var(--ink-soft)',
+                    transform: expandedCard === feature.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease'
+                  }} 
+                />
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Pricing section */}
-        <div style={{ padding: '0 24px', marginTop: 'auto' }} className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          {/* CTA Button */}
+        {/* Spacer to push pricing to bottom */}
+        <div style={{ flex: 1 }}></div>
+
+        {/* Pricing and CTA - Bottom */}
+        <div style={{ textAlign: 'center' }}>
+          {/* Price tagline */}
+          <p style={{ 
+            fontSize: '14px', 
+            color: 'var(--ink-mid)',
+            marginBottom: '16px',
+            fontWeight: '500'
+          }}>
+            {locale === 'fr' ? 'Un prix. Zéro surprise.' : 'One price. Zero surprises.'}
+          </p>
+
+          {/* Main CTA Button */}
           <button 
             className="btn-primary"
             onClick={() => navigate('/register')}
             data-testid="start-button"
-            style={{ marginBottom: '16px' }}
+            style={{ 
+              width: '100%',
+              padding: '16px 24px',
+              marginBottom: '12px',
+              fontSize: '16px'
+            }}
           >
             {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
             <ArrowRight size={20} strokeWidth={2} />
           </button>
 
-          {/* Price info */}
-          <p className="text-small" style={{ textAlign: 'center', marginBottom: '40px', color: 'var(--muted)' }}>
+          {/* Micro text */}
+          <p style={{ 
+            fontSize: '13px', 
+            color: 'var(--ink-soft)',
+            marginBottom: '24px'
+          }}>
             {locale === 'fr' 
-              ? `7 jours gratuits, sans carte bancaire`
-              : `7 days free, no credit card required`
+              ? '7 jours gratuits, sans carte bancaire'
+              : '7 days free, no credit card required'
+            }
+          </p>
+
+          {/* Made by tagline */}
+          <p style={{ 
+            fontSize: '11px', 
+            color: 'var(--ink-soft)',
+            fontStyle: 'italic'
+          }}>
+            {locale === 'fr' 
+              ? 'Fait par des agents immobiliers pour des agents immobiliers'
+              : 'Made by real estate agents for real estate agents'
             }
           </p>
         </div>
