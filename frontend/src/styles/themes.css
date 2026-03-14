@@ -48,17 +48,20 @@
 
 /* ===== DARK THEME ===== */
 .theme-dark {
-  --bg: #0F0D1A;
-  --bg-alt: #181526;
-  --bg-alt2: #201D31;
-  --ink: #F0EEF8;
-  --ink-mid: #B8B2D0;
-  --ink-soft: #6B6585;
-  --border: rgba(240, 238, 248, 0.08);
+  --bg: #1A1A24;
+  --bg-alt: #2A2A3B;
+  --bg-alt2: #2E2E42;
+  --ink: #FFFFFF;
+  --ink-mid: #A0A4AE;
+  --ink-soft: #9EA3AE;
+  --border: rgba(255, 255, 255, 0.08);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 8px 40px rgba(203, 108, 230, 0.3);
+  /* Action button colors for dark mode */
+  --card-bg: #2E2E42;
+  --card-inner: #3C3C55;
 }
 
 /* ===== GLOBAL STYLES ===== */

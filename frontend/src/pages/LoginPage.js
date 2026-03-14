@@ -119,7 +119,7 @@ const LoginPage = () => {
           textAlign: 'center',
           marginBottom: '8px'
         }}>
-          {locale === 'fr' ? 'Bon retour !' : 'Welcome back!'}
+          {locale === 'fr' ? 'Content de vous revoir !' : 'Welcome back!'}
         </h1>
         <p style={{
           fontSize: '15px',

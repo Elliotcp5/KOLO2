@@ -154,7 +154,7 @@ const RegisterPage = () => {
             fontSize: '13px',
             fontWeight: '600',
             color: 'var(--ink-mid)'
-          }}>{locale === 'fr' ? '7 jours gratuits · Sans carte bancaire' : '7 days free · No credit card'}</span>
+          }}>{locale === 'fr' ? '1 mois gratuit · Sans carte bancaire' : '1 month free · No credit card'}</span>
         </div>
 
         {/* Title */}

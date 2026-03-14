@@ -71,31 +71,31 @@ const getThemeColor = (theme, type) => {
       gradient: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
     },
     dark: {
-      // New dark mode colors
-      bg: '#0F0D1A',
-      surface: '#181526',
-      surface2: '#201D31',
-      text: '#F0EEF8',
-      textMid: '#B8B2D0',
-      textSecondary: '#B8B2D0',
-      muted: '#6B6585',
-      mutedDark: '#4A4560',
-      border: 'rgba(240, 238, 248, 0.08)',
-      cardBg: '#181526',
-      cardBorder: 'rgba(240, 238, 248, 0.08)',
-      navBg: 'rgba(15, 13, 26, 0.95)',
-      inputBg: '#201D31',
-      inputBorder: 'rgba(240, 238, 248, 0.12)',
-      accent: '#004AAD',
-      accentPurple: '#CB6CE6',
-      accentGlow: 'rgba(203, 108, 230, 0.2)',
-      success: '#34D399',
-      successBg: 'rgba(52, 211, 153, 0.12)',
-      warning: '#FBBF24',
-      warningBg: 'rgba(251, 191, 36, 0.12)',
-      error: '#F87171',
-      errorBg: 'rgba(248, 113, 113, 0.12)',
-      gradient: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
+      // Dark mode colors matching screenshot exactly
+      bg: '#1A1A24',
+      surface: '#2A2A3B',
+      surface2: '#2E2E42',
+      text: '#FFFFFF',
+      textMid: '#D3D3D3',
+      textSecondary: '#D3D3D3',
+      muted: '#A0A4AE',
+      mutedDark: '#9EA3AE',
+      border: 'rgba(255, 255, 255, 0.12)',
+      cardBg: '#2E2E42',
+      cardBorder: 'rgba(255, 255, 255, 0.08)',
+      navBg: '#2A2A3B',
+      inputBg: '#3C3C55',
+      inputBorder: 'rgba(255, 255, 255, 0.15)',
+      accent: '#E82EA4',
+      accentPurple: '#8A2BE2',
+      accentGlow: 'rgba(232, 46, 164, 0.2)',
+      success: '#2ECC71',
+      successBg: 'rgba(46, 204, 113, 0.12)',
+      warning: '#FFC107',
+      warningBg: 'rgba(255, 193, 7, 0.12)',
+      error: '#F5A6AD',
+      errorBg: 'rgba(91, 55, 64, 1)',
+      gradient: 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
     }
   };
   return colors[theme]?.[type] || colors.light[type];
@@ -582,168 +582,222 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 
   return (
     <div style={{ padding: '20px', backgroundColor: c('bg'), minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: '700', color: c('text') }}>
-          {viewMode === 'today' ? t('today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
-        </h1>
+      {/* Header - KOLO Logo + Profile Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ 
+          fontFamily: 'var(--font-heading)', 
+          fontSize: '22px', 
+          fontWeight: '800',
+          color: c('text'),
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px'
+        }}>
+          KOLO
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: isDark ? '#8A2BE2' : '#CB6CE6',
+            marginBottom: '10px'
+          }}></span>
+        </div>
         <button 
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            padding: '6px 14px 6px 6px',
+            background: c('surface'),
+            border: `1px solid ${c('border')}`,
+            borderRadius: '999px',
+            cursor: 'pointer'
+          }}
           onClick={onOpenProfile}
           data-testid="my-profile-button"
         >
-          <User size={16} strokeWidth={1.5} color={c('text')} />
-          <span style={{ color: c('text'), fontSize: '13px' }}>{t('myProfile')}</span>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: isDark 
+              ? 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)'
+              : 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '11px',
+            fontWeight: '700'
+          }}>EP</div>
+          <span style={{ color: c('text'), fontSize: '14px', fontWeight: '500' }}>{locale === 'fr' ? 'Mon profil' : 'My profile'}</span>
         </button>
       </div>
 
-      {/* Date + Contextual Message + Streak */}
-      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <p style={{ textTransform: 'capitalize', fontSize: '13px', color: c('muted'), marginBottom: '4px' }}>
-            {formatDate(new Date())}
-          </p>
-          <p style={{ fontSize: '14px', color: c('text'), fontWeight: '500' }}>
-            {getContextualMessage()}
-          </p>
+      {/* Page Title */}
+      <h1 style={{ 
+        fontSize: '32px', 
+        fontWeight: '800', 
+        color: c('text'),
+        fontFamily: 'var(--font-heading)',
+        marginBottom: '4px'
+      }}>
+        {viewMode === 'today' ? (locale === 'fr' ? "Aujourd'hui" : 'Today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
+      </h1>
+
+      {/* Date */}
+      <p style={{ 
+        textTransform: 'capitalize', 
+        fontSize: '14px', 
+        color: c('muted'), 
+        marginBottom: '12px'
+      }}>
+        {formatDate(new Date())}
+      </p>
+
+      {/* Alert Badge - Overdue Tasks */}
+      {stats.totalToday - stats.completedToday > 0 && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: '999px',
+          padding: '8px 16px',
+          marginBottom: '20px',
+          color: '#EF4444',
+          fontSize: '13px',
+          fontWeight: '600'
+        }}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          {stats.totalToday - stats.completedToday} {locale === 'fr' ? 'tâches en retard à traiter' : 'overdue tasks to handle'}
         </div>
-        {/* Streak Counter - only show if >= 2 days */}
-        {stats.streak >= 2 && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px',
-            background: c('warningBg'),
-            padding: '6px 12px',
-            borderRadius: '20px'
-          }}>
-            <Flame size={16} color={c('warning')} />
-            <span style={{ fontSize: '13px', fontWeight: '600', color: c('warning') }}>
-              {stats.streak >= 7 
-                ? `${Math.floor(stats.streak / 7)} ${locale === 'fr' ? 'sem.' : 'wk'}` 
-                : stats.streak}
-            </span>
-          </div>
-        )}
-      </div>
-      
-      {/* Segment Control - Today / All Tasks + Add Task Button */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
-        <div style={{ display: 'flex', background: c('surface'), borderRadius: '10px', padding: '4px', flex: 1, border: `1px solid ${c('border')}` }}>
-          <button
-            onClick={() => setViewMode('today')}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: viewMode === 'today' ? c('accent') : 'transparent',
-              color: viewMode === 'today' ? 'white' : c('muted'),
-              fontSize: '13px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            data-testid="segment-today"
-          >
-            {locale === 'fr' ? "Aujourd'hui" : 'Today'}
-          </button>
-          <button
-            onClick={() => setViewMode('all')}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: viewMode === 'all' ? c('accent') : 'transparent',
-              color: viewMode === 'all' ? 'white' : c('muted'),
-              fontSize: '13px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            data-testid="segment-all-tasks"
-          >
-            {locale === 'fr' ? 'Toutes mes tâches' : 'All my tasks'}
-          </button>
-        </div>
-        
+      )}
+
+      {/* Tabs - Today / All Tasks + Add Button */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
+        <button
+          onClick={() => setViewMode('today')}
+          style={{
+            flex: 1,
+            padding: '12px 20px',
+            borderRadius: '999px',
+            border: 'none',
+            background: viewMode === 'today' 
+              ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
+              : c('surface'),
+            color: viewMode === 'today' ? 'white' : c('muted'),
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: viewMode !== 'today' ? `inset 0 0 0 1px ${c('border')}` : 'none'
+          }}
+          data-testid="segment-today"
+        >
+          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+        </button>
+        <button
+          onClick={() => setViewMode('all')}
+          style={{
+            flex: 1,
+            padding: '12px 20px',
+            borderRadius: '999px',
+            border: 'none',
+            background: viewMode === 'all' 
+              ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
+              : c('surface'),
+            color: viewMode === 'all' ? 'white' : c('muted'),
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: viewMode !== 'all' ? `inset 0 0 0 1px ${c('border')}` : 'none'
+          }}
+          data-testid="segment-all-tasks"
+        >
+          {locale === 'fr' ? 'Toutes les tâches' : 'All tasks'}
+        </button>
         {/* Add Task Button */}
         <button
           onClick={() => setShowAddTaskModal(true)}
           style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
+            width: '48px',
+            height: '48px',
+            borderRadius: '14px',
             border: 'none',
-            background: c('accent'),
+            background: isDark ? '#1A1A24' : '#0E0B1E',
+            color: 'white',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0
+            justifyContent: 'center'
           }}
           data-testid="add-task-button"
         >
-          <Plus size={20} color="white" />
+          <Plus size={20} strokeWidth={2.5} />
         </button>
       </div>
-      
-      {/* Mini Dashboard Stats - Only in Today view */}
-      {!loading && !subscriptionBlocked && viewMode === 'today' && (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)', 
-          gap: '10px', 
-          marginBottom: '20px' 
+
+      {/* Stats Row */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+        <div style={{
+          flex: 1,
+          background: c('surface'),
+          border: `1px solid ${c('border')}`,
+          borderRadius: '14px',
+          padding: '16px',
+          textAlign: 'center'
         }}>
-          {/* Tasks Progress - More explicit */}
-          <div style={{ 
-            background: c('cardBg'), 
-            borderRadius: '12px', 
-            padding: '12px',
-            border: `1px solid ${c('cardBorder')}`
-          }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: c('accent') }}>
-              {stats.completedToday}
-              <span style={{ fontSize: '14px', fontWeight: '400', color: c('muted') }}> / {stats.totalToday || tasks.length + stats.completedToday}</span>
-            </div>
-            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
-              {locale === 'fr' ? 'Faites' : 'Done'}
-            </div>
+          <div style={{ fontSize: '28px', fontWeight: '800', color: c('text'), fontFamily: 'var(--font-heading)' }}>
+            {stats.completedToday}<span style={{ color: c('muted'), fontWeight: '400' }}> / {stats.totalToday}</span>
           </div>
-          
-          {/* Active Prospects */}
-          <div style={{ 
-            background: c('cardBg'), 
-            borderRadius: '12px', 
-            padding: '12px',
-            border: `1px solid ${c('cardBorder')}`
-          }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: c('text') }}>
-              {stats.activeProspects}
-            </div>
-            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
-              Prospects
-            </div>
-          </div>
-          
-          {/* Pending */}
-          <div style={{ 
-            background: c('cardBg'), 
-            borderRadius: '12px', 
-            padding: '12px',
-            border: `1px solid ${c('cardBorder')}`
-          }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: tasks.length > 0 ? c('warning') : c('success') }}>
-              {tasks.length}
-            </div>
-            <div style={{ fontSize: '11px', color: c('muted'), marginTop: '2px' }}>
-              {locale === 'fr' ? 'À faire' : 'To do'}
-            </div>
+          <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
+            {locale === 'fr' ? 'Faites' : 'Done'}
           </div>
         </div>
-      )}
+        <div style={{
+          flex: 1,
+          background: c('surface'),
+          border: `1px solid ${c('border')}`,
+          borderRadius: '14px',
+          padding: '16px',
+          textAlign: 'center'
+        }}>
+          <div style={{ 
+            fontSize: '28px', 
+            fontWeight: '800', 
+            fontFamily: 'var(--font-heading)',
+            background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            {stats.activeProspects}
+          </div>
+          <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
+            Prospects
+          </div>
+        </div>
+        <div style={{
+          flex: 1,
+          background: c('surface'),
+          border: `1px solid ${c('border')}`,
+          borderRadius: '14px',
+          padding: '16px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '28px', fontWeight: '800', color: '#F59E0B', fontFamily: 'var(--font-heading)' }}>
+            {stats.totalToday - stats.completedToday}
+          </div>
+          <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
+            {locale === 'fr' ? 'À faire' : 'To do'}
+          </div>
+        </div>
+      </div>
       
       {/* AI Suggestions Banner - ALWAYS VISIBLE in Today view */}
       {!loading && !subscriptionBlocked && viewMode === 'today' && (
@@ -751,10 +805,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           data-testid="ai-suggestions-block"
           style={{ 
             background: isDark 
-              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)'
+              ? '#2E2E42'
               : 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
             border: isDark 
-              ? '1px solid rgba(139, 92, 246, 0.3)'
+              ? '1px solid rgba(255, 255, 255, 0.1)'
               : '1px solid rgba(124, 58, 237, 0.2)',
             borderRadius: '14px', 
             padding: '14px 16px',
@@ -766,7 +820,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
               width: '32px',
               height: '32px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
+              background: isDark 
+                ? 'linear-gradient(135deg, #E82EA4 0%, #8A2BE2 100%)'
+                : 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -821,7 +877,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 }
               }}
               style={{ 
-                background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.6)', 
+                background: isDark ? '#3C3C55' : 'rgba(255, 255, 255, 0.6)', 
                 borderRadius: '10px', 
                 padding: '12px',
                 display: 'flex',
@@ -834,12 +890,14 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                 <div style={{ fontSize: '13px', color: c('text'), fontWeight: '500', marginBottom: '2px' }}>
                   {aiSuggestions[0]?.prospect_name}
                 </div>
-                <div style={{ fontSize: '12px', color: c('muted') }}>
+                <div style={{ fontSize: '12px', color: isDark ? '#D3D3D3' : c('muted') }}>
                   {aiSuggestions[0]?.reason}
                 </div>
               </div>
               <button style={{
-                background: c('accent'),
+                background: isDark 
+                  ? 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
+                  : c('accent'),
                 border: 'none',
                 borderRadius: '8px',
                 padding: '8px 12px',
@@ -860,8 +918,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
           {/* Show more if multiple suggestions */}
           {aiSuggestions.length > 1 && (
             <div style={{ textAlign: 'center', marginTop: '8px' }}>
-              <span style={{ fontSize: '11px', color: c('muted') }}>
-                +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''}
+              <span style={{ fontSize: '11px', color: isDark ? '#8A2BE2' : c('muted') }}>
+                +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''} <ChevronRight size={12} style={{ display: 'inline' }} />
               </span>
             </div>
           )}
@@ -1063,7 +1121,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       {task.task_type === 'call' && task.prospect.phone && (
                         <a href={`tel:${task.prospect.phone}`} 
                           onClick={(e) => e.stopPropagation()}
-                          style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                          style={{ padding: '8px', color: c('success'), textDecoration: 'none' }}>
                           <Phone size={18} />
                         </a>
                       )}
@@ -1071,7 +1129,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                       {task.task_type === 'email' && task.prospect.email && (
                         <a href={`mailto:${task.prospect.email}`}
                           onClick={(e) => e.stopPropagation()}
-                          style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                          style={{ padding: '8px', color: c('text'), textDecoration: 'none' }}>
                           <Mail size={18} />
                         </a>
                       )}
@@ -1080,12 +1138,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
                         <>
                           <a href={`sms:${task.prospect.phone}`}
                             onClick={(e) => e.stopPropagation()}
-                            style={{ padding: '8px', color: 'var(--muted)', textDecoration: 'none' }}>
+                            style={{ padding: '8px', color: c('text'), textDecoration: 'none' }}>
                             <MessageSquare size={18} />
                           </a>
                           <button
                             onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
-                            style={{ padding: '8px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
                             <Sparkles size={16} />
                           </button>
                         </>
@@ -1593,6 +1651,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
 // ==================== PROSPECTS TAB ====================
 const ProspectsTab = ({ onSelectProspect }) => {
   const { t, locale } = useLocale();
+  const { c, isDark } = useThemeColors();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1814,7 +1873,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 className="text-headline" style={{ fontSize: '28px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '700', color: c('text') }}>
           {t('prospects')}
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -1828,16 +1887,25 @@ const ProspectsTab = ({ onSelectProspect }) => {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: showSearch ? 'var(--accent)' : 'var(--muted)'
+              color: showSearch ? c('accentPurple') : c('text')
             }}
             data-testid="search-toggle-button"
           >
             <Search size={22} />
           </button>
           <button 
-            className="btn-primary"
             onClick={() => setShowAddForm(true)}
-            style={{ width: 'auto', height: '44px', padding: '0 20px' }}
+            style={{ 
+              width: 'auto', 
+              height: '44px', 
+              padding: '0 20px',
+              background: c('gradient'),
+              color: 'white',
+              border: 'none',
+              borderRadius: '999px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
             data-testid="add-prospect-button"
           >
             {t('addProspect')}
@@ -1848,14 +1916,23 @@ const ProspectsTab = ({ onSelectProspect }) => {
       {/* Search bar */}
       {showSearch && (
         <div style={{ marginBottom: '16px', position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: c('muted') }} />
           <input
             type="text"
-            className="input-dark"
             placeholder={t('searchProspects') || 'Rechercher un prospect...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: '44px' }}
+            style={{ 
+              width: '100%',
+              paddingLeft: '44px',
+              padding: '14px 14px 14px 44px',
+              background: c('surface'),
+              border: `1px solid ${c('border')}`,
+              borderRadius: '12px',
+              color: c('text'),
+              fontSize: '15px',
+              outline: 'none'
+            }}
             autoFocus
             data-testid="search-prospects-input"
           />
@@ -1869,7 +1946,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
                 transform: 'translateY(-50%)', 
                 background: 'none', 
                 border: 'none', 
-                color: 'var(--muted)', 
+                color: c('muted'), 
                 cursor: 'pointer',
                 padding: '4px'
               }}
@@ -1984,7 +2061,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
 // ==================== PROSPECT DETAIL ====================
 const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const { t, formatDate, locale } = useLocale();
-  const { c } = useThemeColors();
+  const { c, isDark } = useThemeColors();
   const [prospectData, setProspectData] = useState(prospect);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2674,8 +2751,25 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       <button
         onClick={generateMessage}
         disabled={messageLoading}
-        className="btn-ai"
-        style={{ width: '100%', marginBottom: '16px' }}
+        style={{ 
+          width: '100%', 
+          marginBottom: '16px',
+          padding: '14px 20px',
+          background: isDark 
+            ? 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
+            : 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+          border: 'none',
+          borderRadius: '12px',
+          color: 'white',
+          fontSize: '15px',
+          fontWeight: '600',
+          cursor: messageLoading ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          opacity: messageLoading ? 0.7 : 1
+        }}
         data-testid="ai-message-button"
       >
         <Sparkles size={18} />
@@ -3606,8 +3700,9 @@ const SettingsTab = ({ onClose }) => {
       <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         <div 
           className="settings-row" 
-          style={{ borderBottom: 'none' }}
+          style={{ borderBottom: 'none', cursor: 'pointer' }}
           data-testid="theme-toggle"
+          onClick={() => changeTheme(theme === 'light' ? 'dark' : 'light')}
         >
           {theme === 'light' ? (
             <Sun size={20} strokeWidth={1.5} style={{ color: c('text') }} />
@@ -3619,7 +3714,6 @@ const SettingsTab = ({ onClose }) => {
           </span>
           {/* Toggle Switch */}
           <div 
-            onClick={() => changeTheme(theme === 'light' ? 'dark' : 'light')}
             style={{
               width: '56px',
               height: '30px',
@@ -3627,7 +3721,6 @@ const SettingsTab = ({ onClose }) => {
               background: theme === 'dark' ? c('accent') : c('surface'),
               border: `1.5px solid ${c('border')}`,
               position: 'relative',
-              cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
           >

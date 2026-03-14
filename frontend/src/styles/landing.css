@@ -59,7 +59,7 @@
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
 }
 
 /* Language Selector */
@@ -308,8 +308,7 @@
 }
 
 .hero-micro span::before {
-  content: '✓';
-  color: var(--green);
+  content: '';
 }
 
 /* ===== PHONE MOCKUPS ===== */

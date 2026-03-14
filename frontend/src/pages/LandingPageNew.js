@@ -170,13 +170,13 @@ const LandingPage = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
             <button type="submit" className="hero-btn-main">
-              {locale === 'fr' ? 'Démarrer — c\'est gratuit' : 'Start — it\'s free'} <ArrowRight size={18} />
+              {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'} <ArrowRight size={18} />
             </button>
           </form>
           <p className="hero-micro">
-            <span>{locale === 'fr' ? '1 mois gratuit' : '1 month free'}</span>
-            <span>{locale === 'fr' ? 'Sans carte bancaire' : 'No credit card'}</span>
-            <span>{locale === 'fr' ? 'Résiliable à tout moment' : 'Cancel anytime'}</span>
+            <span>✓ {locale === 'fr' ? '1 mois gratuit' : '1 month free'}</span>
+            <span>✓ {locale === 'fr' ? 'Sans carte bancaire' : 'No credit card'}</span>
+            <span>✓ {locale === 'fr' ? 'Résiliable à tout moment' : 'Cancel anytime'}</span>
           </p>
 
           {/* Phone Mockups - Symmetrical */}
