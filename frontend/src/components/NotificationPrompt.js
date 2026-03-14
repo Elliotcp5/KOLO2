@@ -4,10 +4,12 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { pushService } from '../services/pushNotifications';
 import { toast } from 'sonner';
+import useThemeColors from '../hooks/useThemeColors';
 
 const NotificationPrompt = ({ onClose }) => {
   const { t } = useLocale();
   const { user } = useAuth();
+  const { c, isDark } = useThemeColors();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleEnable = async () => {
@@ -63,14 +65,15 @@ const NotificationPrompt = ({ onClose }) => {
     >
       <div 
         style={{
-          background: 'var(--bg)',
+          background: c('bg'),
           borderRadius: '20px',
           padding: '32px 24px',
           maxWidth: '320px',
           width: '100%',
           textAlign: 'center',
           position: 'relative',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.3)'
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.3)',
+          border: `1px solid ${c('border')}`
         }}
         data-testid="notification-prompt-modal"
       >
@@ -83,7 +86,7 @@ const NotificationPrompt = ({ onClose }) => {
             right: '12px',
             background: 'none',
             border: 'none',
-            color: 'var(--ink-soft)',
+            color: c('muted'),
             cursor: 'pointer',
             padding: '8px'
           }}
@@ -98,7 +101,7 @@ const NotificationPrompt = ({ onClose }) => {
             width: '72px',
             height: '72px',
             borderRadius: '50%',
-            background: 'var(--grad)',
+            background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -113,7 +116,7 @@ const NotificationPrompt = ({ onClose }) => {
           style={{
             fontSize: '20px',
             fontWeight: '700',
-            color: 'var(--ink)',
+            color: c('text'),
             marginBottom: '12px',
             fontFamily: 'var(--font-heading)'
           }}
@@ -125,7 +128,7 @@ const NotificationPrompt = ({ onClose }) => {
         <p 
           style={{
             fontSize: '15px',
-            color: 'var(--ink-mid)',
+            color: c('muted'),
             lineHeight: '1.5',
             marginBottom: '28px'
           }}
@@ -136,10 +139,22 @@ const NotificationPrompt = ({ onClose }) => {
         {/* Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <button
-            className="btn-primary"
             onClick={handleEnable}
             disabled={isLoading}
-            style={{ height: '50px', width: '100%' }}
+            style={{ 
+              height: '50px', 
+              width: '100%',
+              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+              border: 'none',
+              borderRadius: '999px',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: isLoading ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
             data-testid="enable-notifications-btn"
           >
             {isLoading ? (
@@ -154,7 +169,7 @@ const NotificationPrompt = ({ onClose }) => {
               height: '44px',
               background: 'none',
               border: 'none',
-              color: 'var(--ink-mid)',
+              color: c('muted'),
               fontSize: '15px',
               fontWeight: '500',
               cursor: 'pointer'

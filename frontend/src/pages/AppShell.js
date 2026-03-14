@@ -812,11 +812,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           data-testid="ai-suggestions-block"
           style={{ 
             background: isDark 
-              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(236, 72, 153, 0.2) 100%)'
-              : 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(236, 72, 153, 0.12) 100%)',
+              ? 'linear-gradient(135deg, rgba(0, 74, 173, 0.25) 0%, rgba(203, 108, 230, 0.2) 100%)'
+              : 'linear-gradient(135deg, rgba(0, 74, 173, 0.12) 0%, rgba(203, 108, 230, 0.1) 100%)',
             border: isDark 
-              ? '1px solid rgba(139, 92, 246, 0.35)'
-              : '1px solid rgba(124, 58, 237, 0.25)',
+              ? '1px solid rgba(0, 74, 173, 0.35)'
+              : '1px solid rgba(0, 74, 173, 0.25)',
             borderRadius: '14px', 
             padding: '14px 16px',
             marginBottom: '16px'
@@ -827,9 +827,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               width: '32px',
               height: '32px',
               borderRadius: '10px',
-              background: isDark 
-                ? 'linear-gradient(135deg, #E82EA4 0%, #8A2BE2 100%)'
-                : 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
+              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -902,9 +900,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 </div>
               </div>
               <button style={{
-                background: isDark 
-                  ? 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
-                  : c('accent'),
+                background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '8px 12px',
@@ -1260,9 +1256,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             style={{
                               width: '100%',
                               padding: '12px',
-                              background: isDark 
-                                ? 'linear-gradient(135deg, #E82EA4 0%, #8A2BE2 100%)'
-                                : 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
+                              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
                               border: 'none',
                               borderRadius: '8px',
                               color: 'white',

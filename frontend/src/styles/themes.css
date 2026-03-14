@@ -117,6 +117,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-glow);
 }
 
+.btn-primary:disabled {
+  background: var(--bg-alt);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
