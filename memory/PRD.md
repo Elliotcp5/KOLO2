@@ -3,126 +3,79 @@
 ## Problem Statement
 Application de gestion de prospects immobiliers avec suivi automatisé, suggestions IA et communication SMS/Email.
 
-## User Personas
-- Agents immobiliers indépendants
-- Petites agences immobilières
-- Professionnels de l'immobilier souhaitant automatiser leur suivi client
-
-## Core Requirements
-
-### Authentication
-- Email/password login
-- Session management
-- User preferences (theme, locale)
-
-### Prospect Management
-- CRUD prospects
-- 5 statuts : nouveau, contacté, qualifié, offre, signé
-- Température (froid, tiède, chaud)
-- Import contacts natif
-- Notes et historique
-
-### Task Management
-- Création/completion de tâches
-- Tâches en retard avec relance rapide
-- Suggestions IA automatiques
-- Streak de jours consécutifs
-
-### Communication
-- Génération de messages IA (SMS/Email)
-- Templates personnalisés
-- Historique des interactions
-
-## Implementation Status
+## Implementation Status - ALL PHASES COMPLETE ✅
 
 ### Phases 1-6 - COMPLETE (March 11, 2026)
 - ✅ Phase 1: Theme System Light/Dark
 - ✅ Phase 2: Prospect Statuses (5 statuts colorés)
-- ✅ Phase 3: UX Improvements (message contextuel, streak, lien relance, animation IA, formulaire amélioré, résiliation)
-- ✅ Phase 4: Welcome Tutorial (5 étapes avec confetti)
-- ✅ Phase 5: Native Contact Import (Contact Picker API)
+- ✅ Phase 3: UX Improvements
+- ✅ Phase 4: Welcome Tutorial (5 étapes)
+- ✅ Phase 5: Native Contact Import
 - ✅ Phase 6: Landing Page redesignée
 
-### Security Hardening - IN PROGRESS (March 11, 2026)
-- ✅ Rate limiting ajouté (slowapi)
-  - Auth endpoints: 10/minute
-  - AI generation: 30/minute
-  - General endpoints: 100/minute
+### UI/UX Corrections - COMPLETE (March 14, 2026)
+- ✅ Formulaire Nouveau prospect: Labels fixes au-dessus des inputs
+- ✅ Mon Profil: Doublon "Résilier" supprimé dans Billing
+- ✅ Points verts: Tooltip température ajouté
+- ✅ Landing: Témoignages supprimés
+- ✅ Landing: Alternance fonds dark/white
+
+### Security Hardening - COMPLETE (March 11, 2026)
+- ✅ Rate limiting (slowapi): 10/min auth, 30/min AI, 100/min general
 - ✅ Input validation & sanitization
-- ✅ XSS prevention via html.escape()
+- ✅ XSS prevention
 
-### UI/UX Corrections Requested - PENDING
-1. ❌ Formulaire Nouveau prospect: Labels fixes au-dessus des inputs (STARTED)
-2. ❌ Mon Profil: Supprimer doublon "Résilier l'abonnement" dans Billing (DONE)
-3. ❌ Didacticiel: Fond blanc sans texture (OK - already clean)
-4. ❌ Login: Logo KOLO centré et lisible (STARTED)
-5. ❌ Logo sur fonds clairs: Utiliser favicon violet avec K blanc
-6. ❌ Points verts: Ajouter tooltip température (DONE)
-7. ❌ Landing: Supprimer témoignages
-8. ❌ Landing: Alternance fonds dark/white
-9. ❌ Landing: Screenshots réels dans "Comment ça marche"
-10. ❌ Design System complet (spacing 8px, shadows, typography, buttons, inputs, border-radius)
+### MAJOR UI REDESIGN - COMPLETE (March 14, 2026)
+Based on provided HTML files:
 
-### MAJOR REDESIGN REQUESTED - PENDING
-User provided 3 HTML files for complete UI redesign:
-1. **KOLO_Landing_v5-4.html** - New landing page design
-2. **KOLO_App_Dashboard.html** - Light mode dashboard
-3. **KOLO_App_Dashboard_Dark.html** - Dark mode dashboard
+**New Design System Implemented:**
+- ✅ Google Fonts: League Spartan (headings), DM Sans (body)
+- ✅ New color palette: #004AAD (blue), #CB6CE6 (purple)
+- ✅ Gradient: linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)
+- ✅ Light mode: #FFFFFF bg, #F7F6FB surface, #0E0B1E ink
+- ✅ Dark mode: #0F0D1A bg, #181526 surface, #F0EEF8 ink
 
-#### New Design System to Implement:
-**Colors Light Mode:**
-- --bg: #FFFFFF
-- --bg-alt: #F7F6FB
-- --bg-alt2: #F0EEF8
-- --ink: #0E0B1E
-- --ink-mid: #4A4560
-- --ink-soft: #8A849E
-- --grad: linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)
-- --blue: #004AAD
-- --purple: #CB6CE6
+**Landing Page Redesigned:**
+- ✅ Hero with phone mockups (3 screens)
+- ✅ Social proof marquee strip
+- ✅ Problem section with 3 cards
+- ✅ Features with mockups (AI relances, swipe)
+- ✅ Pricing card with gradient border
+- ✅ FAQ accordion
+- ✅ Final CTA with gradient background
+- ✅ Reveal animations on scroll
 
-**Colors Dark Mode:**
-- --bg: #0F0D1A
-- --bg-alt: #181526
-- --bg-alt2: #201D31
-- --ink: #F0EEF8
-- --ink-mid: #B8B2D0
-- --ink-soft: #6B6585
-
-**Typography:**
-- League Spartan (titles, 700-800)
-- DM Sans (body, 400-500)
-
-**Key Components to Build:**
-- StatusBar with scroll effect
-- Expandable TaskCard with colored border by status
-- IA suggestion card with gradient background
-- Stats row
-- Bottom nav with center + button
-- Tabs component
+**Dashboard Redesigned:**
+- ✅ New color system applied
+- ✅ Tabs with gradient active state
+- ✅ Stats row cards
+- ✅ AI Assistant card with gradient background
+- ✅ Task cards with colored left border
+- ✅ Bottom nav with centered + button
+- ✅ Settings page clean
 
 ## Architecture
 
 ### Frontend
-- React 18 avec hooks
-- Tailwind CSS + CSS variables pour thèmes
+- React 18
+- Google Fonts: League Spartan, DM Sans
+- Custom CSS variables design system
 - Lucide React icons
 - Shadcn/UI components
-- canvas-confetti pour animations
-- Google Fonts: League Spartan, DM Sans (TO ADD)
+- canvas-confetti
 
 ### Backend
 - FastAPI (Python)
-- MongoDB pour persistence
+- MongoDB
 - JWT sessions
+- slowapi rate limiting
 - Emergent LLM integration (GPT-4.1-nano)
-- **NEW:** slowapi rate limiting
 
 ### Key Files
-- `/app/frontend/src/pages/AppShell.js` - Composant principal (~5000 lignes)
-- `/app/frontend/src/styles/themes.css` - Variables CSS thèmes
-- `/app/frontend/src/components/OnboardingFlow.js` - Tutoriel
-- `/app/frontend/src/pages/LandingPageNew.js` - Landing Page
+- `/app/frontend/src/pages/AppShell.js` - Main app (~5000 lines)
+- `/app/frontend/src/pages/LandingPageNew.js` - New landing page
+- `/app/frontend/src/styles/themes.css` - Design system CSS
+- `/app/frontend/src/styles/landing.css` - Landing specific CSS
 - `/app/backend/server.py` - API backend
 
 ## Database Schema
@@ -130,8 +83,7 @@ User provided 3 HTML files for complete UI redesign:
 ### users
 - user_id, email, password_hash
 - theme_preference: 'light' | 'dark'
-- didacticiel_completed: boolean
-- streak_current: number
+- didacticiel_completed, streak_current
 - subscription_status
 
 ### prospects
@@ -147,16 +99,16 @@ User provided 3 HTML files for complete UI redesign:
 
 ## API Endpoints
 
-### Auth
-- POST /api/auth/register (rate limited: 10/min)
-- POST /api/auth/login (rate limited: 10/min)
+### Auth (rate limited: 10/min)
+- POST /api/auth/register
+- POST /api/auth/login
 - GET /api/auth/me
 - PUT /api/auth/preferences
 - GET /api/auth/streak
 
-### Prospects
+### Prospects (rate limited: 100/min)
 - GET /api/prospects
-- POST /api/prospects (rate limited: 100/min)
+- POST /api/prospects
 - GET /api/prospects/:id
 - PATCH /api/prospects/:id
 - DELETE /api/prospects/:id
@@ -174,15 +126,8 @@ User provided 3 HTML files for complete UI redesign:
 
 ## Backlog
 
-### P0 - Critical (User Request)
-- **MAJOR UI REDESIGN** based on provided HTML files
-  - New landing page with League Spartan/DM Sans fonts
-  - New dashboard with expandable task cards
-  - New bottom navigation with gradient + button
-  - Complete theme system with new variables
-
 ### P1 - High Priority
-- Refactoring AppShell.js (modularisation)
+- Refactoring AppShell.js (modularisation en composants)
 - Refactoring server.py (séparation en routers)
 - Tests automatisés
 
@@ -207,7 +152,33 @@ User provided 3 HTML files for complete UI redesign:
 - test@test.com / testtest
 - pressardelliot@gmail.com / Test123
 
-## Design Files Reference
-- Landing: https://customer-assets.emergentagent.com/job_c1a9754f-8146-404a-90a8-92cbbb99771b/artifacts/vmgjqabc_KOLO_Landing_v5-4.html
-- Dashboard Light: https://customer-assets.emergentagent.com/job_c1a9754f-8146-404a-90a8-92cbbb99771b/artifacts/esrfcfhk_KOLO_App_Dashboard.html
-- Dashboard Dark: https://customer-assets.emergentagent.com/job_c1a9754f-8146-404a-90a8-92cbbb99771b/artifacts/38lzjeoy_KOLO_App_Dashboard_Dark.html
+## Design System Reference
+
+### Colors
+```css
+/* Light Mode */
+--bg: #FFFFFF
+--bg-alt: #F7F6FB
+--ink: #0E0B1E
+--ink-mid: #4A4560
+--ink-soft: #8A849E
+--blue: #004AAD
+--purple: #CB6CE6
+
+/* Dark Mode */
+--bg: #0F0D1A
+--bg-alt: #181526
+--ink: #F0EEF8
+--ink-mid: #B8B2D0
+--ink-soft: #6B6585
+```
+
+### Typography
+- Headings: League Spartan 700-800
+- Body: DM Sans 400-500
+
+### Border Radius
+- Cards: 16px
+- Buttons: 12px (or 999px for pills)
+- Inputs: 10px
+- Badges: 6px
