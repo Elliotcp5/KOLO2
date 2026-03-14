@@ -41,11 +41,11 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
   - Muted: #A0A4AE
   - Accent: #E82EA4
 
-### Bottom Navigation
-- **Today Tab Active**: Gradient text + icon with gradient border
-- **Central FAB**: Gradient rounded button with glow shadow
-- **Prospects Tab Inactive**: Gray icon and text
-- **Profile Pill**: Dynamic initials from user's full name (EP = Elliot Pressard, MC = Marie Courtin)
+### Bottom Navigation (Final Design)
+- **Active Tab**: Icon in rounded square (40x40) with gradient border, colored icon, colored text
+- **Inactive Tab**: Icon in rounded square with gray border, gray icon, gray text
+- **Central FAB**: 60x60 circular gradient button with shadow
+- **Profile Pill**: Dynamic initials (EP = Elliot Pressard, MC = Marie Courtin)
 
 ### Typography
 - Heading Font: League Spartan
@@ -69,65 +69,80 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - Input sanitization: HTML escape, length limits
 - XSS prevention
 
+## Refactored Architecture
+
+### New File Structure
+```
+/app/frontend/src/
+├── components/
+│   ├── dashboard/
+│   │   ├── StatsCards.js       # Stats display component
+│   │   └── SegmentTabs.js      # Today/All Tasks tabs
+│   ├── navigation/
+│   │   ├── BottomNav.js        # Bottom navigation bar
+│   │   └── ProfileButton.js    # Profile button with initials
+│   └── index.js                # Component exports
+├── hooks/
+│   └── useThemeColors.js       # Theme color hook
+├── utils/
+│   └── helpers.js              # Utility functions
+└── pages/
+    └── AppShell.js             # Main app container (refactored)
+```
+
+### Extracted Components
+- **BottomNav**: Bottom navigation with gradient icons
+- **ProfileButton**: Profile pill with dynamic initials
+- **StatsCards**: Task/prospect stats display
+- **SegmentTabs**: Today/All Tasks segment control
+
+### Utility Functions
+- `getInitials(fullName)`: Extract user initials
+- `formatPhoneNumber(phone)`: Format phone for display
+- `truncateText(text, maxLength)`: Truncate with ellipsis
+- `getStatusColor(status)`: Get prospect status color
+- `getScoreColor(score)`: Get temperature color
+
 ## Version History
 
-### v2.0.0 (March 14, 2026) - UI/UX Redesign + Security ✅
+### v2.0.0 (March 14, 2026) - UI/UX Redesign + Refactoring ✅
 
 **UI Fixes:**
-- ✅ Dark mode - all text and icons visible
-- ✅ Bottom navigation - gradient active states, glow FAB
+- ✅ Dark mode - all elements visible
+- ✅ Bottom navigation - exact match to design mockups
 - ✅ Profile initials - dynamic based on user name
-- ✅ Settings page icons - theme-aware colors
 - ✅ Theme toggle - sun/moon switch
-- ✅ Version 2.0.0
 
 **Landing Page:**
 - ✅ "Essayer gratuitement" button
 - ✅ Single checkmark per benefit
-- ✅ Header spacing improved
 - ✅ "1 mois gratuit"
 
 **Auth Pages:**
 - ✅ Login: "Content de vous revoir !"
 - ✅ Register: "1 mois gratuit"
-- ✅ KOLO text logo with colored dot
+
+**Refactoring:**
+- ✅ Extracted reusable components
+- ✅ Created hooks directory
+- ✅ Created utils directory
+- ✅ Improved code organization
 
 **Security:**
 - ✅ Rate limiting on all public endpoints
 - ✅ Input sanitization
-- ✅ Email/phone validation
 - ✅ XSS prevention
 
-## Pages & Components
-
-### Dashboard (`AppShell.js`)
-- KOLO logo + Profile pill with dynamic initials
-- Stats cards (Done, Prospects, To do)
-- AI suggestions card
-- Task list with swipe-to-complete
-- Bottom navigation with gradient active states
-
-### Settings (`AppShell.js - SettingsTab`)
-- Profile section (Name, Phone)
-- Billing section
-- Notifications toggle
-- Theme toggle (sun/moon)
-- Version 2.0.0
-- Logout button
-
-## API Endpoints (with rate limits)
-- `/api/auth/login` - 10/min
-- `/api/auth/register` - 10/min
-- `/api/prospects` - 100/min
-- `/api/prospects/{id}/generate-message` - 30/min
-
 ## Testing Status
-- **Test Report**: `/app/test_reports/iteration_14.json`
-- **Success Rate**: 100%
+- **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
 
 ## Remaining Tasks (Backlog)
-1. **P2**: Refactor AppShell.js (~5400 lines → smaller components)
+1. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
+   - Extract TodayTab into separate file
+   - Extract ProspectsTab into separate file
+   - Extract SettingsTab into separate file
+   - Extract ProspectDetail into separate file
 2. **P2**: Refactor server.py into separate routers
 3. **P2**: Add more languages (ES, IT, DE)
 4. **P3**: Verify VAPID keys in production

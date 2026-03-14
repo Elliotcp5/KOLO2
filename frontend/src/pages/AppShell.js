@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,8 @@ import NotificationPrompt from '../components/NotificationPrompt';
 import OnboardingFlow from '../components/OnboardingFlow';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
+// Refactored utilities
+import { getInitials } from '../utils/helpers';
 
 // Status configuration with colors
 const PROSPECT_STATUSES = {
@@ -38,15 +40,6 @@ const getProspectStatusInfo = (status, locale = 'fr') => {
     color: statusInfo.color,
     bg: statusInfo.bg
   };
-};
-
-// Helper: Get user initials from full name
-const getInitials = (fullName) => {
-  if (!fullName || typeof fullName !== 'string' || !fullName.trim()) return '';
-  const names = fullName.trim().split(' ').filter(n => n.length > 0);
-  if (names.length === 0) return '';
-  if (names.length === 1) return names[0].charAt(0).toUpperCase();
-  return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
 };
 
 // Theme-aware color helper - Updated to new design system
@@ -5208,25 +5201,15 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
       bottom: 0,
       left: 0,
       right: 0,
-      height: '85px',
+      height: '90px',
       background: isDark ? '#1A1A24' : '#FFFFFF',
       borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 32px',
-      paddingBottom: 'env(safe-area-inset-bottom, 12px)',
+      justifyContent: 'space-around',
+      paddingBottom: 'env(safe-area-inset-bottom, 8px)',
       zIndex: 1000
     }}>
-      {/* SVG Gradient definitions */}
-      <svg width="0" height="0" style={{ position: 'absolute' }}>
-        <defs>
-          <linearGradient id="navActiveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#004AAD" />
-            <stop offset="100%" stopColor="#CB6CE6" />
-          </linearGradient>
-        </defs>
-      </svg>
       
       {/* Today Tab */}
       <div 
@@ -5236,68 +5219,61 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
           cursor: 'pointer',
-          minWidth: '80px'
+          padding: '8px 16px'
         }}
       >
+        {/* Icon container - rounded square with gradient border when active */}
         <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
+          width: '40px',
+          height: '40px',
+          borderRadius: '10px',
           background: activeTab === 'today' 
-            ? 'transparent' 
+            ? 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)'
             : 'transparent',
-          border: activeTab === 'today' 
-            ? '2px solid transparent'
-            : 'none',
-          borderImage: activeTab === 'today' 
-            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%) 1'
-            : 'none',
+          padding: activeTab === 'today' ? '2px' : '0',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
+          justifyContent: 'center'
         }}>
-          {activeTab === 'today' && (
-            <div style={{
-              position: 'absolute',
-              inset: '-2px',
-              borderRadius: '12px',
-              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
-              padding: '2px',
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude'
-            }} />
-          )}
-          <Calendar 
-            size={22} 
-            strokeWidth={activeTab === 'today' ? 2 : 1.5} 
-            style={{ 
-              color: activeTab === 'today' 
-                ? (isDark ? '#CB6CE6' : '#004AAD')
-                : (isDark ? '#6B7280' : '#9CA3AF')
-            }} 
-          />
+          <div style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '8px',
+            background: activeTab === 'today' 
+              ? (isDark ? '#1A1A24' : '#FFFFFF')
+              : 'transparent',
+            border: activeTab !== 'today' 
+              ? `1.5px solid ${isDark ? '#4B5563' : '#D1D5DB'}`
+              : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Calendar 
+              size={20} 
+              strokeWidth={1.5} 
+              style={{ 
+                color: activeTab === 'today' 
+                  ? (isDark ? '#CB6CE6' : '#004AAD')
+                  : (isDark ? '#6B7280' : '#9CA3AF')
+              }} 
+            />
+          </div>
         </div>
         <span style={{ 
-          fontSize: '12px', 
-          fontWeight: activeTab === 'today' ? '600' : '500',
-          background: activeTab === 'today' 
-            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
-            : 'none',
-          WebkitBackgroundClip: activeTab === 'today' ? 'text' : 'initial',
-          WebkitTextFillColor: activeTab === 'today' ? 'transparent' : 'initial',
+          fontSize: '11px', 
+          fontWeight: '500',
           color: activeTab === 'today' 
-            ? 'transparent'
+            ? (isDark ? '#CB6CE6' : '#004AAD')
             : (isDark ? '#6B7280' : '#9CA3AF')
         }}>
           {locale === 'fr' ? "Aujourd'hui" : 'Today'}
         </span>
       </div>
       
-      {/* Central FAB - Gradient oval pill */}
+      {/* Central FAB - Circle with gradient */}
       <button
         onClick={() => {
           if ('vibrate' in navigator) navigator.vibrate(8);
@@ -5305,19 +5281,19 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
         }}
         data-testid="fab-add-prospect"
         style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '16px',
+          width: '60px',
+          height: '60px',
+          borderRadius: '50%',
           border: 'none',
           background: 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)',
           boxShadow: isDark 
-            ? '0 8px 24px rgba(203, 108, 230, 0.4)'
-            : '0 8px 24px rgba(0, 74, 173, 0.3)',
+            ? '0 4px 20px rgba(203, 108, 230, 0.5)'
+            : '0 4px 20px rgba(0, 74, 173, 0.4)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          transform: 'translateY(-8px)'
+          marginTop: '-20px'
         }}
       >
         <Plus size={28} strokeWidth={2.5} style={{ color: 'white' }} />
@@ -5331,52 +5307,54 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
           cursor: 'pointer',
-          minWidth: '80px'
+          padding: '8px 16px'
         }}
       >
+        {/* Icon container - rounded square with gradient border when active */}
         <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
+          width: '40px',
+          height: '40px',
+          borderRadius: '10px',
+          background: activeTab === 'prospects' 
+            ? 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)'
+            : 'transparent',
+          padding: activeTab === 'prospects' ? '2px' : '0',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
+          justifyContent: 'center'
         }}>
-          {activeTab === 'prospects' && (
-            <div style={{
-              position: 'absolute',
-              inset: '-2px',
-              borderRadius: '12px',
-              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
-              padding: '2px',
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude'
-            }} />
-          )}
-          <Users 
-            size={22} 
-            strokeWidth={activeTab === 'prospects' ? 2 : 1.5} 
-            style={{ 
-              color: activeTab === 'prospects' 
-                ? (isDark ? '#CB6CE6' : '#004AAD')
-                : (isDark ? '#6B7280' : '#9CA3AF')
-            }} 
-          />
+          <div style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '8px',
+            background: activeTab === 'prospects' 
+              ? (isDark ? '#1A1A24' : '#FFFFFF')
+              : 'transparent',
+            border: activeTab !== 'prospects' 
+              ? `1.5px solid ${isDark ? '#4B5563' : '#D1D5DB'}`
+              : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Users 
+              size={20} 
+              strokeWidth={1.5} 
+              style={{ 
+                color: activeTab === 'prospects' 
+                  ? (isDark ? '#CB6CE6' : '#004AAD')
+                  : (isDark ? '#6B7280' : '#9CA3AF')
+              }} 
+            />
+          </div>
         </div>
         <span style={{ 
-          fontSize: '12px', 
-          fontWeight: activeTab === 'prospects' ? '600' : '500',
-          background: activeTab === 'prospects' 
-            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
-            : 'none',
-          WebkitBackgroundClip: activeTab === 'prospects' ? 'text' : 'initial',
-          WebkitTextFillColor: activeTab === 'prospects' ? 'transparent' : 'initial',
+          fontSize: '11px', 
+          fontWeight: '500',
           color: activeTab === 'prospects' 
-            ? 'transparent'
+            ? (isDark ? '#CB6CE6' : '#004AAD')
             : (isDark ? '#6B7280' : '#9CA3AF')
         }}>
           Prospects
