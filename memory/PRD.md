@@ -169,10 +169,27 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - ✅ Bouton "Ajouter prospect" supprimé
 - ✅ Seule la loupe de recherche reste
 
+### v2.0.3 (March 14, 2026) - Final UI Polish ✅
+
+**Gradients uniformisés (bleu-violet #004AAD → #CB6CE6):**
+- ✅ Icône étoile AI dans suggestions IA
+- ✅ Bouton "+ Add" dans suggestions IA
+- ✅ Bouton "Générer une relance IA" dans tâches overdue
+- ✅ Carte AI suggestions (fond avec gradient subtil)
+
+**Boutons et modals:**
+- ✅ Bouton "Create task" visible quand désactivé (fond gris, texte clair)
+- ✅ Modal notifications push entièrement lisible en mode sombre
+- ✅ Modal création prospect avec labels visibles
+
+**Page Prospects:**
+- ✅ Noms et contacts lisibles via classes CSS .name et .contact
+- ✅ CSS utilise var(--ink) = blanc en dark mode
+
 ## Testing Status
 - **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
-- **Last Test Report**: /app/test_reports/iteration_16.json (100% pass rate - Dark Mode UI)
+- **Last Test Report**: /app/test_reports/iteration_17.json (100% pass rate)
 
 ## Remaining Tasks (Backlog)
 1. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
