@@ -812,11 +812,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           data-testid="ai-suggestions-block"
           style={{ 
             background: isDark 
-              ? '#2E2E42'
-              : 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
+              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(236, 72, 153, 0.2) 100%)'
+              : 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(236, 72, 153, 0.12) 100%)',
             border: isDark 
-              ? '1px solid rgba(255, 255, 255, 0.1)'
-              : '1px solid rgba(124, 58, 237, 0.2)',
+              ? '1px solid rgba(139, 92, 246, 0.35)'
+              : '1px solid rgba(124, 58, 237, 0.25)',
             borderRadius: '14px', 
             padding: '14px 16px',
             marginBottom: '16px'
@@ -1249,8 +1249,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     {/* Proactive AI SMS for overdue tasks */}
                     {isOverdue && task.prospect?.phone && (
                       <div style={{
-                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
-                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        background: isDark 
+                          ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.25) 100%)'
+                          : 'linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(236, 72, 153, 0.15) 100%)',
+                        border: isDark 
+                          ? '1px solid rgba(139, 92, 246, 0.45)'
+                          : '1px solid rgba(139, 92, 246, 0.35)',
                         borderRadius: '10px',
                         padding: '12px',
                         marginBottom: '12px'
@@ -1508,20 +1512,41 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
 
       {/* Add Task Modal */}
       {showAddTaskModal && (
-        <div className="modal-overlay" onClick={() => setShowAddTaskModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto', paddingBottom: '100px' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }} onClick={() => setShowAddTaskModal(false)}>
+          <div style={{
+            background: c('bg'),
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            border: `1px solid ${c('border')}`
+          }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: '600' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600', color: c('text') }}>
                 {locale === 'fr' ? 'Nouvelle tâche' : 'New task'}
               </h2>
-              <button onClick={() => setShowAddTaskModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => setShowAddTaskModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
             
             {/* Task Type Selection */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+              <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Type de tâche' : 'Task type'}
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1540,9 +1565,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                       style={{
                         padding: '8px 12px',
                         borderRadius: '8px',
-                        border: newTask.task_type === type.value ? '2px solid var(--accent)' : '1px solid var(--border)',
-                        background: newTask.task_type === type.value ? 'rgba(139, 92, 246, 0.1)' : 'var(--surface)',
-                        color: newTask.task_type === type.value ? 'var(--accent)' : 'var(--muted)',
+                        border: newTask.task_type === type.value ? `2px solid ${c('accent')}` : `1px solid ${c('border')}`,
+                        background: newTask.task_type === type.value ? c('accentGlow') : c('surface'),
+                        color: newTask.task_type === type.value ? c('accent') : c('text'),
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1560,30 +1585,50 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             
             {/* Title - Required */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+              <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Titre *' : 'Title *'}
               </label>
               <input
                 type="text"
-                className="input-dark"
                 placeholder={locale === 'fr' ? 'Ex: Appeler pour suivi' : 'Ex: Call for follow-up'}
                 value={newTask.title}
                 onChange={(e) => setNewTask({...newTask, title: e.target.value})}
                 data-testid="new-task-title"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: c('surface'),
+                  border: `1px solid ${c('border')}`,
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  color: c('text'),
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
             
             {/* Prospect - Optional */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+              <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Lier à un prospect (optionnel)' : 'Link to prospect (optional)'}
               </label>
               <select
-                className="input-dark"
                 value={newTask.prospect_id}
                 onChange={(e) => setNewTask({...newTask, prospect_id: e.target.value})}
-                style={{ cursor: 'pointer' }}
                 data-testid="new-task-prospect"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: c('surface'),
+                  border: `1px solid ${c('border')}`,
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  color: c('text'),
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="">{locale === 'fr' ? '-- Aucun prospect --' : '-- No prospect --'}</option>
                 {prospects.map(p => (
@@ -1594,29 +1639,49 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             
             {/* Due Date - Required */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+              <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Date *' : 'Date *'}
               </label>
               <input
                 type="date"
-                className="input-dark"
                 value={newTask.due_date}
                 onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
                 data-testid="new-task-date"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: c('surface'),
+                  border: `1px solid ${c('border')}`,
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  color: c('text'),
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
             
             {/* Due Time - Optional */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
+              <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Heure (optionnel)' : 'Time (optional)'}
               </label>
               <input
                 type="time"
-                className="input-dark"
                 value={newTask.due_time}
                 onChange={(e) => setNewTask({...newTask, due_time: e.target.value})}
                 data-testid="new-task-time"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: c('surface'),
+                  border: `1px solid ${c('border')}`,
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  color: c('text'),
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
             
@@ -5196,171 +5261,157 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   const { c, isDark } = useThemeColors();
   
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: '90px',
-      background: isDark ? '#1A1A24' : '#FFFFFF',
-      borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-      zIndex: 1000
-    }}>
+    <>
+      {/* SVG gradient definition */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#004aad"/>
+            <stop offset="100%" stopColor="#cb6ce6"/>
+          </linearGradient>
+        </defs>
+      </svg>
       
-      {/* Today Tab */}
-      <div 
-        onClick={() => setActiveTab('today')}
-        data-testid="nav-today"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
-          cursor: 'pointer',
-          padding: '8px 16px'
-        }}
-      >
-        {/* Icon container - rounded square with gradient border when active */}
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '10px',
-          background: activeTab === 'today' 
-            ? 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)'
-            : 'transparent',
-          padding: activeTab === 'today' ? '2px' : '0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: '8px',
-            background: activeTab === 'today' 
-              ? (isDark ? '#1A1A24' : '#FFFFFF')
-              : 'transparent',
-            border: activeTab !== 'today' 
-              ? `1.5px solid ${isDark ? '#4B5563' : '#D1D5DB'}`
-              : 'none',
+      <nav style={{
+        position: 'fixed',
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '430px',
+        background: isDark ? 'rgba(15,13,26,0.92)' : 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: isDark ? '1px solid rgba(240,238,248,0.08)' : '1px solid rgba(14,11,30,0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        padding: '10px 20px 18px',
+        zIndex: 100
+      }}>
+        
+        {/* Today Tab */}
+        <button 
+          onClick={() => setActiveTab('today')}
+          data-testid="nav-today"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px',
+            cursor: 'pointer',
+            flex: 1,
+            border: 'none',
+            background: 'none',
+            padding: 0
+          }}
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            style={{ 
+              width: '22px', 
+              height: '22px', 
+              strokeWidth: 2, 
+              fill: 'none',
+              stroke: activeTab === 'today' ? 'url(#navGrad)' : '#8A849E'
+            }}
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span style={{ 
+            fontSize: '10px', 
+            fontWeight: '600', 
+            fontFamily: "'League Spartan', sans-serif",
+            letterSpacing: '0.02em',
+            color: activeTab === 'today' ? '#004aad' : '#8A849E'
+          }}>
+            {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+          </span>
+        </button>
+        
+        {/* Central Add Button */}
+        <button
+          onClick={() => {
+            if ('vibrate' in navigator) navigator.vibrate(8);
+            onAddProspect();
+          }}
+          data-testid="fab-add-prospect"
+          style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '16px',
+            background: 'linear-gradient(90deg, #004aad, #cb6ce6)',
+            border: 'none',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Calendar 
-              size={20} 
-              strokeWidth={1.5} 
-              style={{ 
-                color: activeTab === 'today' 
-                  ? (isDark ? '#CB6CE6' : '#004AAD')
-                  : (isDark ? '#6B7280' : '#9CA3AF')
-              }} 
-            />
-          </div>
-        </div>
-        <span style={{ 
-          fontSize: '11px', 
-          fontWeight: '500',
-          color: activeTab === 'today' 
-            ? (isDark ? '#CB6CE6' : '#004AAD')
-            : (isDark ? '#6B7280' : '#9CA3AF')
-        }}>
-          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
-        </span>
-      </div>
-      
-      {/* Central FAB - Circle with gradient */}
-      <button
-        onClick={() => {
-          if ('vibrate' in navigator) navigator.vibrate(8);
-          onAddProspect();
-        }}
-        data-testid="fab-add-prospect"
-        style={{
-          width: '60px',
-          height: '60px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)',
-          boxShadow: isDark 
-            ? '0 4px 20px rgba(203, 108, 230, 0.5)'
-            : '0 4px 20px rgba(0, 74, 173, 0.4)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          marginTop: '-20px'
-        }}
-      >
-        <Plus size={28} strokeWidth={2.5} style={{ color: 'white' }} />
-      </button>
-      
-      {/* Prospects Tab */}
-      <div 
-        onClick={() => setActiveTab('prospects')}
-        data-testid="nav-prospects"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
-          cursor: 'pointer',
-          padding: '8px 16px'
-        }}
-      >
-        {/* Icon container - rounded square with gradient border when active */}
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '10px',
-          background: activeTab === 'prospects' 
-            ? 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)'
-            : 'transparent',
-          padding: activeTab === 'prospects' ? '2px' : '0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: '8px',
-            background: activeTab === 'prospects' 
-              ? (isDark ? '#1A1A24' : '#FFFFFF')
-              : 'transparent',
-            border: activeTab !== 'prospects' 
-              ? `1.5px solid ${isDark ? '#4B5563' : '#D1D5DB'}`
-              : 'none',
+            justifyContent: 'center',
+            flexShrink: 0,
+            marginBottom: '4px',
+            boxShadow: '0 4px 20px rgba(0,74,173,0.3)'
+          }}
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            style={{ 
+              width: '22px', 
+              height: '22px', 
+              stroke: '#fff', 
+              strokeWidth: 2.5, 
+              fill: 'none' 
+            }}
+          >
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        
+        {/* Prospects Tab */}
+        <button 
+          onClick={() => setActiveTab('prospects')}
+          data-testid="nav-prospects"
+          style={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center'
+            gap: '4px',
+            cursor: 'pointer',
+            flex: 1,
+            border: 'none',
+            background: 'none',
+            padding: 0
+          }}
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            style={{ 
+              width: '22px', 
+              height: '22px', 
+              strokeWidth: 2, 
+              fill: 'none',
+              stroke: activeTab === 'prospects' ? 'url(#navGrad)' : '#8A849E'
+            }}
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span style={{ 
+            fontSize: '10px', 
+            fontWeight: '600', 
+            fontFamily: "'League Spartan', sans-serif",
+            letterSpacing: '0.02em',
+            color: activeTab === 'prospects' ? '#004aad' : '#8A849E'
           }}>
-            <Users 
-              size={20} 
-              strokeWidth={1.5} 
-              style={{ 
-                color: activeTab === 'prospects' 
-                  ? (isDark ? '#CB6CE6' : '#004AAD')
-                  : (isDark ? '#6B7280' : '#9CA3AF')
-              }} 
-            />
-          </div>
-        </div>
-        <span style={{ 
-          fontSize: '11px', 
-          fontWeight: '500',
-          color: activeTab === 'prospects' 
-            ? (isDark ? '#CB6CE6' : '#004AAD')
-            : (isDark ? '#6B7280' : '#9CA3AF')
-        }}>
-          Prospects
-        </span>
-      </div>
-    </nav>
+            Prospects
+          </span>
+        </button>
+      </nav>
+    </>
   );
 };
 
