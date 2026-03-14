@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, ChevronDown, ChevronUp, Smartphone, Bell, Sparkles, MessageSquare, Users, Target } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
-
-const LANDING_LOGO_URL = "https://customer-assets.emergentagent.com/job_kolo-checkout-flow/artifacts/zc3e0gj2_KOLO%20V2%20LOGO%20PNG.png";
 
 const LANGUAGES = [
   { code: 'en', label: 'EN', name: 'English' },
@@ -21,56 +19,43 @@ const LandingPage = () => {
   const content = {
     fr: {
       headline: "Vos prospects vous oublient parce que vous les oubliez.",
-      subheadline: "KOLO vous dit qui relancer et écrit le message.",
+      subheadline: "KOLO vous dit qui relancer et ecrit le message.",
       cta: "Essayer gratuitement",
-      ctaArrow: "Essayer gratuitement",
       trial: "7 jours gratuits, sans carte bancaire.",
       problem: "Un agent perd en moyenne 3 mandats par mois faute de suivi. Pas par manque de talent — par manque d'outil.",
-      howItWorks: "Comment ça marche",
+      howItWorks: "Comment ca marche",
       step1Title: "Ajoutez un prospect en 30 secondes",
       step1Desc: "Importez vos contacts ou ajoutez-les manuellement. KOLO s'occupe du reste.",
       step2Title: "KOLO vous dit qui relancer et quand",
-      step2Desc: "L'IA analyse vos prospects et vous suggère la prochaine action.",
-      step3Title: "Générez le message parfait en 1 tap",
-      step3Desc: "SMS, email ou appel — KOLO rédige le message pour vous.",
-      testimonials: "Ce qu'ils en disent",
-      testimonial1: "\"Depuis que j'utilise KOLO, je n'oublie plus aucun prospect. J'ai signé 2 mandats de plus le premier mois.\"",
-      testimonial1Author: "Marie D.",
-      testimonial1Role: "Agent IAD, Lyon",
-      testimonial2: "\"L'IA qui génère les messages, c'est un game changer. Je gagne 1h par jour.\"",
-      testimonial2Author: "Thomas R.",
-      testimonial2Role: "Agent Safti, Bordeaux",
-      testimonial3: "\"Simple, efficace, indispensable. Je recommande à tous mes collègues.\"",
-      testimonial3Author: "Sophie M.",
-      testimonial3Role: "Agent Century 21, Paris",
+      step2Desc: "L'IA analyse vos prospects et vous suggere la prochaine action.",
+      step3Title: "Generez le message parfait en 1 tap",
+      step3Desc: "SMS, email ou appel — KOLO redige le message pour vous.",
       pricing: "Tarif simple",
       priceAmount: "9,99€",
       pricePeriod: "/mois",
-      priceNote: "Un mandat signé = 2 ans d'abonnement remboursés.",
-      feature1: "Prospects illimités",
+      priceNote: "Un mandat signe = 2 ans d'abonnement rembourses.",
+      feature1: "Prospects illimites",
       feature2: "Suggestions IA quotidiennes",
-      feature3: "Génération de messages IA",
+      feature3: "Generation de messages IA",
       feature4: "Rappels intelligents",
-      faqTitle: "Questions fréquentes",
+      faqTitle: "Questions frequentes",
       faq1Q: "Comment fonctionne l'essai gratuit ?",
-      faq1A: "Vous avez 7 jours pour tester toutes les fonctionnalités de KOLO. Aucune carte bancaire n'est requise. À la fin de l'essai, vous pouvez vous abonner ou simplement arrêter.",
-      faq2Q: "Mes données sont-elles sécurisées ?",
-      faq2A: "Oui, vos données sont chiffrées et stockées sur des serveurs sécurisés en Europe. Nous ne partageons jamais vos informations avec des tiers.",
-      faq3Q: "Puis-je annuler à tout moment ?",
-      faq3A: "Absolument. Vous pouvez annuler votre abonnement en un clic depuis l'application. Pas de frais cachés, pas d'engagement.",
-      faq4Q: "L'IA comprend-elle vraiment mon métier ?",
-      faq4A: "KOLO est spécialement conçu pour les agents immobiliers. L'IA connaît le cycle de vente, les étapes clés et génère des messages adaptés à chaque situation.",
+      faq1A: "Vous avez 7 jours pour tester toutes les fonctionnalites de KOLO. Aucune carte bancaire n'est requise. A la fin de l'essai, vous pouvez vous abonner ou simplement arreter.",
+      faq2Q: "Mes donnees sont-elles securisees ?",
+      faq2A: "Oui, vos donnees sont chiffrees et stockees sur des serveurs securises en Europe. Nous ne partageons jamais vos informations avec des tiers.",
+      faq3Q: "Puis-je annuler a tout moment ?",
+      faq3A: "Absolument. Vous pouvez annuler votre abonnement en un clic depuis l'application. Pas de frais caches, pas d'engagement.",
+      faq4Q: "L'IA comprend-elle vraiment mon metier ?",
+      faq4A: "KOLO est specialement concu pour les agents immobiliers. L'IA connait le cycle de vente, les etapes cles et genere des messages adaptes a chaque situation.",
       faq5Q: "Comment importer mes contacts ?",
-      faq5A: "Vous pouvez importer vos contacts directement depuis votre téléphone en un tap, ou les ajouter manuellement un par un.",
+      faq5A: "Vous pouvez importer vos contacts directement depuis votre telephone en un tap, ou les ajouter manuellement un par un.",
       finalCta: "Commencez gratuitement aujourd'hui.",
-      login: "Connexion",
-      faq: "FAQ"
+      login: "Connexion"
     },
     en: {
       headline: "Your prospects forget you because you forget them.",
       subheadline: "KOLO tells you who to follow up and writes the message.",
       cta: "Try for free",
-      ctaArrow: "Try for free",
       trial: "7 days free, no credit card required.",
       problem: "An agent loses an average of 3 deals per month due to lack of follow-up. Not for lack of talent — for lack of tools.",
       howItWorks: "How it works",
@@ -80,16 +65,6 @@ const LandingPage = () => {
       step2Desc: "AI analyzes your prospects and suggests the next action.",
       step3Title: "Generate the perfect message in 1 tap",
       step3Desc: "SMS, email or call — KOLO writes the message for you.",
-      testimonials: "What they say",
-      testimonial1: "\"Since using KOLO, I never forget a prospect. I signed 2 more deals the first month.\"",
-      testimonial1Author: "Marie D.",
-      testimonial1Role: "IAD Agent, Lyon",
-      testimonial2: "\"The AI that generates messages is a game changer. I save 1 hour a day.\"",
-      testimonial2Author: "Thomas R.",
-      testimonial2Role: "Safti Agent, Bordeaux",
-      testimonial3: "\"Simple, effective, essential. I recommend it to all my colleagues.\"",
-      testimonial3Author: "Sophie M.",
-      testimonial3Role: "Century 21 Agent, Paris",
       pricing: "Simple pricing",
       priceAmount: "$9.99",
       pricePeriod: "/month",
@@ -110,8 +85,7 @@ const LandingPage = () => {
       faq5Q: "How do I import my contacts?",
       faq5A: "You can import your contacts directly from your phone in one tap, or add them manually one by one.",
       finalCta: "Start for free today.",
-      login: "Login",
-      faq: "FAQ"
+      login: "Login"
     }
   };
 
@@ -124,6 +98,13 @@ const LandingPage = () => {
     { q: t.faq4Q, a: t.faq4A },
     { q: t.faq5Q, a: t.faq5A },
   ];
+
+  // Screenshot URLs - using placeholder approach with app screenshots
+  const screenshots = {
+    step1: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='280' viewBox='0 0 160 280'%3E%3Crect fill='%231F2937' width='160' height='280' rx='16'/%3E%3Crect x='12' y='40' fill='%23374151' width='136' height='36' rx='8'/%3E%3Crect x='12' y='84' fill='%23374151' width='136' height='36' rx='8'/%3E%3Crect x='12' y='128' fill='%23374151' width='136' height='36' rx='8'/%3E%3Crect x='12' y='172' fill='%23374151' width='136' height='60' rx='8'/%3E%3Crect x='12' y='240' fill='%237C3AED' width='136' height='28' rx='8'/%3E%3Ctext x='80' y='16' fill='%23F9FAFB' font-size='10' text-anchor='middle' font-family='system-ui'%3ENouveau prospect%3C/text%3E%3C/svg%3E",
+    step2: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='280' viewBox='0 0 160 280'%3E%3Crect fill='%231F2937' width='160' height='280' rx='16'/%3E%3Ctext x='12' y='24' fill='%239CA3AF' font-size='10' font-family='system-ui'%3EAujourd'hui%3C/text%3E%3Crect x='8' y='36' fill='%23374151' width='144' height='56' rx='10'/%3E%3Ccircle cx='24' cy='56' r='6' fill='%237C3AED'/%3E%3Ctext x='36' y='52' fill='%23F9FAFB' font-size='8' font-family='system-ui'%3EAI Suggestion%3C/text%3E%3Ctext x='36' y='64' fill='%239CA3AF' font-size='7' font-family='system-ui'%3ERelancer Jean Dupont%3C/text%3E%3Crect x='8' y='100' fill='%23374151' width='144' height='44' rx='10'/%3E%3Crect x='8' y='152' fill='%23374151' width='144' height='44' rx='10'/%3E%3Crect x='8' y='204' fill='%23374151' width='144' height='44' rx='10'/%3E%3C/svg%3E",
+    step3: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='280' viewBox='0 0 160 280'%3E%3Crect fill='%231F2937' width='160' height='280' rx='16'/%3E%3Ctext x='80' y='24' fill='%23F9FAFB' font-size='10' text-anchor='middle' font-family='system-ui'%3ESMS Jean Dupont%3C/text%3E%3Crect x='12' y='40' fill='%23374151' width='136' height='160' rx='10'/%3E%3Ctext x='20' y='60' fill='%23F9FAFB' font-size='7' font-family='system-ui'%3EBonjour Jean,%3C/text%3E%3Ctext x='20' y='76' fill='%239CA3AF' font-size='7' font-family='system-ui'%3ESuite a notre echange%3C/text%3E%3Ctext x='20' y='88' fill='%239CA3AF' font-size='7' font-family='system-ui'%3Econcernant votre projet...%3C/text%3E%3Crect x='12' y='210' fill='%237C3AED' width='136' height='32' rx='8'/%3E%3Ctext x='80' y='230' fill='white' font-size='9' text-anchor='middle' font-family='system-ui'%3EEnvoyer%3C/text%3E%3C/svg%3E"
+  };
 
   return (
     <div className="mobile-frame theme-dark" style={{ background: '#0A0A0C' }}>
@@ -139,7 +120,7 @@ const LandingPage = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(10, 10, 12, 0.9)',
+          background: 'rgba(10, 10, 12, 0.95)',
           backdropFilter: 'blur(20px)'
         }}>
           {/* Language selector */}
@@ -149,13 +130,17 @@ const LandingPage = () => {
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--muted)',
-                fontSize: '12px',
+                color: '#9CA3AF',
+                fontSize: '13px',
+                fontWeight: '500',
                 cursor: 'pointer',
-                padding: '4px 8px'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
               {currentLang.label}
+              <ChevronDown size={14} />
             </button>
             {showLangMenu && (
               <div style={{
@@ -163,12 +148,11 @@ const LandingPage = () => {
                 top: '100%',
                 left: 0,
                 marginTop: '4px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
+                background: '#1F2937',
                 borderRadius: '8px',
                 overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                minWidth: '100px'
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.06)'
               }}>
                 {LANGUAGES.map(lang => (
                   <button
@@ -177,13 +161,13 @@ const LandingPage = () => {
                     style={{
                       display: 'block',
                       width: '100%',
-                      padding: '10px 14px',
-                      background: locale === lang.code ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
+                      padding: '10px 16px',
+                      background: lang.code === locale ? 'rgba(124,58,237,0.2)' : 'none',
                       border: 'none',
-                      color: locale === lang.code ? 'var(--accent)' : 'var(--text)',
-                      cursor: 'pointer',
+                      color: '#F9FAFB',
                       fontSize: '13px',
-                      textAlign: 'left'
+                      textAlign: 'left',
+                      cursor: 'pointer'
                     }}
                   >
                     {lang.name}
@@ -193,43 +177,52 @@ const LandingPage = () => {
             )}
           </div>
           
-          {/* Right nav */}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <button 
-              onClick={() => navigate('/login')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted)',
-                fontSize: '13px',
-                cursor: 'pointer'
-              }}
-            >
-              {t.login}
-            </button>
-          </div>
+          {/* Login */}
+          <button 
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#9CA3AF',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            {t.login}
+          </button>
         </header>
 
-        {/* Hero Section */}
-        <section style={{ padding: '48px 24px 60px', textAlign: 'center' }}>
-          <img 
-            src={LANDING_LOGO_URL} 
-            alt="KOLO" 
-            style={{ height: '80px', marginBottom: '32px' }}
-          />
+        {/* SECTION 1: Hero - Dark background */}
+        <section style={{ padding: '48px 24px 60px', textAlign: 'center', background: '#0A0A0C' }}>
+          {/* Logo */}
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            boxShadow: '0 8px 32px rgba(124, 58, 237, 0.3)'
+          }}>
+            <span style={{ fontSize: '32px', fontWeight: '700', color: 'white' }}>K</span>
+          </div>
+          
           <h1 style={{
             fontSize: '28px',
             fontWeight: '700',
             lineHeight: '1.25',
-            color: 'var(--text)',
+            color: '#F9FAFB',
             marginBottom: '16px',
             letterSpacing: '-0.5px'
           }}>
             {t.headline}
           </h1>
           <p style={{
-            fontSize: '16px',
-            color: 'var(--muted)',
+            fontSize: '15px',
+            color: '#9CA3AF',
             marginBottom: '32px',
             lineHeight: '1.5'
           }}>
@@ -237,27 +230,38 @@ const LandingPage = () => {
           </p>
           <button 
             onClick={() => navigate('/register')}
-            className="btn-primary"
-            style={{ marginBottom: '12px' }}
+            style={{
+              background: '#7C3AED',
+              color: 'white',
+              border: 'none',
+              padding: '16px 32px',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '12px',
+              transition: 'opacity 0.15s ease'
+            }}
           >
-            {t.ctaArrow} <ArrowRight size={18} />
+            {t.cta} <ArrowRight size={18} />
           </button>
-          <p style={{ fontSize: '13px', color: 'var(--muted-dark)' }}>
+          <p style={{ fontSize: '13px', color: '#6B7280' }}>
             {t.trial}
           </p>
         </section>
 
-        {/* Problem Section */}
+        {/* SECTION 2: Problem - White background */}
         <section style={{
           padding: '48px 24px',
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
-          borderBottom: '1px solid var(--border)'
+          background: '#FFFFFF'
         }}>
           <p style={{
             fontSize: '18px',
             fontWeight: '500',
-            color: 'var(--text)',
+            color: '#111827',
             textAlign: 'center',
             lineHeight: '1.6',
             maxWidth: '340px',
@@ -267,12 +271,12 @@ const LandingPage = () => {
           </p>
         </section>
 
-        {/* How it Works */}
-        <section style={{ padding: '60px 24px' }}>
+        {/* SECTION 3: How it Works - Dark background with screenshots */}
+        <section style={{ padding: '60px 24px', background: '#0A0A0C' }}>
           <h2 style={{
-            fontSize: '13px',
+            fontSize: '11px',
             fontWeight: '600',
-            color: 'var(--muted)',
+            color: '#6B7280',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             textAlign: 'center',
@@ -281,34 +285,29 @@ const LandingPage = () => {
             {t.howItWorks}
           </h2>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {/* Step 1 */}
             <div style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
-              padding: '20px',
               display: 'flex',
               gap: '16px',
-              alignItems: 'flex-start'
+              alignItems: 'center'
             }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'var(--accent-glow)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Smartphone size={20} color="var(--accent)" />
-              </div>
+              <img 
+                src={screenshots.step1} 
+                alt="Add prospect" 
+                style={{ 
+                  width: '120px', 
+                  height: '200px', 
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                  flexShrink: 0
+                }} 
+              />
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#F9FAFB', marginBottom: '8px' }}>
                   {t.step1Title}
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '13px', color: '#9CA3AF', lineHeight: '1.5' }}>
                   {t.step1Desc}
                 </p>
               </div>
@@ -316,31 +315,27 @@ const LandingPage = () => {
 
             {/* Step 2 */}
             <div style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
-              padding: '20px',
               display: 'flex',
               gap: '16px',
-              alignItems: 'flex-start'
+              alignItems: 'center',
+              flexDirection: 'row-reverse'
             }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'var(--accent-glow)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Bell size={20} color="var(--accent)" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+              <img 
+                src={screenshots.step2} 
+                alt="AI suggestions" 
+                style={{ 
+                  width: '120px', 
+                  height: '200px', 
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                  flexShrink: 0
+                }} 
+              />
+              <div style={{ textAlign: 'right' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#F9FAFB', marginBottom: '8px' }}>
                   {t.step2Title}
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '13px', color: '#9CA3AF', lineHeight: '1.5' }}>
                   {t.step2Desc}
                 </p>
               </div>
@@ -348,31 +343,26 @@ const LandingPage = () => {
 
             {/* Step 3 */}
             <div style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
-              padding: '20px',
               display: 'flex',
               gap: '16px',
-              alignItems: 'flex-start'
+              alignItems: 'center'
             }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'var(--accent-glow)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Sparkles size={20} color="var(--accent)" />
-              </div>
+              <img 
+                src={screenshots.step3} 
+                alt="Generate message" 
+                style={{ 
+                  width: '120px', 
+                  height: '200px', 
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                  flexShrink: 0
+                }} 
+              />
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#F9FAFB', marginBottom: '8px' }}>
                   {t.step3Title}
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '13px', color: '#9CA3AF', lineHeight: '1.5' }}>
                   {t.step3Desc}
                 </p>
               </div>
@@ -380,78 +370,12 @@ const LandingPage = () => {
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section style={{
-          padding: '60px 24px',
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
-          borderBottom: '1px solid var(--border)'
-        }}>
+        {/* SECTION 4: Pricing - Dark background */}
+        <section style={{ padding: '60px 24px', textAlign: 'center', background: '#111827' }}>
           <h2 style={{
-            fontSize: '13px',
+            fontSize: '11px',
             fontWeight: '600',
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            textAlign: 'center',
-            marginBottom: '32px'
-          }}>
-            {t.testimonials}
-          </h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { text: t.testimonial1, author: t.testimonial1Author, role: t.testimonial1Role },
-              { text: t.testimonial2, author: t.testimonial2Author, role: t.testimonial2Role },
-              { text: t.testimonial3, author: t.testimonial3Author, role: t.testimonial3Role },
-            ].map((testimonial, i) => (
-              <div key={i} style={{
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: '16px',
-                padding: '20px'
-              }}>
-                <p style={{
-                  fontSize: '14px',
-                  color: 'var(--text)',
-                  lineHeight: '1.6',
-                  marginBottom: '12px',
-                  fontStyle: 'italic'
-                }}>
-                  {testimonial.text}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'var(--accent-glow)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Users size={14} color="var(--accent)" />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>
-                      {testimonial.author}
-                    </p>
-                    <p style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                      {testimonial.role}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section style={{ padding: '60px 24px', textAlign: 'center' }}>
-          <h2 style={{
-            fontSize: '13px',
-            fontWeight: '600',
-            color: 'var(--muted)',
+            color: '#6B7280',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             marginBottom: '24px'
@@ -460,17 +384,18 @@ const LandingPage = () => {
           </h2>
           
           <div style={{
-            background: 'var(--surface)',
-            border: '2px solid var(--accent)',
-            borderRadius: '20px',
+            background: '#1F2937',
+            border: '2px solid #7C3AED',
+            borderRadius: '16px',
             padding: '32px 24px',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            boxShadow: '0 0 40px rgba(124, 58, 237, 0.15)'
           }}>
             <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontSize: '48px', fontWeight: '700', color: 'var(--text)' }}>
+              <span style={{ fontSize: '48px', fontWeight: '700', color: '#F9FAFB' }}>
                 {t.priceAmount}
               </span>
-              <span style={{ fontSize: '16px', color: 'var(--muted)' }}>
+              <span style={{ fontSize: '15px', color: '#9CA3AF' }}>
                 {t.pricePeriod}
               </span>
             </div>
@@ -483,15 +408,15 @@ const LandingPage = () => {
                   gap: '12px',
                   padding: '10px 0'
                 }}>
-                  <Check size={18} color="var(--success)" />
-                  <span style={{ fontSize: '14px', color: 'var(--text)' }}>{feature}</span>
+                  <Check size={18} color="#22C55E" />
+                  <span style={{ fontSize: '14px', color: '#F9FAFB' }}>{feature}</span>
                 </div>
               ))}
             </div>
             
             <p style={{
               fontSize: '13px',
-              color: 'var(--muted)',
+              color: '#9CA3AF',
               fontStyle: 'italic',
               marginBottom: '20px'
             }}>
@@ -500,23 +425,36 @@ const LandingPage = () => {
             
             <button 
               onClick={() => navigate('/register')}
-              className="btn-primary"
+              style={{
+                width: '100%',
+                background: '#7C3AED',
+                color: 'white',
+                border: 'none',
+                padding: '16px',
+                borderRadius: '12px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
             >
-              {t.ctaArrow} <ArrowRight size={18} />
+              {t.cta} <ArrowRight size={18} />
             </button>
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* SECTION 5: FAQ - White background */}
         <section style={{
           padding: '60px 24px',
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)'
+          background: '#FFFFFF'
         }}>
           <h2 style={{
-            fontSize: '13px',
+            fontSize: '11px',
             fontWeight: '600',
-            color: 'var(--muted)',
+            color: '#6B7280',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             textAlign: 'center',
@@ -530,8 +468,8 @@ const LandingPage = () => {
               <div 
                 key={i}
                 style={{
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
+                  background: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
                   borderRadius: '12px',
                   overflow: 'hidden'
                 }}
@@ -550,20 +488,20 @@ const LandingPage = () => {
                     textAlign: 'left'
                   }}
                 >
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text)', paddingRight: '12px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827', paddingRight: '12px' }}>
                     {faq.q}
                   </span>
                   {expandedFaq === i ? (
-                    <ChevronUp size={18} color="var(--muted)" />
+                    <ChevronUp size={18} color="#6B7280" />
                   ) : (
-                    <ChevronDown size={18} color="var(--muted)" />
+                    <ChevronDown size={18} color="#6B7280" />
                   )}
                 </button>
                 {expandedFaq === i && (
                   <div style={{
                     padding: '0 16px 16px',
                     fontSize: '13px',
-                    color: 'var(--muted)',
+                    color: '#6B7280',
                     lineHeight: '1.6'
                   }}>
                     {faq.a}
@@ -574,34 +512,46 @@ const LandingPage = () => {
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* SECTION 6: Final CTA - Dark background */}
         <section style={{
           padding: '60px 24px',
           textAlign: 'center',
-          borderTop: '1px solid var(--border)'
+          background: '#0A0A0C'
         }}>
           <h2 style={{
             fontSize: '22px',
             fontWeight: '600',
-            color: 'var(--text)',
+            color: '#F9FAFB',
             marginBottom: '24px'
           }}>
             {t.finalCta}
           </h2>
           <button 
             onClick={() => navigate('/register')}
-            className="btn-primary"
-            style={{ marginBottom: '12px' }}
+            style={{
+              background: '#7C3AED',
+              color: 'white',
+              border: 'none',
+              padding: '16px 32px',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '12px'
+            }}
           >
-            {t.ctaArrow} <ArrowRight size={18} />
+            {t.cta} <ArrowRight size={18} />
           </button>
-          <p style={{ fontSize: '13px', color: 'var(--muted-dark)' }}>
+          <p style={{ fontSize: '13px', color: '#6B7280' }}>
             {t.trial}
           </p>
         </section>
 
         {/* Footer spacer */}
-        <div style={{ height: '40px' }} />
+        <div style={{ height: '40px', background: '#0A0A0C' }} />
       </div>
     </div>
   );

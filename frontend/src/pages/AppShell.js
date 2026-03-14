@@ -1908,15 +1908,22 @@ const ProspectsTab = ({ onSelectProspect }) => {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {/* Discrete score dot */}
+                    {/* Temperature indicator with tooltip */}
                     {scoreColor && (
-                      <span style={{ 
-                        width: '8px', 
-                        height: '8px', 
-                        borderRadius: '50%', 
-                        background: scoreColor,
-                        flexShrink: 0
-                      }} title={prospect.score} />
+                      <span 
+                        style={{ 
+                          width: '8px', 
+                          height: '8px', 
+                          borderRadius: '50%', 
+                          background: scoreColor,
+                          flexShrink: 0,
+                          cursor: 'help'
+                        }} 
+                        title={locale === 'fr' 
+                          ? `Température: ${prospect.score === 'chaud' ? 'Chaud' : prospect.score === 'tiede' ? 'Tiède' : 'Froid'}`
+                          : `Temperature: ${prospect.score === 'chaud' ? 'Hot' : prospect.score === 'tiede' ? 'Warm' : 'Cold'}`
+                        }
+                      />
                     )}
                     <div>
                       <div className="name">{prospect.full_name}</div>
@@ -3396,48 +3403,6 @@ const SettingsTab = ({ onClose }) => {
           <span className="label">{t('changeEmail')}</span>
           <ChevronRight className="chevron" size={20} />
         </div>
-        
-        {/* Cancel/Reactivate subscription */}
-        {subscriptionStatus && (
-          <div 
-            className="settings-row" 
-            data-testid="cancel-subscription"
-            onClick={() => {
-              if (subscriptionStatus.cancel_at_period_end) {
-                handleReactivateSubscription();
-              } else {
-                setShowCancelConfirm(true);
-              }
-            }}
-            style={{ cursor: 'pointer', borderBottom: 'none' }}
-          >
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke={subscriptionStatus.cancel_at_period_end ? "var(--accent)" : "#ef4444"} strokeWidth="1.5">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <div style={{ flex: 1 }}>
-              <span className="label" style={{ color: subscriptionStatus.cancel_at_period_end ? 'var(--accent)' : '#ef4444' }}>
-                {subscriptionStatus.cancel_at_period_end ? t('reactivate') : t('cancelTrial')}
-              </span>
-              {subscriptionStatus.cancel_at_period_end && subscriptionStatus.subscription_ends_at && (
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                  {t('keepAccess')} {new Date(subscriptionStatus.subscription_ends_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}
-                </div>
-              )}
-              {subscriptionStatus.status === 'trialing' && !subscriptionStatus.cancel_at_period_end && (
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                  {t('cancelTrialDesc')}
-                </div>
-              )}
-            </div>
-            {cancelLoading ? (
-              <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
-            ) : (
-              <ChevronRight className="chevron" size={20} />
-            )}
-          </div>
-        )}
       </div>
 
       {/* About section */}
@@ -4784,74 +4749,115 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
         </h3>
         
         <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder={locale === 'fr' ? 'Nom complet *' : 'Full name *'}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-            data-testid="quick-prospect-name"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              color: 'var(--text)',
-              fontSize: '16px',
-              marginBottom: '12px'
-            }}
-          />
-          
-          <input
-            type="tel"
-            placeholder={locale === 'fr' ? 'Téléphone *' : 'Phone *'}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            data-testid="quick-prospect-phone"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              color: 'var(--text)',
-              fontSize: '16px',
-              marginBottom: '12px'
-            }}
-          />
-
-          <input
-            type="email"
-            placeholder={locale === 'fr' ? 'Email *' : 'Email *'}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            data-testid="quick-prospect-email"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              color: 'var(--text)',
-              fontSize: '16px',
-              marginBottom: '12px'
-            }}
-          />
-
+          {/* Nom complet */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ 
               fontSize: '13px', 
               color: 'var(--muted)', 
-              marginBottom: '6px', 
-              display: 'block' 
+              marginBottom: '8px', 
+              display: 'block',
+              fontWeight: '500'
             }}>
-              {locale === 'fr' ? 'Description du projet *' : 'Project description *'}
+              {locale === 'fr' ? 'Nom complet' : 'Full name'} *
+            </label>
+            <input
+              type="text"
+              placeholder={locale === 'fr' ? 'Jean Dupont' : 'John Doe'}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              data-testid="quick-prospect-name"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                color: 'var(--text)',
+                fontSize: '15px',
+                height: '52px',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          
+          {/* Téléphone */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginBottom: '8px', 
+              display: 'block',
+              fontWeight: '500'
+            }}>
+              {locale === 'fr' ? 'Téléphone' : 'Phone'} *
+            </label>
+            <input
+              type="tel"
+              placeholder="+33 6 12 34 56 78"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              data-testid="quick-prospect-phone"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                color: 'var(--text)',
+                fontSize: '15px',
+                height: '52px',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* Email */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginBottom: '8px', 
+              display: 'block',
+              fontWeight: '500'
+            }}>
+              Email *
+            </label>
+            <input
+              type="email"
+              placeholder="jean.dupont@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              data-testid="quick-prospect-email"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                color: 'var(--text)',
+                fontSize: '15px',
+                height: '52px',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* Description du projet */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginBottom: '8px', 
+              display: 'block',
+              fontWeight: '500'
+            }}>
+              {locale === 'fr' ? 'Description du projet' : 'Project description'} *
             </label>
             <textarea
               placeholder={locale === 'fr' 
-                ? 'Décrivez le projet : type de bien, budget, délai, besoins...' 
-                : 'Describe the project: property type, budget, timeline, needs...'}
+                ? 'Type de bien, budget, délai, besoins spécifiques...' 
+                : 'Property type, budget, timeline, specific needs...'}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               data-testid="quick-prospect-notes"
@@ -4863,34 +4869,46 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
                 border: '1px solid var(--border)',
                 borderRadius: '10px',
                 color: 'var(--text)',
-                fontSize: '16px',
+                fontSize: '15px',
                 resize: 'none'
               }}
             />
           </div>
           
-          {/* Source field */}
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            data-testid="quick-prospect-source"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              color: source ? 'var(--text)' : 'var(--muted)',
-              fontSize: '16px',
-              marginBottom: '16px',
-              appearance: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {sourceOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          {/* Source */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ 
+              fontSize: '13px', 
+              color: 'var(--muted)', 
+              marginBottom: '8px', 
+              display: 'block',
+              fontWeight: '500'
+            }}>
+              Source
+            </label>
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              data-testid="quick-prospect-source"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                color: source ? 'var(--text)' : 'var(--muted)',
+                fontSize: '15px',
+                height: '52px',
+                boxSizing: 'border-box',
+                appearance: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {sourceOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
           
           <button
             type="submit"

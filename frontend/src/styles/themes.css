@@ -257,39 +257,194 @@ textarea:focus {
   color: #FAFAFA !important;
 }
 
-/* ===== LIGHT THEME FORCE OVERRIDES ===== */
-.theme-light .page-container,
-.theme-light .scroll-content,
-.theme-light .mobile-frame:not(.theme-dark) {
-  background-color: #F9FAFB !important;
+/* ===== DESIGN SYSTEM - POLISH GLOBAL ===== */
+
+/* Spacing System - 8px base */
+:root {
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
 }
 
+/* Typography Scale */
+:root {
+  --font-title: 24px;
+  --font-section: 18px;
+  --font-body: 15px;
+  --font-secondary: 13px;
+  --font-micro: 11px;
+}
+
+/* Border Radius System */
+:root {
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+  --radius-badge: 6px;
+}
+
+/* Shadows - Light mode */
 .theme-light .card,
 .theme-light [class*="card"] {
-  background-color: #FFFFFF !important;
-  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
 }
 
-.theme-light h1,
-.theme-light h2,
-.theme-light h3,
-.theme-light .text-headline {
-  color: #111827 !important;
+/* Shadows - Dark mode (no shadows, just bg differentiation) */
+.theme-dark .card,
+.theme-dark [class*="card"] {
+  box-shadow: none !important;
 }
 
-.theme-light .text-muted {
-  color: #6B7280 !important;
+/* Button Primary */
+.btn-primary {
+  background: #7C3AED !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  height: 52px;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
 }
 
-.theme-light .bottom-nav {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-top-color: #E5E7EB !important;
+.btn-primary:hover {
+  opacity: 0.9;
 }
 
-.theme-light input,
-.theme-light textarea,
-.theme-light select {
-  background-color: #FFFFFF !important;
-  border-color: #D1D5DB !important;
-  color: #111827 !important;
+.btn-primary:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+/* Button Secondary */
+.btn-secondary {
+  background: transparent !important;
+  border: 1px solid #E5E7EB !important;
+  color: #374151 !important;
+  border-radius: 12px !important;
+  height: 52px;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+}
+
+.theme-dark .btn-secondary {
+  border-color: #374151 !important;
+  color: #D1D5DB !important;
+}
+
+.btn-secondary:hover {
+  background: rgba(0,0,0,0.05) !important;
+}
+
+.theme-dark .btn-secondary:hover {
+  background: rgba(255,255,255,0.05) !important;
+}
+
+/* Input Styles */
+input,
+textarea,
+select {
+  height: 52px;
+  padding: 0 16px !important;
+  border-radius: 10px !important;
+  font-size: 15px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+textarea {
+  height: auto;
+  padding: 14px 16px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #7C3AED !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.1) !important;
+}
+
+/* Cards */
+.card,
+.prospect-card {
+  border-radius: 16px !important;
+  padding: 16px !important;
+}
+
+/* Bottom Nav FAB */
+.fab-button {
+  box-shadow: 0 4px 12px rgba(124,58,237,0.3) !important;
+}
+
+/* Transitions - all interactions */
+button,
+a,
+.card,
+.prospect-card,
+.settings-row,
+input,
+textarea,
+select {
+  transition: all 0.15s ease !important;
+}
+
+/* Modal/Drawer animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Toast animations */
+[data-sonner-toast] {
+  animation: fadeIn 0.15s ease !important;
+}
+
+/* No textures or patterns */
+body,
+.mobile-frame,
+.page-container {
+  background-image: none !important;
+}
+
+/* Nav item active state */
+.nav-item.active svg,
+.nav-item.active span {
+  color: #7C3AED !important;
+}
+
+.nav-item:not(.active) svg,
+.nav-item:not(.active) span {
+  color: #9CA3AF !important;
+}
+
+/* Icon consistency - 1.5px stroke */
+svg {
+  stroke-width: 1.5px;
 }

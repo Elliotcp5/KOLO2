@@ -3,14 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { toast } from 'sonner';
 
+// Purple favicon icon for light backgrounds
+const LOGO_ICON_URL = "/favicon-32x32.png";
+// Full logo for dark backgrounds
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { locale } = useLocale();
   const { login } = useAuth();
+  const { theme } = useTheme();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -68,11 +73,40 @@ const LoginPage = () => {
         </div>
 
         <div style={{ padding: '0 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginTop: '40px', marginBottom: '48px', textAlign: 'center' }}>
-            <img src={LOGO_URL} alt="KOLO" style={{ maxHeight: '50px' }} />
+          {/* Centered Logo */}
+          <div style={{ marginTop: '60px', marginBottom: '40px', textAlign: 'center' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '12px' 
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 32px rgba(124, 58, 237, 0.3)'
+              }}>
+                <span style={{ 
+                  fontSize: '32px', 
+                  fontWeight: '700', 
+                  color: 'white' 
+                }}>K</span>
+              </div>
+              <span style={{ 
+                fontSize: '24px', 
+                fontWeight: '700', 
+                color: 'var(--text)',
+                letterSpacing: '0.5px'
+              }}>KOLO</span>
+            </div>
           </div>
 
-          <h1 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '26px', color: 'white' }}>
+          <h1 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '24px', fontWeight: '700', color: 'var(--text)' }}>
             {locale === 'fr' ? 'Bon retour !' : 'Welcome back!'}
           </h1>
           

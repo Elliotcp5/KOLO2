@@ -6,12 +6,22 @@ import os
 import logging
 import secrets
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, validator
 from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
 import hashlib
+import re
+from html import escape
+
+# ==================== SECURITY: Rate Limiting ====================
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 ROOT_DIR = Path(__file__).parent
 
@@ -22,6 +32,29 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# ==================== SECURITY: Input Sanitization Helpers ====================
+def sanitize_string(value: str, max_length: int = 1000) -> str:
+    """Sanitize string input to prevent XSS"""
+    if not value:
+        return value
+    # Escape HTML characters
+    sanitized = escape(value.strip())
+    # Limit length
+    return sanitized[:max_length]
+
+def validate_email_format(email: str) -> bool:
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
+
+def validate_phone_format(phone: str) -> bool:
+    """Validate phone number format (allows international formats)"""
+    # Remove spaces, dashes, parentheses
+    cleaned = re.sub(r'[\s\-\(\)]', '', phone)
+    # Should be numeric with optional + prefix, 6-20 digits
+    pattern = r'^\+?[0-9]{6,20}$'
+    return bool(re.match(pattern, cleaned))
 
 # Password hashing helper
 def hash_password(password: str) -> str:
@@ -53,6 +86,10 @@ EU_COUNTRIES = [
 
 # Create the main app
 app = FastAPI()
+
+# Add rate limiter to app state and error handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -1488,21 +1525,33 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         raise HTTPException(status_code=500, detail="Erreur serveur")
 
 # Free Trial Registration (no payment required)
+# Rate limit: 10 requests per minute per IP for auth endpoints
 @api_router.post("/auth/register")
-async def register_free_trial(request: RegisterRequest, response: Response):
+@limiter.limit("10/minute")
+async def register_free_trial(request: Request, register_data: RegisterRequest, response: Response):
     """Register for free 7-day trial without payment"""
-    logger.info(f"Free trial registration attempt for: {request.email}")
+    logger.info(f"Free trial registration attempt for: {register_data.email}")
     
-    # Validate email format
-    if not request.email or '@' not in request.email:
-        raise HTTPException(status_code=400, detail="Email invalide")
+    # SECURITY: Validate and sanitize email
+    email = register_data.email.lower().strip()
+    if not email or not validate_email_format(email):
+        raise HTTPException(status_code=400, detail="Format d'email invalide")
     
-    # Validate password
-    if not request.password or len(request.password) < 6:
+    # SECURITY: Validate password strength
+    if not register_data.password or len(register_data.password) < 6:
         raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
+    if len(register_data.password) > 128:
+        raise HTTPException(status_code=400, detail="Mot de passe trop long (max 128 caractères)")
+    
+    # SECURITY: Sanitize name and phone
+    name = sanitize_string(register_data.full_name, max_length=100)
+    phone = sanitize_string(register_data.phone, max_length=20)
+    
+    if not name or len(name) < 2:
+        raise HTTPException(status_code=400, detail="Nom invalide (minimum 2 caractères)")
     
     # Check if email already exists
-    existing_user = await db.users.find_one({"email": request.email.lower().strip()})
+    existing_user = await db.users.find_one({"email": email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
     
@@ -1513,11 +1562,11 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     user_doc = {
         "user_id": user_id,
-        "email": request.email.lower().strip(),
-        "name": request.full_name.strip(),
-        "phone": request.phone.strip(),
+        "email": email,
+        "name": name,
+        "phone": phone,
         "auth_provider": "email",
-        "password_hash": hash_password(request.password),
+        "password_hash": hash_password(register_data.password),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -1525,7 +1574,7 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     }
     
     await db.users.insert_one(user_doc)
-    logger.info(f"Free trial account created for {request.email}, trial ends: {trial_ends_at}")
+    logger.info(f"Free trial account created for {register_data.email}, trial ends: {trial_ends_at}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -1553,35 +1602,42 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     
     return {
         "user_id": user_id,
-        "email": request.email.lower().strip(),
+        "email": email,
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
         "token": session_token
     }
 
 # Email/Password Login
+# Rate limit: 10 requests per minute per IP for auth endpoints
 @api_router.post("/auth/login")
-async def login_with_password(request: LoginRequest, response: Response):
+@limiter.limit("10/minute")
+async def login_with_password(request: Request, login_data: LoginRequest, response: Response):
     """Login with email and password"""
-    logger.info(f"Login attempt for email: {request.email}")
+    logger.info(f"Login attempt for email: {login_data.email}")
     
-    user = await db.users.find_one({"email": request.email.lower().strip()}, {"_id": 0})
+    # SECURITY: Sanitize email input
+    email = login_data.email.lower().strip() if login_data.email else ""
+    if not email or not validate_email_format(email):
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    
+    user = await db.users.find_one({"email": email}, {"_id": 0})
     
     if not user:
-        logger.warning(f"Login failed: User not found for {request.email}")
+        logger.warning(f"Login failed: User not found for {login_data.email}")
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
     if not user.get("password_hash"):
-        logger.warning(f"Login failed: No password hash for {request.email}")
+        logger.warning(f"Login failed: No password hash for {login_data.email}")
         raise HTTPException(status_code=401, detail="Veuillez réinitialiser votre mot de passe")
     
-    if not verify_password(request.password, user["password_hash"]):
-        logger.warning(f"Login failed: Invalid password for {request.email}")
+    if not verify_password(login_data.password, user["password_hash"]):
+        logger.warning(f"Login failed: Invalid password for {login_data.email}")
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
     # Allow login for all users (trialing, active, expired, canceled)
     # Access restrictions are handled in the frontend based on subscription status
-    logger.info(f"Login successful for {request.email}")
+    logger.info(f"Login successful for {login_data.email}")
     
     # Check if trial has expired and update status
     subscription_status = user.get("subscription_status", "none")
@@ -2208,20 +2264,38 @@ async def list_prospects(request: Request):
     return {"prospects": prospects}
 
 @api_router.post("/prospects")
+@limiter.limit("100/minute")
 async def create_prospect(request: Request, prospect_data: CreateProspectRequest):
     """Create a new prospect and auto-create follow-up task"""
     user = await require_active_subscription(request)
+    
+    # SECURITY: Validate and sanitize all inputs
+    full_name = sanitize_string(prospect_data.full_name, max_length=100)
+    if not full_name or len(full_name) < 2:
+        raise HTTPException(status_code=400, detail="Nom invalide (minimum 2 caractères)")
+    
+    phone = sanitize_string(prospect_data.phone, max_length=20)
+    email = prospect_data.email.lower().strip() if prospect_data.email else ""
+    if email and not validate_email_format(email):
+        raise HTTPException(status_code=400, detail="Format d'email invalide")
+    
+    notes = sanitize_string(prospect_data.notes or "", max_length=2000)
+    source = sanitize_string(prospect_data.source or "manual", max_length=50)
+    
+    # Validate status against allowed values
+    allowed_statuses = ['nouveau', 'contacte', 'qualifie', 'offre', 'signe', 'new', 'in_progress', 'closed', 'lost']
+    status = prospect_data.status if prospect_data.status in allowed_statuses else 'nouveau'
     
     now = datetime.now(timezone.utc)
     
     prospect = Prospect(
         user_id=user.user_id,
-        full_name=prospect_data.full_name,
-        phone=prospect_data.phone,
-        email=prospect_data.email,
-        source=prospect_data.source,
-        status=prospect_data.status,
-        notes=prospect_data.notes,
+        full_name=full_name,
+        phone=phone,
+        email=email,
+        source=source,
+        status=status,
+        notes=notes,
         last_activity_date=now
     )
     
@@ -2346,7 +2420,9 @@ async def delete_prospect(request: Request, prospect_id: str):
 
 
 # Generate AI SMS message for a prospect
+# Rate limit: 30 requests per minute per user for AI generation endpoints
 @api_router.post("/prospects/{prospect_id}/generate-message")
+@limiter.limit("30/minute")
 async def generate_ai_message(request: Request, prospect_id: str):
     """Generate an AI-powered SMS message for a prospect"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
