@@ -150,21 +150,37 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - ✅ Bottom navigation functional
 - ✅ All core APIs operational
 
+### v2.0.2 (March 14, 2026) - Dark Mode UI Fixes ✅
+
+**Bouton "Générer une relance IA":**
+- ✅ Nouveau gradient violet identique à l'icône AI: #E82EA4 → #8A2BE2 (sombre) / #7C3AED → #EC4899 (clair)
+- ✅ Visible et lisible dans les deux modes
+
+**Modal création prospect:**
+- ✅ Dropdown "Source" supprimé complètement
+- ✅ Labels lisibles en mode sombre (utilise c('muted'))
+- ✅ Champs de saisie avec fond sombre et texte clair
+
+**Textes mode sombre:**
+- ✅ Tâches expandées: titre, contact, téléphone, email tous lisibles
+- ✅ Utilisation de c('text'), c('muted'), c('surface') au lieu de var()
+
+**En-tête Prospects:**
+- ✅ Bouton "Ajouter prospect" supprimé
+- ✅ Seule la loupe de recherche reste
+
 ## Testing Status
 - **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
-- **Last Test Report**: /app/test_reports/iteration_15.json (100% pass rate)
+- **Last Test Report**: /app/test_reports/iteration_16.json (100% pass rate - Dark Mode UI)
 
 ## Remaining Tasks (Backlog)
-1. **P1**: Fix remaining 3 UI bugs from user feedback #425:
-   - Modal "Ajouter une tâche" illisible en mode sombre
-   - Dropdown "Source" non fonctionnel dans création prospect
-   - Nettoyer l'en-tête de l'onglet Prospects
-2. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
+1. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
    - Extract TodayTab into separate file
    - Extract ProspectsTab into separate file
    - Extract SettingsTab into separate file
    - Extract ProspectDetail into separate file
-3. **P2**: Refactor server.py into separate routers
-4. **P2**: Add more languages (ES, IT, DE)
-5. **P3**: Verify VAPID keys in production
+   - Cleanup dead code (showAddForm in ProspectsTab)
+2. **P2**: Refactor server.py into separate routers
+3. **P2**: Add more languages (ES, IT, DE)
+4. **P3**: Verify VAPID keys in production
