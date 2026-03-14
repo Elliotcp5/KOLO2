@@ -189,15 +189,40 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 ## Testing Status
 - **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
-- **Last Test Report**: /app/test_reports/iteration_17.json (100% pass rate)
+- **Last Test Report**: /app/test_reports/iteration_18.json (100% pass rate)
+
+### v2.1.0 (March 14, 2026) - Final Polish ✅
+
+**Landing Page:**
+- ✅ Header avec plus d'espace sur mobile (padding 120px)
+- ✅ Texte "D'une main" au lieu de "En une main"
+- ✅ Texte "Glissez vers la droite" au lieu de "Swipe droite"
+- ✅ Toast "email en route" supprimé (était faux)
+- ✅ Vitesse défilement avis accélérée (25s au lieu de 40s)
+
+**Onboarding Premium (refonte complète):**
+- ✅ 5 étapes dynamiques avec animations
+- ✅ Step 1: Welcome avec logo KOLO gradient
+- ✅ Step 2: How it works (3 features avec icônes gradient)
+- ✅ Step 3: Import contacts avec bouton gradient
+- ✅ Step 4: Choix thème (clair/sombre)
+- ✅ Step 5: Ready avec tips et confetti
+- ✅ Tous les boutons Continue avec gradient bleu-violet
+
+**App - Paramètres:**
+- ✅ Modification nom fonctionne (API /api/auth/update-name)
+- ✅ Modification téléphone fonctionne (API /api/auth/update-phone)
+- ✅ Section "Permissions" avec "Accès aux contacts"
+- ✅ Section "Support" avec "Nous contacter" (mailto:contact@trykolo.io)
+- ✅ Modal résiliation lisible en mode sombre
+
+**App - Dashboard:**
+- ✅ Bouton "Toutes mes tâches" (symétrique avec "Aujourd'hui")
+- ✅ Nombre de tâches "À faire" >= 0
+- ✅ Import contacts dans modal ajout prospect
 
 ## Remaining Tasks (Backlog)
-1. **P2**: Continue refactoring AppShell.js (still ~5000 lines)
-   - Extract TodayTab into separate file
-   - Extract ProspectsTab into separate file
-   - Extract SettingsTab into separate file
-   - Extract ProspectDetail into separate file
-   - Cleanup dead code (showAddForm in ProspectsTab)
+1. **P2**: Continue refactoring AppShell.js (still ~5600 lines)
 2. **P2**: Refactor server.py into separate routers
 3. **P2**: Add more languages (ES, IT, DE)
 4. **P3**: Verify VAPID keys in production
