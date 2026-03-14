@@ -972,11 +972,80 @@ textarea::placeholder {
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: all 0.2s;
+  margin-bottom: 12px;
 }
 
 .prospect-card:hover {
   border-color: rgba(0, 74, 173, 0.15);
   box-shadow: var(--shadow-md);
+}
+
+.prospect-card .name {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.prospect-card .contact {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ===== INPUT DARK MODE ===== */
+.input-dark {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.input-dark:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.1);
+}
+
+.input-dark::placeholder {
+  color: var(--ink-soft);
+}
+
+/* ===== TEXT STYLES ===== */
+.text-caption {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+/* ===== CHIP BUTTONS ===== */
+.btn-chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-chip:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.btn-chip.active {
+  background: var(--grad);
+  border-color: transparent;
+  color: white;
 }
 
 /* ===== SETTINGS ===== */

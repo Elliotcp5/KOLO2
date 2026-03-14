@@ -1178,20 +1178,20 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 {isExpanded && (
                   <div style={{ 
                     padding: '0 16px 16px 16px',
-                    borderTop: '1px solid var(--border)',
-                    background: 'var(--surface-2)'
+                    borderTop: `1px solid ${c('border')}`,
+                    background: c('surface2')
                   }}>
                     {/* Task details */}
                     <div style={{ padding: '12px 0', fontSize: '14px' }}>
-                      <div style={{ color: 'var(--muted)', marginBottom: '8px' }}>
+                      <div style={{ color: c('muted'), marginBottom: '8px' }}>
                         {task.title}
                       </div>
                       {task.description && (
-                        <div style={{ color: 'var(--text)', marginBottom: '8px' }}>
+                        <div style={{ color: c('text'), marginBottom: '8px' }}>
                           {task.description}
                         </div>
                       )}
-                      <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
+                      <div style={{ color: c('muted'), fontSize: '12px' }}>
                         <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
                         {taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
                           weekday: 'long', 
@@ -1204,12 +1204,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     {/* Prospect info if available */}
                     {task.prospect && (
                       <div style={{ 
-                        background: 'var(--surface)', 
+                        background: c('surface'), 
                         borderRadius: '10px', 
                         padding: '12px',
                         marginBottom: '12px'
                       }}>
-                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <div style={{ fontSize: '12px', color: c('muted'), marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           {locale === 'fr' ? 'Contact' : 'Contact'}
                         </div>
                         {task.prospect.phone && (
@@ -1219,12 +1219,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                               display: 'flex', 
                               alignItems: 'center', 
                               gap: '8px', 
-                              color: 'var(--text)', 
+                              color: c('text'), 
                               textDecoration: 'none',
                               marginBottom: '6px',
                               fontSize: '14px'
                             }}>
-                            <Phone size={14} style={{ color: 'var(--accent)' }} />
+                            <Phone size={14} style={{ color: c('accent') }} />
                             {task.prospect.phone}
                           </a>
                         )}
@@ -1235,11 +1235,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                               display: 'flex', 
                               alignItems: 'center', 
                               gap: '8px', 
-                              color: 'var(--text)', 
+                              color: c('text'), 
                               textDecoration: 'none',
                               fontSize: '14px'
                             }}>
-                            <Mail size={14} style={{ color: 'var(--accent)' }} />
+                            <Mail size={14} style={{ color: c('accent') }} />
                             {task.prospect.email}
                           </a>
                         )}
@@ -1249,12 +1249,6 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     {/* Proactive AI SMS for overdue tasks */}
                     {isOverdue && task.prospect?.phone && (
                       <div style={{
-                        background: isDark 
-                          ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.25) 100%)'
-                          : 'linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(236, 72, 153, 0.15) 100%)',
-                        border: isDark 
-                          ? '1px solid rgba(139, 92, 246, 0.45)'
-                          : '1px solid rgba(139, 92, 246, 0.35)',
                         borderRadius: '10px',
                         padding: '12px',
                         marginBottom: '12px'
@@ -1266,7 +1260,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             style={{
                               width: '100%',
                               padding: '12px',
-                              background: 'linear-gradient(135deg, var(--accent) 0%, #EC4899 100%)',
+                              background: isDark 
+                                ? 'linear-gradient(135deg, #E82EA4 0%, #8A2BE2 100%)'
+                                : 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
                               border: 'none',
                               borderRadius: '8px',
                               color: 'white',
@@ -1948,41 +1944,22 @@ const ProspectsTab = ({ onSelectProspect }) => {
         <h1 style={{ fontSize: '28px', fontWeight: '700', color: c('text') }}>
           {t('prospects')}
         </h1>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={() => setShowSearch(!showSearch)}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              padding: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: showSearch ? c('accentPurple') : c('text')
-            }}
-            data-testid="search-toggle-button"
-          >
-            <Search size={22} />
-          </button>
-          <button 
-            onClick={() => setShowAddForm(true)}
-            style={{ 
-              width: 'auto', 
-              height: '44px', 
-              padding: '0 20px',
-              background: c('gradient'),
-              color: 'white',
-              border: 'none',
-              borderRadius: '999px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-            data-testid="add-prospect-button"
-          >
-            {t('addProspect')}
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowSearch(!showSearch)}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: showSearch ? c('accentPurple') : c('text')
+          }}
+          data-testid="search-toggle-button"
+        >
+          <Search size={22} />
+        </button>
       </div>
 
       {/* Search bar */}
@@ -4953,24 +4930,14 @@ const TasksTab = ({ onRefresh }) => {
 // ==================== QUICK ADD PROSPECT MODAL ====================
 const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const { t, locale } = useLocale();
+  const { c, isDark } = useThemeColors();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [source, setSource] = useState('');
   const [creating, setCreating] = useState(false);
 
   const isFormValid = name.trim() && phone.trim() && email.trim() && notes.trim();
-
-  const sourceOptions = [
-    { value: '', label: locale === 'fr' ? 'Source (optionnel)' : 'Source (optional)' },
-    { value: 'leboncoin', label: 'Leboncoin' },
-    { value: 'seloger', label: 'SeLoger' },
-    { value: 'pap', label: 'PAP' },
-    { value: 'reseau', label: locale === 'fr' ? 'Réseau' : 'Network' },
-    { value: 'recommandation', label: locale === 'fr' ? 'Recommandation' : 'Referral' },
-    { value: 'autre', label: locale === 'fr' ? 'Autre' : 'Other' }
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -4985,7 +4952,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           full_name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
-          source: source || 'manual',
+          source: 'manual',
           status: 'nouveau',
           notes: notes.trim()
         })
@@ -5018,7 +4985,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
     }} onClick={onClose}>
       <div 
         style={{
-          background: 'var(--bg)',
+          background: c('bg'),
           borderRadius: '20px 20px 0 0',
           width: '100%',
           maxWidth: '430px',
@@ -5032,12 +4999,12 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
         <div style={{ 
           width: '40px', 
           height: '4px', 
-          background: 'var(--border)', 
+          background: c('border'), 
           borderRadius: '2px', 
           margin: '0 auto 16px' 
         }} />
         
-        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', textAlign: 'center' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', textAlign: 'center', color: c('text') }}>
           {locale === 'fr' ? 'Nouveau prospect' : 'New prospect'}
         </h3>
         
@@ -5046,7 +5013,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ 
               fontSize: '13px', 
-              color: 'var(--muted)', 
+              color: c('muted'), 
               marginBottom: '8px', 
               display: 'block',
               fontWeight: '500'
@@ -5063,10 +5030,10 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
+                background: c('surface'),
+                border: `1px solid ${c('border')}`,
                 borderRadius: '10px',
-                color: 'var(--text)',
+                color: c('text'),
                 fontSize: '15px',
                 height: '52px',
                 boxSizing: 'border-box'
@@ -5078,7 +5045,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ 
               fontSize: '13px', 
-              color: 'var(--muted)', 
+              color: c('muted'), 
               marginBottom: '8px', 
               display: 'block',
               fontWeight: '500'
@@ -5094,10 +5061,10 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
+                background: c('surface'),
+                border: `1px solid ${c('border')}`,
                 borderRadius: '10px',
-                color: 'var(--text)',
+                color: c('text'),
                 fontSize: '15px',
                 height: '52px',
                 boxSizing: 'border-box'
@@ -5109,7 +5076,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ 
               fontSize: '13px', 
-              color: 'var(--muted)', 
+              color: c('muted'), 
               marginBottom: '8px', 
               display: 'block',
               fontWeight: '500'
@@ -5125,10 +5092,10 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
+                background: c('surface'),
+                border: `1px solid ${c('border')}`,
                 borderRadius: '10px',
-                color: 'var(--text)',
+                color: c('text'),
                 fontSize: '15px',
                 height: '52px',
                 boxSizing: 'border-box'
@@ -5140,7 +5107,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ 
               fontSize: '13px', 
-              color: 'var(--muted)', 
+              color: c('muted'), 
               marginBottom: '8px', 
               display: 'block',
               fontWeight: '500'
@@ -5158,73 +5125,14 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
+                background: c('surface'),
+                border: `1px solid ${c('border')}`,
                 borderRadius: '10px',
-                color: 'var(--text)',
+                color: c('text'),
                 fontSize: '15px',
                 resize: 'none'
               }}
             />
-          </div>
-          
-          {/* Source */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              fontSize: '13px', 
-              color: 'var(--muted)', 
-              marginBottom: '8px', 
-              display: 'block',
-              fontWeight: '500'
-            }}>
-              Source
-            </label>
-            <div style={{ position: 'relative' }}>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                data-testid="quick-prospect-source"
-                style={{
-                  width: '100%',
-                  padding: '14px 40px 14px 16px',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  color: source ? 'var(--text)' : 'var(--muted)',
-                  fontSize: '15px',
-                  height: '52px',
-                  boxSizing: 'border-box',
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {sourceOptions.map(opt => (
-                  <option key={opt.value} value={opt.value} style={{ color: 'var(--text)' }}>{opt.label}</option>
-                ))}
-              </select>
-              {/* Custom dropdown arrow */}
-              <svg 
-                style={{
-                  position: 'absolute',
-                  right: '14px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  pointerEvents: 'none',
-                  width: '18px',
-                  height: '18px'
-                }}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--muted)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </div>
           </div>
           
           <button
@@ -5234,10 +5142,10 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
             style={{
               width: '100%',
               padding: '14px',
-              background: isFormValid ? 'var(--accent)' : 'var(--surface)',
+              background: isFormValid ? c('accent') : c('surface'),
               border: 'none',
               borderRadius: '10px',
-              color: isFormValid ? 'white' : 'var(--muted)',
+              color: isFormValid ? 'white' : c('muted'),
               fontSize: '16px',
               fontWeight: '600',
               cursor: isFormValid ? 'pointer' : 'not-allowed'
