@@ -1,184 +1,105 @@
-# KOLO - CRM Immobilier
+# KOLO - Product Requirements Document
 
-## Problem Statement
-Application de gestion de prospects immobiliers avec suivi automatisé, suggestions IA et communication SMS/Email.
+## Overview
+KOLO is a mobile-first CRM application designed for independent real estate agents. It uses AI to help agents track prospects, schedule follow-ups, and close more deals.
 
-## Implementation Status - ALL PHASES COMPLETE ✅
+## Core Features
+1. **Today Dashboard** - Daily task list with AI suggestions
+2. **Prospects Management** - Full CRUD for prospect contacts
+3. **AI-Powered Follow-ups** - Automated task generation and message writing
+4. **Dark/Light Mode** - Full theme support with sun/moon toggle
+5. **Push Notifications** - Reminders for scheduled tasks
+6. **Onboarding Tutorial** - Step-by-step introduction for new users
 
-### Phases 1-6 - COMPLETE (March 11, 2026)
-- ✅ Phase 1: Theme System Light/Dark
-- ✅ Phase 2: Prospect Statuses (5 statuts colorés)
-- ✅ Phase 3: UX Improvements
-- ✅ Phase 4: Welcome Tutorial (5 étapes)
-- ✅ Phase 5: Native Contact Import
-- ✅ Phase 6: Landing Page redesignée
+## Tech Stack
+- **Frontend**: React.js with CSS custom properties for theming
+- **Backend**: FastAPI (Python)
+- **Database**: MongoDB
+- **AI**: Anthropic Claude (via Emergent LLM Key)
+- **Payments**: Stripe
+- **Email**: Resend
+- **SMS**: Brevo
+- **Analytics**: Google Analytics 4
 
-### UI/UX Corrections - COMPLETE (March 14, 2026)
-- ✅ Formulaire Nouveau prospect: Labels fixes au-dessus des inputs
-- ✅ Mon Profil: Doublon "Résilier" supprimé dans Billing
-- ✅ Points verts: Tooltip température ajouté
-- ✅ Landing: Témoignages supprimés
-- ✅ Landing: Alternance fonds dark/white
+## Version History
 
-### Security Hardening - COMPLETE (March 11, 2026)
-- ✅ Rate limiting (slowapi): 10/min auth, 30/min AI, 100/min general
-- ✅ Input validation & sanitization
-- ✅ XSS prevention
+### v2.0.0 (March 14, 2026) - UI/UX Redesign Complete
+**Fixed Issues:**
+- Dark mode visibility - all text and icons now visible
+- Settings page icons - proper theme-aware colors
+- Edit prospect modal - displays all fields correctly
+- Source dropdown in add prospect - fully functional
+- Temperature button in prospect detail - visible with proper styling
+- Theme toggle - sun/moon switch implementation
+- Version number updated to 2.0.0
+- Logout button visibility
+- Profile settings icons
 
-### MAJOR UI REDESIGN - COMPLETE (March 14, 2026)
-Based on provided HTML files:
+**Design System:**
+- Fonts: League Spartan (headings), DM Sans (body)
+- Colors: Blue (#004AAD), Purple (#CB6CE6), gradient
+- Border radius: 8px, 12px, 16px, 999px (pills)
+- Shadows: Light mode only
 
-**New Design System Implemented:**
-- ✅ Google Fonts: League Spartan (headings), DM Sans (body)
-- ✅ New color palette: #004AAD (blue), #CB6CE6 (purple)
-- ✅ Gradient: linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)
-- ✅ Light mode: #FFFFFF bg, #F7F6FB surface, #0E0B1E ink
-- ✅ Dark mode: #0F0D1A bg, #181526 surface, #F0EEF8 ink
+### v1.x (Previous Versions)
+- Initial implementation of all core features
+- AI integration for task suggestions and message generation
+- Stripe subscription and trial period
+- Push notifications
+- Onboarding tutorial
 
-**Landing Page Redesigned:**
-- ✅ Hero with phone mockups (3 screens)
-- ✅ Social proof marquee strip
-- ✅ Problem section with 3 cards
-- ✅ Features with mockups (AI relances, swipe)
-- ✅ Pricing card with gradient border
-- ✅ FAQ accordion
-- ✅ Final CTA with gradient background
-- ✅ Reveal animations on scroll
+## Pages & Components
 
-**Dashboard Redesigned:**
-- ✅ New color system applied
-- ✅ Tabs with gradient active state
-- ✅ Stats row cards
-- ✅ AI Assistant card with gradient background
-- ✅ Task cards with colored left border
-- ✅ Bottom nav with centered + button
-- ✅ Settings page clean
+### Landing Page (`LandingPageNew.js`)
+- Header with KOLO logo, language selector (FR/EN), Login, Try for free
+- Hero section with headline and phone mockups
+- Features section
+- Pricing section
+- FAQ section
 
-## Architecture
+### Login/Register Pages
+- KOLO text logo with accent dot
+- Gradient CTA buttons
+- Form validation
 
-### Frontend
-- React 18
-- Google Fonts: League Spartan, DM Sans
-- Custom CSS variables design system
-- Lucide React icons
-- Shadcn/UI components
-- canvas-confetti
+### Dashboard (`AppShell.js`)
+- Today tab with tasks
+- All my tasks view (limited to 10 completed)
+- AI suggestions card
+- Task completion with swipe gesture
 
-### Backend
-- FastAPI (Python)
-- MongoDB
-- JWT sessions
-- slowapi rate limiting
-- Emergent LLM integration (GPT-4.1-nano)
+### Prospects (`AppShell.js`)
+- List view with status badges
+- Detail view with temperature, edit, AI message
+- Add prospect modal with source dropdown
+- Edit prospect modal
 
-### Key Files
-- `/app/frontend/src/pages/AppShell.js` - Main app (~5000 lines)
-- `/app/frontend/src/pages/LandingPageNew.js` - New landing page
-- `/app/frontend/src/styles/themes.css` - Design system CSS
-- `/app/frontend/src/styles/landing.css` - Landing specific CSS
-- `/app/backend/server.py` - API backend
-
-## Database Schema
-
-### users
-- user_id, email, password_hash
-- theme_preference: 'light' | 'dark'
-- didacticiel_completed, streak_current
-- subscription_status
-
-### prospects
-- prospect_id, user_id
-- full_name, phone, email
-- status: 'nouveau' | 'contacte' | 'qualifie' | 'offre' | 'signe'
-- source, score, notes
-
-### tasks
-- task_id, user_id, prospect_id
-- title, task_type, due_date
-- completed, completed_at
+### Settings (`AppShell.js - SettingsTab`)
+- Profile section (Name, Phone)
+- Billing section (Payment, Address, Email)
+- About section (Notifications, Password, Version 2.0.0)
+- Appearance section (Theme toggle sun/moon)
+- Logout button
 
 ## API Endpoints
+- `/api/auth/login` - User authentication
+- `/api/auth/register` - User registration
+- `/api/auth/me` - Get user profile
+- `/api/prospects` - CRUD for prospects
+- `/api/tasks` - CRUD for tasks
+- `/api/tasks/today` - Get today's tasks
+- `/api/prospects/{id}/generate-message-ia` - AI message generation
 
-### Auth (rate limited: 10/min)
-- POST /api/auth/register
-- POST /api/auth/login
-- GET /api/auth/me
-- PUT /api/auth/preferences
-- GET /api/auth/streak
+## Testing
+- Test user: test@test.com / testtest
+- All UI flows verified in light and dark mode
+- Source dropdown verified working
+- Edit modal verified showing all fields
 
-### Prospects (rate limited: 100/min)
-- GET /api/prospects
-- POST /api/prospects
-- GET /api/prospects/:id
-- PATCH /api/prospects/:id
-- DELETE /api/prospects/:id
-- POST /api/prospects/batch
-
-### Tasks
-- GET /api/tasks
-- POST /api/tasks
-- PUT /api/tasks/:id/complete
-- DELETE /api/tasks/:id
-
-### AI (rate limited: 30/min)
-- POST /api/ai/suggestions
-- POST /api/prospects/:id/generate-message
-
-## Backlog
-
-### P1 - High Priority
-- Refactoring AppShell.js (modularisation en composants)
-- Refactoring server.py (séparation en routers)
-- Tests automatisés
-
-### P2 - Medium Priority
-- Notifications push (VAPID keys)
-- Analytics dashboard
-- Export prospects CSV
-
-### P3 - Low Priority
-- Multi-langue complète
-- Intégration calendrier
-- Templates email personnalisables
-
-## Integrations
-- Stripe (paiements)
-- Brevo (SMS)
-- Resend (emails)
-- OpenAI GPT-4.1-nano via Emergent (génération IA)
-- Google Analytics 4
-
-## Test Credentials
-- test@test.com / testtest
-- pressardelliot@gmail.com / Test123
-
-## Design System Reference
-
-### Colors
-```css
-/* Light Mode */
---bg: #FFFFFF
---bg-alt: #F7F6FB
---ink: #0E0B1E
---ink-mid: #4A4560
---ink-soft: #8A849E
---blue: #004AAD
---purple: #CB6CE6
-
-/* Dark Mode */
---bg: #0F0D1A
---bg-alt: #181526
---ink: #F0EEF8
---ink-mid: #B8B2D0
---ink-soft: #6B6585
-```
-
-### Typography
-- Headings: League Spartan 700-800
-- Body: DM Sans 400-500
-
-### Border Radius
-- Cards: 16px
-- Buttons: 12px (or 999px for pills)
-- Inputs: 10px
-- Badges: 6px
+## Remaining Tasks (Backlog)
+1. **P1**: Verify onboarding/tutorial flow end-to-end
+2. **P1**: Verify AI features quality and speed
+3. **P1**: Full security hardening (rate limiting, input validation)
+4. **P2**: Refactor AppShell.js into smaller components
+5. **P2**: Refactor server.py into separate routers
+6. **P2**: Verify VAPID keys in production
