@@ -41,6 +41,12 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
   - Muted: #A0A4AE
   - Accent: #E82EA4
 
+### Bottom Navigation
+- **Today Tab Active**: Gradient text + icon with gradient border
+- **Central FAB**: Gradient rounded button with glow shadow
+- **Prospects Tab Inactive**: Gray icon and text
+- **Profile Pill**: Dynamic initials from user's full name (EP = Elliot Pressard, MC = Marie Courtin)
+
 ### Typography
 - Heading Font: League Spartan
 - Body Font: DM Sans
@@ -49,98 +55,79 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 - Body: 15px, 400 weight
 - Caption: 13px, 500 weight
 
-### Components
-- Border Radius: 8px (small), 12px (medium), 14px (card), 999px (pill)
-- Buttons: Gradient primary, outline secondary
-- Cards: 1px border, subtle shadow in light mode only
+## Security Hardening ✅
+
+### Rate Limiting (via slowapi)
+- **Auth endpoints**: 10 requests/minute/IP
+- **Prospects endpoints**: 100 requests/minute/IP
+- **AI generation endpoints**: 30 requests/minute/IP
+
+### Input Validation
+- Email format validation (regex)
+- Phone format validation (international format support)
+- Password strength: 6-128 characters
+- Input sanitization: HTML escape, length limits
+- XSS prevention
 
 ## Version History
 
-### v2.0.0 (March 14, 2026) - UI/UX Redesign Complete ✅
-**TESTED AND VERIFIED**
+### v2.0.0 (March 14, 2026) - UI/UX Redesign + Security ✅
 
 **UI Fixes:**
 - ✅ Dark mode - all text and icons visible
-- ✅ Settings page icons - proper theme-aware colors
-- ✅ Edit prospect modal - displays all fields correctly
-- ✅ Source dropdown - fully functional
-- ✅ Temperature button - visible with proper styling
-- ✅ Theme toggle - sun/moon switch implementation
-- ✅ Version number - updated to 2.0.0
-- ✅ Logout button - visible with icon and text
-- ✅ Profile settings - all icons visible
+- ✅ Bottom navigation - gradient active states, glow FAB
+- ✅ Profile initials - dynamic based on user name
+- ✅ Settings page icons - theme-aware colors
+- ✅ Theme toggle - sun/moon switch
+- ✅ Version 2.0.0
 
 **Landing Page:**
-- ✅ "Essayer gratuitement" button (correct French)
-- ✅ Single checkmark per benefit line
+- ✅ "Essayer gratuitement" button
+- ✅ Single checkmark per benefit
 - ✅ Header spacing improved
-- ✅ "1 mois gratuit" (not 7 days)
+- ✅ "1 mois gratuit"
 
 **Auth Pages:**
-- ✅ Login: "Content de vous revoir !" (French greeting)
-- ✅ Register: "1 mois gratuit · Sans carte bancaire"
+- ✅ Login: "Content de vous revoir !"
+- ✅ Register: "1 mois gratuit"
 - ✅ KOLO text logo with colored dot
-- ✅ Gradient buttons visible
 
-**Dashboard:**
-- ✅ Profile pill with initials "EP"
-- ✅ Pill-shaped segment buttons
-- ✅ Stats cards with gradient text
-- ✅ AI Assistant card properly styled
-- ✅ Action buttons visible (call, email, SMS)
+**Security:**
+- ✅ Rate limiting on all public endpoints
+- ✅ Input sanitization
+- ✅ Email/phone validation
+- ✅ XSS prevention
 
 ## Pages & Components
 
-### Landing Page (`LandingPageNew.js`)
-- Header: KOLO logo, language selector (FR/EN), Connexion, Essayer gratuitement
-- Hero section with headline and phone mockups
-- Features section
-- Pricing section
-- FAQ section
-
-### Login/Register Pages
-- KOLO text logo with accent dot
-- Gradient CTA buttons
-- Form validation
-- French translations
-
 ### Dashboard (`AppShell.js`)
-- Today tab with tasks
-- All tasks view (limited to 10 completed)
+- KOLO logo + Profile pill with dynamic initials
+- Stats cards (Done, Prospects, To do)
 - AI suggestions card
-- Task completion with swipe gesture
-
-### Prospects (`AppShell.js`)
-- List view with status badges
-- Detail view with temperature, edit, AI message
-- Add prospect modal with source dropdown
-- Edit prospect modal with all fields
+- Task list with swipe-to-complete
+- Bottom navigation with gradient active states
 
 ### Settings (`AppShell.js - SettingsTab`)
 - Profile section (Name, Phone)
-- Billing section (Payment, Address, Email)
-- About section (Notifications, Password, Version 2.0.0)
-- Appearance section (Theme toggle sun/moon)
+- Billing section
+- Notifications toggle
+- Theme toggle (sun/moon)
+- Version 2.0.0
 - Logout button
 
-## API Endpoints
-- `/api/auth/login` - User authentication
-- `/api/auth/register` - User registration
-- `/api/auth/me` - Get user profile
-- `/api/prospects` - CRUD for prospects
-- `/api/tasks` - CRUD for tasks
-- `/api/tasks/today` - Get today's tasks
-- `/api/prospects/{id}/generate-message-ia` - AI message generation
+## API Endpoints (with rate limits)
+- `/api/auth/login` - 10/min
+- `/api/auth/register` - 10/min
+- `/api/prospects` - 100/min
+- `/api/prospects/{id}/generate-message` - 30/min
 
 ## Testing Status
 - **Test Report**: `/app/test_reports/iteration_14.json`
-- **Success Rate**: 100% (Backend + Frontend)
+- **Success Rate**: 100%
 - **Test User**: test@test.com / testtest
-- **New Account Tested**: test_user_32270@test.com
 
 ## Remaining Tasks (Backlog)
-1. **P1**: Security hardening (rate limiting, input validation)
-2. **P2**: Refactor AppShell.js into smaller components
-3. **P2**: Refactor server.py into separate routers
-4. **P2**: Verify VAPID keys in production
-5. **P2**: Add more languages (ES, IT, DE)
+1. **P2**: Refactor AppShell.js (~5400 lines → smaller components)
+2. **P2**: Refactor server.py into separate routers
+3. **P2**: Add more languages (ES, IT, DE)
+4. **P3**: Verify VAPID keys in production

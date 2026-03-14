@@ -40,6 +40,15 @@ const getProspectStatusInfo = (status, locale = 'fr') => {
   };
 };
 
+// Helper: Get user initials from full name
+const getInitials = (fullName) => {
+  if (!fullName || typeof fullName !== 'string' || !fullName.trim()) return '';
+  const names = fullName.trim().split(' ').filter(n => n.length > 0);
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0].charAt(0).toUpperCase();
+  return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+};
+
 // Theme-aware color helper - Updated to new design system
 const getThemeColor = (theme, type) => {
   const colors = {
@@ -122,7 +131,7 @@ const authFetch = (url, options = {}) => {
 };
 
 // ==================== TODAY TAB ====================
-const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
+const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const { t, formatDate, locale } = useLocale();
   const { c, isDark } = useThemeColors();
   const navigate = useNavigate();
@@ -137,6 +146,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
   const [swipeX, setSwipeX] = useState(0);
   const [completedTaskId, setCompletedTaskId] = useState(null);
   const [viewMode, setViewMode] = useState('today'); // 'today' or 'all'
+  
+  // Get user initials for profile button
+  const userInitials = getInitials(userName);
   
   // AI SMS Modal state
   const [showSmsModal, setShowSmsModal] = useState(false);
@@ -629,7 +641,9 @@ const TodayTab = ({ onOpenProfile, onSelectProspect }) => {
             color: 'white',
             fontSize: '11px',
             fontWeight: '700'
-          }}>EP</div>
+          }}>
+            {userInitials || ''}
+          </div>
           <span style={{ color: c('text'), fontSize: '14px', fontWeight: '500' }}>{locale === 'fr' ? 'Mon profil' : 'My profile'}</span>
         </button>
       </div>
@@ -5186,51 +5200,187 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
 // ==================== BOTTOM NAVIGATION ====================
 const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   const { locale } = useLocale();
+  const { c, isDark } = useThemeColors();
   
   return (
-    <nav className="bottom-nav symmetric-nav">
-      {/* SVG gradient definition for active icons */}
+    <nav style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '85px',
+      background: isDark ? '#1A1A24' : '#FFFFFF',
+      borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 32px',
+      paddingBottom: 'env(safe-area-inset-bottom, 12px)',
+      zIndex: 1000
+    }}>
+      {/* SVG Gradient definitions */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
-          <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id="navActiveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#004AAD" />
             <stop offset="100%" stopColor="#CB6CE6" />
           </linearGradient>
         </defs>
       </svg>
       
+      {/* Today Tab */}
       <div 
-        className={`nav-item ${activeTab === 'today' ? 'active' : ''}`}
         onClick={() => setActiveTab('today')}
         data-testid="nav-today"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          minWidth: '80px'
+        }}
       >
-        <Calendar strokeWidth={1.5} size={22} />
-        <span>
+        <div style={{
+          width: '44px',
+          height: '44px',
+          borderRadius: '12px',
+          background: activeTab === 'today' 
+            ? 'transparent' 
+            : 'transparent',
+          border: activeTab === 'today' 
+            ? '2px solid transparent'
+            : 'none',
+          borderImage: activeTab === 'today' 
+            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%) 1'
+            : 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}>
+          {activeTab === 'today' && (
+            <div style={{
+              position: 'absolute',
+              inset: '-2px',
+              borderRadius: '12px',
+              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+              padding: '2px',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude'
+            }} />
+          )}
+          <Calendar 
+            size={22} 
+            strokeWidth={activeTab === 'today' ? 2 : 1.5} 
+            style={{ 
+              color: activeTab === 'today' 
+                ? (isDark ? '#CB6CE6' : '#004AAD')
+                : (isDark ? '#6B7280' : '#9CA3AF')
+            }} 
+          />
+        </div>
+        <span style={{ 
+          fontSize: '12px', 
+          fontWeight: activeTab === 'today' ? '600' : '500',
+          background: activeTab === 'today' 
+            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
+            : 'none',
+          WebkitBackgroundClip: activeTab === 'today' ? 'text' : 'initial',
+          WebkitTextFillColor: activeTab === 'today' ? 'transparent' : 'initial',
+          color: activeTab === 'today' 
+            ? 'transparent'
+            : (isDark ? '#6B7280' : '#9CA3AF')
+        }}>
           {locale === 'fr' ? "Aujourd'hui" : 'Today'}
         </span>
       </div>
       
-      {/* Central FAB - perfectly centered */}
-      <div className="nav-item fab-container">
-        <button
-          onClick={() => {
-            if ('vibrate' in navigator) navigator.vibrate(8);
-            onAddProspect();
-          }}
-          data-testid="fab-add-prospect"
-          className="fab-button"
-        >
-          <Plus size={28} strokeWidth={2.5} />
-        </button>
-      </div>
+      {/* Central FAB - Gradient oval pill */}
+      <button
+        onClick={() => {
+          if ('vibrate' in navigator) navigator.vibrate(8);
+          onAddProspect();
+        }}
+        data-testid="fab-add-prospect"
+        style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          border: 'none',
+          background: 'linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%)',
+          boxShadow: isDark 
+            ? '0 8px 24px rgba(203, 108, 230, 0.4)'
+            : '0 8px 24px rgba(0, 74, 173, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transform: 'translateY(-8px)'
+        }}
+      >
+        <Plus size={28} strokeWidth={2.5} style={{ color: 'white' }} />
+      </button>
       
+      {/* Prospects Tab */}
       <div 
-        className={`nav-item ${activeTab === 'prospects' ? 'active' : ''}`}
         onClick={() => setActiveTab('prospects')}
         data-testid="nav-prospects"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          minWidth: '80px'
+        }}
       >
-        <Users strokeWidth={1.5} size={22} />
-        <span>Prospects</span>
+        <div style={{
+          width: '44px',
+          height: '44px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}>
+          {activeTab === 'prospects' && (
+            <div style={{
+              position: 'absolute',
+              inset: '-2px',
+              borderRadius: '12px',
+              background: 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+              padding: '2px',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude'
+            }} />
+          )}
+          <Users 
+            size={22} 
+            strokeWidth={activeTab === 'prospects' ? 2 : 1.5} 
+            style={{ 
+              color: activeTab === 'prospects' 
+                ? (isDark ? '#CB6CE6' : '#004AAD')
+                : (isDark ? '#6B7280' : '#9CA3AF')
+            }} 
+          />
+        </div>
+        <span style={{ 
+          fontSize: '12px', 
+          fontWeight: activeTab === 'prospects' ? '600' : '500',
+          background: activeTab === 'prospects' 
+            ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
+            : 'none',
+          WebkitBackgroundClip: activeTab === 'prospects' ? 'text' : 'initial',
+          WebkitTextFillColor: activeTab === 'prospects' ? 'transparent' : 'initial',
+          color: activeTab === 'prospects' 
+            ? 'transparent'
+            : (isDark ? '#6B7280' : '#9CA3AF')
+        }}>
+          Prospects
+        </span>
       </div>
     </nav>
   );
@@ -5247,6 +5397,7 @@ const AppShell = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userStreak, setUserStreak] = useState(0);
   const [userPrefsLoaded, setUserPrefsLoaded] = useState(false);
+  const [userName, setUserName] = useState('');
 
   // Load user preferences on mount
   useEffect(() => {
@@ -5265,6 +5416,8 @@ const AppShell = () => {
           }
           // Set streak
           setUserStreak(userData.streak_current || 0);
+          // Set user name for initials
+          setUserName(userData.full_name || '');
         }
       } catch (e) {
         console.error('Failed to load user preferences:', e);
@@ -5357,7 +5510,7 @@ const AppShell = () => {
       case 'tasks':
         return <TasksTab key={refreshKey} onRefresh={() => setRefreshKey(prev => prev + 1)} />;
       default:
-        return <TodayTab key={refreshKey} onOpenProfile={() => setShowSettings(true)} onSelectProspect={handleSelectProspect} />;
+        return <TodayTab key={refreshKey} onOpenProfile={() => setShowSettings(true)} onSelectProspect={handleSelectProspect} userName={userName} />;
     }
   };
 
