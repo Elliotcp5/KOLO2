@@ -361,44 +361,40 @@ const LandingPage = () => {
             <div className="feature-visual reveal-right">
               <div className="mockup-relances">
                 <div className="mock-topbar">
-                  <div className="mock-topbar-title">✦ {locale === 'fr' ? 'Relances du jour' : 'Today\'s follow-ups'}</div>
-                  <div className="mock-topbar-sub">{locale === 'fr' ? '3 prospects à contacter — triés par urgence' : '3 prospects to contact — sorted by urgency'}</div>
+                  <div className="mock-topbar-title">✦ {t('mockTodayFollowups')}</div>
+                  <div className="mock-topbar-sub">{t('mock3Prospects')}</div>
                 </div>
                 <div className="mock-list">
                   <div className="mock-row">
                     <div className="mock-av">ML</div>
                     <div className="mock-info">
                       <div className="mock-name">Marie Leblanc</div>
-                      <div className="mock-ai-msg">{locale === 'fr' ? 'A consulté l\'annonce 3x ce matin — fenêtre de closing ouverte' : 'Viewed the listing 3x this morning — closing window open'}</div>
+                      <div className="mock-ai-msg">{t('mockViewed3x')}</div>
                     </div>
-                    <span className="mock-urgent urgent-red">🔥 {locale === 'fr' ? 'Maintenant' : 'Now'}</span>
+                    <span className="mock-urgent urgent-red">🔥 {t('mockNow')}</span>
                   </div>
                   <div className="mock-row">
                     <div className="mock-av b">TM</div>
                     <div className="mock-info">
                       <div className="mock-name">Thomas Moreau</div>
-                      <div className="mock-ai-msg">{locale === 'fr' ? 'Pas de retour depuis 5 jours — relancer avec offre alternative' : 'No response for 5 days — follow up with alternative offer'}</div>
+                      <div className="mock-ai-msg">{t('mockNoResponse')}</div>
                     </div>
-                    <span className="mock-urgent urgent-amb">⚡ {locale === 'fr' ? 'Aujourd\'hui' : 'Today'}</span>
+                    <span className="mock-urgent urgent-amb">⚡ {t('mockToday')}</span>
                   </div>
                   <div className="mock-row">
                     <div className="mock-av c">SC</div>
                     <div className="mock-info">
                       <div className="mock-name">Sophie Curel</div>
-                      <div className="mock-ai-msg">{locale === 'fr' ? 'Vient de visiter — envoyer récapitulatif + disponibilités' : 'Just visited — send summary + availability'}</div>
+                      <div className="mock-ai-msg">{t('mockJustVisited')}</div>
                     </div>
-                    <span className="mock-urgent urgent-grn">✓ {locale === 'fr' ? 'Ce soir' : 'Tonight'}</span>
+                    <span className="mock-urgent urgent-grn">✓ {t('mockTonight')}</span>
                   </div>
                 </div>
                 <div className="mock-ai-insight">
                   <span className="ai-spark">✦</span>
                   <div>
-                    <div className="ai-ins-label">Insight IA</div>
-                    <div className="ai-ins-text">
-                      {locale === 'fr' 
-                        ? "Marie Leblanc a 87% de probabilité de signer cette semaine. Ne laissez pas passer cette fenêtre."
-                        : "Marie Leblanc has 87% probability of signing this week. Don't let this window pass."}
-                    </div>
+                    <div className="ai-ins-label">{t('mockInsightIA')}</div>
+                    <div className="ai-ins-text">{t('mockInsightText')}</div>
                   </div>
                 </div>
               </div>
@@ -408,56 +404,48 @@ const LandingPage = () => {
           {/* Feature 2 */}
           <div className="feature-block reverse">
             <div className="reveal-right">
-              <div className="feature-tag">📱 Mobile first</div>
+              <div className="feature-tag">📱 {t('feature2TagMobile')}</div>
               <h3 className="feature-title">
-                {locale === 'fr' ? (
-                  <>Swipez votre journée.<br/>D'une main.</>
-                ) : (
-                  <>Swipe your day.<br/>One-handed.</>
-                )}
+                {t('feature2TitleSwipe1')}<br/>{t('feature2TitleSwipe2')}
               </h3>
-              <p className="feature-body">
-                {locale === 'fr' 
-                  ? "Vous sortez d'une visite, vous glissez le contact vers la droite — c'est marqué comme fait, et la tâche suivante s'affiche. Votre journée avance toute seule, sans rien taper."
-                  : "You leave a visit, swipe the contact right — it's marked as done, and the next task appears. Your day moves forward on its own, without typing."}
-              </p>
+              <p className="feature-body">{t('feature2DescSwipe')}</p>
               <ul className="feature-points">
-                <li>{locale === 'fr' ? 'Glissez vers la droite pour valider une action en une seconde' : 'Swipe right to validate an action in one second'}</li>
-                <li>{locale === 'fr' ? 'La prochaine tâche s\'affiche automatiquement' : 'The next task appears automatically'}</li>
-                <li>{locale === 'fr' ? 'Zéro saisie — juste un geste, et c\'est dans l\'historique' : 'Zero typing — just a gesture, and it\'s in the history'}</li>
+                <li>{t('feature2Point1Swipe')}</li>
+                <li>{t('feature2Point2Swipe')}</li>
+                <li>{t('feature2Point3Swipe')}</li>
               </ul>
             </div>
             <div className="feature-visual reveal-left">
               <div className="mockup-swipe">
-                <div className="swipe-header">{locale === 'fr' ? 'Votre journée · 1 action restante' : 'Your day · 1 action left'}</div>
+                <div className="swipe-header">{t('mockYourDay')}</div>
                 <div className="swipe-card-active">
                   <div className="swipe-card-top">
                     <div className="swipe-av">ML</div>
                     <div>
                       <div className="swipe-name">Marie Leblanc</div>
-                      <div className="swipe-meta">{locale === 'fr' ? 'Visite · 14h30 · Rue Lecourbe' : 'Visit · 2:30pm · Rue Lecourbe'}</div>
+                      <div className="swipe-meta">{t('mockVisit')}</div>
                     </div>
-                    <span className="swipe-badge">🔥 {locale === 'fr' ? 'Maintenant' : 'Now'}</span>
+                    <span className="swipe-badge">🔥 {t('mockNow')}</span>
                   </div>
                   <div className="swipe-action">
-                    Swipe → · {locale === 'fr' ? 'Visite faite' : 'Visit done'} ✓
+                    Swipe → · {t('mockVisitDone')} ✓
                   </div>
                 </div>
                 <div className="swipe-done-list">
                   <div className="swipe-done">
                     <span>✅</span>
-                    <span>{locale === 'fr' ? 'Appel Thomas M.' : 'Call Thomas M.'} <span className="muted">{locale === 'fr' ? '· fait à 11h02' : '· done at 11:02'}</span></span>
+                    <span>{t('mockCallThomas')} <span className="muted">{t('mockDoneAt11')}</span></span>
                   </div>
                   <div className="swipe-done">
                     <span>✅</span>
-                    <span>SMS Sophie C. <span className="muted">{locale === 'fr' ? '· fait à 9h47' : '· done at 9:47'}</span></span>
+                    <span>SMS Sophie C. <span className="muted">{t('mockDoneAt9')}</span></span>
                   </div>
                 </div>
                 <div className="swipe-tip">
                   <span>👆</span>
                   <div>
-                    <div className="swipe-tip-title">{locale === 'fr' ? 'Un geste, c\'est fait' : 'One gesture, done'}</div>
-                    <div className="swipe-tip-text">{locale === 'fr' ? 'Swipe → pour valider. L\'historique se met à jour automatiquement.' : 'Swipe → to validate. History updates automatically.'}</div>
+                    <div className="swipe-tip-title">{t('mockOneGesture')}</div>
+                    <div className="swipe-tip-text">{t('mockSwipeToValidate')}</div>
                   </div>
                 </div>
               </div>
@@ -470,28 +458,20 @@ const LandingPage = () => {
       <section className="section" id="pricing">
         <div className="container">
           <div className="centered reveal">
-            <div className="section-tag">{locale === 'fr' ? 'Tarif' : 'Pricing'}</div>
+            <div className="section-tag">{t('pricingTag')}</div>
             <h2 className="section-title">
-              {locale === 'fr' ? (
-                <>Un prix. <span className="grad-text">Zéro surprise.</span></>
-              ) : (
-                <>One price. <span className="grad-text">Zero surprises.</span></>
-              )}
+              {t('pricingTitle1Line')} <span className="grad-text">{t('pricingTitle2Line')}</span>
             </h2>
-            <p className="section-body">
-              {locale === 'fr' 
-                ? "Pas de formule bronze/argent/or. Pas de piège. Tout est inclus dès le premier euro."
-                : "No bronze/silver/gold plans. No traps. Everything included from day one."}
-            </p>
+            <p className="section-body">{t('pricingSubtitle')}</p>
           </div>
           <div className="pricing-wrap reveal">
             <div className="pricing-card">
-              <div className="pricing-badge">✓ {locale === 'fr' ? '1 mois offert, sans CB' : '1 month free, no card'}</div>
+              <div className="pricing-badge">✓ {t('pricingBadge')}</div>
               <div className="price-row">
-                <span className="price-amount">9,99€</span>
-                <span className="price-period">/{locale === 'fr' ? 'mois' : 'month'}</span>
+                <span className="price-amount">{t('price')}</span>
+                <span className="price-period">/{t('pricingMonth')}</span>
               </div>
-              <p className="price-tagline">{locale === 'fr' ? 'Tout inclus · Sans engagement · Résiliable en 2 clics' : 'All included · No commitment · Cancel in 2 clicks'}</p>
+              <p className="price-tagline">{t('pricingDesc')}</p>
               <ul className="price-features">
                 {features.map((f, i) => (
                   <li key={i}>
@@ -501,9 +481,9 @@ const LandingPage = () => {
                 ))}
               </ul>
               <button className="btn-primary full" onClick={() => navigate('/register')}>
-                {locale === 'fr' ? 'Commencer gratuitement' : 'Start for free'} <ArrowRight size={18} />
+                {t('startFreeMonth')} <ArrowRight size={18} />
               </button>
-              <p className="pricing-micro">{locale === 'fr' ? 'Sans carte bancaire · Accès complet dès l\'inscription' : 'No credit card · Full access from signup'}</p>
+              <p className="pricing-micro">{t('pricingMicro')}</p>
             </div>
           </div>
         </div>
@@ -515,11 +495,7 @@ const LandingPage = () => {
           <div className="centered reveal">
             <div className="section-tag">FAQ</div>
             <h2 className="section-title">
-              {locale === 'fr' ? (
-                <>Questions <span className="grad-text">fréquentes.</span></>
-              ) : (
-                <>Frequently <span className="grad-text">asked.</span></>
-              )}
+              {t('faqSectionTitle')}
             </h2>
           </div>
           <div className="faq-list reveal">
@@ -542,18 +518,14 @@ const LandingPage = () => {
       <section className="cta-final">
         <div className="container">
           <h2 className="cta-title reveal">
-            {locale === 'fr' ? (
-              <>Votre prochain deal<br/><span className="grad-text">commence ici.</span></>
-            ) : (
-              <>Your next deal<br/><span className="grad-text">starts here.</span></>
-            )}
+            {t('finalCtaTitle1')}<br/><span className="grad-text">{t('finalCtaTitle2')}</span>
           </h2>
-          <p className="cta-sub reveal">{locale === 'fr' ? 'Rejoignez les agents qui closent plus, sans travailler plus.' : 'Join agents who close more, without working more.'}</p>
+          <p className="cta-sub reveal">{t('finalCtaSub')}</p>
           <div className="reveal">
             <button className="btn-final" onClick={() => navigate('/register')}>
-              {locale === 'fr' ? 'Démarrer — 1 mois gratuit' : 'Start — 1 month free'} <ArrowRight size={18} />
+              {t('finalCtaBtn')} <ArrowRight size={18} />
             </button>
-            <p className="cta-micro">{locale === 'fr' ? 'Sans carte bancaire · Accès complet en 2 minutes' : 'No credit card · Full access in 2 minutes'}</p>
+            <p className="cta-micro">{t('finalCtaMicro')}</p>
           </div>
         </div>
       </section>
@@ -565,14 +537,14 @@ const LandingPage = () => {
             <a href="/" className="footer-logo">
               KOLO<span className="logo-dot"></span>
             </a>
-            <p className="footer-copy">© 2026 KOLO. {locale === 'fr' ? 'Tous droits réservés.' : 'All rights reserved.'}</p>
+            <p className="footer-copy">© 2026 KOLO. {t('footerRights')}</p>
           </div>
         </div>
       </footer>
 
       {/* TOAST */}
       <div className={`toast ${showToast ? 'show' : ''}`}>
-        📬 {locale === 'fr' ? 'Vérifiez votre boîte mail — à tout de suite !' : 'Check your email — see you soon!'}
+        📬 {t('toastCheckEmail')}
       </div>
     </div>
   );

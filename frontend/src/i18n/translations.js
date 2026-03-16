@@ -106,8 +106,59 @@ const translations = {
     
     // Footer
     footerText: "© 2025 KOLO. Made with love for independent agents.",
+    footerRights: "All rights reserved.",
     privacyPolicy: "Privacy Policy",
     termsOfUse: "Terms of Use",
+    
+    // Feature 2 - Swipe
+    feature2TagMobile: "Mobile first",
+    feature2TitleSwipe1: "Swipe your day.",
+    feature2TitleSwipe2: "One-handed.",
+    feature2DescSwipe: "You leave a visit, swipe the contact right — it's marked as done, and the next task appears. Your day moves forward on its own, without typing.",
+    feature2Point1Swipe: "Swipe right to validate an action in one second",
+    feature2Point2Swipe: "The next task appears automatically",
+    feature2Point3Swipe: "Zero typing — just a gesture, and it's in the history",
+    
+    // Mockup - Follow-ups
+    mockTodayFollowups: "Today's follow-ups",
+    mock3Prospects: "3 prospects to contact — sorted by urgency",
+    mockViewed3x: "Viewed the listing 3x this morning — closing window open",
+    mockNow: "Now",
+    mockNoResponse: "No response for 5 days — follow up with alternative offer",
+    mockToday: "Today",
+    mockJustVisited: "Just visited — send summary + availability",
+    mockTonight: "Tonight",
+    mockInsightIA: "AI Insight",
+    mockInsightText: "Marie Leblanc has 87% probability of signing this week. Don't let this window pass.",
+    
+    // Mockup - Swipe
+    mockYourDay: "Your day · 1 action left",
+    mockVisit: "Visit · 2:30pm · Rue Lecourbe",
+    mockVisitDone: "Visit done",
+    mockCallThomas: "Call Thomas M.",
+    mockDoneAt11: "· done at 11:02",
+    mockDoneAt9: "· done at 9:47",
+    mockOneGesture: "One gesture, done",
+    mockSwipeToValidate: "Swipe → to validate. History updates automatically.",
+    
+    // Pricing section
+    pricingTag: "Pricing",
+    pricingTitle1Line: "One price.",
+    pricingTitle2Line: "No surprises.",
+    pricingDesc: "All included · No commitment · Cancel in 2 clicks",
+    pricingBadge: "1 month free, no card",
+    pricingMonth: "month",
+    pricingMicro: "No credit card · Full access from signup",
+    
+    // Final CTA
+    finalCtaTitle1: "Stop losing sales",
+    finalCtaTitle2: "to forgotten follow-ups.",
+    finalCtaSub: "Join agents who close more, without working more.",
+    finalCtaBtn: "Start — 1 month free",
+    finalCtaMicro: "No credit card · Full access in 2 minutes",
+    
+    // Toast
+    toastCheckEmail: "Check your email — see you soon!",
     
     // Landing - Original
     loginToKolo: "Log in",
@@ -429,8 +480,59 @@ const translations = {
     
     // Footer
     footerText: "© 2025 KOLO. Fait avec amour pour les agents indépendants.",
+    footerRights: "Tous droits réservés.",
     privacyPolicy: "Politique de confidentialité",
     termsOfUse: "Conditions d'utilisation",
+    
+    // Feature 2 - Swipe
+    feature2TagMobile: "Mobile first",
+    feature2TitleSwipe1: "Swipez votre journée.",
+    feature2TitleSwipe2: "D'une main.",
+    feature2DescSwipe: "Vous sortez d'une visite, vous glissez le contact vers la droite — c'est marqué comme fait, et la tâche suivante s'affiche. Votre journée avance toute seule, sans rien taper.",
+    feature2Point1Swipe: "Glissez vers la droite pour valider une action en une seconde",
+    feature2Point2Swipe: "La prochaine tâche s'affiche automatiquement",
+    feature2Point3Swipe: "Zéro saisie — juste un geste, et c'est dans l'historique",
+    
+    // Mockup - Follow-ups
+    mockTodayFollowups: "Relances du jour",
+    mock3Prospects: "3 prospects à contacter — triés par urgence",
+    mockViewed3x: "A consulté l'annonce 3x ce matin — fenêtre de closing ouverte",
+    mockNow: "Maintenant",
+    mockNoResponse: "Pas de retour depuis 5 jours — relancer avec offre alternative",
+    mockToday: "Aujourd'hui",
+    mockJustVisited: "Vient de visiter — envoyer récapitulatif + disponibilités",
+    mockTonight: "Ce soir",
+    mockInsightIA: "Insight IA",
+    mockInsightText: "Marie Leblanc a 87% de probabilité de signer cette semaine. Ne laissez pas passer cette fenêtre.",
+    
+    // Mockup - Swipe
+    mockYourDay: "Votre journée · 1 action restante",
+    mockVisit: "Visite · 14h30 · Rue Lecourbe",
+    mockVisitDone: "Visite faite",
+    mockCallThomas: "Appel Thomas M.",
+    mockDoneAt11: "· fait à 11h02",
+    mockDoneAt9: "· fait à 9h47",
+    mockOneGesture: "Un geste, c'est fait",
+    mockSwipeToValidate: "Swipe → pour valider. L'historique se met à jour automatiquement.",
+    
+    // Pricing section
+    pricingTag: "Tarif",
+    pricingTitle1Line: "Un seul prix.",
+    pricingTitle2Line: "Sans surprise.",
+    pricingDesc: "Tout inclus · Sans engagement · Résiliable en 2 clics",
+    pricingBadge: "1 mois offert, sans CB",
+    pricingMonth: "mois",
+    pricingMicro: "Sans carte bancaire · Accès complet dès l'inscription",
+    
+    // Final CTA
+    finalCtaTitle1: "Arrêtez de perdre des ventes",
+    finalCtaTitle2: "à cause de relances oubliées.",
+    finalCtaSub: "Rejoignez les agents qui closent plus, sans travailler plus.",
+    finalCtaBtn: "Démarrer — 1 mois gratuit",
+    finalCtaMicro: "Sans carte bancaire · Accès complet en 2 minutes",
+    
+    // Toast
+    toastCheckEmail: "Vérifiez votre boîte mail — à tout de suite !",
     
     // Landing - Original
     loginToKolo: "Se connecter",
@@ -752,8 +854,59 @@ const translations = {
     
     // Footer
     footerText: "© 2025 KOLO. Mit Liebe für unabhängige Makler gemacht.",
+    footerRights: "Alle Rechte vorbehalten.",
     privacyPolicy: "Datenschutzrichtlinie",
     termsOfUse: "Nutzungsbedingungen",
+    
+    // Feature 2 - Swipe
+    feature2TagMobile: "Mobile first",
+    feature2TitleSwipe1: "Wischen Sie durch Ihren Tag.",
+    feature2TitleSwipe2: "Mit einer Hand.",
+    feature2DescSwipe: "Sie verlassen eine Besichtigung, wischen den Kontakt nach rechts — erledigt, und die nächste Aufgabe erscheint. Ihr Tag läuft von selbst, ohne Tippen.",
+    feature2Point1Swipe: "Nach rechts wischen, um eine Aktion in einer Sekunde zu bestätigen",
+    feature2Point2Swipe: "Die nächste Aufgabe erscheint automatisch",
+    feature2Point3Swipe: "Kein Tippen — nur eine Geste, und es ist im Verlauf",
+    
+    // Mockup - Follow-ups
+    mockTodayFollowups: "Nachfassaktionen heute",
+    mock3Prospects: "3 Interessenten zu kontaktieren — nach Dringlichkeit sortiert",
+    mockViewed3x: "Hat das Angebot heute 3x angesehen — Abschlussfenster offen",
+    mockNow: "Jetzt",
+    mockNoResponse: "Keine Antwort seit 5 Tagen — mit Alternativangebot nachfassen",
+    mockToday: "Heute",
+    mockJustVisited: "Gerade besucht — Zusammenfassung + Verfügbarkeit senden",
+    mockTonight: "Heute Abend",
+    mockInsightIA: "KI-Insight",
+    mockInsightText: "Marie Leblanc hat 87% Wahrscheinlichkeit, diese Woche zu unterschreiben. Lassen Sie dieses Fenster nicht verstreichen.",
+    
+    // Mockup - Swipe
+    mockYourDay: "Ihr Tag · 1 Aktion übrig",
+    mockVisit: "Besichtigung · 14:30 · Rue Lecourbe",
+    mockVisitDone: "Besichtigung erledigt",
+    mockCallThomas: "Anruf Thomas M.",
+    mockDoneAt11: "· erledigt um 11:02",
+    mockDoneAt9: "· erledigt um 9:47",
+    mockOneGesture: "Eine Geste, erledigt",
+    mockSwipeToValidate: "Wischen → zum Bestätigen. Der Verlauf wird automatisch aktualisiert.",
+    
+    // Pricing section
+    pricingTag: "Preise",
+    pricingTitle1Line: "Ein Preis.",
+    pricingTitle2Line: "Keine Überraschungen.",
+    pricingDesc: "Alles inklusive · Ohne Verpflichtung · In 2 Klicks kündbar",
+    pricingBadge: "1 Monat gratis, ohne Karte",
+    pricingMonth: "Monat",
+    pricingMicro: "Keine Kreditkarte · Vollzugang ab Anmeldung",
+    
+    // Final CTA
+    finalCtaTitle1: "Hören Sie auf, Verkäufe zu verlieren",
+    finalCtaTitle2: "wegen vergessener Nachfassaktionen.",
+    finalCtaSub: "Schließen Sie sich den Maklern an, die mehr abschließen, ohne mehr zu arbeiten.",
+    finalCtaBtn: "Starten — 1 Monat gratis",
+    finalCtaMicro: "Keine Kreditkarte · Vollzugang in 2 Minuten",
+    
+    // Toast
+    toastCheckEmail: "Prüfen Sie Ihre E-Mails — bis gleich!",
     
     // Landing Feature List
     landingFeature1: "Unbegrenzte Interessenten",
@@ -1075,8 +1228,59 @@ const translations = {
     
     // Footer
     footerText: "© 2025 KOLO. Fatto con amore per gli agenti indipendenti.",
+    footerRights: "Tutti i diritti riservati.",
     privacyPolicy: "Informativa sulla privacy",
     termsOfUse: "Termini di utilizzo",
+    
+    // Feature 2 - Swipe
+    feature2TagMobile: "Mobile first",
+    feature2TitleSwipe1: "Scorri la tua giornata.",
+    feature2TitleSwipe2: "Con una mano.",
+    feature2DescSwipe: "Esci da una visita, scorri il contatto a destra — fatto, e appare il prossimo compito. La tua giornata va avanti da sola, senza digitare.",
+    feature2Point1Swipe: "Scorri a destra per validare un'azione in un secondo",
+    feature2Point2Swipe: "Il prossimo compito appare automaticamente",
+    feature2Point3Swipe: "Zero digitazione — solo un gesto, ed è nella cronologia",
+    
+    // Mockup - Follow-ups
+    mockTodayFollowups: "Follow-up di oggi",
+    mock3Prospects: "3 potenziali clienti da contattare — ordinati per urgenza",
+    mockViewed3x: "Ha visualizzato l'annuncio 3 volte stamattina — finestra di chiusura aperta",
+    mockNow: "Adesso",
+    mockNoResponse: "Nessuna risposta da 5 giorni — ricontattare con offerta alternativa",
+    mockToday: "Oggi",
+    mockJustVisited: "Appena visitato — inviare riepilogo + disponibilità",
+    mockTonight: "Stasera",
+    mockInsightIA: "Insight IA",
+    mockInsightText: "Marie Leblanc ha l'87% di probabilità di firmare questa settimana. Non lasciarti sfuggire questa opportunità.",
+    
+    // Mockup - Swipe
+    mockYourDay: "La tua giornata · 1 azione rimanente",
+    mockVisit: "Visita · 14:30 · Rue Lecourbe",
+    mockVisitDone: "Visita fatta",
+    mockCallThomas: "Chiamata Thomas M.",
+    mockDoneAt11: "· fatto alle 11:02",
+    mockDoneAt9: "· fatto alle 9:47",
+    mockOneGesture: "Un gesto, fatto",
+    mockSwipeToValidate: "Scorri → per validare. La cronologia si aggiorna automaticamente.",
+    
+    // Pricing section
+    pricingTag: "Prezzi",
+    pricingTitle1Line: "Un solo prezzo.",
+    pricingTitle2Line: "Nessuna sorpresa.",
+    pricingDesc: "Tutto incluso · Senza impegno · Annullabile in 2 clic",
+    pricingBadge: "1 mese gratis, senza carta",
+    pricingMonth: "mese",
+    pricingMicro: "Nessuna carta di credito · Accesso completo dalla registrazione",
+    
+    // Final CTA
+    finalCtaTitle1: "Smetti di perdere vendite",
+    finalCtaTitle2: "per follow-up dimenticati.",
+    finalCtaSub: "Unisciti agli agenti che chiudono di più, senza lavorare di più.",
+    finalCtaBtn: "Inizia — 1 mese gratis",
+    finalCtaMicro: "Nessuna carta di credito · Accesso completo in 2 minuti",
+    
+    // Toast
+    toastCheckEmail: "Controlla la tua email — a presto!",
     
     // Landing Feature List
     landingFeature1: "Potenziali clienti illimitati",
