@@ -134,10 +134,6 @@ const LandingPage = () => {
       {/* HERO */}
       <section className="hero">
         <div className="container">
-          <div className="hero-eyebrow">
-            <span className="eyebrow-dot"></span>
-            {t('heroEyebrow')}
-          </div>
           <h1>
             {t('heroTitle1')}<br/><span className="grad-text">{t('heroTitle2')}</span>
           </h1>
