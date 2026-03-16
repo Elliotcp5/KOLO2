@@ -1596,51 +1596,58 @@
 
 @media (max-width: 768px) {
   .landing-nav {
-    padding: 12px 12px;
-    gap: 8px;
+    padding: 10px 12px;
+    gap: 6px;
   }
   
   .nav-logo {
-    font-size: 20px;
+    font-size: 18px;
     flex-shrink: 0;
   }
   
   .nav-actions {
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+  
+  .lang-selector {
+    position: relative;
   }
   
   .lang-btn {
-    padding: 6px 8px;
-    font-size: 11px;
+    padding: 5px 6px;
+    font-size: 10px;
+    min-width: 36px;
   }
   
   .lang-btn .lang-full {
-    display: none;
+    display: none !important;
   }
   
   .lang-btn .lang-short {
-    display: inline;
+    display: inline !important;
   }
   
   .nav-login {
-    display: flex;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
     white-space: nowrap;
   }
   
   .nav-cta {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 10px;
+    white-space: nowrap;
   }
   
   .nav-cta .cta-full {
-    display: none;
+    display: none !important;
   }
   
   .nav-cta .cta-short {
-    display: inline;
+    display: inline !important;
   }
   
   .desktop-only {
