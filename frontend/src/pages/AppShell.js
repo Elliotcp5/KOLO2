@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -3251,12 +3251,12 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 <div style={{ flex: 1 }}>
                   <div style={{ 
                     fontSize: '14px', 
-                    color: 'var(--text)',
+                    color: c('text'),
                     textDecoration: task.completed ? 'line-through' : 'none'
                   }}>
                     {task.title}
                   </div>
-                  <div className="text-muted" style={{ fontSize: '12px' }}>
+                  <div style={{ fontSize: '12px', color: c('muted') }}>
                     {new Date(task.due_date).toLocaleDateString()}
                   </div>
                 </div>
@@ -3268,7 +3268,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
       {/* Timeline / History section */}
       <div style={{ marginBottom: '24px' }}>
-        <h3 className="text-caption" style={{ marginBottom: '12px' }}>
+        <h3 style={{ marginBottom: '12px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
           {locale === 'fr' ? 'Historique' : 'History'}
         </h3>
         <div style={{ position: 'relative', paddingLeft: '20px' }}>
@@ -3366,16 +3366,16 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', color: 'var(--text)' }}>
+                    <span style={{ fontSize: '13px', color: c('text') }}>
                       {event.title}
                     </span>
                   </div>
                   {event.preview && (
-                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                    <p style={{ fontSize: '12px', color: c('muted'), marginTop: '2px' }}>
                       "{event.preview}"
                     </p>
                   )}
-                  <span style={{ fontSize: '11px', color: 'var(--muted-dark)' }}>
+                  <span style={{ fontSize: '11px', color: c('muted') }}>
                     {event.date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
                       day: 'numeric', 
                       month: 'short',
@@ -3393,10 +3393,87 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       {/* Notes */}
       {prospectData.notes && (
         <div style={{ marginBottom: '24px' }}>
-          <h3 className="text-caption" style={{ marginBottom: '12px' }}>{t('notes')}</h3>
-          <div className="card" style={{ padding: '16px' }}>
-            <p style={{ color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{prospectData.notes}</p>
+          <h3 style={{ marginBottom: '12px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>{t('notes')}</h3>
+          <div className="card" style={{ padding: '16px', background: c('cardBg'), border: `1px solid ${c('border')}`, borderRadius: '12px' }}>
+            <p style={{ color: c('text'), whiteSpace: 'pre-wrap' }}>{prospectData.notes}</p>
           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== LANGUAGE SELECTOR COMPONENT ====================
+const SETTINGS_LANGUAGES = [
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+];
+
+const LanguageSelector = ({ c, locale }) => {
+  const { changeLanguage } = useLocale();
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const currentLang = SETTINGS_LANGUAGES.find(l => l.code === locale) || SETTINGS_LANGUAGES[0];
+
+  return (
+    <div 
+      className="settings-row" 
+      style={{ borderBottom: 'none', cursor: 'pointer', position: 'relative' }}
+      data-testid="language-selector"
+      onClick={() => setShowLangMenu(!showLangMenu)}
+    >
+      <Globe size={20} strokeWidth={1.5} style={{ color: c('text') }} />
+      <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
+        {locale === 'fr' ? 'Langue' : 'Language'}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '14px', color: c('muted') }}>{currentLang.flag} {currentLang.label}</span>
+        <ChevronRight size={20} style={{ color: c('muted'), transform: showLangMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+      </div>
+      
+      {showLangMenu && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '4px',
+            background: c('cardBg'),
+            border: `1px solid ${c('border')}`,
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+            zIndex: 100
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {SETTINGS_LANGUAGES.map(lang => (
+            <button
+              key={lang.code}
+              onClick={() => { changeLanguage(lang.code); setShowLangMenu(false); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%',
+                padding: '14px 16px',
+                background: lang.code === locale ? 'rgba(0, 74, 173, 0.1)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: c('text'),
+                fontSize: '15px',
+                textAlign: 'left',
+                transition: 'background 0.2s'
+              }}
+              data-testid={`lang-option-${lang.code}`}
+            >
+              <span style={{ fontSize: '20px' }}>{lang.flag}</span>
+              <span style={{ flex: 1 }}>{lang.label}</span>
+              {lang.code === locale && <Check size={18} style={{ color: c('accent') }} />}
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -3898,7 +3975,7 @@ const SettingsTab = ({ onClose }) => {
       <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
         <div 
           className="settings-row" 
-          style={{ borderBottom: 'none', cursor: 'pointer' }}
+          style={{ borderBottom: `1px solid ${c('border')}`, cursor: 'pointer' }}
           data-testid="theme-toggle"
           onClick={() => changeTheme(theme === 'light' ? 'dark' : 'light')}
         >
@@ -3946,6 +4023,8 @@ const SettingsTab = ({ onClose }) => {
             </div>
           </div>
         </div>
+        {/* Language selector */}
+        <LanguageSelector c={c} locale={locale} />
       </div>
 
       {/* Permissions section */}

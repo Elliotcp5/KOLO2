@@ -22,8 +22,9 @@ const EU_COUNTRIES = [
 // Language mapping by country
 const COUNTRY_LANGUAGES = {
   'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr', // French-speaking
-  'IT': 'en', 'SM': 'en', // Italian - fallback to English
-  'DE': 'en', 'AT': 'en', 'LI': 'en', 'CH': 'en', // German/Swiss - fallback to English
+  'IT': 'it', 'SM': 'it', // Italian
+  'DE': 'de', 'AT': 'de', 'LI': 'de', // German-speaking
+  'CH': 'de', // Swiss (German default, could be fr/it too)
   'ES': 'en', 'MX': 'en', 'AR': 'en', // Spanish - fallback to English
   'PT': 'en', 'BR': 'en', // Portuguese - fallback to English
   'GB': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', // English
@@ -65,13 +66,13 @@ export const LocaleProvider = ({ children }) => {
     }
     
     // Fallback for unsupported languages
-    if (!['en', 'fr'].includes(detectedLang)) {
+    if (!['en', 'fr', 'de', 'it'].includes(detectedLang)) {
       // Check if country suggests a language
       detectedLang = COUNTRY_LANGUAGES[regionFromLocale] || 'en';
     }
     
     // Final supported locale
-    const supportedLocale = ['en', 'fr'].includes(detectedLang) ? detectedLang : 'en';
+    const supportedLocale = ['en', 'fr', 'de', 'it'].includes(detectedLang) ? detectedLang : 'en';
     setLocale(supportedLocale);
     // Only save if not manually set (to not override user choice)
     if (!userChangedLang) {
@@ -129,7 +130,7 @@ export const LocaleProvider = ({ children }) => {
             // Update locale based on detected country ONLY if user didn't manually change it
             if (!userChangedLang) {
               const countryLang = COUNTRY_LANGUAGES[data.country];
-              if (countryLang && ['en', 'fr'].includes(countryLang)) {
+              if (countryLang && ['en', 'fr', 'de', 'it'].includes(countryLang)) {
                 setLocale(countryLang);
                 localStorage.setItem('kolo_locale', countryLang);
               }
@@ -151,7 +152,7 @@ export const LocaleProvider = ({ children }) => {
 
   // Change language manually
   const changeLanguage = (newLocale) => {
-    if (['en', 'fr'].includes(newLocale)) {
+    if (['en', 'fr', 'de', 'it'].includes(newLocale)) {
       setLocale(newLocale);
       localStorage.setItem('kolo_locale', newLocale);
       localStorage.setItem('kolo_locale_manual', 'true'); // Mark as manually changed
