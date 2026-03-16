@@ -1595,20 +1595,51 @@
 
 @media (max-width: 768px) {
   .landing-nav {
-    padding: 12px 20px;
-  }
-  
-  .nav-actions {
+    padding: 12px 12px;
     gap: 8px;
   }
   
-  .nav-login {
+  .nav-logo {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  
+  .nav-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  
+  .lang-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .lang-btn .lang-full {
     display: none;
   }
   
+  .lang-btn .lang-short {
+    display: inline;
+  }
+  
+  .nav-login {
+    display: flex;
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
   .nav-cta {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .nav-cta .cta-full {
+    display: none;
+  }
+  
+  .nav-cta .cta-short {
+    display: inline;
   }
   
   .desktop-only {
@@ -1625,15 +1656,15 @@
   
   .container,
   .container-sm {
-    padding: 0 20px;
+    padding: 0 16px;
   }
   
   .hero {
-    padding: 120px 0 60px;
+    padding: 100px 0 60px;
   }
   
   .hero h1 {
-    font-size: 36px;
+    font-size: 32px;
   }
   
   .hero-sub {
@@ -1698,7 +1729,14 @@
   display: none;
 }
 
+/* ===== HIDE SHORT VERSIONS ON DESKTOP ===== */
+.nav-cta .cta-short {
+  display: none;
+}
 
+.lang-btn .lang-short {
+  display: none;
+}
 
 /* ===== AUTH PAGES (Login/Register) ===== */
 .auth-page {

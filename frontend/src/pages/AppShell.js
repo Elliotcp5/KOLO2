@@ -2746,10 +2746,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       )}
 
       {/* Contact info */}
-      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
+      <div className="card" style={{ marginBottom: '16px', padding: '16px', background: c('cardBg'), border: `1px solid ${c('border')}`, borderRadius: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-          <Phone size={18} style={{ color: 'var(--accent)' }} />
-          <a href={`tel:${prospectData.phone}`} style={{ color: 'var(--text)', textDecoration: 'none', flex: 1 }}>
+          <Phone size={18} style={{ color: c('accent') }} />
+          <a href={`tel:${prospectData.phone}`} style={{ color: c('text'), textDecoration: 'none', flex: 1 }}>
             {prospectData.phone}
           </a>
           {/* SMS History button - discrete */}
@@ -2757,14 +2757,14 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             <button
               onClick={() => setShowSmsHistory(true)}
               style={{
-                background: 'var(--surface-light)',
+                background: c('surface'),
                 border: 'none',
                 borderRadius: '8px',
                 padding: '6px 10px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                color: 'var(--muted)',
+                color: c('muted'),
                 cursor: 'pointer',
                 fontSize: '12px'
               }}
@@ -2776,8 +2776,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Mail size={18} style={{ color: 'var(--accent)' }} />
-          <a href={`mailto:${prospectData.email}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
+          <Mail size={18} style={{ color: c('accent') }} />
+          <a href={`mailto:${prospectData.email}`} style={{ color: c('text'), textDecoration: 'none' }}>
             {prospectData.email}
           </a>
         </div>

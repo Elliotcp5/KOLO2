@@ -7,6 +7,8 @@ import '../styles/landing.css';
 const LANGUAGES = [
   { code: 'fr', label: 'FR' },
   { code: 'en', label: 'EN' },
+  { code: 'de', label: 'DE' },
+  { code: 'it', label: 'IT' },
 ];
 
 const LandingPage = () => {
@@ -115,7 +117,8 @@ const LandingPage = () => {
               className="lang-btn"
               onClick={() => setShowLangMenu(!showLangMenu)}
             >
-              {currentLang.label}
+              <span className="lang-full">{currentLang.label}</span>
+              <span className="lang-short">{locale.toUpperCase()}</span>
               <ChevronDown size={14} />
             </button>
             {showLangMenu && (
@@ -137,7 +140,8 @@ const LandingPage = () => {
             {locale === 'fr' ? 'Connexion' : 'Login'}
           </button>
           <button className="nav-cta" onClick={() => navigate('/register')}>
-            {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
+            <span className="cta-full">{locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}</span>
+            <span className="cta-short">{locale === 'fr' ? 'Essayer' : 'Try'}</span>
           </button>
         </div>
       </nav>

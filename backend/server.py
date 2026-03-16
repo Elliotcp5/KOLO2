@@ -1622,6 +1622,28 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     # Calculate trial end date (7 days from now)
     trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
     
+    # Create Stripe customer for trial users
+    stripe_customer_id = None
+    try:
+        import stripe
+        stripe.api_key = STRIPE_API_KEY
+        
+        # Create a Stripe customer
+        customer = stripe.Customer.create(
+            email=email,
+            name=name,
+            phone=phone,
+            metadata={
+                "source": "free_trial",
+                "trial_ends_at": trial_ends_at.isoformat()
+            }
+        )
+        stripe_customer_id = customer.id
+        logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
+    except Exception as e:
+        logger.warning(f"Failed to create Stripe customer for trial user {email}: {e}")
+        # Continue without Stripe customer - we can create it later
+    
     # Create user with trialing status
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     user_doc = {
@@ -1633,6 +1655,7 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
         "password_hash": hash_password(register_data.password),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
+        "stripe_customer_id": stripe_customer_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
@@ -2368,21 +2391,6 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     doc['updated_at'] = doc['updated_at'].isoformat()
     doc['last_activity_date'] = doc['last_activity_date'].isoformat() if doc['last_activity_date'] else None
     await db.prospects.insert_one(doc)
-    
-    # Auto-create follow-up task for the new prospect
-    follow_up_date = now + timedelta(days=1)  # Follow up tomorrow
-    task = Task(
-        user_id=user.user_id,
-        prospect_id=prospect.prospect_id,
-        title=f"Suivi {prospect_data.full_name}",
-        task_type="follow_up",
-        due_date=follow_up_date,
-        auto_generated=True
-    )
-    task_doc = task.model_dump()
-    task_doc['created_at'] = task_doc['created_at'].isoformat()
-    task_doc['due_date'] = task_doc['due_date'].isoformat()
-    await db.tasks.insert_one(task_doc)
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 

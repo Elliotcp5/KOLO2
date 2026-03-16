@@ -19,7 +19,7 @@ import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://kolo-final-push.preview.emergentagent.com"
+    BASE_URL = "https://responsive-kolo.preview.emergentagent.com"
 
 # Known test user
 TEST_USER_EMAIL = "test@test.com"
