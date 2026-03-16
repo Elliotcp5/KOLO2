@@ -189,7 +189,32 @@ KOLO is a mobile-first CRM application designed for independent real estate agen
 ## Testing Status
 - **Build**: ✅ Passing
 - **Test User**: test@test.com / testtest
-- **Last Test Report**: /app/test_reports/iteration_18.json (100% pass rate)
+- **Last Test Report**: /app/test_reports/iteration_19.json (100% pass rate)
+
+### v2.1.1 (March 16, 2026) - Dark Mode Polish + Languages ✅
+
+**Onboarding:**
+- ✅ Texte simplifié: "Glissez vers la droite pour valider" (sans "vers la gauche pour reporter")
+
+**Mode sombre - Textes lisibles:**
+- ✅ Page Prospects: noms blancs, contacts gris clair
+- ✅ Fiche prospect: Status, Next Scheduled Task, Tasks tous visibles
+- ✅ Dashboard: message "Tout est à jour" lisible
+- ✅ Modal message IA: boutons Régénérer/Copier avec c('surface') et c('text')
+
+**Toggle d'apparence:**
+- ✅ Forme ronde correcte (borderRadius: 15px / 50%)
+- ✅ Gradient bleu-violet quand mode sombre actif
+- ✅ Icône soleil/lune visible
+
+**Langues ajoutées:**
+- ✅ Allemand (de) - toutes les clés principales
+- ✅ Italien (it) - toutes les clés principales
+
+## Remaining Tasks (Backlog)
+1. **P2**: Continue refactoring AppShell.js (~5800 lines)
+2. **P2**: Refactor server.py into separate routers
+3. **P3**: Verify VAPID keys in production
 
 ### v2.1.0 (March 14, 2026) - Final Polish ✅
 
