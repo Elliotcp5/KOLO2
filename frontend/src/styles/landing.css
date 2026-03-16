@@ -1670,7 +1670,8 @@
   }
   
   .hero {
-    padding: 100px 0 60px;
+    padding: 120px 0 60px;
+    margin-top: 20px;
   }
   
   .hero h1 {
