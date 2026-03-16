@@ -9,7 +9,7 @@ import '../styles/landing.css';
 const RegisterPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const { login } = useAuth();
   
   // Get email from landing page if passed
@@ -28,12 +28,12 @@ const RegisterPage = () => {
     setError('');
     
     if (!fullName.trim() || !phone.trim() || !email.trim() || !password) {
-      setError(locale === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill all fields');
+      setError(t('fillAllFields'));
       return;
     }
     
     if (password.length < 6) {
-      setError(locale === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters');
+      setError(t('passwordMinLength'));
       return;
     }
     
@@ -64,19 +64,19 @@ const RegisterPage = () => {
           trial_ends_at: data.trial_ends_at,
           token: data.token
         });
-        toast.success(locale === 'fr' ? 'Compte créé ! Bienvenue sur KOLO' : 'Account created! Welcome to KOLO');
+        toast.success(t('accountCreatedWelcome'));
         window.location.href = '/app';
       } else {
         if (data.detail && data.detail.includes('existe')) {
-          setError(locale === 'fr' ? 'Un compte existe déjà avec cet email' : 'An account already exists with this email');
+          setError(t('accountExists'));
         } else {
-          setError(data.detail || (locale === 'fr' ? 'Erreur lors de l\'inscription' : 'Registration error'));
+          setError(data.detail || t('registrationError'));
         }
         setLoading(false);
       }
     } catch (err) {
       console.error('Register error:', err);
-      setError(locale === 'fr' ? 'Erreur de connexion au serveur' : 'Server connection error');
+      setError(t('serverError'));
       setLoading(false);
     }
   };
@@ -109,7 +109,7 @@ const RegisterPage = () => {
           }}
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
-          <span>{locale === 'fr' ? 'Retour' : 'Back'}</span>
+          <span>{t('back')}</span>
         </button>
 
         {/* Logo - Text KOLO with dot */}
@@ -154,7 +154,7 @@ const RegisterPage = () => {
             fontSize: '13px',
             fontWeight: '600',
             color: 'var(--ink-mid)'
-          }}>{locale === 'fr' ? '1 mois gratuit · Sans carte bancaire' : '1 month free · No credit card'}</span>
+          }}>{t('freeTrialBadge')}</span>
         </div>
 
         {/* Title */}
@@ -166,7 +166,7 @@ const RegisterPage = () => {
           textAlign: 'center',
           marginBottom: '8px'
         }}>
-          {locale === 'fr' ? 'Créer votre compte' : 'Create your account'}
+          {t('createYourAccount')}
         </h1>
         <p style={{
           fontSize: '15px',
@@ -174,7 +174,7 @@ const RegisterPage = () => {
           textAlign: 'center',
           marginBottom: '32px'
         }}>
-          {locale === 'fr' ? 'Rejoignez les agents qui closent plus' : 'Join agents who close more deals'}
+          {t('joinAgents')}
         </p>
 
         {/* Form */}
@@ -199,10 +199,10 @@ const RegisterPage = () => {
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--ink-mid)'
-            }}>{locale === 'fr' ? 'Nom complet' : 'Full name'}</label>
+            }}>{t('fullNameLabel')}</label>
             <input
               type="text"
-              placeholder={locale === 'fr' ? 'Jean Dupont' : 'John Doe'}
+              placeholder={t('namePlaceholder')}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
@@ -229,7 +229,7 @@ const RegisterPage = () => {
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--ink-mid)'
-            }}>{locale === 'fr' ? 'Téléphone' : 'Phone'}</label>
+            }}>{t('phoneLabel')}</label>
             <input
               type="tel"
               placeholder="+33 6 12 34 56 78"
@@ -289,11 +289,11 @@ const RegisterPage = () => {
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--ink-mid)'
-            }}>{locale === 'fr' ? 'Mot de passe' : 'Password'}</label>
+            }}>{t('password')}</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder={locale === 'fr' ? '6 caractères minimum' : '6 characters minimum'}
+                placeholder={t('passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -363,7 +363,7 @@ const RegisterPage = () => {
                 animation: 'spin 0.8s linear infinite'
               }}></div>
             ) : (
-              locale === 'fr' ? 'Commencer gratuitement' : 'Start for free'
+              t('startForFree')
             )}
           </button>
         </form>
@@ -375,13 +375,13 @@ const RegisterPage = () => {
           fontSize: '14px',
           color: 'var(--ink-mid)'
         }}>
-          {locale === 'fr' ? 'Déjà un compte ?' : 'Already have an account?'}{' '}
+          {t('alreadyAccount')}{' '}
           <Link to="/login" style={{
             color: 'var(--blue)',
             fontWeight: '600',
             textDecoration: 'none'
           }}>
-            {locale === 'fr' ? 'Se connecter' : 'Sign in'}
+            {t('signIn')}
           </Link>
         </p>
       </div>

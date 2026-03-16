@@ -13,7 +13,7 @@ const LANGUAGES = [
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { locale, changeLanguage } = useLocale();
+  const { locale, changeLanguage, t } = useLocale();
   const [scrolled, setScrolled] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [email, setEmail] = useState('');
@@ -60,36 +60,21 @@ const LandingPage = () => {
   const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
 
   const faqs = [
-    {
-      q: "C'est quoi exactement la différence avec un CRM ?",
-      a: "Un CRM comme Salesforce ou Pipedrive est conçu pour des équipes commerciales avec des process complexes. KOLO c'est l'opposé : hyper simple, mobile-first, pensé pour un agent solo qui veut juste ne plus oublier de relancer ses clients. Pas de modules, pas de formation, pas de consultant. Vous êtes opérationnel en 4 minutes."
-    },
-    {
-      q: "Comment fonctionne le mois gratuit ?",
-      a: "Vous créez votre compte sans donner de carte bancaire. Vous avez accès à 100% des fonctionnalités pendant 30 jours. À la fin du mois, si vous voulez continuer, vous rentrez votre carte. Si non, votre compte se ferme automatiquement. Aucun prélèvement surprise, aucun engagement."
-    },
-    {
-      q: "Est-ce que je peux importer mes contacts existants ?",
-      a: "Oui. En un clic depuis votre carnet d'adresses téléphone. La migration prend moins d'1 minute."
-    },
-    {
-      q: "Mes données sont-elles sécurisées ?",
-      a: "Vos données sont hébergées en Europe, chiffrées en transit et au repos, et ne sont jamais vendues ni partagées. KOLO est conforme RGPD. Vous restez propriétaire de vos données et pouvez les exporter ou les supprimer à tout moment."
-    },
-    {
-      q: "Est-ce que ça marche si je suis débutant avec les outils digitaux ?",
-      a: "C'est exactement pour ça que KOLO a été créé. Si vous savez utiliser WhatsApp, vous savez utiliser KOLO. L'interface a été pensée pour être utilisée d'une main, entre deux visites, sans aucune formation."
-    }
+    { q: t('landingFaq1Q'), a: t('landingFaq1A') },
+    { q: t('landingFaq2Q'), a: t('landingFaq2A') },
+    { q: t('landingFaq3Q'), a: t('landingFaq3A') },
+    { q: t('landingFaq4Q'), a: t('landingFaq4A') },
+    { q: t('landingFaq5Q'), a: t('landingFaq5A') }
   ];
 
   const features = [
-    { icon: '✓', text: 'Prospects illimités' },
-    { icon: '✓', text: 'Suggestions de tâches intelligentes par IA' },
-    { icon: '✓', text: 'Pré-rédaction de messages de relance par IA' },
-    { icon: '✓', text: 'Suivi client en un coup d\'œil' },
-    { icon: '✓', text: 'Import contacts en 1 clic' },
-    { icon: '✓', text: 'Accessible depuis n\'importe quel navigateur' },
-    { icon: '✓', text: 'Support humain inclus' }
+    { icon: '✓', text: t('landingFeature1') },
+    { icon: '✓', text: t('landingFeature2') },
+    { icon: '✓', text: t('landingFeature3') },
+    { icon: '✓', text: t('landingFeature4') },
+    { icon: '✓', text: t('landingFeature5') },
+    { icon: '✓', text: t('landingFeature6') },
+    { icon: '✓', text: t('landingFeature7') }
   ];
 
   return (
@@ -137,11 +122,11 @@ const LandingPage = () => {
           </div>
           
           <button className="nav-login" onClick={() => navigate('/login')}>
-            {locale === 'fr' ? 'Connexion' : 'Login'}
+            {t('loginButton')}
           </button>
           <button className="nav-cta" onClick={() => navigate('/register')}>
-            <span className="cta-full">{locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'}</span>
-            <span className="cta-short">{locale === 'fr' ? 'Essayer' : 'Try'}</span>
+            <span className="cta-full">{t('tryForFree')}</span>
+            <span className="cta-short">{t('tryShort')}</span>
           </button>
         </div>
       </nav>
@@ -151,35 +136,29 @@ const LandingPage = () => {
         <div className="container">
           <div className="hero-eyebrow">
             <span className="eyebrow-dot"></span>
-            IA · Mobile · 9,99€/mois
+            {t('heroEyebrow')}
           </div>
           <h1>
-            {locale === 'fr' ? (
-              <>Suivez chaque client.<br/><span className="grad-text">Signez plus de deals.</span></>
-            ) : (
-              <>Follow every client.<br/><span className="grad-text">Close more deals.</span></>
-            )}
+            {t('heroTitle1')}<br/><span className="grad-text">{t('heroTitle2')}</span>
           </h1>
           <p className="hero-sub">
-            {locale === 'fr' 
-              ? "KOLO remplace vos notes et vos tableurs Excel. L'IA suit vos prospects, planifie vos relances, et vous dit quoi faire ensuite."
-              : "KOLO replaces your notes and Excel spreadsheets. AI tracks your prospects, schedules follow-ups, and tells you what to do next."}
+            {t('heroSubtitle')}
           </p>
           <form className="hero-form" onSubmit={handleCTA}>
             <input 
               type="email" 
-              placeholder="votre@email.com"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <button type="submit" className="hero-btn-main">
-              {locale === 'fr' ? 'Essayer gratuitement' : 'Try for free'} <ArrowRight size={18} />
+              {t('tryForFree')} <ArrowRight size={18} />
             </button>
           </form>
           <p className="hero-micro">
-            <span>✓ {locale === 'fr' ? '1 mois gratuit' : '1 month free'}</span>
-            <span>✓ {locale === 'fr' ? 'Sans carte bancaire' : 'No credit card'}</span>
-            <span>✓ {locale === 'fr' ? 'Résiliable à tout moment' : 'Cancel anytime'}</span>
+            <span>✓ {t('oneMonthFree')}</span>
+            <span>✓ {t('noCreditCard')}</span>
+            <span>✓ {t('cancelAnytime')}</span>
           </p>
 
           {/* Phone Mockups - Symmetrical */}
@@ -187,11 +166,11 @@ const LandingPage = () => {
             {/* Left Phone - Calendar/Relances */}
             <div className="phone-side left">
               <div className="sp-header-dark">
-                <div className="sp-h">🗓 {locale === 'fr' ? 'Relances IA' : 'AI Follow-ups'}</div>
+                <div className="sp-h">🗓 {t('aiFollowups')}</div>
               </div>
               <div className="sp-body">
                 <div className="sp-stat">
-                  <span className="sp-stat-label">14h00 — {locale === 'fr' ? 'Rappeler' : 'Call'}</span>
+                  <span className="sp-stat-label">14h00 — {t('callAction')}</span>
                   <span className="sp-stat-val red">Marie L.</span>
                 </div>
                 <div className="sp-stat">
@@ -199,12 +178,12 @@ const LandingPage = () => {
                   <span className="sp-stat-val orange">Thomas M.</span>
                 </div>
                 <div className="sp-stat">
-                  <span className="sp-stat-label">{locale === 'fr' ? 'Demain' : 'Tomorrow'} — Email</span>
+                  <span className="sp-stat-label">{t('tomorrow')} — Email</span>
                   <span className="sp-stat-val green">Sophie C.</span>
                 </div>
               </div>
               <div className="sp-bar-wrap">
-                <div className="sp-bar-label">{locale === 'fr' ? 'Deals closés ce mois' : 'Deals closed this month'}</div>
+                <div className="sp-bar-label">{t('dealsClosedThisMonth')}</div>
                 <div className="sp-bar">
                   <div className="sp-bar-fill" style={{ width: '60%' }}></div>
                 </div>
@@ -215,40 +194,38 @@ const LandingPage = () => {
             <div className="phone-main">
               <div className="phone-header">
                 <div className="phone-notch"></div>
-                <div className="phone-h">{locale === 'fr' ? 'Mes clients' : 'My clients'} ✦</div>
-                <div className="phone-sub">{locale === 'fr' ? '3 relances aujourd\'hui' : '3 follow-ups today'}</div>
+                <div className="phone-h">{t('myClients')} ✦</div>
+                <div className="phone-sub">{t('followupsToday')}</div>
               </div>
               <div className="phone-body">
                 <div className="p-contact">
                   <div className="p-avatar">ML</div>
                   <div>
                     <div className="p-name">Marie Leblanc</div>
-                    <div className="p-status">{locale === 'fr' ? 'Visite il y a 4 jours' : 'Visit 4 days ago'}</div>
+                    <div className="p-status">{t('visitDaysAgo')}</div>
                   </div>
-                  <span className="p-badge hot">🔥 {locale === 'fr' ? 'Urgent' : 'Urgent'}</span>
+                  <span className="p-badge hot">🔥 {t('urgent')}</span>
                 </div>
                 <div className="p-contact">
                   <div className="p-avatar b">TM</div>
                   <div>
                     <div className="p-name">Thomas Moreau</div>
-                    <div className="p-status">{locale === 'fr' ? 'Contacté hier' : 'Contacted yesterday'}</div>
+                    <div className="p-status">{t('contactedYesterday')}</div>
                   </div>
-                  <span className="p-badge warm">⚡ {locale === 'fr' ? 'Chaud' : 'Hot'}</span>
+                  <span className="p-badge warm">⚡ {t('hot')}</span>
                 </div>
                 <div className="p-contact">
                   <div className="p-avatar c">SC</div>
                   <div>
                     <div className="p-name">Sophie Curel</div>
-                    <div className="p-status">{locale === 'fr' ? 'Nouveau prospect' : 'New prospect'}</div>
+                    <div className="p-status">{t('newProspectLabel')}</div>
                   </div>
-                  <span className="p-badge ok">✓ {locale === 'fr' ? 'Qualifié' : 'Qualified'}</span>
+                  <span className="p-badge ok">✓ {t('qualified')}</span>
                 </div>
                 <div className="p-ai-card">
-                  <div className="p-ai-label">✦ {locale === 'fr' ? 'Conseil IA' : 'AI Tip'}</div>
+                  <div className="p-ai-label">✦ {t('aiTip')}</div>
                   <div className="p-ai-text">
-                    {locale === 'fr' 
-                      ? "Rappeler Marie Leblanc avant 18h pour voir si sa recherche de T2 atypique est toujours d'actualité."
-                      : "Call Marie Leblanc before 6pm to check if her search for an atypical T2 is still current."}
+                    {t('aiTipExample')}
                   </div>
                 </div>
               </div>
@@ -263,23 +240,23 @@ const LandingPage = () => {
                     <div className="sp-name">Marie Leblanc</div>
                     <div className="sp-location">📍 Paris 15e</div>
                   </div>
-                  <span className="sp-badge-white">{locale === 'fr' ? 'En cours' : 'Active'}</span>
+                  <span className="sp-badge-white">{t('active')}</span>
                 </div>
               </div>
               <div className="sp-content">
                 <div className="sp-card-mini">
-                  <div className="sp-card-label">{locale === 'fr' ? 'Projet' : 'Project'}</div>
+                  <div className="sp-card-label">{t('project')}</div>
                   <div className="sp-card-text">T2 atypique · 60–75m²</div>
                   <div className="sp-card-text muted">Budget : 350 000 €</div>
                 </div>
                 <div className="sp-stats-mini">
                   <div className="sp-stat-item">
                     <div className="sp-stat-num">3</div>
-                    <div className="sp-stat-label-sm">{locale === 'fr' ? 'visites' : 'visits'}</div>
+                    <div className="sp-stat-label-sm">{t('visits')}</div>
                   </div>
                   <div className="sp-stat-item">
                     <div className="sp-stat-num">18j</div>
-                    <div className="sp-stat-label-sm">{locale === 'fr' ? 'en suivi' : 'tracking'}</div>
+                    <div className="sp-stat-label-sm">{t('tracking')}</div>
                   </div>
                 </div>
               </div>
@@ -290,7 +267,7 @@ const LandingPage = () => {
 
       {/* SOCIAL PROOF */}
       <section className="social-strip">
-        <div className="strip-label">{locale === 'fr' ? '+500 agents indépendants font confiance à KOLO' : '+500 independent agents trust KOLO'}</div>
+        <div className="strip-label">{t('socialProof')}</div>
         <div className="marquee-track">
           <span className="marquee-item">
             <span className="marquee-stars">★★★★★</span> "J'ai closé 2 ventes en plus ce mois-ci" — Julie R., Paris 15e
@@ -321,46 +298,34 @@ const LandingPage = () => {
       <section className="section">
         <div className="container">
           <div className="centered reveal">
-            <div className="section-tag">{locale === 'fr' ? 'Le problème' : 'The problem'}</div>
+            <div className="section-tag">{t('theProblem')}</div>
             <h2 className="section-title">
-              {locale === 'fr' ? (
-                <>On sait comment vous<br/>travaillez <span className="grad-text">aujourd'hui.</span></>
-              ) : (
-                <>We know how you<br/>work <span className="grad-text">today.</span></>
-              )}
+              {t('problemTitle1')}<br/><span className="grad-text">{t('problemTitle2')}</span>
             </h2>
             <p className="section-body">
-              {locale === 'fr' 
-                ? "Les agents indépendants sont bons pour vendre. Pas pour tracker. Le résultat : des prospects qui refroidissent, des relances oubliées, des deals perdus."
-                : "Independent agents are good at selling. Not at tracking. The result: prospects that go cold, forgotten follow-ups, lost deals."}
+              {t('problemDesc')}
             </p>
           </div>
           <div className="cards-grid">
             <div className="card reveal" style={{ transitionDelay: '0.05s' }}>
               <span className="card-icon">📱</span>
-              <div className="card-title">WhatsApp comme CRM</div>
+              <div className="card-title">{t('problemCard1Title')}</div>
               <p className="card-body">
-                {locale === 'fr' 
-                  ? "Vous scrollez 10 minutes pour retrouver où en est un client. Entre les messages perso et les discussions pro, c'est un chaos impossible à tenir."
-                  : "You scroll for 10 minutes to find where a client stands. Between personal messages and professional discussions, it's impossible chaos."}
+                {t('problemCard1Desc')}
               </p>
             </div>
             <div className="card reveal" style={{ transitionDelay: '0.12s' }}>
               <span className="card-icon">📊</span>
-              <div className="card-title">{locale === 'fr' ? 'Excel qui prend la poussière' : 'Excel gathering dust'}</div>
+              <div className="card-title">{t('problemCard2Title')}</div>
               <p className="card-body">
-                {locale === 'fr' 
-                  ? "Vous aviez créé le tableau parfait. Il y a 3 mois. Depuis, il n'est plus à jour. Rajouter une ligne prend du temps — alors vous ne le faites plus."
-                  : "You created the perfect spreadsheet. 3 months ago. Since then, it's not up to date. Adding a line takes time — so you don't anymore."}
+                {t('problemCard2Desc')}
               </p>
             </div>
             <div className="card reveal" style={{ transitionDelay: '0.19s' }}>
               <span className="card-icon">🧠</span>
-              <div className="card-title">{locale === 'fr' ? 'Tout est dans votre tête' : 'Everything in your head'}</div>
+              <div className="card-title">{t('problemCard3Title')}</div>
               <p className="card-body">
-                {locale === 'fr' 
-                  ? "Vous vous souvenez de tout. Jusqu'au jour où vous oubliez de rappeler quelqu'un au bon moment. Ce deal-là, vous ne le reverrez pas."
-                  : "You remember everything. Until the day you forget to call someone at the right time. That deal, you won't see again."}
+                {t('problemCard3Desc')}
               </p>
             </div>
           </div>
@@ -371,36 +336,26 @@ const LandingPage = () => {
       <section className="section section-alt" id="features">
         <div className="container">
           <div className="centered reveal">
-            <div className="section-tag">{locale === 'fr' ? 'La solution' : 'The solution'}</div>
+            <div className="section-tag">{t('theSolution')}</div>
             <h2 className="section-title">
-              {locale === 'fr' ? (
-                <>KOLO fait ça <span className="grad-text">à votre place.</span></>
-              ) : (
-                <>KOLO does it <span className="grad-text">for you.</span></>
-              )}
+              {t('solutionTitle1')} <span className="grad-text">{t('solutionTitle2')}</span>
             </h2>
           </div>
 
           {/* Feature 1 */}
           <div className="feature-block">
             <div className="reveal-left">
-              <div className="feature-tag">✦ {locale === 'fr' ? 'Intelligence artificielle' : 'Artificial intelligence'}</div>
+              <div className="feature-tag">✦ {t('feature1Tag')}</div>
               <h3 className="feature-title">
-                {locale === 'fr' ? (
-                  <>Vos relances,<br/>pilotées par l'IA.</>
-                ) : (
-                  <>Your follow-ups,<br/>driven by AI.</>
-                )}
+                {t('feature1Title')}
               </h3>
               <p className="feature-body">
-                {locale === 'fr' 
-                  ? "L'IA analyse chaque client — sa réactivité, son profil, son historique — et vous dit exactement quand et quoi lui dire. Vous n'avez plus à réfléchir à qui rappeler."
-                  : "AI analyzes each client — their responsiveness, profile, history — and tells you exactly when and what to say. You no longer have to think about who to call."}
+                {t('feature1Desc')}
               </p>
               <ul className="feature-points">
-                <li>{locale === 'fr' ? 'Score de priorité en temps réel pour chaque prospect' : 'Real-time priority score for each prospect'}</li>
-                <li>{locale === 'fr' ? 'Message suggéré adapté au contexte du client' : 'Suggested message adapted to client context'}</li>
-                <li>{locale === 'fr' ? 'Alertes automatiques avant que ça refroidisse' : 'Automatic alerts before it goes cold'}</li>
+                <li>{t('feature1Point1')}</li>
+                <li>{t('feature1Point2')}</li>
+                <li>{t('feature1Point3')}</li>
               </ul>
             </div>
             <div className="feature-visual reveal-right">

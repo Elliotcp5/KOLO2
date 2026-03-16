@@ -8,7 +8,7 @@ import '../styles/landing.css';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const { login } = useAuth();
   
   const [email, setEmail] = useState('');
@@ -84,7 +84,7 @@ const LoginPage = () => {
           }}
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
-          <span>{locale === 'fr' ? 'Retour' : 'Back'}</span>
+          <span>{t('back')}</span>
         </button>
 
         {/* Logo - Text KOLO with dot */}
@@ -119,7 +119,7 @@ const LoginPage = () => {
           textAlign: 'center',
           marginBottom: '8px'
         }}>
-          {locale === 'fr' ? 'Content de vous revoir !' : 'Welcome back!'}
+          {t('welcomeBack')}
         </h1>
         <p style={{
           fontSize: '15px',
@@ -127,7 +127,7 @@ const LoginPage = () => {
           textAlign: 'center',
           marginBottom: '32px'
         }}>
-          {locale === 'fr' ? 'Connectez-vous pour accéder à vos prospects' : 'Sign in to access your prospects'}
+          {t('signInToAccess')}
         </p>
 
         {/* Form */}
@@ -182,7 +182,7 @@ const LoginPage = () => {
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--ink-mid)'
-            }}>{locale === 'fr' ? 'Mot de passe' : 'Password'}</label>
+            }}>{t('password')}</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -256,7 +256,7 @@ const LoginPage = () => {
                 animation: 'spin 0.8s linear infinite'
               }}></div>
             ) : (
-              locale === 'fr' ? 'Se connecter' : 'Sign in'
+              t('signIn')
             )}
           </button>
         </form>
@@ -268,13 +268,13 @@ const LoginPage = () => {
           fontSize: '14px',
           color: 'var(--ink-mid)'
         }}>
-          {locale === 'fr' ? 'Pas encore de compte ?' : "Don't have an account?"}{' '}
+          {t('noAccount')}{' '}
           <Link to="/register" style={{
             color: 'var(--blue)',
             fontWeight: '600',
             textDecoration: 'none'
           }}>
-            {locale === 'fr' ? 'Créer un compte' : 'Sign up'}
+            {t('createAccount')}
           </Link>
         </p>
       </div>
