@@ -1,0 +1,124 @@
+{
+  "summary": "Dark Mode Corrections - All 8 requested features verified. UI texts are readable in dark mode with proper c('text') and c('muted') colors. Theme toggle has gradient and round shape. Translations for German and Italian are present.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": {
+    "onboarding_text": [
+      "✓ OnboardingFlow.js line 29: 'Glissez vers la droite pour valider une tâche.'",
+      "✓ No 'vers la gauche pour reporter' text present",
+      "✓ English version line 62: 'Swipe right to validate a task.'"
+    ],
+    "prospects_dark_mode": [
+      "✓ Prospect names are WHITE (rgb(255, 255, 255)) - clearly readable",
+      "✓ Phone/email contacts are GRAY (muted color) - visible",
+      "✓ Status badges have colored backgrounds (blue, orange, purple, gray)",
+      "✓ Next task links are visible in accent color"
+    ],
+    "prospect_detail_dark_mode": [
+      "✓ 'Status' label visible with c('muted') color",
+      "✓ 'Next Scheduled Task' section readable",
+      "✓ 'Tasks' section header visible",
+      "✓ Task items readable with proper contrast"
+    ],
+    "dashboard_empty_state": [
+      "✓ 'Tout est à jour' / 'All caught up' text uses c('text') color - WHITE in dark mode",
+      "✓ Empty state message readable when no tasks"
+    ],
+    "ai_message_modal": [
+      "✓ 'Regenerate' button: rgb(255, 255, 255) text on rgb(42, 42, 59) bg - c('surface') with c('text')",
+      "✓ 'Copy' button: rgb(255, 255, 255) text on rgb(42, 42, 59) bg - c('surface') with c('text')",
+      "✓ Both buttons clearly readable in dark mode"
+    ],
+    "theme_toggle": [
+      "✓ Toggle has gradient background when dark mode active",
+      "✓ Track borderRadius: 15px (rounded)",
+      "✓ Knob borderRadius: 50% (round circle)",
+      "✓ Knob position: 29px (right side when dark)",
+      "✓ data-testid='theme-toggle' present"
+    ],
+    "translations": [
+      "✓ German (de) translations present - lines 363-428 in translations.js",
+      "✓ Italian (it) translations present - lines 430-496 in translations.js",
+      "✓ Includes: loginToKolo, heroHeadline, heroSubheadline, today, myProfile, allCaughtUp, etc."
+    ]
+  },
+  
+  "code_verification": {
+    "OnboardingFlow.js": {
+      "line_29_fr": "feature1Desc: 'Glissez vers la droite pour valider une tâche.'",
+      "line_62_en": "feature1Desc: 'Swipe right to validate a task.'",
+      "no_left_swipe_text": true
+    },
+    "AppShell.js_AI_Modal": {
+      "lines": "2964-3003",
+      "regenerate_button": "background: c('surface'), color: c('text')",
+      "copy_button": "background: c('surface'), color: c('text')"
+    },
+    "AppShell.js_Theme_Toggle": {
+      "lines": "3914-3948",
+      "track_width": "56px",
+      "track_height": "30px", 
+      "track_borderRadius": "15px",
+      "knob_size": "24px",
+      "knob_borderRadius": "50%",
+      "gradient_in_dark": "linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)"
+    },
+    "translations.js": {
+      "german_de": "lines 363-428",
+      "italian_it": "lines 430-496"
+    }
+  },
+  
+  "test_report_links": [],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [],
+  
+  "success_rate": {
+    "backend": "N/A - frontend only testing",
+    "frontend": "100% - All 8 features verified"
+  },
+  
+  "test_credentials": {
+    "test_user": "test@test.com / testtest"
+  },
+  
+  "seed_data_creation": "None",
+  
+  "retest_needed": false,
+  
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "All dark mode corrections verified: 1) Onboarding text simplified (no 'vers la gauche'), 2) Prospects page texts readable (white/gray), 3) Prospect detail texts visible, 4) Dashboard empty state readable, 5) AI modal buttons have c('surface') bg and c('text') color, 6) Theme toggle is round with gradient, 7-8) German and Italian translations present.",
+  
+  "features_verified": {
+    "onboarding_simplified_text": true,
+    "prospects_readable_dark": true,
+    "prospect_detail_visible": true,
+    "dashboard_empty_readable": true,
+    "ai_modal_buttons_readable": true,
+    "theme_toggle_round_gradient": true,
+    "german_translations": true,
+    "italian_translations": true
+  },
+  
+  "dark_mode_colors_verified": {
+    "bg": "#1A1A24 (rgb(26, 26, 36))",
+    "surface": "#2A2A3B (rgb(42, 42, 59))",
+    "text": "#FFFFFF (rgb(255, 255, 255))",
+    "muted": "#A0A4AE (grayish)"
+  }
+}

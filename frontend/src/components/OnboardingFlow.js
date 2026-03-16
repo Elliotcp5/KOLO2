@@ -26,7 +26,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       // Step 2 - How it works
       howItWorksTitle: "Comment ça marche ?",
       feature1Title: "Swipez vos tâches",
-      feature1Desc: "Glissez vers la droite pour valider, vers la gauche pour reporter.",
+      feature1Desc: "Glissez vers la droite pour valider une tâche.",
       feature2Title: "IA intelligente",
       feature2Desc: "KOLO génère des relances personnalisées pour chaque prospect.",
       feature3Title: "Ne ratez rien",
@@ -59,7 +59,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       letsGo: "Let's go!",
       howItWorksTitle: "How does it work?",
       feature1Title: "Swipe your tasks",
-      feature1Desc: "Swipe right to validate, left to postpone.",
+      feature1Desc: "Swipe right to validate a task.",
       feature2Title: "Smart AI",
       feature2Desc: "KOLO generates personalized follow-ups for each prospect.",
       feature3Title: "Never miss anything",

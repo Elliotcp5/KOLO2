@@ -996,12 +996,32 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           </button>
         </div>
       ) : (viewMode === 'today' ? tasks : allTasks).length === 0 ? (
-        <div className="empty-state">
-          <div className="icon-wrapper">
-            <Check strokeWidth={2} />
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '60px 20px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(34, 197, 94, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '16px'
+          }}>
+            <Check strokeWidth={2} size={32} style={{ color: '#22c55e' }} />
           </div>
-          <h3 className="title">{viewMode === 'today' ? t('allCaughtUp') : (locale === 'fr' ? 'Aucune tâche' : 'No tasks')}</h3>
-          <p className="subtitle">{viewMode === 'today' ? t('noPendingTask') : (locale === 'fr' ? 'Créez votre première tâche' : 'Create your first task')}</p>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: c('text'), marginBottom: '8px' }}>
+            {viewMode === 'today' ? t('allCaughtUp') : (locale === 'fr' ? 'Aucune tâche' : 'No tasks')}
+          </h3>
+          <p style={{ fontSize: '14px', color: c('muted') }}>
+            {viewMode === 'today' ? t('noPendingTask') : (locale === 'fr' ? 'Créez votre première tâche' : 'Create your first task')}
+          </p>
         </div>
       ) : (
         <>
@@ -2097,11 +2117,11 @@ const ProspectsTab = ({ onSelectProspect }) => {
                       />
                     )}
                     <div>
-                      <div className="name">{prospect.full_name}</div>
-                      <div className="contact">{prospect.phone} • {prospect.email}</div>
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: c('text'), marginBottom: '2px' }}>{prospect.full_name}</div>
+                      <div style={{ fontSize: '13px', color: c('muted') }}>{prospect.phone} • {prospect.email}</div>
                     </div>
                   </div>
-                  <ChevronRight size={20} style={{ color: 'var(--muted-dark)' }} />
+                  <ChevronRight size={20} style={{ color: c('muted') }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
                   {(() => {
@@ -2122,7 +2142,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
                   {nextTask && (
                     <span style={{ 
                       fontSize: '12px', 
-                      color: nextTask.isOverdue ? 'var(--error)' : 'var(--muted)',
+                      color: nextTask.isOverdue ? '#EF4444' : c('muted'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
@@ -2425,7 +2445,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           style={{ 
             background: 'none', 
             border: 'none', 
-            color: 'var(--text)', 
+            color: c('text'), 
             cursor: 'pointer',
             padding: '8px'
           }}
@@ -2434,7 +2454,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           <X size={24} strokeWidth={1.5} />
         </button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h1 className="text-title">{prospectData.full_name}</h1>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: c('text') }}>{prospectData.full_name}</h1>
           {/* Discrete score dot in header */}
           {prospectData.score && (
             <span style={{
@@ -2449,9 +2469,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         <button 
           onClick={() => setShowEditModal(true)}
           style={{ 
-            background: 'var(--surface-2)', 
-            border: '1px solid var(--border)', 
-            color: 'var(--text)', 
+            background: c('surface'), 
+            border: `1px solid ${c('border')}`, 
+            color: c('text'), 
             cursor: 'pointer',
             padding: '8px 16px',
             borderRadius: '10px',
@@ -2881,22 +2901,43 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       
       {/* AI Message Modal */}
       {showMessageModal && (
-        <div className="modal-overlay" onClick={() => setShowMessageModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }} onClick={() => setShowMessageModal(false)}>
+          <div style={{
+            background: c('bg'),
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            border: `1px solid ${c('border')}`
+          }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: c('text') }}>
+                <Sparkles size={18} style={{ color: c('accent') }} />
                 {locale === 'fr' ? 'Message IA' : 'AI Message'}
               </h2>
-              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
             
             {messageLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)', marginBottom: '12px' }} />
-                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: c('accent'), marginBottom: '12px' }} />
+                <p style={{ color: c('muted'), fontSize: '14px' }}>
                   {locale === 'fr' ? 'Génération...' : 'Generating...'}
                 </p>
               </div>
@@ -2909,10 +2950,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                     width: '100%',
                     minHeight: '100px',
                     padding: '14px',
-                    background: 'var(--surface-2)',
-                    border: '1px solid var(--border)',
+                    background: c('surface'),
+                    border: `1px solid ${c('border')}`,
                     borderRadius: '12px',
-                    color: 'var(--text)',
+                    color: c('text'),
                     fontSize: '14px',
                     lineHeight: '1.5',
                     resize: 'vertical',
@@ -2921,10 +2962,42 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 />
                 
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                  <button onClick={generateMessage} className="btn-minimal" style={{ flex: 1 }}>
+                  <button 
+                    onClick={generateMessage} 
+                    style={{ 
+                      flex: 1, 
+                      padding: '10px 16px', 
+                      background: c('surface'), 
+                      border: `1px solid ${c('border')}`, 
+                      borderRadius: '8px', 
+                      color: c('text'), 
+                      fontSize: '14px', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
                     🔄 {locale === 'fr' ? 'Regénérer' : 'Regenerate'}
                   </button>
-                  <button onClick={copyMessage} className="btn-minimal" style={{ flex: 1 }}>
+                  <button 
+                    onClick={copyMessage} 
+                    style={{ 
+                      flex: 1, 
+                      padding: '10px 16px', 
+                      background: c('surface'), 
+                      border: `1px solid ${c('border')}`, 
+                      borderRadius: '8px', 
+                      color: c('text'), 
+                      fontSize: '14px', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
                     📋 {locale === 'fr' ? 'Copier' : 'Copy'}
                   </button>
                 </div>
@@ -2973,14 +3046,35 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
       {/* SMS History Modal - clean and simple */}
       {showSmsHistory && (
-        <div className="modal-overlay" onClick={() => setShowSmsHistory(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '70vh' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }} onClick={() => setShowSmsHistory(false)}>
+          <div style={{
+            background: c('bg'),
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            maxHeight: '70vh',
+            overflowY: 'auto',
+            border: `1px solid ${c('border')}`
+          }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MessageSquare size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: c('text') }}>
+                <MessageSquare size={18} style={{ color: c('accent') }} />
                 {locale === 'fr' ? 'Conversation SMS' : 'SMS Conversation'}
               </h2>
-              <button onClick={() => setShowSmsHistory(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => setShowSmsHistory(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
@@ -3001,16 +3095,16 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                         }}
                       >
                         <div style={{
-                          background: isReceived ? 'var(--surface-2)' : 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.3) 100%)',
+                          background: isReceived ? c('surface') : 'linear-gradient(135deg, rgba(0, 74, 173, 0.3) 0%, rgba(203, 108, 230, 0.3) 100%)',
                           borderRadius: isReceived ? '12px 12px 12px 4px' : '12px 12px 4px 12px',
                           padding: '10px 14px',
                           maxWidth: '85%',
-                          border: isReceived ? 'none' : '1px solid rgba(139, 92, 246, 0.3)'
+                          border: isReceived ? 'none' : '1px solid rgba(0, 74, 173, 0.3)'
                         }}>
                           <p style={{ 
                             fontSize: '14px', 
                             lineHeight: '1.5', 
-                            color: 'var(--text)',
+                            color: c('text'),
                             marginBottom: '6px'
                           }}>
                             {sms.message}
@@ -3021,7 +3115,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                             alignItems: 'center',
                             gap: '12px',
                             fontSize: '10px', 
-                            color: 'var(--muted)' 
+                            color: c('muted')
                           }}>
                             <span style={{ fontWeight: '500' }}>
                               {isReceived 
@@ -3044,7 +3138,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                   })}
                 </div>
               ) : (
-                <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>
+                <p style={{ textAlign: 'center', color: c('muted'), padding: '20px' }}>
                   {locale === 'fr' ? 'Aucun SMS envoyé' : 'No SMS sent'}
                 </p>
               )}
@@ -3055,7 +3149,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
       {/* Status Pipeline */}
       <div style={{ marginBottom: '24px' }}>
-        <label className="text-caption" style={{ display: 'block', marginBottom: '12px' }}>
+        <label style={{ display: 'block', marginBottom: '12px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
           {t('status')}
         </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -3069,9 +3163,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
-                  border: isActive ? 'none' : '1px solid var(--border)',
+                  border: isActive ? 'none' : `1px solid ${c('border')}`,
                   background: isActive ? option.color : 'transparent',
-                  color: isActive ? 'white' : 'var(--text)',
+                  color: isActive ? 'white' : c('text'),
                   fontSize: '13px',
                   fontWeight: '500',
                   cursor: 'pointer',
@@ -3087,23 +3181,24 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
       {/* Next scheduled task */}
       {prospectData.next_task_title && (
-        <div className="card" style={{ 
+        <div style={{ 
           marginBottom: '24px', 
           padding: '16px',
-          borderColor: 'var(--accent)',
-          borderWidth: '1px'
+          background: c('cardBg'),
+          border: `1px solid ${c('accent')}`,
+          borderRadius: '12px'
         }}>
-          <div className="text-caption" style={{ marginBottom: '8px' }}>
+          <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: c('muted') }}>
             {t('nextScheduledTask')}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Clock size={16} style={{ color: 'var(--accent)' }} />
-            <span style={{ color: 'var(--text)', fontWeight: '500' }}>
+            <Clock size={16} style={{ color: c('accent') }} />
+            <span style={{ color: c('text'), fontWeight: '500' }}>
               {prospectData.next_task_title}
             </span>
           </div>
           {prospectData.next_task_date && (
-            <div className="text-muted" style={{ marginTop: '4px', marginLeft: '24px', fontSize: '13px' }}>
+            <div style={{ marginTop: '4px', marginLeft: '24px', fontSize: '13px', color: c('muted') }}>
               {formatDate(new Date(prospectData.next_task_date))}
             </div>
           )}
@@ -3113,12 +3208,12 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       {/* Tasks section */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 className="text-caption">{t('tasks')}</h3>
+          <h3 style={{ fontSize: '13px', fontWeight: '500', color: c('muted') }}>{t('tasks')}</h3>
         </div>
 
         {/* Task list */}
         {tasks.length === 0 ? (
-          <p className="text-muted" style={{ textAlign: 'center', padding: '20px' }}>
+          <p style={{ textAlign: 'center', padding: '20px', color: c('muted') }}>
             {t('noTasks')}
           </p>
         ) : (
@@ -3821,8 +3916,10 @@ const SettingsTab = ({ onClose }) => {
               width: '56px',
               height: '30px',
               borderRadius: '15px',
-              background: theme === 'dark' ? c('accent') : c('surface'),
-              border: `1.5px solid ${c('border')}`,
+              background: theme === 'dark' 
+                ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)' 
+                : c('surface'),
+              border: theme === 'dark' ? 'none' : `1.5px solid ${c('border')}`,
               position: 'relative',
               transition: 'all 0.2s ease'
             }}
@@ -3831,10 +3928,10 @@ const SettingsTab = ({ onClose }) => {
               width: '24px',
               height: '24px',
               borderRadius: '50%',
-              background: c('cardBg'),
+              background: 'white',
               position: 'absolute',
-              top: '2px',
-              left: theme === 'dark' ? '28px' : '2px',
+              top: '3px',
+              left: theme === 'dark' ? '29px' : '3px',
               transition: 'left 0.2s ease',
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
               display: 'flex',
