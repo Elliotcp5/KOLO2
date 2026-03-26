@@ -122,11 +122,23 @@ class User(BaseModel):
     auth_provider: str = "email"
     locale: Optional[str] = None
     country: Optional[str] = None
+    currency: str = "EUR"  # EUR, USD, GBP
     stripe_customer_id: Optional[str] = None
     subscription_status: str = "none"  # none, trialing, active, canceled, past_due
     subscription_id: Optional[str] = None
     trial_ends_at: Optional[datetime] = None
     subscription_ends_at: Optional[datetime] = None
+    # Plan system (FREE / PRO / PRO+)
+    plan: str = "free"  # free, pro, pro_plus
+    trial_plan: Optional[str] = None  # pro, pro_plus (plan being trialed)
+    trial_start_date: Optional[datetime] = None
+    billing_period: str = "monthly"  # monthly, annual
+    # Feature usage tracking
+    daily_suggestions_used: int = 0
+    daily_suggestions_reset_date: Optional[datetime] = None
+    # ROI Dashboard (PRO+)
+    monthly_revenue: float = 0.0
+    monthly_revenue_month: Optional[str] = None  # Format: "2026-03"
     # Theme & Onboarding
     theme_preference: str = "light"  # light, dark
     didacticiel_completed: bool = False
@@ -168,12 +180,24 @@ class Prospect(BaseModel):
     phone: str
     email: str
     source: str = "manual"  # seloger, leboncoin, reseau, recommandation, autre, manual
-    status: str = "nouveau"  # nouveau, contacte, qualifie, offre, signe
+    status: str = "nouveau"  # nouveau, contacte, qualifie, offre, signe, closed_won, closed_lost, archived
     notes: Optional[str] = None
     last_activity_date: Optional[datetime] = None
+    last_contact_date: Optional[datetime] = None
     next_task_id: Optional[str] = None
     next_task_date: Optional[datetime] = None
     next_task_title: Optional[str] = None
+    # New fields from spec
+    project_type: Optional[str] = None  # buyer, seller, renter
+    budget_min: Optional[int] = None  # in thousands €
+    budget_max: Optional[int] = None  # in thousands €
+    budget_undefined: bool = False
+    delay: Optional[str] = None  # urgent, 3_6_months, 6_plus_months
+    # PRO+ features
+    heat_score: Optional[int] = None  # 0-100, calculated
+    commission_amount: Optional[int] = None  # in euros, when closed_won
+    closed_date: Optional[datetime] = None
+    external_activity_signal: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -198,6 +222,80 @@ class PaymentSuccess(BaseModel):
     used: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Interaction(BaseModel):
+    """Interaction history for prospects (PRO and PRO+ feature)"""
+    model_config = ConfigDict(extra="ignore")
+    interaction_id: str = Field(default_factory=lambda: f"int_{uuid.uuid4().hex[:12]}")
+    prospect_id: str
+    user_id: str
+    interaction_type: str  # sms, call, visit, note, suggestion
+    content: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ==================== PLAN FEATURE FLAGS ====================
+
+PLAN_FEATURES = {
+    "free": {
+        "max_prospects": 30,
+        "daily_ai_suggestions": 1,
+        "sms_one_click": False,
+        "heat_score": False,
+        "roi_dashboard": False,
+        "interaction_history": False,
+        "weekly_report": False,
+        "budget_slider": False,
+        "contextual_notes": False,
+        "behavioral_alerts": False,
+        "ultra_contextual_suggestions": False,
+        "dedicated_support": False,
+        "priority_access": False,
+    },
+    "pro": {
+        "max_prospects": None,  # Unlimited
+        "daily_ai_suggestions": None,  # Unlimited
+        "sms_one_click": True,
+        "heat_score": False,
+        "roi_dashboard": False,
+        "interaction_history": True,
+        "weekly_report": False,
+        "budget_slider": True,
+        "contextual_notes": True,
+        "behavioral_alerts": False,
+        "ultra_contextual_suggestions": False,
+        "dedicated_support": False,
+        "priority_access": False,
+    },
+    "pro_plus": {
+        "max_prospects": None,  # Unlimited
+        "daily_ai_suggestions": None,  # Unlimited
+        "sms_one_click": True,
+        "heat_score": True,
+        "roi_dashboard": True,
+        "interaction_history": True,
+        "weekly_report": True,
+        "budget_slider": True,
+        "contextual_notes": True,
+        "behavioral_alerts": True,
+        "ultra_contextual_suggestions": True,
+        "dedicated_support": True,
+        "priority_access": True,
+    }
+}
+
+# Pricing configuration
+PLAN_PRICING = {
+    "pro": {
+        "EUR": {"monthly": 999, "annual": 9990, "monthly_display": "9,99€", "annual_display": "99,90€", "annual_monthly": "8,33€"},
+        "USD": {"monthly": 1099, "annual": 10990, "monthly_display": "$10.99", "annual_display": "$109.90", "annual_monthly": "$9.16"},
+        "GBP": {"monthly": 899, "annual": 8990, "monthly_display": "£8.99", "annual_display": "£89.90", "annual_monthly": "£7.49"},
+    },
+    "pro_plus": {
+        "EUR": {"monthly": 2499, "annual": 24990, "monthly_display": "24,99€", "annual_display": "249,90€", "annual_monthly": "20,83€"},
+        "USD": {"monthly": 2799, "annual": 27990, "monthly_display": "$27.99", "annual_display": "$279.90", "annual_monthly": "$23.33"},
+        "GBP": {"monthly": 2199, "annual": 21990, "monthly_display": "£21.99", "annual_display": "£219.90", "annual_monthly": "£18.33"},
+    }
+}
+
 # ==================== REQUEST/RESPONSE MODELS ====================
 
 class CreateCheckoutRequest(BaseModel):
@@ -216,10 +314,16 @@ class AuthSessionRequest(BaseModel):
 class CreateProspectRequest(BaseModel):
     full_name: str
     phone: str
-    email: EmailStr
+    email: Optional[EmailStr] = None
     source: str = "manual"
-    status: str = "new"
+    status: str = "nouveau"
     notes: Optional[str] = None
+    # New fields from spec
+    project_type: Optional[str] = None  # buyer, seller, renter
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    budget_undefined: bool = False
+    delay: Optional[str] = None  # urgent, 3_6_months, 6_plus_months
 
 class UpdateProspectRequest(BaseModel):
     full_name: Optional[str] = None
@@ -228,6 +332,12 @@ class UpdateProspectRequest(BaseModel):
     source: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+    project_type: Optional[str] = None
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    budget_undefined: Optional[bool] = None
+    delay: Optional[str] = None
+    commission_amount: Optional[int] = None  # For marking as closed_won
 
 class CreateTaskRequest(BaseModel):
     prospect_id: Optional[str] = None
@@ -570,6 +680,29 @@ async def get_current_user(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
+    # Get full user doc for plan info
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    effective_plan = get_user_effective_plan(user_doc) if user_doc else "free"
+    features = PLAN_FEATURES.get(effective_plan, PLAN_FEATURES["free"])
+    
+    # Check limits
+    prospect_limit = await check_prospect_limit(user.user_id, user_doc) if user_doc else {"can_add": True, "current": 0, "max": 30}
+    ai_limit = await check_ai_suggestion_limit(user.user_id, user_doc) if user_doc else {"can_use": True, "used": 0, "max": 1}
+    
+    # Trial info
+    trial_info = None
+    if user_doc:
+        trial_plan = user_doc.get("trial_plan")
+        trial_end = user_doc.get("trial_ends_at")
+        if trial_plan and trial_end:
+            if isinstance(trial_end, str):
+                trial_end = datetime.fromisoformat(trial_end.replace('Z', '+00:00'))
+            trial_info = {
+                "plan": trial_plan,
+                "ends_at": trial_end.isoformat() if isinstance(trial_end, datetime) else trial_end,
+                "days_remaining": max(0, (trial_end - datetime.now(timezone.utc)).days) if isinstance(trial_end, datetime) else 0
+            }
+    
     return {
         "user_id": user.user_id,
         "email": user.email,
@@ -581,6 +714,16 @@ async def get_current_user(request: Request):
         "didacticiel_completed": getattr(user, 'didacticiel_completed', False),
         "tooltips_seen": getattr(user, 'tooltips_seen', []),
         "streak_current": getattr(user, 'streak_current', 0),
+        # Plan info
+        "plan": user_doc.get("plan", "free") if user_doc else "free",
+        "effective_plan": effective_plan,
+        "features": features,
+        "limits": {
+            "prospects": prospect_limit,
+            "ai_suggestions": ai_limit
+        },
+        "trial": trial_info,
+        "currency": user_doc.get("currency", "EUR") if user_doc else "EUR"
     }
 
 @api_router.put("/auth/preferences")
@@ -1302,6 +1445,811 @@ async def reactivate_subscription(http_request: Request):
     except Exception as e:
         logger.error(f"Reactivate subscription error: {e}")
         raise HTTPException(status_code=500, detail="Failed to reactivate subscription")
+
+# ==================== PLAN & FEATURE ENDPOINTS ====================
+
+def get_user_effective_plan(user_doc: dict) -> str:
+    """Get user's effective plan considering trials"""
+    now = datetime.now(timezone.utc)
+    
+    # Check if user is in an active trial
+    trial_plan = user_doc.get("trial_plan")
+    trial_end = user_doc.get("trial_ends_at")
+    
+    if trial_plan and trial_end:
+        if isinstance(trial_end, str):
+            trial_end = datetime.fromisoformat(trial_end.replace('Z', '+00:00'))
+        if trial_end.tzinfo is None:
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+        
+        if now < trial_end:
+            return trial_plan
+    
+    # Check subscription status
+    sub_status = user_doc.get("subscription_status", "none")
+    if sub_status in ["active", "trialing"]:
+        return user_doc.get("plan", "free")
+    
+    return "free"
+
+def check_feature_access(user_doc: dict, feature: str) -> bool:
+    """Check if user has access to a specific feature"""
+    effective_plan = get_user_effective_plan(user_doc)
+    plan_features = PLAN_FEATURES.get(effective_plan, PLAN_FEATURES["free"])
+    return plan_features.get(feature, False)
+
+async def check_prospect_limit(user_id: str, user_doc: dict) -> dict:
+    """Check if user can add more prospects"""
+    effective_plan = get_user_effective_plan(user_doc)
+    max_prospects = PLAN_FEATURES[effective_plan]["max_prospects"]
+    
+    if max_prospects is None:
+        return {"can_add": True, "current": 0, "max": None}
+    
+    current_count = await db.prospects.count_documents({
+        "user_id": user_id,
+        "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
+    })
+    
+    return {
+        "can_add": current_count < max_prospects,
+        "current": current_count,
+        "max": max_prospects
+    }
+
+async def check_ai_suggestion_limit(user_id: str, user_doc: dict) -> dict:
+    """Check if user can use AI suggestions today"""
+    effective_plan = get_user_effective_plan(user_doc)
+    max_suggestions = PLAN_FEATURES[effective_plan]["daily_ai_suggestions"]
+    
+    if max_suggestions is None:
+        return {"can_use": True, "used": 0, "max": None}
+    
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    reset_date = user_doc.get("daily_suggestions_reset_date")
+    used = user_doc.get("daily_suggestions_used", 0)
+    
+    if reset_date:
+        if isinstance(reset_date, str):
+            reset_date = datetime.fromisoformat(reset_date.replace('Z', '+00:00'))
+        if reset_date.tzinfo is None:
+            reset_date = reset_date.replace(tzinfo=timezone.utc)
+        
+        # Reset if it's a new day
+        if reset_date < today:
+            used = 0
+            await db.users.update_one(
+                {"user_id": user_id},
+                {"$set": {
+                    "daily_suggestions_used": 0,
+                    "daily_suggestions_reset_date": today.isoformat()
+                }}
+            )
+    
+    return {
+        "can_use": used < max_suggestions,
+        "used": used,
+        "max": max_suggestions
+    }
+
+@api_router.get("/plans/current")
+async def get_current_plan(request: Request):
+    """Get user's current plan and features"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    effective_plan = get_user_effective_plan(user_doc)
+    features = PLAN_FEATURES.get(effective_plan, PLAN_FEATURES["free"])
+    
+    # Check limits
+    prospect_limit = await check_prospect_limit(user.user_id, user_doc)
+    ai_limit = await check_ai_suggestion_limit(user.user_id, user_doc)
+    
+    # Trial info
+    trial_info = None
+    trial_plan = user_doc.get("trial_plan")
+    trial_end = user_doc.get("trial_ends_at")
+    if trial_plan and trial_end:
+        if isinstance(trial_end, str):
+            trial_end = datetime.fromisoformat(trial_end.replace('Z', '+00:00'))
+        trial_info = {
+            "plan": trial_plan,
+            "ends_at": trial_end.isoformat() if isinstance(trial_end, datetime) else trial_end,
+            "days_remaining": max(0, (trial_end - datetime.now(timezone.utc)).days) if isinstance(trial_end, datetime) else 0
+        }
+    
+    return {
+        "plan": user_doc.get("plan", "free"),
+        "effective_plan": effective_plan,
+        "billing_period": user_doc.get("billing_period", "monthly"),
+        "features": features,
+        "limits": {
+            "prospects": prospect_limit,
+            "ai_suggestions": ai_limit
+        },
+        "trial": trial_info,
+        "subscription_status": user_doc.get("subscription_status", "none"),
+        "subscription_ends_at": user_doc.get("subscription_ends_at"),
+        "cancel_at_period_end": user_doc.get("cancel_at_period_end", False)
+    }
+
+@api_router.get("/plans/pricing")
+async def get_pricing(request: Request, currency: Optional[str] = None):
+    """Get pricing for all plans"""
+    # Detect currency from user or request
+    detected_currency = currency or "EUR"
+    
+    user = await get_user_from_session(request)
+    if user:
+        user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+        if user_doc:
+            detected_currency = user_doc.get("currency", "EUR")
+    
+    if detected_currency not in ["EUR", "USD", "GBP"]:
+        detected_currency = "EUR"
+    
+    return {
+        "currency": detected_currency,
+        "plans": {
+            "free": {
+                "name": "FREE",
+                "price_monthly": 0,
+                "price_annual": 0,
+                "display_monthly": "0€",
+                "display_annual": "0€",
+                "features": list(PLAN_FEATURES["free"].keys())
+            },
+            "pro": {
+                "name": "PRO",
+                "price_monthly": PLAN_PRICING["pro"][detected_currency]["monthly"],
+                "price_annual": PLAN_PRICING["pro"][detected_currency]["annual"],
+                "display_monthly": PLAN_PRICING["pro"][detected_currency]["monthly_display"],
+                "display_annual": PLAN_PRICING["pro"][detected_currency]["annual_display"],
+                "display_annual_monthly": PLAN_PRICING["pro"][detected_currency]["annual_monthly"],
+                "features": list(PLAN_FEATURES["pro"].keys())
+            },
+            "pro_plus": {
+                "name": "PRO+",
+                "price_monthly": PLAN_PRICING["pro_plus"][detected_currency]["monthly"],
+                "price_annual": PLAN_PRICING["pro_plus"][detected_currency]["annual"],
+                "display_monthly": PLAN_PRICING["pro_plus"][detected_currency]["monthly_display"],
+                "display_annual": PLAN_PRICING["pro_plus"][detected_currency]["annual_display"],
+                "display_annual_monthly": PLAN_PRICING["pro_plus"][detected_currency]["annual_monthly"],
+                "features": list(PLAN_FEATURES["pro_plus"].keys())
+            }
+        }
+    }
+
+class StartTrialRequest(BaseModel):
+    plan: str  # pro or pro_plus
+
+@api_router.post("/plans/start-trial")
+async def start_trial(request: StartTrialRequest, http_request: Request):
+    """Start a 14-day free trial for PRO or PRO+"""
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    if request.plan not in ["pro", "pro_plus"]:
+        raise HTTPException(status_code=400, detail="Invalid plan. Must be 'pro' or 'pro_plus'")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if user already had a trial
+    if user_doc.get("trial_start_date"):
+        raise HTTPException(status_code=400, detail="Vous avez déjà utilisé votre essai gratuit")
+    
+    # Check if user already has an active subscription
+    if user_doc.get("subscription_status") == "active":
+        raise HTTPException(status_code=400, detail="Vous avez déjà un abonnement actif")
+    
+    now = datetime.now(timezone.utc)
+    trial_end = now + timedelta(days=14)
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {
+            "trial_plan": request.plan,
+            "trial_start_date": now.isoformat(),
+            "trial_ends_at": trial_end.isoformat(),
+            "subscription_status": "trialing",
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    # TODO: Send welcome email for trial (J+0)
+    
+    return {
+        "message": f"Essai gratuit {request.plan.upper()} démarré",
+        "trial_plan": request.plan,
+        "trial_ends_at": trial_end.isoformat(),
+        "days_remaining": 14
+    }
+
+@api_router.get("/plans/check-feature/{feature}")
+async def check_feature(feature: str, request: Request):
+    """Check if user has access to a specific feature"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    effective_plan = get_user_effective_plan(user_doc)
+    has_access = check_feature_access(user_doc, feature)
+    
+    # Determine which plan is required for this feature
+    required_plan = "free"
+    if PLAN_FEATURES["pro"].get(feature) and not PLAN_FEATURES["free"].get(feature):
+        required_plan = "pro"
+    if PLAN_FEATURES["pro_plus"].get(feature) and not PLAN_FEATURES["pro"].get(feature):
+        required_plan = "pro_plus"
+    
+    return {
+        "feature": feature,
+        "has_access": has_access,
+        "current_plan": effective_plan,
+        "required_plan": required_plan
+    }
+
+class UpgradePlanRequest(BaseModel):
+    plan: str  # pro or pro_plus
+    billing_period: str = "monthly"  # monthly or annual
+
+@api_router.post("/plans/upgrade")
+async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
+    """Create Stripe checkout session for plan upgrade"""
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    if request.plan not in ["pro", "pro_plus"]:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    
+    if request.billing_period not in ["monthly", "annual"]:
+        raise HTTPException(status_code=400, detail="Invalid billing period")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    currency = user_doc.get("currency", "EUR")
+    pricing = PLAN_PRICING[request.plan][currency]
+    amount = pricing["monthly"] if request.billing_period == "monthly" else pricing["annual"]
+    
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+    
+    # Get or create Stripe customer
+    stripe_customer_id = user_doc.get("stripe_customer_id")
+    if not stripe_customer_id:
+        customer = stripe.Customer.create(
+            email=user.email,
+            name=user.name,
+            metadata={"user_id": user.user_id}
+        )
+        stripe_customer_id = customer.id
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {"stripe_customer_id": stripe_customer_id}}
+        )
+    
+    # Get origin URL
+    referer = http_request.headers.get('referer', '')
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        origin_url = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        origin_url = str(http_request.base_url).rstrip('/')
+    
+    # Create or get price
+    interval = "month" if request.billing_period == "monthly" else "year"
+    price_lookup_key = f"kolo_{request.plan}_{currency.lower()}_{request.billing_period}"
+    
+    existing_prices = stripe.Price.list(lookup_keys=[price_lookup_key], limit=1)
+    
+    if existing_prices.data:
+        price_id = existing_prices.data[0].id
+    else:
+        product_name = f"KOLO {request.plan.upper().replace('_', '+')}"
+        product = stripe.Product.create(name=product_name)
+        
+        price = stripe.Price.create(
+            product=product.id,
+            unit_amount=amount,
+            currency=currency.lower(),
+            recurring={"interval": interval},
+            lookup_key=price_lookup_key
+        )
+        price_id = price.id
+    
+    # Create checkout session
+    session = stripe.checkout.Session.create(
+        customer=stripe_customer_id,
+        mode="subscription",
+        payment_method_types=["card"],
+        line_items=[{"price": price_id, "quantity": 1}],
+        success_url=f"{origin_url}/app?upgrade=success&plan={request.plan}",
+        cancel_url=f"{origin_url}/pricing?upgrade=cancelled",
+        metadata={
+            "user_id": user.user_id,
+            "plan": request.plan,
+            "billing_period": request.billing_period
+        }
+    )
+    
+    return {"checkout_url": session.url, "session_id": session.id}
+
+@api_router.post("/plans/set-currency")
+async def set_currency(request: Request):
+    """Set user's preferred currency"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    body = await request.json()
+    currency = body.get("currency", "EUR").upper()
+    
+    if currency not in ["EUR", "USD", "GBP"]:
+        raise HTTPException(status_code=400, detail="Invalid currency. Must be EUR, USD, or GBP")
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"currency": currency, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Currency updated", "currency": currency}
+
+# ==================== INTERACTION HISTORY ENDPOINTS (PRO/PRO+) ====================
+
+class CreateInteractionRequest(BaseModel):
+    prospect_id: str
+    interaction_type: str  # sms, call, visit, note, suggestion
+    content: Optional[str] = None
+
+@api_router.post("/interactions")
+async def create_interaction(request: CreateInteractionRequest, http_request: Request):
+    """Create an interaction record (PRO/PRO+ feature)"""
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "interaction_history"):
+        raise HTTPException(status_code=403, detail="Cette fonctionnalité nécessite un abonnement PRO ou PRO+")
+    
+    # Verify prospect belongs to user
+    prospect = await db.prospects.find_one({
+        "prospect_id": request.prospect_id,
+        "user_id": user.user_id
+    })
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    interaction = Interaction(
+        prospect_id=request.prospect_id,
+        user_id=user.user_id,
+        interaction_type=request.interaction_type,
+        content=request.content
+    )
+    
+    interaction_doc = interaction.model_dump()
+    interaction_doc["created_at"] = interaction_doc["created_at"].isoformat()
+    await db.interactions.insert_one(interaction_doc)
+    
+    # Update prospect's last_contact_date
+    now = datetime.now(timezone.utc)
+    await db.prospects.update_one(
+        {"prospect_id": request.prospect_id},
+        {"$set": {
+            "last_contact_date": now.isoformat(),
+            "last_activity_date": now.isoformat(),
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    return {"interaction_id": interaction.interaction_id, "created_at": interaction_doc["created_at"]}
+
+@api_router.get("/interactions/{prospect_id}")
+async def get_interactions(prospect_id: str, request: Request):
+    """Get interaction history for a prospect (PRO/PRO+ feature)"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "interaction_history"):
+        raise HTTPException(status_code=403, detail="Cette fonctionnalité nécessite un abonnement PRO ou PRO+")
+    
+    interactions = await db.interactions.find(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"interactions": interactions}
+
+# ==================== HEAT SCORE ENDPOINTS (PRO+) ====================
+
+def calculate_heat_score(prospect: dict) -> int:
+    """Calculate heat score for a prospect (PRO+ feature)"""
+    score = 100
+    now = datetime.now(timezone.utc)
+    
+    # Days since last contact
+    last_contact = prospect.get("last_contact_date")
+    if last_contact:
+        if isinstance(last_contact, str):
+            last_contact = datetime.fromisoformat(last_contact.replace('Z', '+00:00'))
+        if last_contact.tzinfo is None:
+            last_contact = last_contact.replace(tzinfo=timezone.utc)
+        
+        days_since = (now - last_contact).days
+        if days_since > 7:
+            score -= (days_since - 7) * 5
+    else:
+        # No contact date, use created_at
+        created = prospect.get("created_at")
+        if created:
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            days_since = (now - created).days
+            if days_since > 7:
+                score -= (days_since - 7) * 5
+    
+    # Ensure score doesn't go below 0
+    if score < 0:
+        score = 0
+    
+    # Bonus for urgent delay
+    if prospect.get("delay") == "urgent":
+        score += 30
+    
+    # Bonus for external activity signal
+    if prospect.get("external_activity_signal"):
+        score += 20
+    
+    # Profile completion bonus (max 10 points)
+    fields_to_check = ["full_name", "phone", "email", "project_type", "budget_min", "delay", "notes"]
+    filled_fields = sum(1 for f in fields_to_check if prospect.get(f))
+    score += int((filled_fields / len(fields_to_check)) * 10)
+    
+    # Cap at 100
+    return min(100, max(0, score))
+
+def get_heat_status(score: int) -> str:
+    """Get heat status label from score"""
+    if score <= 33:
+        return "cold"
+    elif score <= 66:
+        return "warm"
+    else:
+        return "hot"
+
+@api_router.post("/prospects/{prospect_id}/calculate-heat")
+async def calculate_prospect_heat(prospect_id: str, request: Request):
+    """Calculate and update heat score for a prospect (PRO+ only)"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "heat_score"):
+        raise HTTPException(status_code=403, detail="Le score de chaleur nécessite un abonnement PRO+")
+    
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    score = calculate_heat_score(prospect)
+    status = get_heat_status(score)
+    
+    await db.prospects.update_one(
+        {"prospect_id": prospect_id},
+        {"$set": {"heat_score": score, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"heat_score": score, "status": status}
+
+# ==================== ROI DASHBOARD ENDPOINTS (PRO+) ====================
+
+class MarkAsSoldRequest(BaseModel):
+    commission_amount: int  # in euros
+
+@api_router.post("/prospects/{prospect_id}/mark-sold")
+async def mark_prospect_as_sold(prospect_id: str, request: MarkAsSoldRequest, http_request: Request):
+    """Mark a prospect as sold with commission (PRO+ feature)"""
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "roi_dashboard"):
+        raise HTTPException(status_code=403, detail="Le dashboard ROI nécessite un abonnement PRO+")
+    
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.prospects.update_one(
+        {"prospect_id": prospect_id},
+        {"$set": {
+            "status": "closed_won",
+            "commission_amount": request.commission_amount,
+            "closed_date": now.isoformat(),
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    # Create interaction record
+    interaction = Interaction(
+        prospect_id=prospect_id,
+        user_id=user.user_id,
+        interaction_type="note",
+        content=f"Vente conclue - Commission: {request.commission_amount}€"
+    )
+    interaction_doc = interaction.model_dump()
+    interaction_doc["created_at"] = interaction_doc["created_at"].isoformat()
+    await db.interactions.insert_one(interaction_doc)
+    
+    return {"message": "Prospect marqué comme vendu", "commission": request.commission_amount}
+
+@api_router.get("/dashboard/roi")
+async def get_roi_dashboard(request: Request):
+    """Get ROI dashboard data (PRO+ feature)"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "roi_dashboard"):
+        raise HTTPException(status_code=403, detail="Le dashboard ROI nécessite un abonnement PRO+")
+    
+    now = datetime.now(timezone.utc)
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Get all closed_won prospects this month
+    pipeline = [
+        {
+            "$match": {
+                "user_id": user.user_id,
+                "status": "closed_won",
+                "closed_date": {"$gte": first_of_month.isoformat()}
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "total_revenue": {"$sum": "$commission_amount"},
+                "sales_count": {"$sum": 1}
+            }
+        }
+    ]
+    
+    result = await db.prospects.aggregate(pipeline).to_list(1)
+    
+    if result:
+        total_revenue = result[0].get("total_revenue", 0)
+        sales_count = result[0].get("sales_count", 0)
+    else:
+        total_revenue = 0
+        sales_count = 0
+    
+    average_commission = total_revenue / sales_count if sales_count > 0 else 0
+    
+    # Calculate ROI multiplier based on PRO+ price
+    effective_plan = get_user_effective_plan(user_doc)
+    currency = user_doc.get("currency", "EUR")
+    plan_price = PLAN_PRICING.get("pro_plus", {}).get(currency, {}).get("monthly", 2499) / 100
+    roi_multiplier = round(total_revenue / plan_price) if plan_price > 0 else 0
+    
+    return {
+        "ca_this_month": total_revenue,
+        "sales_this_month": sales_count,
+        "average_commission": round(average_commission),
+        "roi_multiplier": roi_multiplier,
+        "month": now.strftime("%Y-%m")
+    }
+
+# ==================== WEEKLY REPORT ENDPOINT (PRO+) ====================
+
+@api_router.post("/reports/weekly")
+async def generate_weekly_report(request: Request):
+    """Generate and send weekly report email (PRO+ feature)"""
+    import resend
+    
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "weekly_report"):
+        raise HTTPException(status_code=403, detail="Le rapport hebdomadaire nécessite un abonnement PRO+")
+    
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    
+    # Get statistics for the week
+    # 1. Completed tasks
+    completed_tasks = await db.tasks.count_documents({
+        "user_id": user.user_id,
+        "completed": True,
+        "completed_at": {"$gte": week_ago.isoformat()}
+    })
+    
+    # 2. New prospects
+    new_prospects = await db.prospects.count_documents({
+        "user_id": user.user_id,
+        "created_at": {"$gte": week_ago.isoformat()}
+    })
+    
+    # 3. Sales this week
+    sales_pipeline = [
+        {
+            "$match": {
+                "user_id": user.user_id,
+                "status": "closed_won",
+                "closed_date": {"$gte": week_ago.isoformat()}
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "total_revenue": {"$sum": "$commission_amount"},
+                "sales_count": {"$sum": 1}
+            }
+        }
+    ]
+    
+    sales_result = await db.prospects.aggregate(sales_pipeline).to_list(1)
+    weekly_revenue = sales_result[0].get("total_revenue", 0) if sales_result else 0
+    weekly_sales = sales_result[0].get("sales_count", 0) if sales_result else 0
+    
+    # 4. Hot prospects (score > 66)
+    hot_prospects = await db.prospects.count_documents({
+        "user_id": user.user_id,
+        "heat_score": {"$gt": 66},
+        "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
+    })
+    
+    # 5. Total active prospects
+    active_prospects = await db.prospects.count_documents({
+        "user_id": user.user_id,
+        "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
+    })
+    
+    # Build email HTML
+    locale = user_doc.get("locale", "fr")
+    user_name = user_doc.get("name", "Agent").split(" ")[0]
+    
+    email_subjects = {
+        "fr": f"📊 Votre rapport hebdomadaire KOLO",
+        "en": f"📊 Your weekly KOLO report",
+        "de": f"📊 Ihr wöchentlicher KOLO-Bericht",
+        "it": f"📊 Il tuo report settimanale KOLO"
+    }
+    
+    # Simple, clean email template
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f7f7fa; margin: 0; padding: 20px; }}
+            .container {{ max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; }}
+            .header {{ text-align: center; margin-bottom: 24px; }}
+            .logo {{ font-size: 24px; font-weight: bold; color: #6C63FF; }}
+            .greeting {{ font-size: 16px; color: #374151; margin-bottom: 20px; }}
+            .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
+            .stat-card {{ background: #f7f7fa; border-radius: 12px; padding: 16px; text-align: center; }}
+            .stat-value {{ font-size: 24px; font-weight: bold; color: #0E0B1E; }}
+            .stat-label {{ font-size: 12px; color: #6b7280; margin-top: 4px; }}
+            .highlight {{ background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(147,51,234,0.1)); border: 1px solid rgba(108,99,255,0.3); }}
+            .cta {{ display: block; text-align: center; background: linear-gradient(135deg, #4F46E5, #9333EA); color: white; padding: 14px 24px; border-radius: 9999px; text-decoration: none; font-weight: 600; margin-top: 24px; }}
+            .footer {{ text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">KOLO</div>
+            </div>
+            <p class="greeting">{"Bonjour" if locale == "fr" else "Hello"} {user_name} 👋</p>
+            <p style="color: #374151; margin-bottom: 20px;">
+                {"Voici votre récapitulatif de la semaine :" if locale == "fr" else "Here's your weekly summary:"}
+            </p>
+            
+            <div class="stats-grid">
+                <div class="stat-card highlight">
+                    <div class="stat-value" style="color: #22c55e;">{weekly_revenue}€</div>
+                    <div class="stat-label">{"CA cette semaine" if locale == "fr" else "Revenue this week"}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{weekly_sales}</div>
+                    <div class="stat-label">{"Ventes" if locale == "fr" else "Sales"}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{completed_tasks}</div>
+                    <div class="stat-label">{"Tâches complétées" if locale == "fr" else "Tasks completed"}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{new_prospects}</div>
+                    <div class="stat-label">{"Nouveaux prospects" if locale == "fr" else "New prospects"}</div>
+                </div>
+            </div>
+            
+            <div class="stat-card" style="margin-bottom: 16px;">
+                <div class="stat-value" style="color: #ef4444;">🔥 {hot_prospects}</div>
+                <div class="stat-label">{"Prospects chauds à relancer" if locale == "fr" else "Hot prospects to follow up"}</div>
+            </div>
+            
+            <a href="https://kolo.app/app" class="cta">
+                {"Ouvrir KOLO" if locale == "fr" else "Open KOLO"}
+            </a>
+            
+            <div class="footer">
+                {"Vous recevez cet email car vous êtes abonné PRO+." if locale == "fr" else "You're receiving this email because you're a PRO+ subscriber."}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Send email via Resend
+    resend_api_key = os.environ.get("RESEND_API_KEY")
+    sender_email = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    
+    if not resend_api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    try:
+        resend.api_key = resend_api_key
+        
+        params = {
+            "from": f"KOLO <{sender_email}>",
+            "to": [user.email],
+            "subject": email_subjects.get(locale, email_subjects["en"]),
+            "html": html_content
+        }
+        
+        email = resend.Emails.send(params)
+        
+        return {
+            "message": "Rapport envoyé",
+            "email_id": email.get("id") if isinstance(email, dict) else str(email),
+            "stats": {
+                "weekly_revenue": weekly_revenue,
+                "weekly_sales": weekly_sales,
+                "completed_tasks": completed_tasks,
+                "new_prospects": new_prospects,
+                "hot_prospects": hot_prospects
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to send weekly report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send report email")
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -2356,6 +3304,15 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     """Create a new prospect and auto-create follow-up task"""
     user = await require_active_subscription(request)
     
+    # Check prospect limit for FREE plan
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    prospect_limit = await check_prospect_limit(user.user_id, user_doc)
+    if not prospect_limit["can_add"]:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Vous avez atteint la limite de {prospect_limit['max']} prospects. Passez en PRO pour des prospects illimités."
+        )
+    
     # SECURITY: Validate and sanitize all inputs
     full_name = sanitize_string(prospect_data.full_name, max_length=100)
     if not full_name or len(full_name) < 2:
@@ -2370,8 +3327,18 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
     source = sanitize_string(prospect_data.source or "manual", max_length=50)
     
     # Validate status against allowed values
-    allowed_statuses = ['nouveau', 'contacte', 'qualifie', 'offre', 'signe', 'new', 'in_progress', 'closed', 'lost']
+    allowed_statuses = ['nouveau', 'contacte', 'qualifie', 'offre', 'signe', 'new', 'in_progress', 'closed', 'lost', 'closed_won', 'closed_lost', 'archived']
     status = prospect_data.status if prospect_data.status in allowed_statuses else 'nouveau'
+    
+    # Validate project_type
+    project_type = prospect_data.project_type
+    if project_type and project_type not in ['buyer', 'seller', 'renter']:
+        project_type = None
+    
+    # Validate delay
+    delay = prospect_data.delay
+    if delay and delay not in ['urgent', '3_6_months', '6_plus_months']:
+        delay = None
     
     now = datetime.now(timezone.utc)
     
@@ -2383,14 +3350,30 @@ async def create_prospect(request: Request, prospect_data: CreateProspectRequest
         source=source,
         status=status,
         notes=notes,
-        last_activity_date=now
+        last_activity_date=now,
+        last_contact_date=now,
+        # New fields
+        project_type=project_type,
+        budget_min=prospect_data.budget_min,
+        budget_max=prospect_data.budget_max,
+        budget_undefined=prospect_data.budget_undefined,
+        delay=delay
     )
     
     doc = prospect.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     doc['last_activity_date'] = doc['last_activity_date'].isoformat() if doc['last_activity_date'] else None
+    doc['last_contact_date'] = doc['last_contact_date'].isoformat() if doc['last_contact_date'] else None
     await db.prospects.insert_one(doc)
+    
+    # Calculate heat score for PRO+ users
+    if check_feature_access(user_doc, "heat_score"):
+        score = calculate_heat_score(doc)
+        await db.prospects.update_one(
+            {"prospect_id": prospect.prospect_id},
+            {"$set": {"heat_score": score}}
+        )
     
     return {"prospect_id": prospect.prospect_id, "message": "Prospect created"}
 
@@ -2558,6 +3541,124 @@ Contexte demandé: {context}
         # Fallback message
         fallback = f"Bonjour {prospect.get('full_name', '')}, je me permets de vous recontacter concernant votre projet immobilier. Êtes-vous disponible pour en discuter ? {agent_name}"
         return {"message": fallback}
+
+
+# Generate AI SMS message with full project context (PRO feature)
+class GenerateSMSRequest(BaseModel):
+    prospect_id: str
+    context: Optional[str] = None
+    locale: str = "fr"
+
+@api_router.post("/ai/generate-sms")
+@limiter.limit("30/minute")
+async def generate_ai_sms(request: GenerateSMSRequest, http_request: Request):
+    """Generate an AI-powered SMS message with full project context (PRO feature)"""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    user = await require_active_subscription(http_request)
+    
+    # Check if user has SMS feature (PRO)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not check_feature_access(user_doc, "sms_one_click"):
+        raise HTTPException(status_code=403, detail="Cette fonctionnalité nécessite un abonnement PRO")
+    
+    # Get prospect details
+    prospect = await db.prospects.find_one(
+        {"prospect_id": request.prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    try:
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
+        
+        # Get user name for signature
+        user_data = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "name": 1})
+        agent_name = user_data.get("name", "Votre agent") if user_data else "Votre agent"
+        
+        # Language-specific system message
+        lang_prompts = {
+            "fr": f"Agent immobilier. SMS court (<160 car), professionnel et chaleureux. Signé: {agent_name}. Texte seul, pas de guillemets.",
+            "en": f"Real estate agent. Short SMS (<160 chars), professional and friendly. Signed: {agent_name}. Text only, no quotes.",
+            "de": f"Immobilienmakler. Kurze SMS (<160 Zeichen), professionell und freundlich. Unterschrieben: {agent_name}. Nur Text, keine Anführungszeichen.",
+            "it": f"Agente immobiliare. SMS breve (<160 car), professionale e cordiale. Firmato: {agent_name}. Solo testo, senza virgolette."
+        }
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"sms_gen_{user.user_id}_{datetime.now().timestamp()}",
+            system_message=lang_prompts.get(request.locale, lang_prompts["fr"])
+        ).with_model("openai", "gpt-4.1-nano")
+        
+        # Build rich context with project details
+        project_type_labels = {
+            "buyer": {"fr": "Acheteur", "en": "Buyer", "de": "Käufer", "it": "Acquirente"},
+            "seller": {"fr": "Vendeur", "en": "Seller", "de": "Verkäufer", "it": "Venditore"},
+            "renter": {"fr": "Locataire", "en": "Renter", "de": "Mieter", "it": "Locatario"}
+        }
+        
+        delay_labels = {
+            "urgent": {"fr": "Urgent (< 3 mois)", "en": "Urgent (< 3 months)", "de": "Dringend (< 3 Monate)", "it": "Urgente (< 3 mesi)"},
+            "3_6_months": {"fr": "3-6 mois", "en": "3-6 months", "de": "3-6 Monate", "it": "3-6 mesi"},
+            "6_plus_months": {"fr": "+ 6 mois", "en": "+ 6 months", "de": "+ 6 Monate", "it": "+ 6 mesi"}
+        }
+        
+        project_type = prospect.get("project_type")
+        delay = prospect.get("delay")
+        budget_min = prospect.get("budget_min")
+        budget_max = prospect.get("budget_max")
+        budget_undefined = prospect.get("budget_undefined", False)
+        
+        project_type_str = project_type_labels.get(project_type, {}).get(request.locale, project_type) if project_type else "Non défini"
+        delay_str = delay_labels.get(delay, {}).get(request.locale, delay) if delay else "Non défini"
+        budget_str = "À définir" if budget_undefined else f"{budget_min}k€ - {budget_max}k€" if budget_min and budget_max else "Non défini"
+        
+        prospect_info = f"""
+Prospect: {prospect.get('full_name', 'Client')}
+Type de projet: {project_type_str}
+Budget: {budget_str}
+Délai: {delay_str}
+Statut: {prospect.get('status', 'nouveau')}
+Notes: {prospect.get('notes', 'Aucune note')[:200] if prospect.get('notes') else 'Aucune note'}
+Contexte additionnel: {request.context or 'Relance générale'}
+"""
+        
+        prompt_templates = {
+            "fr": f"Génère un SMS personnalisé pour ce prospect. Tiens compte du type de projet et du délai pour adapter le ton:\n{prospect_info}",
+            "en": f"Generate a personalized SMS for this prospect. Consider the project type and timeline to adapt the tone:\n{prospect_info}",
+            "de": f"Generieren Sie eine personalisierte SMS für diesen Interessenten. Berücksichtigen Sie den Projekttyp und den Zeitrahmen:\n{prospect_info}",
+            "it": f"Genera un SMS personalizzato per questo potenziale cliente. Considera il tipo di progetto e le tempistiche:\n{prospect_info}"
+        }
+        
+        user_message = UserMessage(
+            text=prompt_templates.get(request.locale, prompt_templates["fr"])
+        )
+        
+        response = await chat.send_message(user_message)
+        message = response.strip()
+        
+        # Remove quotes if present
+        if message.startswith('"') and message.endswith('"'):
+            message = message[1:-1]
+        if message.startswith("'") and message.endswith("'"):
+            message = message[1:-1]
+        
+        return {"message": message, "prospect_name": prospect.get('full_name', '')}
+        
+    except Exception as e:
+        logger.error(f"AI SMS generation error: {e}")
+        # Fallback message based on locale
+        first_name = prospect.get('full_name', '').split(' ')[0]
+        fallback_messages = {
+            "fr": f"Bonjour {first_name}, j'espère que vous allez bien. Je me permets de vous recontacter concernant votre projet immobilier. Avez-vous un moment pour en discuter ? {agent_name}",
+            "en": f"Hi {first_name}, I hope you're doing well. I wanted to follow up on your property project. Do you have a moment to discuss? {agent_name}",
+            "de": f"Hallo {first_name}, ich hoffe es geht Ihnen gut. Ich wollte mich zu Ihrem Immobilienprojekt melden. Haben Sie einen Moment Zeit? {agent_name}",
+            "it": f"Ciao {first_name}, spero che stia bene. Volevo ricontattarla per il suo progetto immobiliare. Ha un momento per parlarne? {agent_name}"
+        }
+        return {"message": fallback_messages.get(request.locale, fallback_messages["fr"]), "prospect_name": prospect.get('full_name', '')}
 
 
 # Send SMS to prospect

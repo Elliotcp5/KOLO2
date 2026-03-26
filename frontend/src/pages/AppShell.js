@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { usePlan } from '../context/PlanContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
 import OnboardingFlow from '../components/OnboardingFlow';
+import { AddProspectSheet } from '../components/AddProspectSheet';
+import { SMSOneClickButton } from '../components/SMSOneClickButton';
+import { HeatScoreBadge } from '../components/HeatScoreBadge';
+import { ROIDashboard } from '../components/ROIDashboard';
+import { InteractionTimeline } from '../components/InteractionTimeline';
+import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 // Refactored utilities
@@ -5771,6 +5778,7 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
 const AppShell = () => {
   const location = useLocation();
   const { theme, changeTheme, initializeFromUser } = useTheme();
+  const { fetchPlanData, planData, checkFeature } = usePlan();
   const [activeTab, setActiveTab] = useState('today');
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -5779,6 +5787,7 @@ const AppShell = () => {
   const [userStreak, setUserStreak] = useState(0);
   const [userPrefsLoaded, setUserPrefsLoaded] = useState(false);
   const [userName, setUserName] = useState('');
+  const [showAddProspectSheet, setShowAddProspectSheet] = useState(false);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -5799,6 +5808,12 @@ const AppShell = () => {
           setUserStreak(userData.streak_current || 0);
           // Set user name for initials
           setUserName(userData.full_name || '');
+          
+          // Fetch plan data
+          const token = localStorage.getItem('session_token');
+          if (token) {
+            fetchPlanData(token);
+          }
         }
       } catch (e) {
         console.error('Failed to load user preferences:', e);
@@ -5806,7 +5821,7 @@ const AppShell = () => {
       setUserPrefsLoaded(true);
     };
     loadUserPrefs();
-  }, [initializeFromUser]);
+  }, [initializeFromUser, fetchPlanData]);
 
   useEffect(() => {
     if (location.pathname.includes('/prospects')) {

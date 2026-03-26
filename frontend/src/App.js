@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { LocaleProvider } from "./context/LocaleContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
+import { PlanProvider } from "./context/PlanContext";
 import { trackPageView } from "./utils/analytics";
 
 // Pages
@@ -17,6 +18,7 @@ import AppShell from "./pages/AppShell";
 import NewProspectPage from "./pages/NewProspectPage";
 import FAQPage from "./pages/FAQPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import PricingPage from "./pages/PricingPage";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -83,6 +85,7 @@ const AppRouter = () => {
       <Route path="/create-account" element={<CreateAccountPage />} />
       <Route path="/faq" element={<FAQPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
 
       {/* Protected routes */}
       <Route 
@@ -129,13 +132,15 @@ function App() {
     <div className="App">
       <ThemeProvider>
         <LocaleProvider>
-          <BrowserRouter>
-            <AuthProvider>
-              <AnalyticsTracker />
-              <AppRouter />
-              <ThemedToaster />
-            </AuthProvider>
-          </BrowserRouter>
+          <PlanProvider>
+            <BrowserRouter>
+              <AuthProvider>
+                <AnalyticsTracker />
+                <AppRouter />
+                <ThemedToaster />
+              </AuthProvider>
+            </BrowserRouter>
+          </PlanProvider>
         </LocaleProvider>
       </ThemeProvider>
     </div>
