@@ -12,17 +12,18 @@ workflows:
         script: npm install @capacitor/cli @capacitor/core @capacitor/ios --legacy-peer-deps
       - name: Build web app
         script: CI=false npm run build
+      - name: Init Capacitor
+        script: npx cap init KOLO com.kolo.app --web-dir build || true
       - name: Add iOS platform
-        script: npx cap add ios || true
+        script: |
+          rm -rf ios
+          npx cap add ios
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
       - name: Build iOS
         script: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath build/App.xcarchive archive CODE_SIGNING_ALLOWED=NO
+          pod install || true
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -archivePath build/App.xcarchive archive CODE_SIGNING_ALLOWED=NO
     artifacts:
       - ios/App/build/**/*
