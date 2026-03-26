@@ -3922,6 +3922,39 @@ async def subscribe_notifications(request: Request, data: NotificationSubscripti
     
     return {"message": "Subscription saved"}
 
+
+@api_router.post("/notifications/register-device")
+async def register_device_token(request: Request):
+    """Register native device token (APNs for iOS, FCM for Android)"""
+    user = await get_user_from_session(request)
+    data = await request.json()
+    
+    device_token = data.get("device_token")
+    platform = data.get("platform", "ios")  # 'ios' or 'android'
+    
+    if not device_token:
+        raise HTTPException(status_code=400, detail="device_token required")
+    
+    user_id = user.user_id if user else data.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User authentication required")
+    
+    # Store device token
+    await db.device_tokens.update_one(
+        {"user_id": user_id, "platform": platform},
+        {"$set": {
+            "user_id": user_id,
+            "device_token": device_token,
+            "platform": platform,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    logger.info(f"Device token registered for user {user_id} on {platform}")
+    return {"message": "Device token registered", "platform": platform}
+
+
 @api_router.delete("/notifications/unsubscribe")
 async def unsubscribe_notifications(request: Request):
     """Remove push notification subscription"""

@@ -4059,38 +4059,41 @@ const SettingsTab = ({ onClose }) => {
           <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
             {locale === 'fr' ? 'Thème' : 'Theme'}
           </span>
-          {/* Toggle Switch */}
+          {/* Toggle Switch - Clean design */}
           <div 
             style={{
-              width: '56px',
-              height: '30px',
-              borderRadius: '15px',
+              width: '52px',
+              height: '28px',
+              borderRadius: '14px',
               background: theme === 'dark' 
-                ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)' 
-                : c('surface'),
-              border: theme === 'dark' ? 'none' : `1.5px solid ${c('border')}`,
+                ? 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' 
+                : '#E5E7EB',
               position: 'relative',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: 'pointer',
+              boxShadow: theme === 'dark' 
+                ? '0 2px 8px rgba(99, 102, 241, 0.3)' 
+                : 'inset 0 1px 3px rgba(0,0,0,0.1)'
             }}
           >
             <div style={{
-              width: '24px',
-              height: '24px',
+              width: '22px',
+              height: '22px',
               borderRadius: '50%',
-              background: 'white',
+              background: '#ffffff',
               position: 'absolute',
               top: '3px',
-              left: theme === 'dark' ? '29px' : '3px',
-              transition: 'left 0.2s ease',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              left: theme === 'dark' ? '27px' : '3px',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
               {theme === 'light' ? (
-                <Sun size={14} strokeWidth={2} style={{ color: '#F59E0B' }} />
+                <Sun size={12} strokeWidth={2.5} style={{ color: '#F59E0B' }} />
               ) : (
-                <Moon size={14} strokeWidth={2} style={{ color: '#8B5CF6' }} />
+                <Moon size={12} strokeWidth={2.5} style={{ color: '#6366F1' }} />
               )}
             </div>
           </div>
@@ -5432,31 +5435,29 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
   const isFormValid = name.trim() && phone.trim() && email.trim() && notes.trim();
 
   const handleImportFromContacts = async () => {
-    // Check if Contact Picker API is supported
-    if ('contacts' in navigator && 'ContactsManager' in window) {
-      try {
-        const props = ['name', 'email', 'tel'];
-        const opts = { multiple: false };
-        const contacts = await navigator.contacts.select(props, opts);
-        
-        if (contacts && contacts.length > 0) {
-          const contact = contacts[0];
-          if (contact.name && contact.name[0]) setName(contact.name[0]);
-          if (contact.tel && contact.tel[0]) setPhone(contact.tel[0]);
-          if (contact.email && contact.email[0]) setEmail(contact.email[0]);
-          setMode('manual'); // Switch to manual to complete the form
-          toast.success(locale === 'fr' ? 'Contact importé !' : 'Contact imported!');
-        }
-      } catch (err) {
-        console.error('Contact picker error:', err);
-        toast.error(locale === 'fr' 
-          ? 'Impossible d\'accéder aux contacts. Vérifiez les autorisations.' 
-          : 'Unable to access contacts. Check permissions.');
+    // Use the contact picker service for cross-platform support
+    const { contactPicker } = await import('../services/contactPicker');
+    
+    if (!contactPicker.isSupported()) {
+      toast.info(contactPicker.getNotSupportedReason(locale));
+      return;
+    }
+    
+    try {
+      const contact = await contactPicker.pickContact();
+      
+      if (contact) {
+        if (contact.name) setName(contact.name);
+        if (contact.phone) setPhone(contact.phone);
+        if (contact.email) setEmail(contact.email);
+        setMode('manual'); // Switch to manual to complete the form
+        toast.success(locale === 'fr' ? 'Contact importé !' : 'Contact imported!');
       }
-    } else {
-      toast.info(locale === 'fr' 
-        ? 'L\'import de contacts n\'est pas disponible sur ce navigateur. Utilisez Chrome sur Android.' 
-        : 'Contact import is not available in this browser. Use Chrome on Android.');
+    } catch (err) {
+      console.error('Contact picker error:', err);
+      toast.error(locale === 'fr' 
+        ? 'Impossible d\'accéder aux contacts. Vérifiez les autorisations.' 
+        : 'Unable to access contacts. Check permissions.');
     }
   };
 

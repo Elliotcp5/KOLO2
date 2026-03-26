@@ -1,27 +1,82 @@
-// Push notification service for KOLO
+// Push notification service for KOLO - Native + Web support
 import { API_URL } from '../config/api';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 class PushNotificationService {
   constructor() {
     this.swRegistration = null;
-    this.isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+    this.isNative = Capacitor.isNativePlatform();
+    this.isWebSupported = 'serviceWorker' in navigator && 'PushManager' in window;
     this.vapidPublicKey = null;
   }
 
   async init() {
-    if (!this.isSupported) {
-      console.log('Push notifications not supported');
+    if (this.isNative) {
+      return this.initNative();
+    } else if (this.isWebSupported) {
+      return this.initWeb();
+    }
+    console.log('Push notifications not supported on this platform');
+    return false;
+  }
+
+  // Native iOS/Android initialization
+  async initNative() {
+    try {
+      // Request permission
+      const permStatus = await PushNotifications.checkPermissions();
+      
+      if (permStatus.receive === 'prompt') {
+        const result = await PushNotifications.requestPermissions();
+        if (result.receive !== 'granted') {
+          return false;
+        }
+      } else if (permStatus.receive !== 'granted') {
+        return false;
+      }
+
+      // Register with APNs/FCM
+      await PushNotifications.register();
+
+      // Listen for registration token
+      PushNotifications.addListener('registration', async (token) => {
+        console.log('Push registration success, token: ', token.value);
+        await this.sendTokenToServer(token.value);
+      });
+
+      // Listen for registration errors
+      PushNotifications.addListener('registrationError', (error) => {
+        console.error('Push registration error: ', error);
+      });
+
+      // Listen for push notifications received
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('Push notification received: ', notification);
+      });
+
+      // Listen for push notification action performed
+      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+        console.log('Push notification action performed: ', notification);
+        // Navigate to appropriate screen based on notification data
+        if (notification.notification.data?.url) {
+          window.location.href = notification.notification.data.url;
+        }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Native push init failed:', error);
       return false;
     }
+  }
 
+  // Web PWA initialization
+  async initWeb() {
     try {
-      // Register service worker
       this.swRegistration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker registered');
-      
-      // Fetch VAPID public key from server
       await this.fetchVapidKey();
-      
       return true;
     } catch (error) {
       console.error('Service Worker registration failed:', error);
@@ -39,26 +94,30 @@ class PushNotificationService {
       }
     } catch (error) {
       console.error('Failed to fetch VAPID key:', error);
-      // Fallback to default key
       this.vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
     }
   }
 
   async requestPermission() {
-    if (!this.isSupported) return false;
-
-    try {
+    if (this.isNative) {
+      const result = await PushNotifications.requestPermissions();
+      return result.receive === 'granted';
+    } else if (this.isWebSupported) {
       const permission = await Notification.requestPermission();
       return permission === 'granted';
-    } catch (error) {
-      console.error('Permission request failed:', error);
-      return false;
     }
+    return false;
   }
 
   async subscribe(userId) {
+    if (this.isNative) {
+      // For native, registration is handled in initNative
+      return true;
+    }
+
+    // Web subscription
     if (!this.swRegistration) {
-      await this.init();
+      await this.initWeb();
     }
 
     if (!this.vapidPublicKey) {
@@ -66,28 +125,22 @@ class PushNotificationService {
     }
 
     try {
-      // Check if already subscribed
       let subscription = await this.swRegistration.pushManager.getSubscription();
       
       if (!subscription) {
-        // Subscribe to push
         subscription = await this.swRegistration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
         });
       }
 
-      // Get auth token from localStorage
       const token = localStorage.getItem('kolo_token');
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      };
-
-      // Send subscription to backend
       await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           subscription: subscription.toJSON(),
           user_id: userId
@@ -102,7 +155,32 @@ class PushNotificationService {
     }
   }
 
+  async sendTokenToServer(token) {
+    try {
+      const authToken = localStorage.getItem('kolo_token');
+      await fetch(`${API_URL}/api/notifications/register-device`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+        },
+        body: JSON.stringify({
+          device_token: token,
+          platform: Capacitor.getPlatform() // 'ios' or 'android'
+        })
+      });
+      console.log('Device token registered with server');
+    } catch (error) {
+      console.error('Failed to register device token:', error);
+    }
+  }
+
   async unsubscribe() {
+    if (this.isNative) {
+      await PushNotifications.removeAllListeners();
+      return;
+    }
+
     if (!this.swRegistration) return;
 
     try {
@@ -110,16 +188,12 @@ class PushNotificationService {
       if (subscription) {
         await subscription.unsubscribe();
         
-        // Get auth token from localStorage
         const token = localStorage.getItem('kolo_token');
-        const headers = {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        };
-        
-        // Notify backend
         await fetch(`${API_URL}/api/notifications/unsubscribe`, {
           method: 'DELETE',
-          headers
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
         });
       }
     } catch (error) {
@@ -142,10 +216,14 @@ class PushNotificationService {
     return outputArray;
   }
 
-  // Schedule a local notification (for testing)
   async showLocalNotification(title, body, tag = 'kolo-notification') {
+    if (this.isNative) {
+      // On native, use local notifications plugin if needed
+      return;
+    }
+    
     if (!this.swRegistration) {
-      await this.init();
+      await this.initWeb();
     }
 
     if (Notification.permission === 'granted' && this.swRegistration) {
@@ -155,9 +233,7 @@ class PushNotificationService {
         badge: '/logo192.png',
         tag,
         vibrate: [200, 100, 200],
-        data: {
-          url: window.location.origin + '/app'
-        }
+        data: { url: window.location.origin + '/app' }
       });
     }
   }
