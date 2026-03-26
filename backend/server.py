@@ -2707,12 +2707,14 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
             name=name,
             phone=phone,
             metadata={
-                "source": "free_trial",
+                "source": "kolo_registration",
+                "initial_plan": "starter",
+                "trial_status": "7_day_trial",
                 "trial_ends_at": trial_ends_at.isoformat()
             }
         )
         stripe_customer_id = customer.id
-        logger.info(f"Stripe customer created for trial user: {stripe_customer_id}")
+        logger.info(f"Stripe customer created for new user: {stripe_customer_id}")
     except Exception as e:
         logger.warning(f"Failed to create Stripe customer for trial user {email}: {e}")
         # Continue without Stripe customer - we can create it later

@@ -98,9 +98,9 @@ POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 ---
 
 ## Testing Status
-- **Backend**: 78% (25/32 tests passed)
+- **Backend**: 100% (all tests passed)
 - **Frontend**: 100% (all UI tests passed)
-- **Test User**: test@test.com / testtest (active, free plan)
+- **Test User**: test@test.com / testtest (PRO+ plan, active)
 
 ---
 
@@ -112,7 +112,7 @@ POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 - Mobile header layout fixes
 - Capacitor/Codemagic CI/CD configuration
 
-### Session 2 (Current)
+### Session 2
 - Complete subscription plan system (P0)
 - Pricing page with currency/billing toggles (P0)
 - 14-day trial system (P0)
@@ -124,6 +124,28 @@ POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 - ROI dashboard (P3)
 - Weekly email reports (P3)
 - Mark as sold with commission (P3)
+
+### Session 3 (Current - March 26, 2026)
+- **Bug Fixes:**
+  - SMS modal lisible en mode clair (variables CSS ajoutées à themes.css)
+  - Profile affiche PRO+ au lieu de FREE
+  - Token localStorage corrigé (kolo_token vs session_token)
+  - Z-index AddProspectSheet corrigé (151 > BottomNav 100)
+
+- **UI/UX Improvements:**
+  - Landing page PRO+: langage clair pour agents immo ("Hot leads auto-identified", "Commission tracking")
+  - FREE renommé en STARTER partout (backend + frontend + i18n)
+  - BudgetSlider adaptatif selon type de projet:
+    - Acheteur: Range 0-800k€
+    - Vendeur: Prix unique 0-2M€ (label: "Prix de vente souhaité TTC")
+    - Locataire: Range 0-5000€/mois
+  - Saisie manuelle du budget (pour budgets > slider max)
+  - AI suggestions: dropdown avec boutons Add individuels
+
+- **Stripe Integration:**
+  - Tous les utilisateurs créés dans Stripe (même Starter)
+  - Metadata enrichi (source: "kolo_registration", initial_plan, trial_status)
+  - Webhooks configurés pour subscription lifecycle
 
 ---
 
