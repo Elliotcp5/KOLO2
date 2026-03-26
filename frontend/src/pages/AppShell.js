@@ -4094,6 +4094,55 @@ const SettingsTab = ({ onClose }) => {
         </div>
       </div>
 
+      {/* My Plan section */}
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
+        {locale === 'fr' ? 'Mon abonnement' : locale === 'de' ? 'Mein Abo' : locale === 'it' ? 'Il mio abbonamento' : 'My subscription'}
+      </h3>
+      <div className="card" style={{ marginBottom: '24px', padding: '16px', background: c('cardBg'), border: `1px solid ${c('border')}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div>
+            <div style={{ fontSize: '14px', color: c('muted'), marginBottom: '4px' }}>
+              {locale === 'fr' ? 'Plan actuel' : 'Current plan'}
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: c('text') }}>
+              FREE
+            </div>
+          </div>
+          <div style={{
+            padding: '6px 12px',
+            background: 'linear-gradient(135deg, rgba(108,99,255,0.15), rgba(147,51,234,0.15))',
+            borderRadius: '999px',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#6C63FF'
+          }}>
+            {locale === 'fr' ? 'Actif' : 'Active'}
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/pricing')}
+          style={{
+            width: '100%',
+            padding: '12px',
+            background: 'linear-gradient(135deg, #4F46E5, #9333EA)',
+            border: 'none',
+            borderRadius: '12px',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+          data-testid="upgrade-plan-btn"
+        >
+          <Crown size={16} />
+          {locale === 'fr' ? 'Voir les plans' : locale === 'de' ? 'Pläne ansehen' : locale === 'it' ? 'Vedi i piani' : 'View plans'}
+        </button>
+      </div>
+
       {/* Logout button */}
       <button 
         onClick={handleLogout}
@@ -5924,16 +5973,18 @@ const AppShell = () => {
         <div className="scroll-content" style={{ paddingBottom: '80px', backgroundColor: 'var(--bg)' }}>
           {renderTab()}
         </div>
-        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={handleAddProspectFromFab} />}
+        {!selectedProspect && !showSettings && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onAddProspect={() => setShowAddProspectSheet(true)} />}
       </div>
       
-      {/* Quick Add Prospect Modal from FAB */}
-      {showAddProspectModal && (
-        <QuickAddProspectModal onClose={() => setShowAddProspectModal(false)} onSuccess={() => {
-          setShowAddProspectModal(false);
+      {/* Add Prospect Sheet (2-step flow) */}
+      <AddProspectSheet
+        isOpen={showAddProspectSheet}
+        onClose={() => setShowAddProspectSheet(false)}
+        onSuccess={() => {
+          setShowAddProspectSheet(false);
           setRefreshKey(prev => prev + 1);
-        }} />
-      )}
+        }}
+      />
       
       {/* Notification Permission Prompt */}
       {showNotificationPrompt && (

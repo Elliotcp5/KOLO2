@@ -121,6 +121,9 @@ const LandingPage = () => {
             )}
           </div>
           
+          <button className="nav-pricing" onClick={() => navigate('/pricing')}>
+            {t('pricingLink')}
+          </button>
           <button className="nav-login" onClick={() => navigate('/login')}>
             {t('loginButton')}
           </button>
@@ -460,28 +463,69 @@ const LandingPage = () => {
             </h2>
             <p className="section-body">{t('pricingSubtitle')}</p>
           </div>
-          <div className="pricing-wrap reveal">
-            <div className="pricing-card">
-              <div className="pricing-badge">✓ {t('pricingBadge')}</div>
+          
+          <div className="pricing-grid reveal">
+            {/* FREE Plan */}
+            <div className="pricing-card pricing-free">
+              <div className="plan-name">FREE</div>
               <div className="price-row">
-                <span className="price-amount">{t('price')}</span>
+                <span className="price-amount">0€</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
-              <p className="price-tagline">{t('pricingDesc')}</p>
               <ul className="price-features">
-                {features.map((f, i) => (
-                  <li key={i}>
-                    <span className="check-icon">{f.icon}</span>
-                    {f.text}
-                  </li>
-                ))}
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Jusqu'à 30 prospects" : "Up to 30 prospects"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "1 suggestion IA/jour" : "1 AI suggestion/day"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Gestion des tâches" : "Task management"}</li>
+              </ul>
+              <button className="btn-secondary full" onClick={() => navigate('/register')}>
+                {locale === 'fr' ? 'Commencer gratuitement' : 'Start for free'}
+              </button>
+            </div>
+            
+            {/* PRO Plan */}
+            <div className="pricing-card pricing-pro">
+              <div className="popular-badge">{locale === 'fr' ? 'Populaire' : 'Popular'}</div>
+              <div className="plan-name">PRO</div>
+              <div className="price-row">
+                <span className="price-amount">{locale === 'fr' ? '9,99€' : '€9.99'}</span>
+                <span className="price-period">/{t('pricingMonth')}</span>
+              </div>
+              <ul className="price-features">
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Prospects illimités" : "Unlimited prospects"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Suggestions IA illimitées" : "Unlimited AI suggestions"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "SMS 1-clic IA" : "1-click AI SMS"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Historique des interactions" : "Interaction history"}</li>
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Notes contextuelles" : "Contextual notes"}</li>
               </ul>
               <button className="btn-primary full" onClick={() => navigate('/register')}>
                 {t('startFreeMonth')} <ArrowRight size={18} />
               </button>
-              <p className="pricing-micro">{t('pricingMicro')}</p>
+              <p className="pricing-micro">{t('pricingBadge')}</p>
+            </div>
+            
+            {/* PRO+ Plan */}
+            <div className="pricing-card pricing-proplus">
+              <div className="plan-name">PRO+</div>
+              <div className="price-row">
+                <span className="price-amount">{locale === 'fr' ? '24,99€' : '€24.99'}</span>
+                <span className="price-period">/{t('pricingMonth')}</span>
+              </div>
+              <ul className="price-features">
+                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Tout ce qui est dans PRO" : "Everything in PRO"}</li>
+                <li><span className="check-icon">🔥</span> {locale === 'fr' ? "Score de chaleur" : "Heat score"}</li>
+                <li><span className="check-icon">📊</span> {locale === 'fr' ? "Dashboard ROI" : "ROI Dashboard"}</li>
+                <li><span className="check-icon">📧</span> {locale === 'fr' ? "Rapport hebdo email" : "Weekly email report"}</li>
+                <li><span className="check-icon">⭐</span> {locale === 'fr' ? "Support prioritaire" : "Priority support"}</li>
+              </ul>
+              <button className="btn-secondary full" onClick={() => navigate('/register')}>
+                {t('startFreeMonth')}
+              </button>
             </div>
           </div>
+          
+          <p className="pricing-note reveal" style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
+            {t('pricingMicro')}
+          </p>
         </div>
       </section>
 

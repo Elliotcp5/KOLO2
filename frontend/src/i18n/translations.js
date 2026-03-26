@@ -3,16 +3,17 @@ const translations = {
   en: {
     // Landing Navigation
     loginButton: "Login",
+    pricingLink: "Pricing",
     tryForFree: "Try for free",
     tryShort: "Try",
     
     // Landing Hero
-    heroEyebrow: "AI · Mobile · €9.99/month",
+    heroEyebrow: "AI · Mobile · From €9.99/month",
     heroTitle1: "Follow every client.",
     heroTitle2: "Close more deals.",
     heroSubtitle: "KOLO replaces your notes and Excel spreadsheets. AI tracks your prospects, schedules follow-ups, and tells you what to do next.",
     emailPlaceholder: "your@email.com",
-    oneMonthFree: "1 month free",
+    oneMonthFree: "14-day free trial",
     noCreditCard: "No credit card",
     cancelAnytime: "Cancel anytime",
     
@@ -99,7 +100,7 @@ const translations = {
     pricingFeature5: "One-click contact import",
     pricingFeature6: "Accessible from any browser",
     pricingFeature7: "Human support included",
-    startFreeMonth: "Start my free month",
+    startFreeMonth: "Start my free trial",
     
     // FAQ Section
     faqSectionTitle: "Frequently Asked Questions",
@@ -143,10 +144,10 @@ const translations = {
     
     // Pricing section
     pricingTag: "Pricing",
-    pricingTitle1Line: "One price.",
+    pricingTitle1Line: "Choose your plan.",
     pricingTitle2Line: "No surprises.",
     pricingDesc: "All included · No commitment · Cancel in 2 clicks",
-    pricingBadge: "1 month free, no card",
+    pricingBadge: "14-day free trial, no card",
     pricingMonth: "month",
     pricingMicro: "No credit card · Full access from signup",
     
@@ -187,8 +188,8 @@ const translations = {
     // Landing FAQ
     landingFaq1Q: "What's the difference with a CRM exactly?",
     landingFaq1A: "A CRM like Salesforce or Pipedrive is designed for sales teams with complex processes. KOLO is the opposite: super simple, mobile-first, designed for a solo agent who just wants to stop forgetting to follow up with clients. No modules, no training, no consultant. You're operational in 4 minutes.",
-    landingFaq2Q: "How does the free month work?",
-    landingFaq2A: "You create your account without giving a credit card. You have access to 100% of features for 30 days. At the end of the month, if you want to continue, you enter your card. If not, your account closes automatically. No surprise charges, no commitment.",
+    landingFaq2Q: "How does the free trial work?",
+    landingFaq2A: "You create your account without giving a credit card. You have access to 100% of PRO features for 14 days. At the end of the trial, if you want to continue, you choose your plan. If not, you keep free access with 30 prospects. No surprise charges, no commitment.",
     landingFaq3Q: "Can I import my existing contacts?",
     landingFaq3A: "Yes. One click from your phone's contact list. Migration takes less than 1 minute.",
     landingFaq4Q: "Is my data secure?",
@@ -377,16 +378,17 @@ const translations = {
   fr: {
     // Landing Navigation
     loginButton: "Connexion",
+    pricingLink: "Tarifs",
     tryForFree: "Essayer gratuitement",
     tryShort: "Essayer",
     
     // Landing Hero
-    heroEyebrow: "IA · Mobile · 9,99€/mois",
+    heroEyebrow: "IA · Mobile · À partir de 9,99€/mois",
     heroTitle1: "Suivez chaque client.",
     heroTitle2: "Signez plus de deals.",
     heroSubtitle: "KOLO remplace vos notes et vos tableurs Excel. L'IA suit vos prospects, planifie vos relances, et vous dit quoi faire ensuite.",
     emailPlaceholder: "votre@email.com",
-    oneMonthFree: "1 mois gratuit",
+    oneMonthFree: "14 jours d'essai gratuit",
     noCreditCard: "Sans carte bancaire",
     cancelAnytime: "Résiliable à tout moment",
     
@@ -473,7 +475,7 @@ const translations = {
     pricingFeature5: "Import contacts en 1 clic",
     pricingFeature6: "Accessible depuis n'importe quel navigateur",
     pricingFeature7: "Support humain inclus",
-    startFreeMonth: "Commencer mon mois gratuit",
+    startFreeMonth: "Commencer mon essai gratuit",
     
     // FAQ Section
     faqSectionTitle: "Questions Fréquentes",
@@ -517,10 +519,10 @@ const translations = {
     
     // Pricing section
     pricingTag: "Tarif",
-    pricingTitle1Line: "Un seul prix.",
+    pricingTitle1Line: "Choisissez votre plan.",
     pricingTitle2Line: "Sans surprise.",
     pricingDesc: "Tout inclus · Sans engagement · Résiliable en 2 clics",
-    pricingBadge: "1 mois offert, sans CB",
+    pricingBadge: "14 jours d'essai, sans CB",
     pricingMonth: "mois",
     pricingMicro: "Sans carte bancaire · Accès complet dès l'inscription",
     
@@ -528,7 +530,7 @@ const translations = {
     finalCtaTitle1: "Arrêtez de perdre des ventes",
     finalCtaTitle2: "à cause de relances oubliées.",
     finalCtaSub: "Rejoignez les agents qui closent plus, sans travailler plus.",
-    finalCtaBtn: "Démarrer — 1 mois gratuit",
+    finalCtaBtn: "Commencer — Essai gratuit 14j",
     finalCtaMicro: "Sans carte bancaire · Accès complet en 2 minutes",
     
     // Toast
@@ -561,8 +563,8 @@ const translations = {
     // Landing FAQ
     landingFaq1Q: "C'est quoi exactement la différence avec un CRM ?",
     landingFaq1A: "Un CRM comme Salesforce ou Pipedrive est conçu pour des équipes commerciales avec des process complexes. KOLO c'est l'opposé : hyper simple, mobile-first, pensé pour un agent solo qui veut juste ne plus oublier de relancer ses clients. Pas de modules, pas de formation, pas de consultant. Vous êtes opérationnel en 4 minutes.",
-    landingFaq2Q: "Comment fonctionne le mois gratuit ?",
-    landingFaq2A: "Vous créez votre compte sans donner de carte bancaire. Vous avez accès à 100% des fonctionnalités pendant 30 jours. À la fin du mois, si vous voulez continuer, vous rentrez votre carte. Si non, votre compte se ferme automatiquement. Aucun prélèvement surprise, aucun engagement.",
+    landingFaq2Q: "Comment fonctionne l'essai gratuit ?",
+    landingFaq2A: "Vous créez votre compte sans donner de carte bancaire. Vous avez accès à 100% des fonctionnalités PRO pendant 14 jours. À la fin de l'essai, si vous voulez continuer, vous choisissez votre plan. Sinon, vous gardez l'accès gratuit avec 30 prospects. Aucun prélèvement surprise, aucun engagement.",
     landingFaq3Q: "Est-ce que je peux importer mes contacts existants ?",
     landingFaq3A: "Oui. En un clic depuis votre carnet d'adresses téléphone. La migration prend moins d'1 minute.",
     landingFaq4Q: "Mes données sont-elles sécurisées ?",
@@ -610,7 +612,7 @@ const translations = {
     // Create Account
     createYourAccount: "Créez Votre Compte",
     joinAgents: "Rejoignez les agents qui closent plus",
-    freeTrialBadge: "1 mois gratuit · Sans carte bancaire",
+    freeTrialBadge: "14 jours gratuits · Sans carte bancaire",
     fullNameLabel: "Nom complet",
     namePlaceholder: "Jean Dupont",
     phoneLabel: "Téléphone",
@@ -751,16 +753,17 @@ const translations = {
   de: {
     // Landing Navigation
     loginButton: "Anmelden",
+    pricingLink: "Preise",
     tryForFree: "Kostenlos testen",
     tryShort: "Testen",
     
     // Landing Hero
-    heroEyebrow: "KI · Mobil · 9,99€/Monat",
+    heroEyebrow: "KI · Mobil · Ab 9,99€/Monat",
     heroTitle1: "Verfolgen Sie jeden Kunden.",
     heroTitle2: "Schließen Sie mehr Deals.",
     heroSubtitle: "KOLO ersetzt Ihre Notizen und Excel-Tabellen. KI verfolgt Ihre Interessenten, plant Nachfassaktionen und sagt Ihnen, was als Nächstes zu tun ist.",
     emailPlaceholder: "ihre@email.com",
-    oneMonthFree: "1 Monat gratis",
+    oneMonthFree: "14 Tage gratis testen",
     noCreditCard: "Keine Kreditkarte",
     cancelAnytime: "Jederzeit kündbar",
     
@@ -847,7 +850,7 @@ const translations = {
     pricingFeature5: "Kontaktimport mit einem Klick",
     pricingFeature6: "Von jedem Browser aus zugänglich",
     pricingFeature7: "Menschlicher Support inklusive",
-    startFreeMonth: "Meinen Gratismonat starten",
+    startFreeMonth: "Meine Testphase starten",
     
     // FAQ Section
     faqSectionTitle: "Häufig gestellte Fragen",
@@ -891,10 +894,10 @@ const translations = {
     
     // Pricing section
     pricingTag: "Preise",
-    pricingTitle1Line: "Ein Preis.",
+    pricingTitle1Line: "Wählen Sie Ihren Plan.",
     pricingTitle2Line: "Keine Überraschungen.",
     pricingDesc: "Alles inklusive · Ohne Verpflichtung · In 2 Klicks kündbar",
-    pricingBadge: "1 Monat gratis, ohne Karte",
+    pricingBadge: "14 Tage gratis, ohne Karte",
     pricingMonth: "Monat",
     pricingMicro: "Keine Kreditkarte · Vollzugang ab Anmeldung",
     
@@ -921,7 +924,7 @@ const translations = {
     landingFaq1Q: "Was ist der genaue Unterschied zu einem CRM?",
     landingFaq1A: "Ein CRM wie Salesforce oder Pipedrive ist für Vertriebsteams mit komplexen Prozessen konzipiert. KOLO ist das Gegenteil: supersimpel, mobile-first, für Solo-Makler gedacht, die einfach nicht mehr vergessen wollen, Kunden nachzufassen. Keine Module, keine Schulung, kein Berater. Sie sind in 4 Minuten einsatzbereit.",
     landingFaq2Q: "Wie funktioniert der kostenlose Monat?",
-    landingFaq2A: "Sie erstellen Ihr Konto ohne Kreditkarte. Sie haben 30 Tage lang Zugang zu 100% der Funktionen. Am Ende des Monats geben Sie Ihre Karte ein, wenn Sie weitermachen möchten. Wenn nicht, schließt sich Ihr Konto automatisch. Keine Überraschungsabbuchungen, keine Verpflichtung.",
+    landingFaq2A: "Sie erstellen Ihr Konto ohne Kreditkarte. Sie haben 14 Tage lang Zugang zu 100% der PRO-Funktionen. Am Ende der Testphase wählen Sie Ihren Plan. Wenn nicht, behalten Sie den kostenlosen Zugang mit 30 Interessenten. Keine Überraschungsabbuchungen, keine Verpflichtung.",
     landingFaq3Q: "Kann ich meine bestehenden Kontakte importieren?",
     landingFaq3A: "Ja. Ein Klick aus Ihrem Telefonbuch. Die Migration dauert weniger als 1 Minute.",
     landingFaq4Q: "Sind meine Daten sicher?",
@@ -1125,16 +1128,17 @@ const translations = {
   it: {
     // Landing Navigation
     loginButton: "Accedi",
+    pricingLink: "Prezzi",
     tryForFree: "Prova gratis",
     tryShort: "Prova",
     
     // Landing Hero
-    heroEyebrow: "IA · Mobile · €9,99/mese",
+    heroEyebrow: "IA · Mobile · A partire da €9,99/mese",
     heroTitle1: "Segui ogni cliente.",
     heroTitle2: "Chiudi più affari.",
     heroSubtitle: "KOLO sostituisce i tuoi appunti e i fogli Excel. L'IA traccia i tuoi potenziali clienti, pianifica i follow-up e ti dice cosa fare dopo.",
     emailPlaceholder: "tua@email.com",
-    oneMonthFree: "1 mese gratis",
+    oneMonthFree: "14 giorni di prova gratis",
     noCreditCard: "Nessuna carta di credito",
     cancelAnytime: "Annulla quando vuoi",
     
@@ -1221,7 +1225,7 @@ const translations = {
     pricingFeature5: "Importazione contatti con un clic",
     pricingFeature6: "Accessibile da qualsiasi browser",
     pricingFeature7: "Supporto umano incluso",
-    startFreeMonth: "Inizia il mio mese gratis",
+    startFreeMonth: "Inizia la prova gratuita",
     
     // FAQ Section
     faqSectionTitle: "Domande Frequenti",
@@ -1265,10 +1269,10 @@ const translations = {
     
     // Pricing section
     pricingTag: "Prezzi",
-    pricingTitle1Line: "Un solo prezzo.",
+    pricingTitle1Line: "Scegli il tuo piano.",
     pricingTitle2Line: "Nessuna sorpresa.",
     pricingDesc: "Tutto incluso · Senza impegno · Annullabile in 2 clic",
-    pricingBadge: "1 mese gratis, senza carta",
+    pricingBadge: "14 giorni gratis, senza carta",
     pricingMonth: "mese",
     pricingMicro: "Nessuna carta di credito · Accesso completo dalla registrazione",
     
@@ -1295,7 +1299,7 @@ const translations = {
     landingFaq1Q: "Qual è la differenza esatta con un CRM?",
     landingFaq1A: "Un CRM come Salesforce o Pipedrive è progettato per team di vendita con processi complessi. KOLO è l'opposto: super semplice, mobile-first, pensato per un agente solo che vuole semplicemente non dimenticare di fare follow-up con i clienti. Nessun modulo, nessuna formazione, nessun consulente. Sei operativo in 4 minuti.",
     landingFaq2Q: "Come funziona il mese gratuito?",
-    landingFaq2A: "Crei il tuo account senza fornire una carta di credito. Hai accesso al 100% delle funzionalità per 30 giorni. Alla fine del mese, se vuoi continuare, inserisci la tua carta. Se no, il tuo account si chiude automaticamente. Nessun addebito a sorpresa, nessun impegno.",
+    landingFaq2A: "Crei il tuo account senza fornire una carta di credito. Hai accesso al 100% delle funzionalità PRO per 14 giorni. Alla fine della prova, scegli il tuo piano. Se no, mantieni l'accesso gratuito con 30 potenziali clienti. Nessun addebito a sorpresa, nessun impegno.",
     landingFaq3Q: "Posso importare i miei contatti esistenti?",
     landingFaq3A: "Sì. Un clic dalla rubrica del telefono. La migrazione richiede meno di 1 minuto.",
     landingFaq4Q: "I miei dati sono sicuri?",

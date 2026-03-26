@@ -142,6 +142,21 @@
   color: var(--blue);
 }
 
+.nav-pricing {
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-mid);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nav-pricing:hover {
+  color: var(--blue);
+}
+
 .nav-cta {
   background: var(--grad);
   color: #fff;
@@ -1310,13 +1325,65 @@
   margin: 0 auto;
 }
 
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .pricing-card {
   background: var(--bg);
-  border: 2px solid var(--blue);
+  border: 2px solid var(--border);
   border-radius: 24px;
-  padding: 40px;
+  padding: 32px;
   text-align: center;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
+}
+
+.pricing-card.pricing-pro {
+  border-color: var(--blue);
+  box-shadow: var(--shadow-lg);
+  transform: scale(1.02);
+}
+
+.pricing-card.pricing-pro:hover {
+  transform: scale(1.02) translateY(-4px);
+}
+
+.pricing-card.pricing-proplus {
+  border-color: var(--purple);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--grad);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-name {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 16px;
 }
 
 .pricing-badge {
@@ -1390,6 +1457,29 @@
   width: 100%;
   padding: 18px;
   font-size: 16px;
+}
+
+.btn-secondary {
+  background: var(--bg-alt);
+  color: var(--ink);
+  border: 2px solid var(--border);
+  padding: 16px 32px;
+  border-radius: 999px;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+  transform: translateY(-2px);
+}
+
+.btn-secondary.full {
+  width: 100%;
+  padding: 16px;
 }
 
 .pricing-micro {
@@ -1723,6 +1813,24 @@
   
   .pricing-card {
     padding: 24px;
+  }
+  
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .pricing-card.pricing-pro {
+    transform: none;
+    order: -1;
+  }
+  
+  .pricing-card.pricing-pro:hover {
+    transform: translateY(-4px);
+  }
+  
+  .nav-pricing {
+    display: none;
   }
   
   .price-amount {
