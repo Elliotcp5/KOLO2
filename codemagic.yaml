@@ -5,15 +5,21 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
-      vars:
-        CI: "false"
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
+      - name: Install Capacitor
+        script: npm install @capacitor/cli @capacitor/core @capacitor/ios --legacy-peer-deps
       - name: Build web app
         script: CI=false npm run build
+      - name: Add iOS platform
+        script: npx cap add ios || true
       - name: Sync Capacitor
         script: npx cap sync ios
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod install
       - name: Build iOS
         script: |
           cd ios/App
