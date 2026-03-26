@@ -15,6 +15,14 @@ import hashlib
 import re
 from html import escape
 
+# Email service
+from email_service import (
+    send_welcome_email, 
+    send_trial_reminder_email, 
+    send_trial_expired_email,
+    send_password_reset_email
+)
+
 # ==================== SECURITY: Rate Limiting ====================
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -1599,7 +1607,7 @@ async def get_pricing(request: Request, currency: Optional[str] = None):
         "currency": detected_currency,
         "plans": {
             "free": {
-                "name": "FREE",
+                "name": "STARTER",
                 "price_monthly": 0,
                 "price_annual": 0,
                 "display_monthly": "0€",
@@ -1666,7 +1674,10 @@ async def start_trial(request: StartTrialRequest, http_request: Request):
         }}
     )
     
-    # TODO: Send welcome email for trial (J+0)
+    # Send welcome email for trial (J+0)
+    import asyncio
+    user_name = user_doc.get("name", "").split(" ")[0] or "Agent"
+    asyncio.create_task(send_welcome_email(user.email, user_name, is_trial=True, trial_plan=request.plan))
     
     return {
         "message": f"Essai gratuit {request.plan.upper()} démarré",
@@ -2251,6 +2262,107 @@ async def generate_weekly_report(request: Request):
         logger.error(f"Failed to send weekly report: {e}")
         raise HTTPException(status_code=500, detail="Failed to send report email")
 
+# ==================== TRIAL EMAIL CRON JOB ====================
+
+@api_router.post("/cron/trial-emails")
+async def send_trial_reminder_emails(request: Request):
+    """
+    Cron job endpoint to send trial reminder emails.
+    Should be called daily. Sends emails for:
+    - J+7: 7 days left reminder
+    - J+12: 2 days left reminder  
+    - J+14: Trial expired notification
+    """
+    # Simple API key check for cron job security
+    api_key = request.headers.get("X-Cron-Key")
+    expected_key = os.environ.get("CRON_API_KEY", "kolo_cron_secret_2026")
+    
+    if api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    now = datetime.now(timezone.utc)
+    results = {"j7": 0, "j12": 0, "j14": 0, "errors": []}
+    
+    # Find users with active trials
+    trialing_users = await db.users.find({
+        "subscription_status": "trialing",
+        "trial_ends_at": {"$exists": True},
+        "trial_plan": {"$exists": True}
+    }, {"_id": 0}).to_list(1000)
+    
+    for user in trialing_users:
+        try:
+            trial_end = user.get("trial_ends_at")
+            if isinstance(trial_end, str):
+                trial_end = datetime.fromisoformat(trial_end.replace('Z', '+00:00'))
+            if trial_end.tzinfo is None:
+                trial_end = trial_end.replace(tzinfo=timezone.utc)
+            
+            days_left = (trial_end - now).days
+            email = user.get("email")
+            user_name = user.get("name", "").split(" ")[0] or "Agent"
+            trial_plan = user.get("trial_plan", "pro")
+            
+            # Check if we already sent this reminder today
+            last_reminder = user.get("last_trial_reminder")
+            if last_reminder:
+                if isinstance(last_reminder, str):
+                    last_reminder = datetime.fromisoformat(last_reminder.replace('Z', '+00:00'))
+                if (now - last_reminder).days < 1:
+                    continue  # Already sent a reminder today
+            
+            email_sent = False
+            
+            if days_left == 7:
+                # J+7 reminder
+                await send_trial_reminder_email(email, user_name, 7, trial_plan)
+                results["j7"] += 1
+                email_sent = True
+                
+            elif days_left == 2:
+                # J+12 reminder (2 days left)
+                await send_trial_reminder_email(email, user_name, 2, trial_plan)
+                results["j12"] += 1
+                email_sent = True
+                
+            elif days_left <= 0:
+                # J+14 - Trial expired
+                await send_trial_expired_email(email, user_name, trial_plan)
+                results["j14"] += 1
+                
+                # Downgrade to free
+                await db.users.update_one(
+                    {"user_id": user.get("user_id")},
+                    {"$set": {
+                        "subscription_status": "expired",
+                        "plan": "free",
+                        "updated_at": now.isoformat()
+                    }}
+                )
+                email_sent = True
+            
+            # Update last reminder date
+            if email_sent:
+                await db.users.update_one(
+                    {"user_id": user.get("user_id")},
+                    {"$set": {"last_trial_reminder": now.isoformat()}}
+                )
+                
+        except Exception as e:
+            results["errors"].append(f"{user.get('email')}: {str(e)}")
+            logger.error(f"Error processing trial email for {user.get('email')}: {e}")
+    
+    logger.info(f"Trial emails cron completed: {results}")
+    return {
+        "success": True,
+        "emails_sent": {
+            "7_days_reminder": results["j7"],
+            "2_days_reminder": results["j12"],
+            "expired_notification": results["j14"]
+        },
+        "errors": results["errors"][:10]  # Limit error output
+    }
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -2285,8 +2397,10 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest):
+async def forgot_password(request: ForgotPasswordRequest, http_request: Request):
     """Send password reset email"""
+    import asyncio
+    
     if not request.email:
         raise HTTPException(status_code=400, detail="Email requis")
     
@@ -2311,11 +2425,22 @@ async def forgot_password(request: ForgotPasswordRequest):
         "created_at": datetime.now(timezone.utc)
     })
     
-    # In production, send email here
-    # For now, log the reset link
-    logger.info(f"Password reset token for {request.email}: {reset_token}")
+    # Get base URL from request
+    referer = http_request.headers.get('referer', '')
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        base_url = "https://app.trykolo.io"
     
-    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation", "reset_token": reset_token}
+    # Send password reset email
+    user_name = user_doc.get("name", "").split(" ")[0] or "Utilisateur"
+    asyncio.create_task(send_password_reset_email(request.email, user_name, reset_token, base_url))
+    
+    logger.info(f"Password reset email sent to {request.email}")
+    
+    return {"message": "Si cet email existe, vous recevrez un lien de réinitialisation"}
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -2611,6 +2736,10 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     await db.users.insert_one(user_doc)
     logger.info(f"Free trial account created for {register_data.email}, trial ends: {trial_ends_at}")
     
+    # Send welcome email (background)
+    import asyncio
+    asyncio.create_task(send_welcome_email_background(email, name, is_trial=True, trial_plan="pro"))
+    
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -2642,6 +2771,34 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
         "trial_ends_at": trial_ends_at.isoformat(),
         "token": session_token
     }
+
+# Background task: Send welcome email after registration
+async def send_welcome_email_background(email: str, name: str, is_trial: bool = True, trial_plan: str = "pro"):
+    """Send welcome email in background"""
+    try:
+        await send_welcome_email(email, name, is_trial, trial_plan)
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {email}: {e}")
+
+@api_router.post("/auth/register-with-trial")
+@limiter.limit("10/minute")
+async def register_with_trial(request: Request, register_data: RegisterRequest, response: Response):
+    """Register with 14-day PRO trial"""
+    from fastapi import BackgroundTasks
+    import asyncio
+    
+    # Use the existing register logic
+    result = await register_free_trial(request, register_data, response)
+    
+    # Send welcome email in background
+    asyncio.create_task(send_welcome_email_background(
+        register_data.email, 
+        register_data.full_name, 
+        is_trial=True, 
+        trial_plan="pro"
+    ))
+    
+    return result
 
 # Email/Password Login
 # Rate limit: 10 requests per minute per IP for auth endpoints

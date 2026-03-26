@@ -466,8 +466,8 @@ const LandingPage = () => {
           
           <div className="pricing-grid reveal">
             {/* FREE Plan */}
-            <div className="pricing-card pricing-free">
-              <div className="plan-name">FREE</div>
+            <div className="pricing-card pricing-starter">
+              <div className="plan-name">STARTER</div>
               <div className="price-row">
                 <span className="price-amount">0€</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
