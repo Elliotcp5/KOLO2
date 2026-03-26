@@ -133,7 +133,7 @@ export default function PricingPage() {
     fetchPricing(currency);
     
     // Get current user plan if logged in
-    const token = localStorage.getItem('session_token');
+    const token = localStorage.getItem('kolo_token');
     if (token) {
       fetchPlanData(token).then(data => {
         if (data) {
@@ -151,7 +151,7 @@ export default function PricingPage() {
   };
   
   const handleSelectPlan = async (plan) => {
-    const token = localStorage.getItem('session_token');
+    const token = localStorage.getItem('kolo_token');
     
     if (!token) {
       // Not logged in, redirect to register
@@ -338,10 +338,10 @@ export default function PricingPage() {
         
         {/* Plan Cards */}
         <div className="space-y-4">
-          {/* FREE Plan */}
+          {/* Starter Plan */}
           <PlanCard
             plan="free"
-            name="FREE"
+            name="Starter"
             price={getPriceDisplay('free')}
             features={features.free}
             billingPeriod={billingPeriod}

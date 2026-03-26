@@ -5858,10 +5858,10 @@ const AppShell = () => {
           // Set user name for initials
           setUserName(userData.full_name || '');
           
-          // Fetch plan data
-          const token = localStorage.getItem('session_token');
+          // Fetch plan data and wait for it
+          const token = localStorage.getItem('kolo_token');
           if (token) {
-            fetchPlanData(token);
+            await fetchPlanData(token);
           }
         }
       } catch (e) {

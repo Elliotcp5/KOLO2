@@ -68,13 +68,14 @@ export function HeatScoreBadge({
 }) {
   const { theme } = useTheme();
   const { locale } = useLocale();
-  const { checkFeature } = usePlan();
+  const { checkFeature, planData } = usePlan();
   
   const isDark = theme === 'dark';
   const labels = LABELS[locale] || LABELS.en;
   
   // Check if heat score is available (PRO+ feature)
-  const hasHeatScore = checkFeature('heat_score');
+  // Use planData directly to ensure re-render when it changes
+  const hasHeatScore = planData?.features?.heat_score ?? false;
   
   if (!hasHeatScore) {
     // Show locked state
@@ -148,13 +149,14 @@ export function HeatScoreBar({
 }) {
   const { theme } = useTheme();
   const { locale } = useLocale();
-  const { checkFeature } = usePlan();
+  const { checkFeature, planData } = usePlan();
   
   const isDark = theme === 'dark';
   const labels = LABELS[locale] || LABELS.en;
   
   // Check if heat score is available (PRO+ feature)
-  const hasHeatScore = checkFeature('heat_score');
+  // Use planData directly to ensure re-render when it changes
+  const hasHeatScore = planData?.features?.heat_score ?? false;
   
   if (!hasHeatScore) {
     return (

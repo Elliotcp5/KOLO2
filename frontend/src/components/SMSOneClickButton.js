@@ -73,7 +73,8 @@ export function SMSOneClickButton({
   const [showPaywall, setShowPaywall] = useState(false);
   
   // Check if SMS 1-click is available (PRO feature)
-  const hasSMSFeature = checkFeature('sms_one_click');
+  // Use planData directly to ensure re-render when it changes
+  const hasSMSFeature = planData?.features?.sms_one_click ?? false;
   
   const handleClick = async () => {
     if (!hasSMSFeature) {
@@ -92,7 +93,7 @@ export function SMSOneClickButton({
     setMessage('');
     
     try {
-      const token = localStorage.getItem('session_token');
+      const token = localStorage.getItem('kolo_token');
       
       const response = await fetch(`${API_URL}/api/ai/generate-sms`, {
         method: 'POST',
@@ -159,7 +160,7 @@ export function SMSOneClickButton({
   
   const trackInteraction = async () => {
     try {
-      const token = localStorage.getItem('session_token');
+      const token = localStorage.getItem('kolo_token');
       await fetch(`${API_URL}/api/interactions`, {
         method: 'POST',
         headers: {
@@ -240,12 +241,14 @@ export function SMSOneClickButton({
       {isOpen && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-0 bg-black/50"
+            style={{ zIndex: 150 }}
             onClick={() => setIsOpen(false)}
           />
           <div 
-            className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up"
+            className="fixed bottom-0 left-0 right-0 animate-slide-up"
             style={{
+              zIndex: 151,
               backgroundColor: isDark ? '#1a1a24' : '#ffffff',
               borderTopLeftRadius: '24px',
               borderTopRightRadius: '24px',

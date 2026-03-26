@@ -72,7 +72,8 @@ export function ROIDashboard({
   const [showPaywall, setShowPaywall] = useState(false);
   
   // Check if ROI dashboard is available (PRO+ feature)
-  const hasROI = checkFeature('roi_dashboard');
+  // Use planData directly to ensure re-render when it changes
+  const hasROI = planData?.features?.roi_dashboard ?? false;
   
   useEffect(() => {
     if (hasROI) {

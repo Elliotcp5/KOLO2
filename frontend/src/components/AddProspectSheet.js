@@ -166,7 +166,8 @@ export function AddProspectSheet({
   const [paywallFeature, setPaywallFeature] = useState(null);
   
   // Check if budget slider is available (PRO feature)
-  const hasBudgetSlider = checkFeature('budget_slider');
+  // Use planData directly to ensure re-render when it changes
+  const hasBudgetSlider = planData?.features?.budget_slider ?? false;
   
   // Reset form when opening
   useEffect(() => {
@@ -294,14 +295,16 @@ export function AddProspectSheet({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-black/50"
+        style={{ zIndex: 150 }}
         onClick={onClose}
       />
       
       {/* Bottom Sheet */}
       <div 
-        className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up max-h-[90vh] overflow-y-auto"
+        className="fixed bottom-0 left-0 right-0 animate-slide-up max-h-[90vh] overflow-y-auto"
         style={{
+          zIndex: 151,
           backgroundColor: isDark ? '#1a1a24' : '#ffffff',
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',

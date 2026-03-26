@@ -76,7 +76,8 @@ export function MarkAsSoldButton({
   const [showConfetti, setShowConfetti] = useState(false);
   
   // Check if ROI dashboard is available (PRO+ feature - required to track commissions)
-  const hasROI = checkFeature('roi_dashboard');
+  // Use planData directly to ensure re-render when it changes
+  const hasROI = planData?.features?.roi_dashboard ?? false;
   
   const handleClick = () => {
     if (!hasROI) {

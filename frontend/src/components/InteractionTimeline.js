@@ -126,7 +126,8 @@ export function InteractionTimeline({
   const [showPaywall, setShowPaywall] = useState(false);
   
   // Check if interaction history is available (PRO feature)
-  const hasInteractionHistory = checkFeature('interaction_history');
+  // Use planData directly to ensure re-render when it changes
+  const hasInteractionHistory = planData?.features?.interaction_history ?? false;
   
   useEffect(() => {
     if (hasInteractionHistory && prospectId) {

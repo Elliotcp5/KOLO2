@@ -100,6 +100,9 @@ const translations = {
     pricingFeature5: "One-click contact import",
     pricingFeature6: "Accessible from any browser",
     pricingFeature7: "Human support included",
+    planStarter: "Starter",
+    planPro: "Pro",
+    planProPlus: "Pro+",
     startFreeMonth: "Start my free trial",
     
     // FAQ Section
@@ -475,6 +478,9 @@ const translations = {
     pricingFeature5: "Import contacts en 1 clic",
     pricingFeature6: "Accessible depuis n'importe quel navigateur",
     pricingFeature7: "Support humain inclus",
+    planStarter: "Starter",
+    planPro: "Pro",
+    planProPlus: "Pro+",
     startFreeMonth: "Commencer mon essai gratuit",
     
     // FAQ Section
@@ -850,6 +856,9 @@ const translations = {
     pricingFeature5: "Kontaktimport mit einem Klick",
     pricingFeature6: "Von jedem Browser aus zugänglich",
     pricingFeature7: "Menschlicher Support inklusive",
+    planStarter: "Starter",
+    planPro: "Pro",
+    planProPlus: "Pro+",
     startFreeMonth: "Meine Testphase starten",
     
     // FAQ Section
@@ -1225,6 +1234,9 @@ const translations = {
     pricingFeature5: "Importazione contatti con un clic",
     pricingFeature6: "Accessibile da qualsiasi browser",
     pricingFeature7: "Supporto umano incluso",
+    planStarter: "Starter",
+    planPro: "Pro",
+    planProPlus: "Pro+",
     startFreeMonth: "Inizia la prova gratuita",
     
     // FAQ Section
