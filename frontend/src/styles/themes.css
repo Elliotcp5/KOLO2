@@ -44,6 +44,14 @@
   --shadow-md: 0 8px 24px rgba(14, 11, 30, 0.09);
   --shadow-lg: 0 16px 48px rgba(14, 11, 30, 0.11);
   --shadow-glow: 0 8px 40px rgba(203, 108, 230, 0.25);
+  /* App.css compatibility variables */
+  --surface: #FFFFFF;
+  --surface-2: #F7F6FB;
+  --text: #0E0B1E;
+  --muted: #8A849E;
+  --muted-dark: #6B6585;
+  --accent: #004AAD;
+  --success: #16A34A;
 }
 
 /* ===== DARK THEME ===== */
@@ -62,6 +70,14 @@
   /* Action button colors for dark mode */
   --card-bg: #2E2E42;
   --card-inner: #3C3C55;
+  /* App.css compatibility variables */
+  --surface: #2E2E42;
+  --surface-2: #3C3C55;
+  --text: #FFFFFF;
+  --muted: #A0A4AE;
+  --muted-dark: #9EA3AE;
+  --accent: #E82EA4;
+  --success: #2ECC71;
 }
 
 /* ===== GLOBAL STYLES ===== */

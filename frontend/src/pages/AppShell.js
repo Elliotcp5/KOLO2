@@ -142,6 +142,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [stats, setStats] = useState({ completedToday: 0, totalToday: 0, activeProspects: 0, streak: 0 });
   const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   const [swipingTaskId, setSwipingTaskId] = useState(null);
   const [swipeX, setSwipeX] = useState(0);
   const [completedTaskId, setCompletedTaskId] = useState(null);
@@ -927,36 +928,98 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           
           {/* Show more if multiple suggestions */}
           {aiSuggestions.length > 1 && (
-            <div 
-              onClick={() => {
-                // Accept all remaining suggestions
-                aiSuggestions.slice(1).forEach((suggestion, index) => {
-                  setTimeout(() => {
-                    authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(suggestion)
-                    }).then(() => {
-                      if (index === aiSuggestions.length - 2) {
-                        toast.success(locale === 'fr' ? 'Tâches ajoutées !' : 'Tasks added!');
-                        fetchTasks();
-                        setAiSuggestions([]);
-                      }
-                    });
-                  }, index * 200);
-                });
-              }}
-              style={{ textAlign: 'center', marginTop: '8px', cursor: 'pointer' }}
-              data-testid="show-more-suggestions"
-            >
-              <span style={{ 
-                fontSize: '11px', 
-                color: isDark ? '#CB6CE6' : '#004AAD',
-                fontWeight: '500'
-              }}>
-                +{aiSuggestions.length - 1} {locale === 'fr' ? 'autre' : 'more'}{aiSuggestions.length > 2 ? 's' : ''} <ChevronRight size={12} style={{ display: 'inline' }} />
-              </span>
-            </div>
+            <>
+              <div 
+                onClick={() => setShowAllSuggestions(!showAllSuggestions)}
+                style={{ textAlign: 'center', marginTop: '8px', cursor: 'pointer' }}
+                data-testid="show-more-suggestions"
+              >
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: isDark ? '#CB6CE6' : '#004AAD',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}>
+                  {showAllSuggestions 
+                    ? (locale === 'fr' ? 'Masquer' : 'Hide')
+                    : `+${aiSuggestions.length - 1} ${locale === 'fr' ? 'autre' : 'more'}${aiSuggestions.length > 2 ? 's' : ''}`
+                  }
+                  <ChevronRight 
+                    size={12} 
+                    style={{ 
+                      display: 'inline',
+                      transform: showAllSuggestions ? 'rotate(90deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease'
+                    }} 
+                  />
+                </span>
+              </div>
+              
+              {/* Dropdown with all suggestions */}
+              {showAllSuggestions && (
+                <div style={{ 
+                  marginTop: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  {aiSuggestions.slice(1).map((suggestion, index) => (
+                    <div 
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: isDark ? '#2a2a3b' : '#f7f6fb',
+                        borderRadius: '10px',
+                        border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`
+                      }}
+                    >
+                      <div style={{ flex: 1, marginRight: '10px' }}>
+                        <div style={{ fontWeight: '500', fontSize: '13px', color: isDark ? '#ffffff' : '#0E0B1E' }}>
+                          {suggestion.prospect_name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: isDark ? '#9ca3af' : '#6b7280', marginTop: '2px' }}>
+                          {suggestion.reason}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(suggestion)
+                          }).then(() => {
+                            toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+                            fetchTasks();
+                            setAiSuggestions(prev => prev.filter((_, i) => i !== index + 1));
+                          });
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'linear-gradient(135deg, #004AAD, #CB6CE6)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: 'white',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        + {locale === 'fr' ? 'Ajouter' : 'Add'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -2922,29 +2985,30 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           padding: '16px'
         }} onClick={() => setShowMessageModal(false)}>
           <div style={{
-            background: c('bg'),
+            background: isDark ? '#1a1a24' : '#ffffff',
             borderRadius: '20px',
             padding: '24px',
             width: '100%',
             maxWidth: '400px',
             maxHeight: '80vh',
             overflowY: 'auto',
-            border: `1px solid ${c('border')}`
+            border: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: c('text') }}>
-                <Sparkles size={18} style={{ color: c('accent') }} />
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#ffffff' : '#0E0B1E' }}>
+                <Sparkles size={18} style={{ color: '#6C63FF' }} />
                 {locale === 'fr' ? 'Message IA' : 'AI Message'}
               </h2>
-              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => setShowMessageModal(false)} style={{ background: 'none', border: 'none', color: isDark ? '#6b7280' : '#9ca3af', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
             
             {messageLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: c('accent'), marginBottom: '12px' }} />
-                <p style={{ color: c('muted'), fontSize: '14px' }}>
+                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#6C63FF', marginBottom: '12px' }} />
+                <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '14px' }}>
                   {locale === 'fr' ? 'Génération...' : 'Generating...'}
                 </p>
               </div>
@@ -2957,10 +3021,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                     width: '100%',
                     minHeight: '100px',
                     padding: '14px',
-                    background: c('surface'),
-                    border: `1px solid ${c('border')}`,
+                    background: isDark ? '#2a2a3b' : '#f3f4f6',
+                    border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`,
                     borderRadius: '12px',
-                    color: c('text'),
+                    color: isDark ? '#ffffff' : '#0E0B1E',
                     fontSize: '14px',
                     lineHeight: '1.5',
                     resize: 'vertical',
@@ -2974,10 +3038,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                     style={{ 
                       flex: 1, 
                       padding: '10px 16px', 
-                      background: c('surface'), 
-                      border: `1px solid ${c('border')}`, 
+                      background: isDark ? '#2a2a3b' : '#f3f4f6', 
+                      border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`, 
                       borderRadius: '8px', 
-                      color: c('text'), 
+                      color: isDark ? '#ffffff' : '#0E0B1E', 
                       fontSize: '14px', 
                       cursor: 'pointer',
                       display: 'flex',
@@ -2993,10 +3057,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                     style={{ 
                       flex: 1, 
                       padding: '10px 16px', 
-                      background: c('surface'), 
-                      border: `1px solid ${c('border')}`, 
+                      background: isDark ? '#2a2a3b' : '#f3f4f6', 
+                      border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`, 
                       borderRadius: '8px', 
-                      color: c('text'), 
+                      color: isDark ? '#ffffff' : '#0E0B1E', 
                       fontSize: '14px', 
                       cursor: 'pointer',
                       display: 'flex',
@@ -3494,6 +3558,7 @@ const SettingsTab = ({ onClose }) => {
   const { user, logout } = useAuth();
   const { theme, changeTheme } = useTheme();
   const { c } = useThemeColors();
+  const { planData } = usePlan();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -4105,7 +4170,9 @@ const SettingsTab = ({ onClose }) => {
               {locale === 'fr' ? 'Plan actuel' : 'Current plan'}
             </div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: c('text') }}>
-              FREE
+              {planData?.effective_plan === 'pro_plus' ? 'PRO+' : 
+               planData?.effective_plan === 'pro' ? 'PRO' : 
+               locale === 'fr' ? 'Starter' : 'Starter'}
             </div>
           </div>
           <div style={{

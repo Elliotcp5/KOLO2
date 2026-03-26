@@ -1,0 +1,129 @@
+{
+  "summary": "Iteration 22 - Bug fixes and feature verification complete. Fixed SMS modal CSS issue (missing --surface variable). All 11 backend tests passed. Frontend UI verified via Playwright.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "bugs_verified": {
+    "bug_1_sms_modal_readability": {
+      "status": "FIXED",
+      "description": "SMS modal was transparent in light mode due to missing --surface CSS variable",
+      "fix_applied": "Added --surface, --surface-2, --text, --muted, --muted-dark, --accent, --success CSS variables to themes.css for both light and dark themes",
+      "light_mode": "White background (#FFFFFF) with dark text (#0E0B1E) - now readable",
+      "dark_mode": "Dark background (#2E2E42) with white text (#FFFFFF) - readable"
+    },
+    "bug_2_landing_page_pro_plus_language": {
+      "status": "VERIFIED",
+      "description": "PRO+ features now use clear language instead of technical terms",
+      "features_text": {
+        "hot_leads": "Hot leads auto-identified (FR: Prospects chauds identifiés auto)",
+        "commission": "Commission tracking (FR: Suivi de vos commissions)",
+        "weekly_report": "Weekly email report (FR: Rapport hebdo par email)"
+      }
+    },
+    "bug_3_profile_plan_display": {
+      "status": "VERIFIED",
+      "description": "Profile correctly shows PRO+ for test@test.com user",
+      "display_text": "PRO+ with Active badge"
+    },
+    "feature_4_budget_slider_project_type": {
+      "status": "VERIFIED",
+      "description": "BudgetSlider correctly adapts to project type",
+      "buyer": {
+        "label": "Budget",
+        "scale": "0k to 800k+",
+        "type": "Range slider (min/max)"
+      },
+      "seller": {
+        "label": "Desired sale price (incl. fees) / Prix de vente souhaité TTC",
+        "scale": "0k to 2M",
+        "type": "Single value slider"
+      },
+      "renter": {
+        "label": "Rent budget / Budget loyer",
+        "scale": "0 to 5k €/mois",
+        "type": "Range slider (min/max)"
+      }
+    },
+    "feature_5_ai_suggestions_dropdown": {
+      "status": "VERIFIED",
+      "description": "AI suggestions block shows with individual Add buttons for each suggestion",
+      "note": "Show more button appears when >1 suggestion, expands to show all with individual Add buttons"
+    },
+    "backend_pricing_starter": {
+      "status": "VERIFIED",
+      "description": "/api/plans/pricing returns STARTER not FREE for free tier",
+      "endpoint_response": "plans.free.name = 'STARTER'"
+    }
+  },
+  
+  "css_fix_applied": {
+    "file": "/app/frontend/src/styles/themes.css",
+    "issue": "Missing CSS variables that App.css depends on (--surface, --surface-2, --text, --muted, --accent, --success)",
+    "fix": "Added compatibility variables to both .theme-light and .theme-dark sections"
+  },
+  
+  "passed_tests": {
+    "backend_api_tests": [
+      "✓ Pricing returns STARTER not FREE",
+      "✓ All 3 plans present (free/pro/pro_plus)",
+      "✓ EUR pricing correct (PRO: 999 cents, PRO+: 2499 cents)",
+      "✓ Login with test@test.com works",
+      "✓ User plan is PRO+",
+      "✓ PRO+ features enabled (budget_slider, sms_one_click, heat_score, roi_dashboard, etc.)",
+      "✓ AI suggestions endpoint works",
+      "✓ AI suggestion accept endpoint works",
+      "✓ Create prospect with buyer budget",
+      "✓ Create prospect with seller budget",
+      "✓ Create prospect with renter budget"
+    ],
+    "frontend_ui_tests": [
+      "✓ Login flow works",
+      "✓ SMS modal readable in light mode (white bg: rgb(255, 255, 255), dark text: rgb(14, 11, 30))",
+      "✓ Profile shows PRO+ plan correctly",
+      "✓ Landing page PRO+ uses clear language",
+      "✓ BudgetSlider adapts to buyer/seller/renter project types",
+      "✓ AI suggestions block visible with Add buttons"
+    ]
+  },
+  
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_22.py",
+    "/app/test_reports/pytest/iteration_22_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/frontend/src/styles/themes.css"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  
+  "test_credentials": {
+    "email": "test@test.com",
+    "password": "testtest",
+    "plan": "pro_plus"
+  },
+  
+  "seed_data_creation": "None - used existing test user",
+  
+  "retest_needed": false,
+  
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "All bugs from iteration 22 have been fixed and verified. The main fix was adding missing CSS variables (--surface, --surface-2, --text, --muted, --accent, --success) to themes.css which were required by App.css but not defined. This caused the SMS modal to have a transparent background. The BudgetSlider component correctly adapts its scale and behavior based on projectType (buyer/seller/renter). PRO+ features use clear language on landing page. Profile correctly shows PRO+ for test@test.com."
+}

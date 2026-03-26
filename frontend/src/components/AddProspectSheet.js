@@ -487,7 +487,12 @@ export function AddProspectSheet({
                 className="block text-sm font-medium mb-3"
                 style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}
               >
-                {labels.budget}
+                {projectType === 'seller' 
+                  ? (locale === 'fr' ? 'Prix de vente souhaité TTC' : 'Desired sale price (incl. fees)')
+                  : projectType === 'renter'
+                    ? (locale === 'fr' ? 'Budget loyer' : 'Rent budget')
+                    : labels.budget
+                }
                 {!hasBudgetSlider && (
                   <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#6C63FF', color: 'white' }}>
                     PRO
@@ -496,11 +501,19 @@ export function AddProspectSheet({
               </label>
               <div style={{ opacity: hasBudgetSlider ? 1 : 0.5 }}>
                 <BudgetSlider
+                  projectType={projectType}
                   minValue={budgetMin}
                   maxValue={budgetMax}
-                  onChange={({ min, max }) => {
-                    setBudgetMin(min);
-                    setBudgetMax(max);
+                  singleValue={budgetMin}
+                  onChange={({ min, max, value, manualValue }) => {
+                    if (projectType === 'seller') {
+                      // Single value for sellers
+                      setBudgetMin(value || min);
+                      setBudgetMax(value || max);
+                    } else {
+                      setBudgetMin(min);
+                      setBudgetMax(max);
+                    }
                   }}
                   disabled={!hasBudgetSlider}
                   budgetUndefined={budgetUndefined}

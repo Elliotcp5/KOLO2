@@ -512,9 +512,9 @@ const LandingPage = () => {
               </div>
               <ul className="price-features">
                 <li><span className="check-icon">✓</span> {locale === 'fr' ? "Tout ce qui est dans PRO" : "Everything in PRO"}</li>
-                <li><span className="check-icon">🔥</span> {locale === 'fr' ? "Score de chaleur" : "Heat score"}</li>
-                <li><span className="check-icon">📊</span> {locale === 'fr' ? "Dashboard ROI" : "ROI Dashboard"}</li>
-                <li><span className="check-icon">📧</span> {locale === 'fr' ? "Rapport hebdo email" : "Weekly email report"}</li>
+                <li><span className="check-icon">🔥</span> {locale === 'fr' ? "Prospects chauds identifiés auto" : "Hot leads auto-identified"}</li>
+                <li><span className="check-icon">📊</span> {locale === 'fr' ? "Suivi de vos commissions" : "Commission tracking"}</li>
+                <li><span className="check-icon">📧</span> {locale === 'fr' ? "Rapport hebdo par email" : "Weekly email report"}</li>
                 <li><span className="check-icon">⭐</span> {locale === 'fr' ? "Support prioritaire" : "Priority support"}</li>
               </ul>
               <button className="btn-secondary full" onClick={() => navigate('/register')}>

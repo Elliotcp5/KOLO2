@@ -1,13 +1,80 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
+import { Edit3 } from 'lucide-react';
+
+// Configuration by project type
+const SLIDER_CONFIG = {
+  buyer: {
+    min: 0,
+    max: 800,
+    step: 10,
+    ticks: [0, 100, 200, 300, 500, 800],
+    formatValue: (val) => val >= 800 ? '800k+' : `${val}k€`,
+    formatTick: (tick) => tick === 800 ? '800k+' : `${tick}k`,
+    isRange: true,
+    label: {
+      fr: 'Budget',
+      en: 'Budget',
+      de: 'Budget',
+      it: 'Budget'
+    },
+    undefinedLabel: {
+      fr: 'Budget à définir',
+      en: 'Budget to be defined',
+      de: 'Budget noch festzulegen',
+      it: 'Budget da definire'
+    }
+  },
+  seller: {
+    min: 0,
+    max: 2000,
+    step: 25,
+    ticks: [0, 250, 500, 750, 1000, 2000],
+    formatValue: (val) => val >= 2000 ? '2M+€' : val >= 1000 ? `${(val/1000).toFixed(1)}M€` : `${val}k€`,
+    formatTick: (tick) => tick >= 1000 ? `${tick/1000}M` : `${tick}k`,
+    isRange: false, // Single value, not range
+    label: {
+      fr: 'Prix de vente souhaité TTC',
+      en: 'Desired sale price (incl. fees)',
+      de: 'Gewünschter Verkaufspreis inkl. Gebühren',
+      it: 'Prezzo di vendita desiderato (tutto incluso)'
+    },
+    undefinedLabel: {
+      fr: 'Prix à définir',
+      en: 'Price to be defined',
+      de: 'Preis noch festzulegen',
+      it: 'Prezzo da definire'
+    }
+  },
+  renter: {
+    min: 0,
+    max: 5000,
+    step: 100,
+    ticks: [0, 500, 1000, 2000, 3000, 5000],
+    formatValue: (val) => `${val}€/mois`,
+    formatTick: (tick) => tick >= 1000 ? `${tick/1000}k` : `${tick}`,
+    isRange: true,
+    label: {
+      fr: 'Budget loyer',
+      en: 'Rent budget',
+      de: 'Mietbudget',
+      it: 'Budget affitto'
+    },
+    undefinedLabel: {
+      fr: 'Budget à définir',
+      en: 'Budget to be defined',
+      de: 'Budget noch festzulegen',
+      it: 'Budget da definire'
+    }
+  }
+};
 
 export function BudgetSlider({
+  projectType = 'buyer',
   minValue = 0,
   maxValue = 100,
-  min = 0,
-  max = 800,
-  step = 10,
+  singleValue = 0,
   onChange,
   disabled = false,
   budgetUndefined = false,
@@ -17,27 +84,24 @@ export function BudgetSlider({
   const { locale } = useLocale();
   const isDark = theme === 'dark';
   
-  const [localMin, setLocalMin] = useState(minValue);
-  const [localMax, setLocalMax] = useState(maxValue);
-  const [dragging, setDragging] = useState(null); // 'min', 'max', or null
+  const config = SLIDER_CONFIG[projectType] || SLIDER_CONFIG.buyer;
+  
+  const [localMin, setLocalMin] = useState(minValue || config.min);
+  const [localMax, setLocalMax] = useState(maxValue || config.max / 2);
+  const [localSingle, setLocalSingle] = useState(singleValue || config.max / 4);
+  const [dragging, setDragging] = useState(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualInputValue, setManualInputValue] = useState('');
   
   const sliderRef = useRef(null);
   
-  // Ticks for display
-  const ticks = [0, 100, 200, 300, 500, 800];
-  
-  const formatValue = (val) => {
-    if (val >= 800) return '800k+';
-    return `${val}k€`;
-  };
-  
   const getPercentage = (value) => {
-    return ((value - min) / (max - min)) * 100;
+    return ((value - config.min) / (config.max - config.min)) * 100;
   };
   
   const getValueFromPercentage = (percentage) => {
-    const rawValue = (percentage / 100) * (max - min) + min;
-    return Math.round(rawValue / step) * step;
+    const rawValue = (percentage / 100) * (config.max - config.min) + config.min;
+    return Math.round(rawValue / config.step) * config.step;
   };
   
   const handleMouseDown = (thumb) => (e) => {
@@ -54,21 +118,30 @@ export function BudgetSlider({
     const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
     const value = getValueFromPercentage(percentage);
     
-    if (dragging === 'min') {
-      const newMin = Math.min(value, localMax - step);
-      setLocalMin(Math.max(min, newMin));
-    } else if (dragging === 'max') {
-      const newMax = Math.max(value, localMin + step);
-      setLocalMax(Math.min(max, newMax));
+    if (config.isRange) {
+      if (dragging === 'min') {
+        const newMin = Math.min(value, localMax - config.step);
+        setLocalMin(Math.max(config.min, newMin));
+      } else if (dragging === 'max') {
+        const newMax = Math.max(value, localMin + config.step);
+        setLocalMax(Math.min(config.max, newMax));
+      }
+    } else {
+      // Single value mode
+      setLocalSingle(Math.max(config.min, Math.min(config.max, value)));
     }
-  }, [dragging, localMin, localMax, min, max, step, disabled, budgetUndefined]);
+  }, [dragging, localMin, localMax, config, disabled, budgetUndefined]);
   
   const handleMouseUp = useCallback(() => {
     if (dragging && onChange) {
-      onChange({ min: localMin, max: localMax });
+      if (config.isRange) {
+        onChange({ min: localMin, max: localMax });
+      } else {
+        onChange({ value: localSingle });
+      }
     }
     setDragging(null);
-  }, [dragging, localMin, localMax, onChange]);
+  }, [dragging, localMin, localMax, localSingle, config.isRange, onChange]);
   
   useEffect(() => {
     if (dragging) {
@@ -88,12 +161,34 @@ export function BudgetSlider({
   
   // Update local state when props change
   useEffect(() => {
-    setLocalMin(minValue);
-    setLocalMax(maxValue);
-  }, [minValue, maxValue]);
+    if (config.isRange) {
+      setLocalMin(minValue || config.min);
+      setLocalMax(maxValue || config.max / 2);
+    } else {
+      setLocalSingle(singleValue || config.max / 4);
+    }
+  }, [minValue, maxValue, singleValue, config]);
+  
+  const handleManualSubmit = () => {
+    const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(value) && value > 0) {
+      // Convert to k if needed
+      const valueInK = value >= 10000 ? value / 1000 : value;
+      if (config.isRange) {
+        // For range, set both min and max to same value (user can adjust)
+        const safeValue = Math.min(valueInK, config.max * 10); // Allow values beyond slider max
+        onChange({ min: safeValue, max: safeValue, manualValue: value });
+      } else {
+        onChange({ value: Math.min(valueInK, config.max * 10), manualValue: value });
+      }
+    }
+    setShowManualInput(false);
+    setManualInputValue('');
+  };
   
   const minPercent = getPercentage(localMin);
   const maxPercent = getPercentage(localMax);
+  const singlePercent = getPercentage(localSingle);
   
   return (
     <div className="w-full">
@@ -108,11 +203,10 @@ export function BudgetSlider({
         }}
       >
         {budgetUndefined 
-          ? (locale === 'fr' ? 'Budget à définir' :
-             locale === 'de' ? 'Budget noch festzulegen' :
-             locale === 'it' ? 'Budget da definire' :
-             'Budget to be defined')
-          : `Min ${formatValue(localMin)} → Max ${formatValue(localMax)}`
+          ? config.undefinedLabel[locale] || config.undefinedLabel.en
+          : config.isRange 
+            ? `Min ${config.formatValue(localMin)} → Max ${config.formatValue(localMax)}`
+            : config.formatValue(localSingle)
         }
       </div>
       
@@ -125,62 +219,99 @@ export function BudgetSlider({
           opacity: budgetUndefined || disabled ? 0.3 : 1
         }}
       >
-        {/* Filled track */}
-        <div 
-          className="absolute h-full rounded-full"
-          style={{
-            left: `${minPercent}%`,
-            width: `${maxPercent - minPercent}%`,
-            background: 'linear-gradient(90deg, #6C63FF, #9333EA)'
-          }}
-        />
-        
-        {/* Min thumb */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
-          style={{
-            left: `${minPercent}%`,
-            width: '28px',
-            height: '28px',
-            backgroundColor: '#ffffff',
-            borderRadius: '50%',
-            boxShadow: dragging === 'min' 
-              ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
-              : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
-            transform: `translate(-50%, -50%) ${dragging === 'min' ? 'scale(1.15)' : 'scale(1)'}`,
-            transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
-            touchAction: 'none',
-            zIndex: dragging === 'min' ? 10 : 5
-          }}
-          onMouseDown={handleMouseDown('min')}
-          onTouchStart={handleMouseDown('min')}
-        />
-        
-        {/* Max thumb */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
-          style={{
-            left: `${maxPercent}%`,
-            width: '28px',
-            height: '28px',
-            backgroundColor: '#ffffff',
-            borderRadius: '50%',
-            boxShadow: dragging === 'max' 
-              ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
-              : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
-            transform: `translate(-50%, -50%) ${dragging === 'max' ? 'scale(1.15)' : 'scale(1)'}`,
-            transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
-            touchAction: 'none',
-            zIndex: dragging === 'max' ? 10 : 5
-          }}
-          onMouseDown={handleMouseDown('max')}
-          onTouchStart={handleMouseDown('max')}
-        />
+        {config.isRange ? (
+          <>
+            {/* Filled track for range */}
+            <div 
+              className="absolute h-full rounded-full"
+              style={{
+                left: `${minPercent}%`,
+                width: `${maxPercent - minPercent}%`,
+                background: 'linear-gradient(90deg, #6C63FF, #9333EA)'
+              }}
+            />
+            
+            {/* Min thumb */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+              style={{
+                left: `${minPercent}%`,
+                width: '28px',
+                height: '28px',
+                backgroundColor: '#ffffff',
+                borderRadius: '50%',
+                boxShadow: dragging === 'min' 
+                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
+                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
+                transform: `translate(-50%, -50%) ${dragging === 'min' ? 'scale(1.15)' : 'scale(1)'}`,
+                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
+                touchAction: 'none',
+                zIndex: dragging === 'min' ? 10 : 5
+              }}
+              onMouseDown={handleMouseDown('min')}
+              onTouchStart={handleMouseDown('min')}
+            />
+            
+            {/* Max thumb */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+              style={{
+                left: `${maxPercent}%`,
+                width: '28px',
+                height: '28px',
+                backgroundColor: '#ffffff',
+                borderRadius: '50%',
+                boxShadow: dragging === 'max' 
+                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
+                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
+                transform: `translate(-50%, -50%) ${dragging === 'max' ? 'scale(1.15)' : 'scale(1)'}`,
+                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
+                touchAction: 'none',
+                zIndex: dragging === 'max' ? 10 : 5
+              }}
+              onMouseDown={handleMouseDown('max')}
+              onTouchStart={handleMouseDown('max')}
+            />
+          </>
+        ) : (
+          <>
+            {/* Filled track for single value */}
+            <div 
+              className="absolute h-full rounded-full"
+              style={{
+                left: 0,
+                width: `${singlePercent}%`,
+                background: 'linear-gradient(90deg, #6C63FF, #9333EA)'
+              }}
+            />
+            
+            {/* Single thumb */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+              style={{
+                left: `${singlePercent}%`,
+                width: '28px',
+                height: '28px',
+                backgroundColor: '#ffffff',
+                borderRadius: '50%',
+                boxShadow: dragging === 'single' 
+                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
+                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
+                transform: `translate(-50%, -50%) ${dragging === 'single' ? 'scale(1.15)' : 'scale(1)'}`,
+                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
+                touchAction: 'none',
+                zIndex: 10
+              }}
+              onMouseDown={handleMouseDown('single')}
+              onTouchStart={handleMouseDown('single')}
+            />
+          </>
+        )}
       </div>
       
       {/* Ticks */}
       <div className="flex justify-between mt-2 px-1">
-        {ticks.map((tick) => (
+        {config.ticks.map((tick) => (
           <span 
             key={tick} 
             className="text-xs"
@@ -189,21 +320,22 @@ export function BudgetSlider({
               opacity: budgetUndefined ? 0.3 : 0.7
             }}
           >
-            {tick === 800 ? '800k+' : `${tick}k`}
+            {config.formatTick(tick)}
           </span>
         ))}
       </div>
       
-      {/* Budget undefined toggle */}
-      {onBudgetUndefinedChange && (
-        <div className="flex items-center justify-center gap-2 mt-4">
+      {/* Actions row */}
+      <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
+        {/* Budget undefined toggle */}
+        {onBudgetUndefinedChange && (
           <button
             type="button"
             onClick={() => onBudgetUndefinedChange(!budgetUndefined)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all"
             style={{
               backgroundColor: budgetUndefined 
-                ? (isDark ? '#6C63FF' : '#6C63FF')
+                ? '#6C63FF'
                 : (isDark ? '#2a2a3b' : '#f2f2f7'),
               color: budgetUndefined 
                 ? '#ffffff'
@@ -223,11 +355,97 @@ export function BudgetSlider({
                 />
               )}
             </div>
-            {locale === 'fr' ? 'Budget à définir' :
-             locale === 'de' ? 'Budget noch festzulegen' :
-             locale === 'it' ? 'Budget da definire' :
-             'Budget to be defined'}
+            {config.undefinedLabel[locale] || config.undefinedLabel.en}
           </button>
+        )}
+        
+        {/* Manual input button */}
+        {!budgetUndefined && (
+          <button
+            type="button"
+            onClick={() => setShowManualInput(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all"
+            style={{
+              backgroundColor: isDark ? '#2a2a3b' : '#f2f2f7',
+              color: isDark ? '#a78bfa' : '#6C63FF',
+              border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`
+            }}
+          >
+            <Edit3 size={12} />
+            {locale === 'fr' ? 'Saisir manuellement' : 
+             locale === 'de' ? 'Manuell eingeben' :
+             locale === 'it' ? 'Inserisci manualmente' :
+             'Enter manually'}
+          </button>
+        )}
+      </div>
+      
+      {/* Manual input modal */}
+      {showManualInput && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowManualInput(false)}
+        >
+          <div 
+            className="rounded-2xl p-5 w-full max-w-xs"
+            style={{ 
+              backgroundColor: isDark ? '#1a1a24' : '#ffffff',
+              border: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 
+              className="text-base font-semibold mb-3"
+              style={{ color: isDark ? '#ffffff' : '#0E0B1E' }}
+            >
+              {locale === 'fr' ? 'Saisir le montant' : 
+               locale === 'de' ? 'Betrag eingeben' :
+               locale === 'it' ? 'Inserisci importo' :
+               'Enter amount'}
+            </h3>
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={manualInputValue}
+                onChange={(e) => setManualInputValue(e.target.value)}
+                placeholder={projectType === 'renter' ? '2500' : '500000'}
+                className="w-full px-4 py-3 rounded-xl text-lg font-medium"
+                style={{
+                  backgroundColor: isDark ? '#2a2a3b' : '#f3f4f6',
+                  color: isDark ? '#ffffff' : '#0E0B1E',
+                  border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`
+                }}
+                autoFocus
+              />
+              <span 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
+                style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
+              >
+                {projectType === 'renter' ? '€/mois' : '€'}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowManualInput(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{
+                  backgroundColor: isDark ? '#2a2a3b' : '#f3f4f6',
+                  color: isDark ? '#ffffff' : '#0E0B1E'
+                }}
+              >
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleManualSubmit}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #004AAD, #CB6CE6)'
+                }}
+              >
+                {locale === 'fr' ? 'Confirmer' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
