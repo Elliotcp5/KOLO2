@@ -1,0 +1,123 @@
+workflows:
+  kolo-ios-android:
+    name: KOLO iOS & Android Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kolo.app
+      android_signing:
+        - kolo_keystore
+      groups:
+        - app_credentials
+      vars:
+        PACKAGE_NAME: "com.kolo.app"
+        BUNDLE_ID: "com.kolo.app"
+      node: 18
+      xcode: latest
+      cocoapods: default
+      java: 17
+
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: release/*
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      # Setup
+      - name: Install dependencies
+        script: |
+          cd frontend
+          yarn install --frozen-lockfile
+          
+      - name: Build React app
+        script: |
+          cd frontend
+          yarn build
+          
+      # iOS Build
+      - name: Install CocoaPods
+        script: |
+          cd frontend/ios/App
+          pod install
+          
+      - name: Set up code signing for iOS
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+          
+      - name: Sync Capacitor iOS
+        script: |
+          cd frontend
+          npx cap sync ios
+          
+      - name: Build iOS
+        script: |
+          cd frontend/ios/App
+          xcode-project build-ipa \
+            --workspace "App.xcworkspace" \
+            --scheme "App" \
+            --archive-flags="-destination 'generic/platform=iOS'"
+            
+      # Android Build
+      - name: Set up Android keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > /tmp/kolo-keystore.jks
+          cat >> "$CM_BUILD_DIR/frontend/android/key.properties" <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=/tmp/kolo-keystore.jks
+          EOF
+          
+      - name: Sync Capacitor Android
+        script: |
+          cd frontend
+          npx cap sync android
+          
+      - name: Build Android AAB
+        script: |
+          cd frontend/android
+          ./gradlew bundleRelease
+          
+      - name: Build Android APK
+        script: |
+          cd frontend/android
+          ./gradlew assembleRelease
+
+    artifacts:
+      - frontend/ios/App/build/ios/ipa/*.ipa
+      - frontend/android/app/build/outputs/**/*.aab
+      - frontend/android/app/build/outputs/**/*.apk
+      - frontend/build.log
+
+    publishing:
+      email:
+        recipients:
+          - contact@trykolo.io
+        notify:
+          success: true
+          failure: true
+          
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - KOLO Beta Testers
+          
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true

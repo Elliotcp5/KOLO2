@@ -209,3 +209,96 @@ POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 - Use existing design system (gradients, spacing, typography)
 - Maintain dark/light mode compatibility with `c()` helper
 - All text must use `t()` translation helper
+
+
+
+---
+
+## Capacitor Configuration (iOS & Android)
+
+### Status: READY FOR BUILD ✅
+
+**Package Identifier:** `com.kolo.app`
+
+**iOS Configuration:**
+- Location: `/app/frontend/ios/App/`
+- Bundle ID: `com.kolo.app`
+- Display Name: `KOLO`
+- Minimum iOS: 13.0
+
+**Android Configuration:**
+- Location: `/app/frontend/android/`
+- Package: `com.kolo.app`
+- Min SDK: 22
+- Target SDK: 34
+
+**Codemagic CI/CD:**
+- Config: `/app/frontend/codemagic.yaml`
+- Triggers: push/PR to `main` or `release/*`
+- Outputs: IPA (iOS), AAB + APK (Android)
+- Auto-publish: TestFlight (iOS), Internal Track (Android)
+
+**Build Scripts:**
+```bash
+yarn build:ios      # Build for iOS
+yarn build:android  # Build for Android
+yarn build:mobile   # Build for both
+yarn cap:sync       # Sync web build to native
+```
+
+---
+
+## Stripe Integration
+
+### Status: CONFIGURED ✅
+
+**Products in Stripe:**
+- KOLO Pro (monthly/annual)
+- KOLO Pro+ (monthly/annual)
+
+**Webhook Endpoint:** `/api/webhook/stripe`
+**Webhook Secret:** `whsec_MZhxvMWoidY3rYuw0HPpOKTAs5UsKePGE`
+
+**Events Handled:**
+- `checkout.session.completed`
+- `customer.subscription.created/updated/deleted`
+- `invoice.payment_succeeded/failed`
+
+**Customer Creation:**
+- All users (including Starter/trial) are created in Stripe
+- Metadata includes: source, initial_plan, trial_status
+
+---
+
+## Email Automation (Resend)
+
+### Status: CONFIGURED ✅
+
+**Endpoints:**
+- Welcome email: Triggered on `/api/auth/register`
+- Password reset: Triggered on `/api/auth/forgot-password`
+- Trial reminders: `/api/cron/trial-emails` (J+7, J+12, J+14)
+- Weekly reports: `/api/cron/weekly-reports` (PRO+ only)
+
+---
+
+## Refactoring Status
+
+### Backend (P2)
+- **server.py**: ~4000 lignes (refactoring préparé mais non migré)
+- Nouveaux routers créés dans `/app/backend/routes/`:
+  - `plans.py` - Gestion des plans et features
+  - `ai.py` - Génération SMS et suggestions IA
+  - `interactions.py` - Historique des interactions
+  - `dashboard.py` - ROI et statistiques
+  - `cron.py` - Jobs planifiés (emails, reports)
+
+### Frontend (P2)
+- **AppShell.js**: ~6000 lignes (structure documentée)
+- Composants identifiés à extraire:
+  - TodayTab (~1700 lignes)
+  - ProspectsTab (~1700 lignes)
+  - SettingsTab (~1160 lignes)
+  - TasksTab (~700 lignes)
+  - QuickAddProspectModal (~310 lignes)
+  - BottomNav (~330 lignes)

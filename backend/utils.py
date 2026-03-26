@@ -1,7 +1,19 @@
 # KOLO - Utility Functions
 from datetime import datetime, timezone, timedelta
+from fastapi import HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import hashlib
 import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Rate limiter (will be set by server.py)
+limiter = None
+
+def set_limiter(l):
+    global limiter
+    limiter = l
 
 # EU countries (ISO 3166-1 alpha-2)
 EU_COUNTRIES = [
@@ -16,6 +28,53 @@ PRICING = {
     'GBP': {'amount': 999, 'currency': 'gbp', 'symbol': '£', 'display': '9.99'},
     'USD': {'amount': 999, 'currency': 'usd', 'symbol': '$', 'display': '9.99'},
 }
+
+# Security helper
+security = HTTPBearer(auto_error=False)
+
+
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get current authenticated user from token"""
+    from database import db
+    
+    token = None
+    
+    # Try Bearer token first
+    if credentials:
+        token = credentials.credentials
+    
+    # Try Authorization header
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    
+    # Try cookie
+    if not token:
+        token = request.cookies.get("session_token")
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Find session
+    session = await db.user_sessions.find_one({"session_token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    # Check expiration
+    expires_at = session.get("expires_at")
+    if expires_at:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+            if exp_dt < datetime.now(timezone.utc):
+                raise HTTPException(status_code=401, detail="Session expired")
+        except:
+            pass
+    
+    return {"user_id": session["user_id"], "session_token": token}
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
