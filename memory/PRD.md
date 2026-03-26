@@ -1,7 +1,7 @@
 # KOLO - Product Requirements Document
 
 ## Original Problem Statement
-KOLO is a CRM application for real estate agents designed to help manage prospects, tasks, and follow-ups. The user requested a major implementation of the subscription plan system (FREE/PRO/PRO+) with all premium features (P0-P3) from the specification document kolo-spec-v3.docx.
+KOLO is a CRM application for real estate agents designed to help manage prospects, tasks, and follow-ups. The user requested a major implementation of the subscription plan system (STARTER/PRO/PRO+) with all premium features (P0-P3) from the specification document kolo-spec-v3.docx.
 
 ## User Personas
 - **Real Estate Agents**: Primary users who need to manage their prospects, schedule follow-ups, and track commissions.
@@ -12,8 +12,8 @@ KOLO is a CRM application for real estate agents designed to help manage prospec
 ## Core Requirements
 
 ### Subscription Plan System (P0) - IMPLEMENTED ✅
-1. **Plan Tiers**: FREE / PRO / PRO+
-   - FREE: 30 prospects limit, 1 AI suggestion/day
+1. **Plan Tiers**: STARTER / PRO / PRO+
+   - STARTER: 30 prospects limit, 1 AI suggestion/day
    - PRO: Unlimited prospects, unlimited AI, SMS 1-click, interaction history
    - PRO+: All PRO features + Heat score, ROI dashboard, weekly reports
 
@@ -25,7 +25,7 @@ KOLO is a CRM application for real estate agents designed to help manage prospec
 - Interactive pricing page at `/pricing`
 - Currency toggle (EUR/USD/GBP)
 - Billing period toggle (Monthly/Annual with savings badge)
-- 3 plan cards (FREE, PRO with "Popular" badge, PRO+)
+- 3 plan cards (Starter, PRO with "Popular" badge, PRO+)
 - Dynamic CTAs based on current plan
 
 ### Premium Features (P1-P3) - IMPLEMENTED ✅
@@ -44,6 +44,12 @@ KOLO is a CRM application for real estate agents designed to help manage prospec
 - **ROI Dashboard**: Monthly revenue tracking and ROI multiplier display
 - **Weekly Email Report**: Automated stats email (revenue, sales, tasks, hot prospects)
 - **Mark as Sold**: Track commissions when prospects convert
+
+### Automated Email Sequences (P0) - IMPLEMENTED ✅
+- **Welcome Email**: Sent on registration
+- **Password Reset Email**: Sent on forgot password request  
+- **Trial Reminders**: J+7, J+12, J+14 automated reminder emails via Resend API
+- Cron endpoint: `/api/cron/trial-emails` for lifecycle emails
 
 ---
 
@@ -148,18 +154,31 @@ POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 - Ultra-contextual AI suggestions
 
 ### Technical Debt
-- Refactor /app/backend/server.py into modular routers
+- Refactor /app/backend/server.py into modular routers (~4000 lignes)
+- Refactor /app/frontend/src/pages/AppShell.js (~6000 lignes)
 - Add comprehensive test coverage for new endpoints
 - Implement proper Stripe webhook handler
+
+---
+
+## Bugs Corrigés (26 Mars 2026)
+
+### P0 Bugs - TOUS CORRIGÉS ✅
+1. **SMS illisible** - Modal SMS avait fond transparent et texte noir
+   - Fix: z-index 151, styles dark mode avec #1a1a24
+2. **AddProspectSheet chevauchement** - Le sheet passait derrière la bottom nav
+   - Fix: z-index passé de z-50 à 151
+3. **PRO+ features bloquées** - Compte PRO+ ne débloquait pas le slider Budget
+   - Fix: Token localStorage corrigé de `session_token` à `kolo_token`
 
 ---
 
 ## 3rd Party Integrations
 - **Stripe**: Payments & subscription management
 - **Emergent LLM Key**: AI features (Claude/GPT)
-- **Resend**: Transactional emails (weekly reports)
+- **Resend**: Transactional & lifecycle emails (Welcome, Reset, Trial reminders)
 - **Brevo**: SMS notifications
-- **Codemagic**: CI/CD for iOS builds
+- **Codemagic**: CI/CD pour builds iOS et Android
 
 ---
 
