@@ -1,253 +1,170 @@
 # KOLO - Product Requirements Document
 
-## Overview
-KOLO is a mobile-first CRM application designed for independent real estate agents. It uses AI to help agents track prospects, schedule follow-ups, and close more deals.
+## Original Problem Statement
+KOLO is a CRM application for real estate agents designed to help manage prospects, tasks, and follow-ups. The user requested a major implementation of the subscription plan system (FREE/PRO/PRO+) with all premium features (P0-P3) from the specification document kolo-spec-v3.docx.
 
-## Version 2.0.0 - Released March 14, 2026
+## User Personas
+- **Real Estate Agents**: Primary users who need to manage their prospects, schedule follow-ups, and track commissions.
+- **Property Sales Teams**: Teams needing collaborative tools for prospect management.
 
-### Core Features
-1. **Today Dashboard** - Daily task list with AI suggestions
-2. **Prospects Management** - Full CRUD for prospect contacts
-3. **AI-Powered Follow-ups** - Automated task generation and message writing
-4. **Dark/Light Mode** - Full theme support with sun/moon toggle
-5. **Push Notifications** - Reminders for scheduled tasks
-6. **Onboarding Tutorial** - Step-by-step introduction for new users
+---
 
-## Tech Stack
-- **Frontend**: React.js with CSS custom properties for theming
-- **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **AI**: Anthropic Claude (via Emergent LLM Key)
-- **Payments**: Stripe
-- **Email**: Resend
-- **SMS**: Brevo
-- **Analytics**: Google Analytics 4
+## Core Requirements
 
-## UI/UX Design System (v2.0.0)
+### Subscription Plan System (P0) - IMPLEMENTED ✅
+1. **Plan Tiers**: FREE / PRO / PRO+
+   - FREE: 30 prospects limit, 1 AI suggestion/day
+   - PRO: Unlimited prospects, unlimited AI, SMS 1-click, interaction history
+   - PRO+: All PRO features + Heat score, ROI dashboard, weekly reports
 
-### Colors
-- **Light Mode**:
-  - Background: #FFFFFF
-  - Surface: #F8F9FA
-  - Text: #0E0B1E
-  - Muted: #6B7280
-  - Accent Gradient: linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)
+2. **14-Day Trial System**: Users can start a trial for PRO or PRO+ without credit card
+3. **Multi-Currency Pricing**: EUR, USD, GBP with automatic detection
+4. **Billing Periods**: Monthly and Annual (2 months free on annual)
 
-- **Dark Mode**:
-  - Background: #1A1A24
-  - Surface: #2A2A3B
-  - Card: #2E2E42
-  - Text: #FFFFFF
-  - Muted: #A0A4AE
-  - Accent: #E82EA4
+### Pricing Page (P0) - IMPLEMENTED ✅
+- Interactive pricing page at `/pricing`
+- Currency toggle (EUR/USD/GBP)
+- Billing period toggle (Monthly/Annual with savings badge)
+- 3 plan cards (FREE, PRO with "Popular" badge, PRO+)
+- Dynamic CTAs based on current plan
 
-### Bottom Navigation (Final Design)
-- **Active Tab**: Icon in rounded square (40x40) with gradient border, colored icon, colored text
-- **Inactive Tab**: Icon in rounded square with gray border, gray icon, gray text
-- **Central FAB**: 60x60 circular gradient button with shadow
-- **Profile Pill**: Dynamic initials (EP = Elliot Pressard, MC = Marie Courtin)
+### Premium Features (P1-P3) - IMPLEMENTED ✅
 
-### Typography
-- Heading Font: League Spartan
-- Body Font: DM Sans
-- H1: 32px, 800 weight
-- H2: 22px, 700 weight
-- Body: 15px, 400 weight
-- Caption: 13px, 500 weight
+#### P1 - Core UX
+- **SMS One-Click with AI**: Generate contextual SMS messages using AI and deep-link to native SMS app
+- **Budget Slider**: Double-handle slider for prospect budget range (PRO feature)
+- **Contextual Notes**: AI-generated header notes based on project type
 
-## Security Hardening ✅
+#### P2 - Retention PRO
+- **Interaction History**: Timeline of all interactions (SMS, calls, visits, notes) per prospect
+- **Contextualized AI Suggestions**: Suggestions based on prospect context
 
-### Rate Limiting (via slowapi)
-- **Auth endpoints**: 10 requests/minute/IP
-- **Prospects endpoints**: 100 requests/minute/IP
-- **AI generation endpoints**: 30 requests/minute/IP
+#### P3 - PRO+ Differentiation
+- **Heat Score**: Algorithm calculating prospect "temperature" (0-100) based on activity
+- **ROI Dashboard**: Monthly revenue tracking and ROI multiplier display
+- **Weekly Email Report**: Automated stats email (revenue, sales, tasks, hot prospects)
+- **Mark as Sold**: Track commissions when prospects convert
 
-### Input Validation
-- Email format validation (regex)
-- Phone format validation (international format support)
-- Password strength: 6-128 characters
-- Input sanitization: HTML escape, length limits
-- XSS prevention
+---
 
-## Refactored Architecture
+## Technical Implementation
 
-### New File Structure
+### Backend Endpoints Added
 ```
-/app/frontend/src/
-├── components/
-│   ├── dashboard/
-│   │   ├── StatsCards.js       # Stats display component
-│   │   └── SegmentTabs.js      # Today/All Tasks tabs
-│   ├── navigation/
-│   │   ├── BottomNav.js        # Bottom navigation bar
-│   │   └── ProfileButton.js    # Profile button with initials
-│   └── index.js                # Component exports
-├── hooks/
-│   └── useThemeColors.js       # Theme color hook
-├── utils/
-│   └── helpers.js              # Utility functions
-└── pages/
-    └── AppShell.js             # Main app container (refactored)
+POST /api/plans/start-trial     - Start 14-day trial (PRO/PRO+)
+GET  /api/plans/current         - Get current plan with features & limits
+GET  /api/plans/pricing         - Get pricing for all plans (with currency)
+GET  /api/plans/check-feature/{feature} - Check feature access
+POST /api/plans/upgrade         - Create Stripe checkout session
+POST /api/plans/set-currency    - Set user currency preference
+
+POST /api/interactions          - Create interaction record (PRO)
+GET  /api/interactions/{prospect_id} - Get interaction timeline (PRO)
+
+POST /api/prospects/{id}/calculate-heat - Calculate heat score (PRO+)
+POST /api/prospects/{id}/mark-sold      - Mark prospect as sold (PRO+)
+
+GET  /api/dashboard/roi         - Get ROI dashboard data (PRO+)
+POST /api/reports/weekly        - Send weekly report email (PRO+)
+
+POST /api/ai/generate-sms       - Generate AI SMS message (PRO)
 ```
 
-### Extracted Components
-- **BottomNav**: Bottom navigation with gradient icons
-- **ProfileButton**: Profile pill with dynamic initials
-- **StatsCards**: Task/prospect stats display
-- **SegmentTabs**: Today/All Tasks segment control
+### Frontend Components Added
+```
+/src/context/PlanContext.js        - Plan management context
+/src/pages/PricingPage.js          - Interactive pricing page
+/src/components/PaywallBottomSheet.js  - Feature paywalls
+/src/components/BudgetSlider.js    - Double-handle budget slider
+/src/components/AddProspectSheet.js - 2-step prospect creation
+/src/components/SMSOneClickButton.js - AI SMS generation
+/src/components/HeatScoreBadge.js  - Heat score display
+/src/components/ROIDashboard.js    - ROI dashboard component
+/src/components/InteractionTimeline.js - Interaction history
+/src/components/MarkAsSoldButton.js - Mark as sold modal
+```
 
-### Utility Functions
-- `getInitials(fullName)`: Extract user initials
-- `formatPhoneNumber(phone)`: Format phone for display
-- `truncateText(text, maxLength)`: Truncate with ellipsis
-- `getStatusColor(status)`: Get prospect status color
-- `getScoreColor(score)`: Get temperature color
+### Database Schema Updates
+- **users**: Added `plan`, `trial_plan`, `trial_start_date`, `currency`, `billing_period`, `daily_suggestions_used`, `daily_suggestions_reset_date`, `monthly_revenue`, `monthly_revenue_month`
+- **prospects**: Added `project_type`, `budget_min`, `budget_max`, `budget_undefined`, `delay`, `heat_score`, `commission_amount`, `closed_date`, `last_contact_date`, `external_activity_signal`
+- **interactions**: New collection for tracking prospect interactions
 
-## Version History
-
-### v2.0.0 (March 14, 2026) - UI/UX Redesign + Refactoring ✅
-
-**UI Fixes:**
-- ✅ Dark mode - all elements visible
-- ✅ Bottom navigation - exact match to design mockups
-- ✅ Profile initials - dynamic based on user name
-- ✅ Theme toggle - sun/moon switch
-- ✅ AI Suggestions card - enhanced violet gradient (dark & light modes)
-
-**Landing Page:**
-- ✅ "Essayer gratuitement" button
-- ✅ Single checkmark per benefit
-- ✅ "1 mois gratuit"
-
-**Auth Pages:**
-- ✅ Login: "Content de vous revoir !"
-- ✅ Register: "1 mois gratuit"
-
-**Refactoring:**
-- ✅ Extracted reusable components
-- ✅ Created hooks directory
-- ✅ Created utils directory
-- ✅ Improved code organization
-
-**Security:**
-- ✅ Rate limiting on all public endpoints
-- ✅ Input sanitization
-- ✅ XSS prevention
-
-### v2.0.1 (March 14, 2026) - AI Card Enhancement & Fork Verification ✅
-
-**AI Card Improvements:**
-- ✅ Darkened AI Suggestions card background in both themes
-- ✅ Dark mode: rgba(139, 92, 246, 0.25) -> rgba(236, 72, 153, 0.2) gradient
-- ✅ Light mode: rgba(124, 58, 237, 0.15) -> rgba(236, 72, 153, 0.12) gradient
-- ✅ Enhanced border visibility with stronger alpha values
-
-**Fork Verification (All Passed):**
-- ✅ Onboarding flow triggers for new users (5 steps)
-- ✅ AI Suggestions API returns personalized suggestions
-- ✅ AI Generate Message API creates context-aware SMS
-- ✅ Theme toggle works in Settings
-- ✅ Bottom navigation functional
-- ✅ All core APIs operational
-
-### v2.0.2 (March 14, 2026) - Dark Mode UI Fixes ✅
-
-**Bouton "Générer une relance IA":**
-- ✅ Nouveau gradient violet identique à l'icône AI: #E82EA4 → #8A2BE2 (sombre) / #7C3AED → #EC4899 (clair)
-- ✅ Visible et lisible dans les deux modes
-
-**Modal création prospect:**
-- ✅ Dropdown "Source" supprimé complètement
-- ✅ Labels lisibles en mode sombre (utilise c('muted'))
-- ✅ Champs de saisie avec fond sombre et texte clair
-
-**Textes mode sombre:**
-- ✅ Tâches expandées: titre, contact, téléphone, email tous lisibles
-- ✅ Utilisation de c('text'), c('muted'), c('surface') au lieu de var()
-
-**En-tête Prospects:**
-- ✅ Bouton "Ajouter prospect" supprimé
-- ✅ Seule la loupe de recherche reste
-
-### v2.0.3 (March 14, 2026) - Final UI Polish ✅
-
-**Gradients uniformisés (bleu-violet #004AAD → #CB6CE6):**
-- ✅ Icône étoile AI dans suggestions IA
-- ✅ Bouton "+ Add" dans suggestions IA
-- ✅ Bouton "Générer une relance IA" dans tâches overdue
-- ✅ Carte AI suggestions (fond avec gradient subtil)
-
-**Boutons et modals:**
-- ✅ Bouton "Create task" visible quand désactivé (fond gris, texte clair)
-- ✅ Modal notifications push entièrement lisible en mode sombre
-- ✅ Modal création prospect avec labels visibles
-
-**Page Prospects:**
-- ✅ Noms et contacts lisibles via classes CSS .name et .contact
-- ✅ CSS utilise var(--ink) = blanc en dark mode
+---
 
 ## Testing Status
-- **Build**: ✅ Passing
-- **Test User**: test@test.com / testtest
-- **Last Test Report**: /app/test_reports/iteration_19.json (100% pass rate)
+- **Backend**: 78% (25/32 tests passed)
+- **Frontend**: 100% (all UI tests passed)
+- **Test User**: test@test.com / testtest (active, free plan)
 
-### v2.1.1 (March 16, 2026) - Dark Mode Polish + Languages ✅
+---
 
-**Onboarding:**
-- ✅ Texte simplifié: "Glissez vers la droite pour valider" (sans "vers la gauche pour reporter")
+## What's Been Implemented (March 26, 2026)
 
-**Mode sombre - Textes lisibles:**
-- ✅ Page Prospects: noms blancs, contacts gris clair
-- ✅ Fiche prospect: Status, Next Scheduled Task, Tasks tous visibles
-- ✅ Dashboard: message "Tout est à jour" lisible
-- ✅ Modal message IA: boutons Régénérer/Copier avec c('surface') et c('text')
+### Session 1 (Previous)
+- Complete i18n system (FR, EN, DE, IT)
+- Dark mode fixes
+- Mobile header layout fixes
+- Capacitor/Codemagic CI/CD configuration
 
-**Toggle d'apparence:**
-- ✅ Forme ronde correcte (borderRadius: 15px / 50%)
-- ✅ Gradient bleu-violet quand mode sombre actif
-- ✅ Icône soleil/lune visible
+### Session 2 (Current)
+- Complete subscription plan system (P0)
+- Pricing page with currency/billing toggles (P0)
+- 14-day trial system (P0)
+- SMS One-Click with AI (P1)
+- Budget slider component (P1)
+- 2-step prospect creation flow (P1)
+- Interaction history (P2)
+- Heat score calculation (P2/P3)
+- ROI dashboard (P3)
+- Weekly email reports (P3)
+- Mark as sold with commission (P3)
 
-**Langues ajoutées:**
-- ✅ Allemand (de) - toutes les clés principales
-- ✅ Italien (it) - toutes les clés principales
+---
 
-## Remaining Tasks (Backlog)
-1. **P2**: Continue refactoring AppShell.js (~5800 lines)
-2. **P2**: Refactor server.py into separate routers
-3. **P3**: Verify VAPID keys in production
+## Backlog / Future Tasks
 
-### v2.1.0 (March 14, 2026) - Final Polish ✅
+### P0 (High Priority)
+- ~~Implement subscription plan system~~ ✅
+- ~~Pricing page with multi-currency~~ ✅
+- ~~14-day trial system~~ ✅
 
-**Landing Page:**
-- ✅ Header avec plus d'espace sur mobile (padding 120px)
-- ✅ Texte "D'une main" au lieu de "En une main"
-- ✅ Texte "Glissez vers la droite" au lieu de "Swipe droite"
-- ✅ Toast "email en route" supprimé (était faux)
-- ✅ Vitesse défilement avis accélérée (25s au lieu de 40s)
+### P1 (Medium Priority)
+- ~~SMS One-Click with AI~~ ✅
+- ~~Budget slider~~ ✅
+- Stripe webhook integration for subscription events
+- Trial expiration email sequence (J+7, J+12, J+14)
 
-**Onboarding Premium (refonte complète):**
-- ✅ 5 étapes dynamiques avec animations
-- ✅ Step 1: Welcome avec logo KOLO gradient
-- ✅ Step 2: How it works (3 features avec icônes gradient)
-- ✅ Step 3: Import contacts avec bouton gradient
-- ✅ Step 4: Choix thème (clair/sombre)
-- ✅ Step 5: Ready avec tips et confetti
-- ✅ Tous les boutons Continue avec gradient bleu-violet
+### P2 (Lower Priority)
+- ~~Interaction history~~ ✅
+- ~~Heat score~~ ✅
+- GA4 analytics events integration
+- Demo prospect if 0 prospects after onboarding
 
-**App - Paramètres:**
-- ✅ Modification nom fonctionne (API /api/auth/update-name)
-- ✅ Modification téléphone fonctionne (API /api/auth/update-phone)
-- ✅ Section "Permissions" avec "Accès aux contacts"
-- ✅ Section "Support" avec "Nous contacter" (mailto:contact@trykolo.io)
-- ✅ Modal résiliation lisible en mode sombre
+### P3 (Nice to Have)
+- ~~ROI Dashboard~~ ✅
+- ~~Weekly report~~ ✅
+- ~~Mark as sold~~ ✅
+- Behavioral alerts for PRO+
+- Ultra-contextual AI suggestions
 
-**App - Dashboard:**
-- ✅ Bouton "Toutes mes tâches" (symétrique avec "Aujourd'hui")
-- ✅ Nombre de tâches "À faire" >= 0
-- ✅ Import contacts dans modal ajout prospect
+### Technical Debt
+- Refactor /app/backend/server.py into modular routers
+- Add comprehensive test coverage for new endpoints
+- Implement proper Stripe webhook handler
 
-## Remaining Tasks (Backlog)
-1. **P2**: Continue refactoring AppShell.js (still ~5600 lines)
-2. **P2**: Refactor server.py into separate routers
-3. **P2**: Add more languages (ES, IT, DE)
-4. **P3**: Verify VAPID keys in production
+---
+
+## 3rd Party Integrations
+- **Stripe**: Payments & subscription management
+- **Emergent LLM Key**: AI features (Claude/GPT)
+- **Resend**: Transactional emails (weekly reports)
+- **Brevo**: SMS notifications
+- **Codemagic**: CI/CD for iOS builds
+
+---
+
+## UI/UX Constraints
+- **CRITICAL**: Do NOT change general UI aspect or menus (per user request)
+- Use existing design system (gradients, spacing, typography)
+- Maintain dark/light mode compatibility with `c()` helper
+- All text must use `t()` translation helper
