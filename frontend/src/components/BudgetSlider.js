@@ -31,8 +31,16 @@ const SLIDER_CONFIG = {
     max: 2000,
     step: 25,
     ticks: [0, 250, 500, 750, 1000, 2000],
-    formatValue: (val) => val >= 2000 ? '2M+€' : val >= 1000 ? `${(val/1000).toFixed(1)}M€` : `${val}k€`,
-    formatTick: (tick) => tick >= 1000 ? `${tick/1000}M` : `${tick}k`,
+    formatValue: (val) => {
+      if (val === 0) return '0€';
+      if (val >= 1000) return `${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}M€`;
+      return `${val}k€`;
+    },
+    formatTick: (tick) => {
+      if (tick === 0) return '0';
+      if (tick >= 1000) return `${tick/1000}M`;
+      return `${tick}k`;
+    },
     isRange: false, // Single value, not range
     label: {
       fr: 'Prix de vente souhaité TTC',

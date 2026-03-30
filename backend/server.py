@@ -3708,6 +3708,70 @@ class GenerateSMSRequest(BaseModel):
     context: Optional[str] = None
     locale: str = "fr"
 
+@api_router.get("/ai/suggest-for-prospect/{prospect_id}")
+@limiter.limit("20/minute")
+async def get_ai_suggestion_for_prospect(prospect_id: str, request: Request):
+    """Get AI task suggestion for a specific prospect"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Get prospect
+    prospect = await db.prospects.find_one(
+        {"prospect_id": prospect_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found")
+    
+    # Get last contact date
+    last_contact = prospect.get("last_contact_date")
+    days_since_contact = 999
+    
+    if last_contact:
+        try:
+            last_dt = datetime.fromisoformat(last_contact.replace('Z', '+00:00'))
+            days_since_contact = (datetime.now(timezone.utc) - last_dt).days
+        except:
+            pass
+    
+    # Generate suggestion based on context
+    prospect_name = prospect.get("full_name", prospect.get("name", "Client"))
+    project_type = prospect.get("project_type", "buyer")
+    status = prospect.get("status", "nouveau")
+    
+    # Determine task type and reason
+    if days_since_contact >= 14:
+        task_type = "appel"
+        reason_fr = f"Pas de contact depuis {days_since_contact} jours - un appel permettrait de relancer {prospect_name}"
+        reason_en = f"No contact for {days_since_contact} days - a call would help re-engage {prospect_name}"
+    elif days_since_contact >= 7:
+        task_type = "sms"
+        reason_fr = f"Pas de nouvelles depuis {days_since_contact} jours - un SMS de suivi serait approprié"
+        reason_en = f"No news for {days_since_contact} days - a follow-up SMS would be appropriate"
+    elif status in ["nouveau", "new"]:
+        task_type = "appel"
+        reason_fr = f"Nouveau prospect - un appel de présentation permettrait de qualifier le projet"
+        reason_en = f"New prospect - an introduction call would help qualify the project"
+    else:
+        task_type = "sms"
+        reason_fr = f"Maintenir le contact avec {prospect_name} pour rester présent"
+        reason_en = f"Maintain contact with {prospect_name} to stay top of mind"
+    
+    locale = request.headers.get("Accept-Language", "fr")[:2]
+    reason = reason_fr if locale == "fr" else reason_en
+    
+    return {
+        "suggestion": {
+            "prospect_id": prospect_id,
+            "prospect_name": prospect_name,
+            "task_type": task_type,
+            "reason": reason,
+            "priority": "high" if days_since_contact > 14 else "medium"
+        }
+    }
+
+
 @api_router.post("/ai/generate-sms")
 @limiter.limit("30/minute")
 async def generate_ai_sms(request: GenerateSMSRequest, http_request: Request):

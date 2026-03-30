@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -1725,21 +1725,41 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  background: c('surface'),
-                  border: `1px solid ${c('border')}`,
+                  background: isDark ? '#2a2a3b' : '#f9fafb',
+                  border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`,
                   borderRadius: '10px',
                   fontSize: '15px',
-                  color: c('text'),
+                  color: isDark ? '#ffffff' : '#0E0B1E',
                   outline: 'none',
                   boxSizing: 'border-box',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${isDark ? '%23ffffff' : '%236b7280'}' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  paddingRight: '36px'
                 }}
               >
-                <option value="">{locale === 'fr' ? '-- Aucun prospect --' : '-- No prospect --'}</option>
+                <option value="" style={{ background: isDark ? '#2a2a3b' : '#ffffff', color: isDark ? '#ffffff' : '#0E0B1E' }}>
+                  {locale === 'fr' ? '-- Aucun prospect --' : '-- No prospect --'}
+                </option>
                 {prospects.map(p => (
-                  <option key={p.prospect_id} value={p.prospect_id}>{p.full_name}</option>
+                  <option 
+                    key={p.prospect_id} 
+                    value={p.prospect_id}
+                    style={{ background: isDark ? '#2a2a3b' : '#ffffff', color: isDark ? '#ffffff' : '#0E0B1E' }}
+                  >
+                    {p.full_name}
+                  </option>
                 ))}
               </select>
+              {prospects.length === 0 && (
+                <p style={{ fontSize: '12px', color: c('muted'), marginTop: '4px' }}>
+                  {locale === 'fr' ? 'Aucun prospect disponible' : 'No prospects available'}
+                </p>
+              )}
             </div>
             
             {/* Due Date - Required */}
@@ -2263,6 +2283,11 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   // Score state
   const [updatingScore, setUpdatingScore] = useState(false);
   const [showScoreMenu, setShowScoreMenu] = useState(false);
+  
+  // AI Suggested task state
+  const [suggestedTask, setSuggestedTask] = useState(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
 
   useEffect(() => {
     const fetchProspectDetail = async () => {
@@ -2290,6 +2315,50 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
     fetchProspectDetail();
   }, [prospect.prospect_id]);
+
+  // Fetch AI suggested task for this prospect
+  const fetchSuggestedTask = async () => {
+    setLoadingSuggestion(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/ai/suggest-for-prospect/${prospect.prospect_id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestedTask(data.suggestion);
+        setShowSuggestionModal(true);
+      } else {
+        toast.info(locale === 'fr' ? 'Aucune suggestion pour ce prospect' : 'No suggestion for this prospect');
+      }
+    } catch (error) {
+      console.error('Failed to fetch suggestion:', error);
+      toast.error(locale === 'fr' ? 'Erreur lors du chargement' : 'Failed to load suggestion');
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
+
+  // Accept suggested task
+  const acceptSuggestedTask = async () => {
+    if (!suggestedTask) return;
+    try {
+      const response = await authFetch(`${API_URL}/api/tasks/ai-suggestions/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prospect_id: prospect.prospect_id,
+          prospect_name: prospectData.full_name,
+          task_type: suggestedTask.task_type,
+          reason: suggestedTask.reason
+        })
+      });
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+        setShowSuggestionModal(false);
+        setSuggestedTask(null);
+      }
+    } catch (error) {
+      toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+    }
+  };
 
   const handleEditSubmit = async () => {
     if (!editForm.full_name.trim()) {
@@ -2940,34 +3009,168 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </div>
       </div>
       
-      {/* AI Message button */}
-      <button
-        onClick={generateMessage}
-        disabled={messageLoading}
-        style={{ 
-          width: '100%', 
-          marginBottom: '16px',
-          padding: '14px 20px',
-          background: isDark 
-            ? 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
-            : 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
-          border: 'none',
-          borderRadius: '12px',
-          color: 'white',
-          fontSize: '15px',
-          fontWeight: '600',
-          cursor: messageLoading ? 'not-allowed' : 'pointer',
+      {/* Action buttons row */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        {/* AI Message button */}
+        <button
+          onClick={generateMessage}
+          disabled={messageLoading}
+          style={{ 
+            flex: 1,
+            padding: '14px 16px',
+            background: isDark 
+              ? 'linear-gradient(90deg, #E82EA4 0%, #8A2BE2 100%)'
+              : 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)',
+            border: 'none',
+            borderRadius: '12px',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: messageLoading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            opacity: messageLoading ? 0.7 : 1
+          }}
+          data-testid="ai-message-button"
+        >
+          <Sparkles size={16} />
+          {locale === 'fr' ? 'Relance IA' : 'AI Follow-up'}
+        </button>
+        
+        {/* Suggested task button */}
+        <button
+          onClick={fetchSuggestedTask}
+          disabled={loadingSuggestion}
+          style={{ 
+            flex: 1,
+            padding: '14px 16px',
+            background: isDark ? '#2a2a3b' : '#f3f4f6',
+            border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`,
+            borderRadius: '12px',
+            color: isDark ? '#ffffff' : '#0E0B1E',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: loadingSuggestion ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            opacity: loadingSuggestion ? 0.7 : 1
+          }}
+          data-testid="suggested-task-button"
+        >
+          <Lightbulb size={16} style={{ color: isDark ? '#F59E0B' : '#D97706' }} />
+          {locale === 'fr' ? 'Tâche suggérée' : 'Suggested task'}
+        </button>
+      </div>
+      
+      {/* Suggested Task Modal */}
+      {showSuggestionModal && suggestedTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
-          opacity: messageLoading ? 0.7 : 1
-        }}
-        data-testid="ai-message-button"
-      >
-        <Sparkles size={18} />
-        {locale === 'fr' ? 'Rédiger avec l\'IA' : 'Write with AI'}
-      </button>
+          zIndex: 10000,
+          padding: '16px'
+        }} onClick={() => setShowSuggestionModal(false)}>
+          <div style={{
+            background: isDark ? '#1a1a24' : '#ffffff',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '350px',
+            border: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#ffffff' : '#0E0B1E' }}>
+                <Lightbulb size={18} style={{ color: '#F59E0B' }} />
+                {locale === 'fr' ? 'Tâche suggérée' : 'Suggested Task'}
+              </h2>
+              <button onClick={() => setShowSuggestionModal(false)} style={{ background: 'none', border: 'none', color: isDark ? '#6b7280' : '#9ca3af', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ 
+              padding: '16px', 
+              background: isDark ? '#2a2a3b' : '#f9fafb', 
+              borderRadius: '12px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                <span style={{ 
+                  padding: '4px 10px', 
+                  background: suggestedTask.task_type === 'appel' ? '#3B82F6' : suggestedTask.task_type === 'sms' ? '#10B981' : '#8B5CF6',
+                  color: 'white',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}>
+                  {suggestedTask.task_type}
+                </span>
+              </div>
+              <p style={{ 
+                color: isDark ? '#d1d5db' : '#4b5563', 
+                fontSize: '14px',
+                lineHeight: '1.5',
+                margin: 0
+              }}>
+                {suggestedTask.reason}
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowSuggestionModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: isDark ? '#2a2a3b' : '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: isDark ? '#ffffff' : '#0E0B1E',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                {locale === 'fr' ? 'Ignorer' : 'Dismiss'}
+              </button>
+              <button
+                onClick={acceptSuggestedTask}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #004AAD, #CB6CE6)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                {locale === 'fr' ? 'Ajouter' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* AI Message Modal */}
       {showMessageModal && (
