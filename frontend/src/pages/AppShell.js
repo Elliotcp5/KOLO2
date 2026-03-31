@@ -166,8 +166,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   // Add Task Modal state
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [prospects, setProspects] = useState([]);
+  const [showProspectPicker, setShowProspectPicker] = useState(false);
   const [newTask, setNewTask] = useState({
     prospect_id: '',
+    prospect_name: '',
     title: '',
     due_date: '',
     due_time: '',
@@ -1713,15 +1715,14 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               />
             </div>
             
-            {/* Prospect - Optional */}
+            {/* Prospect - Optional - Custom Picker */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
                 {locale === 'fr' ? 'Lier à un prospect (optionnel)' : 'Link to prospect (optional)'}
               </label>
-              <select
-                value={newTask.prospect_id}
-                onChange={(e) => setNewTask({...newTask, prospect_id: e.target.value})}
-                data-testid="new-task-prospect"
+              <div
+                onClick={() => setShowProspectPicker(true)}
+                data-testid="new-task-prospect-picker"
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -1729,36 +1730,133 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                   border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`,
                   borderRadius: '10px',
                   fontSize: '15px',
-                  color: isDark ? '#ffffff' : '#0E0B1E',
-                  outline: 'none',
+                  color: newTask.prospect_name ? (isDark ? '#ffffff' : '#0E0B1E') : (isDark ? '#6b7280' : '#9ca3af'),
                   boxSizing: 'border-box',
                   cursor: 'pointer',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  appearance: 'none',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${isDark ? '%23ffffff' : '%236b7280'}' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 12px center',
-                  paddingRight: '36px'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}
               >
-                <option value="" style={{ background: isDark ? '#2a2a3b' : '#ffffff', color: isDark ? '#ffffff' : '#0E0B1E' }}>
-                  {locale === 'fr' ? '-- Aucun prospect --' : '-- No prospect --'}
-                </option>
-                {prospects.map(p => (
-                  <option 
-                    key={p.prospect_id} 
-                    value={p.prospect_id}
-                    style={{ background: isDark ? '#2a2a3b' : '#ffffff', color: isDark ? '#ffffff' : '#0E0B1E' }}
+                <span>{newTask.prospect_name || (locale === 'fr' ? '-- Sélectionner un prospect --' : '-- Select a prospect --')}</span>
+                <ChevronDown size={18} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
+              </div>
+              
+              {/* Prospect Picker Modal */}
+              {showProspectPicker && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.8)',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'center',
+                  zIndex: 10001
+                }} onClick={() => setShowProspectPicker(false)}>
+                  <div 
+                    style={{
+                      background: isDark ? '#1a1a24' : '#ffffff',
+                      borderTopLeftRadius: '24px',
+                      borderTopRightRadius: '24px',
+                      padding: '20px',
+                      width: '100%',
+                      maxHeight: '70vh',
+                      overflowY: 'auto'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {p.full_name}
-                  </option>
-                ))}
-              </select>
-              {prospects.length === 0 && (
-                <p style={{ fontSize: '12px', color: c('muted'), marginTop: '4px' }}>
-                  {locale === 'fr' ? 'Aucun prospect disponible' : 'No prospects available'}
-                </p>
+                    <div style={{ 
+                      width: '40px', 
+                      height: '4px', 
+                      background: isDark ? '#3a3a4b' : '#e5e7eb',
+                      borderRadius: '2px',
+                      margin: '0 auto 16px'
+                    }} />
+                    
+                    <h3 style={{ 
+                      fontSize: '17px', 
+                      fontWeight: '600', 
+                      color: isDark ? '#ffffff' : '#0E0B1E',
+                      marginBottom: '16px',
+                      textAlign: 'center'
+                    }}>
+                      {locale === 'fr' ? 'Sélectionner un prospect' : 'Select a prospect'}
+                    </h3>
+                    
+                    {/* No prospect option */}
+                    <div
+                      onClick={() => {
+                        setNewTask({...newTask, prospect_id: '', prospect_name: ''});
+                        setShowProspectPicker(false);
+                      }}
+                      style={{
+                        padding: '14px 16px',
+                        background: !newTask.prospect_id ? (isDark ? '#2a2a3b' : '#f3f4f6') : 'transparent',
+                        borderRadius: '10px',
+                        marginBottom: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <span style={{ color: isDark ? '#9ca3af' : '#6b7280', fontStyle: 'italic' }}>
+                        {locale === 'fr' ? 'Aucun prospect' : 'No prospect'}
+                      </span>
+                      {!newTask.prospect_id && <Check size={18} style={{ color: '#6C63FF' }} />}
+                    </div>
+                    
+                    {/* Prospects list */}
+                    {prospects.length === 0 ? (
+                      <p style={{ textAlign: 'center', color: isDark ? '#6b7280' : '#9ca3af', padding: '20px' }}>
+                        {locale === 'fr' ? 'Aucun prospect disponible' : 'No prospects available'}
+                      </p>
+                    ) : (
+                      prospects.map(p => (
+                        <div
+                          key={p.prospect_id}
+                          onClick={() => {
+                            setNewTask({...newTask, prospect_id: p.prospect_id, prospect_name: p.full_name});
+                            setShowProspectPicker(false);
+                          }}
+                          style={{
+                            padding: '14px 16px',
+                            background: newTask.prospect_id === p.prospect_id ? (isDark ? '#2a2a3b' : '#f3f4f6') : 'transparent',
+                            borderRadius: '10px',
+                            marginBottom: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}
+                        >
+                          <div>
+                            <div style={{ 
+                              fontSize: '15px', 
+                              fontWeight: '500', 
+                              color: isDark ? '#ffffff' : '#0E0B1E' 
+                            }}>
+                              {p.full_name}
+                            </div>
+                            {p.phone && (
+                              <div style={{ 
+                                fontSize: '13px', 
+                                color: isDark ? '#6b7280' : '#9ca3af',
+                                marginTop: '2px'
+                              }}>
+                                {p.phone}
+                              </div>
+                            )}
+                          </div>
+                          {newTask.prospect_id === p.prospect_id && <Check size={18} style={{ color: '#6C63FF' }} />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             

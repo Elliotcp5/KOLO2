@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import '../styles/landing.css';
 
@@ -19,6 +19,7 @@ const LandingPage = () => {
   const [email, setEmail] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -578,9 +579,163 @@ const LandingPage = () => {
               KOLO<span className="logo-dot"></span>
             </a>
             <p className="footer-copy">© 2026 KOLO. {t('footerRights')}</p>
+            <button 
+              onClick={() => setShowLegalModal(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#6b7280',
+                fontSize: '12px',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                marginTop: '8px'
+              }}
+            >
+              {locale === 'fr' ? 'Mentions légales' : 'Legal Notice'}
+            </button>
           </div>
         </div>
       </footer>
+
+      {/* LEGAL MODAL */}
+      {showLegalModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
+          }}
+          onClick={() => setShowLegalModal(false)}
+        >
+          <div 
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '700px',
+              maxHeight: '85vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0E0B1E', margin: 0 }}>
+                {locale === 'fr' ? 'Mentions Légales' : 'Legal Notice'}
+              </h2>
+              <button 
+                onClick={() => setShowLegalModal(false)}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} color="#6b7280" />
+              </button>
+            </div>
+            <div style={{
+              padding: '24px',
+              overflowY: 'auto',
+              fontSize: '14px',
+              lineHeight: '1.7',
+              color: '#374151'
+            }}>
+              <p style={{ textAlign: 'center', color: '#6b7280', marginBottom: '24px' }}>Last updated: March 31, 2026</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>1. COMPANY INFORMATION</h3>
+              <p>KOLO is operated by:</p>
+              <p><strong>KOLO LTD</strong><br/>124 City Road<br/>London, EC1V 2NX<br/>United Kingdom</p>
+              <p>Email: contact@trykolo.io</p>
+              <p>KOLO LTD is a company incorporated under the laws of England and Wales.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>2. PURPOSE OF THE PLATFORM</h3>
+              <p>KOLO is a mobile-first SaaS (Software as a Service) platform designed to help real estate agents and other professionals optimize their workflow through artificial intelligence.</p>
+              <p>The platform enables users to manage tasks, prospects, reminders, and business-related data in a structured and efficient environment.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>3. ACCESS AND USE</h3>
+              <p>Access to KOLO is restricted to users with an active paid subscription.</p>
+              <p>Users agree to:</p>
+              <ul style={{ paddingLeft: '20px', marginBottom: '12px' }}>
+                <li>Provide accurate and up-to-date information</li>
+                <li>Use the platform in compliance with applicable laws and regulations</li>
+                <li>Not misuse, disrupt, or attempt to gain unauthorized access to the system</li>
+              </ul>
+              <p>KOLO reserves the right to suspend or terminate access in case of violation of these terms.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>4. DATA OWNERSHIP</h3>
+              <p>All data entered into KOLO by users — including but not limited to: Prospects, Tasks, Notes, Contacts, Business-related information — remain the sole and exclusive property of the user.</p>
+              <p>KOLO does not:</p>
+              <ul style={{ paddingLeft: '20px', marginBottom: '12px' }}>
+                <li>Sell user data</li>
+                <li>Exploit user data for commercial purposes</li>
+                <li>Share user data with third parties for marketing or resale</li>
+              </ul>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>5. DATA PRIVACY AND SECURITY</h3>
+              <p>Data protection and privacy are core principles of KOLO.</p>
+              <ul style={{ paddingLeft: '20px', marginBottom: '12px' }}>
+                <li>All data is hosted on secure servers located in France</li>
+                <li>Infrastructure is compliant with the General Data Protection Regulation (GDPR)</li>
+                <li>Data is stored on a sovereign, encrypted, and highly secured cloud environment</li>
+              </ul>
+              <p>KOLO implements industry-standard security measures including data encryption (in transit and at rest), secure authentication mechanisms, and controlled access to infrastructure.</p>
+              <p>Despite best efforts, no system can guarantee absolute security. Users acknowledge this inherent limitation.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>6. PAYMENT PROCESSING</h3>
+              <p>All payments on KOLO are processed via Stripe, a third-party payment provider.</p>
+              <p>KOLO does not store or have access to any banking details and does not process payment information directly.</p>
+              <p>Users are encouraged to review Stripe's own legal terms and privacy policies.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>7. INTERNATIONAL OPERATIONS</h3>
+              <p>KOLO operates globally, with a primary focus on professionals located in Europe, United Kingdom, United States, and United Arab Emirates.</p>
+              <p>Users are responsible for ensuring their use of KOLO complies with their local regulations.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>8. LIABILITY</h3>
+              <p>KOLO provides tools designed to assist users in managing their business activities.</p>
+              <p>KOLO does not guarantee business results, act as a real estate intermediary, or replace professional judgment.</p>
+              <p>KOLO shall not be held liable for business losses, data loss caused by user actions, or service interruptions beyond reasonable control.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>9. INTELLECTUAL PROPERTY</h3>
+              <p>All elements of the KOLO platform, including software, design, branding, and content are the exclusive property of KOLO LTD, unless otherwise stated.</p>
+              <p>Any reproduction, distribution, or unauthorized use is strictly prohibited.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>10. SUPPORT</h3>
+              <p>For any inquiries, support requests, or complaints:</p>
+              <p>Email: contact@trykolo.io</p>
+              <p>KOLO commits to responding as quickly as possible and within a reasonable timeframe.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>11. MODIFICATIONS</h3>
+              <p>KOLO reserves the right to update or modify these legal notices at any time.</p>
+              <p>Users will be informed of significant changes where applicable. Continued use of the platform constitutes acceptance of the updated terms.</p>
+              
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>12. GOVERNING LAW</h3>
+              <p>These legal notices are governed by the laws of England and Wales.</p>
+              <p>Any disputes shall fall under the jurisdiction of the competent courts in London, United Kingdom.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TOAST */}
       <div className={`toast ${showToast ? 'show' : ''}`}>
