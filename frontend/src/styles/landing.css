@@ -1695,8 +1695,8 @@
 }
 
 .reveal-scale {
-  transform: scale(0.95);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0.98) translateY(15px);
+  transition: opacity 1.2s cubic-bezier(0.25, 0.1, 0.25, 1), transform 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .reveal.visible,
@@ -1707,12 +1707,12 @@
   transform: translate(0) scale(1);
 }
 
-/* Staggered animation delays */
-.stagger-1 { transition-delay: 0.1s; }
-.stagger-2 { transition-delay: 0.2s; }
-.stagger-3 { transition-delay: 0.3s; }
-.stagger-4 { transition-delay: 0.4s; }
-.stagger-5 { transition-delay: 0.5s; }
+/* Staggered animation delays - smoother progression */
+.stagger-1 { transition-delay: 0.15s; }
+.stagger-2 { transition-delay: 0.35s; }
+.stagger-3 { transition-delay: 0.55s; }
+.stagger-4 { transition-delay: 0.75s; }
+.stagger-5 { transition-delay: 0.95s; }
 
 /* Hero specific entrance animations */
 @keyframes heroFadeUp {
