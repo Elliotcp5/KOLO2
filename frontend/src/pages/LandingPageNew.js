@@ -31,14 +31,14 @@ const LandingPage = () => {
 
   // Reveal animation on scroll
   useEffect(() => {
-    const reveals = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+    const reveals = document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
         }
       });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
     
     reveals.forEach(el => observer.observe(el));
     return () => reveals.forEach(el => observer.unobserve(el));
@@ -307,21 +307,21 @@ const LandingPage = () => {
             </p>
           </div>
           <div className="cards-grid">
-            <div className="card reveal" style={{ transitionDelay: '0.05s' }}>
+            <div className="card reveal-scale stagger-1">
               <span className="card-icon">📱</span>
               <div className="card-title">{t('problemCard1Title')}</div>
               <p className="card-body">
                 {t('problemCard1Desc')}
               </p>
             </div>
-            <div className="card reveal" style={{ transitionDelay: '0.12s' }}>
+            <div className="card reveal-scale stagger-2">
               <span className="card-icon">📊</span>
               <div className="card-title">{t('problemCard2Title')}</div>
               <p className="card-body">
                 {t('problemCard2Desc')}
               </p>
             </div>
-            <div className="card reveal" style={{ transitionDelay: '0.19s' }}>
+            <div className="card reveal-scale stagger-3">
               <span className="card-icon">🧠</span>
               <div className="card-title">{t('problemCard3Title')}</div>
               <p className="card-body">
@@ -465,9 +465,9 @@ const LandingPage = () => {
             <p className="section-body">{t('pricingSubtitle')}</p>
           </div>
           
-          <div className="pricing-grid reveal">
+          <div className="pricing-grid">
             {/* FREE Plan */}
-            <div className="pricing-card pricing-starter">
+            <div className="pricing-card pricing-starter reveal-scale stagger-1">
               <div className="plan-name">STARTER</div>
               <div className="price-row">
                 <span className="price-amount">0€</span>
@@ -484,7 +484,7 @@ const LandingPage = () => {
             </div>
             
             {/* PRO Plan */}
-            <div className="pricing-card pricing-pro">
+            <div className="pricing-card pricing-pro reveal-scale stagger-2">
               <div className="popular-badge">{locale === 'fr' ? 'Populaire' : 'Popular'}</div>
               <div className="plan-name">PRO</div>
               <div className="price-row">
@@ -505,7 +505,7 @@ const LandingPage = () => {
             </div>
             
             {/* PRO+ Plan */}
-            <div className="pricing-card pricing-proplus">
+            <div className="pricing-card pricing-proplus reveal-scale stagger-3">
               <div className="plan-name">PRO+</div>
               <div className="price-row">
                 <span className="price-amount">{locale === 'fr' ? '24,99€' : '€24.99'}</span>
@@ -581,15 +581,7 @@ const LandingPage = () => {
             <p className="footer-copy">© 2026 KOLO. {t('footerRights')}</p>
             <button 
               onClick={() => setShowLegalModal(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#6b7280',
-                fontSize: '12px',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                marginTop: '8px'
-              }}
+              className="legal-notice-btn"
             >
               {locale === 'fr' ? 'Mentions légales' : 'Legal Notice'}
             </button>

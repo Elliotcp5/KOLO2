@@ -302,3 +302,28 @@ yarn cap:sync       # Sync web build to native
   - TasksTab (~700 lignes)
   - QuickAddProspectModal (~310 lignes)
   - BottomNav (~330 lignes)
+
+---
+
+## Recent Updates (March 31, 2026)
+
+### Landing Page Enhancements ✅
+1. **Legal Notice Button Improved**:
+   - Replaced discrete underlined link with a styled button
+   - Semi-transparent background with hover animation
+   - More visible and accessible in the footer
+
+2. **Premium Animations Added**:
+   - **Hero Section**: Staggered fade-up entrance animations for title, subtitle, form, and micro-text
+   - **Phone Mockups**: Subtle floating animation (continuous, gentle movement)
+   - **Problem Cards**: Scale reveal animation with staggered delays
+   - **Pricing Cards**: Scale reveal animation with staggered delays
+   - **Buttons**: Micro-interactions with hover effects and shimmer on CTA
+   - **Navigation Links**: Underline animation on hover
+   - **Smooth Scroll Reveals**: Improved intersection observer with better timing
+
+3. **Custom Prospect Selector Verified**:
+   - Bottom sheet style picker working correctly
+   - Replaces native HTML `<select>` for iOS Capacitor compatibility
+   - Displays prospect name and phone number
+   - Includes "No prospect" option
