@@ -16,15 +16,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 40px;
+  padding: 20px 40px;
   background: transparent;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .landing-nav.scrolled {
+  padding: 10px 40px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 4px 24px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.landing-nav.scrolled .nav-logo {
+  font-size: 22px;
+}
+
+.landing-nav.scrolled .nav-cta {
+  padding: 10px 20px;
 }
 
 .nav-logo {
@@ -36,6 +47,7 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  transition: font-size 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-links {
