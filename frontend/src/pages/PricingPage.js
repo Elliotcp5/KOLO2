@@ -129,21 +129,28 @@ export default function PricingPage() {
   
   const isDark = theme === 'dark';
   
+  // Initial load - separate from currency changes
   useEffect(() => {
-    fetchPricing(currency);
-    
-    // Get current user plan if logged in
     const token = localStorage.getItem('kolo_token');
     if (token) {
       fetchPlanData(token).then(data => {
         if (data) {
           setCurrentPlan(data.effective_plan || 'free');
           setIsInTrial(data.trial !== null);
-          if (data.currency) setCurrency(data.currency);
+          // Only set currency on initial load if user has one saved
+          if (data.currency) {
+            setCurrency(data.currency);
+            fetchPricing(data.currency);
+          } else {
+            fetchPricing('EUR');
+          }
         }
       });
+    } else {
+      // Not logged in, use default EUR
+      fetchPricing('EUR');
     }
-  }, [fetchPricing, fetchPlanData, currency]);
+  }, [fetchPricing, fetchPlanData]);
   
   const handleCurrencyChange = (newCurrency) => {
     setCurrency(newCurrency);
@@ -185,7 +192,11 @@ export default function PricingPage() {
   };
   
   const getPriceDisplay = (plan) => {
-    if (plan === 'free') return { monthly: '0€', annual: '0€', annualMonthly: '0€' };
+    if (plan === 'free') {
+      // Use currency symbol based on selected currency
+      const freeDisplay = currency === 'USD' ? '$0' : currency === 'GBP' ? '£0' : '0€';
+      return { monthly: freeDisplay, annual: freeDisplay, annualMonthly: freeDisplay };
+    }
     
     if (!pricing?.plans?.[plan]) {
       return plan === 'pro' 

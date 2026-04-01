@@ -1603,6 +1603,13 @@ async def get_pricing(request: Request, currency: Optional[str] = None):
     if detected_currency not in ["EUR", "USD", "GBP"]:
         detected_currency = "EUR"
     
+    # Free display based on currency
+    free_display = {
+        "EUR": "0€",
+        "USD": "$0",
+        "GBP": "£0"
+    }
+    
     return {
         "currency": detected_currency,
         "plans": {
@@ -1610,8 +1617,8 @@ async def get_pricing(request: Request, currency: Optional[str] = None):
                 "name": "STARTER",
                 "price_monthly": 0,
                 "price_annual": 0,
-                "display_monthly": "0€",
-                "display_annual": "0€",
+                "display_monthly": free_display.get(detected_currency, "0€"),
+                "display_annual": free_display.get(detected_currency, "0€"),
                 "features": list(PLAN_FEATURES["free"].keys())
             },
             "pro": {
