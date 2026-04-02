@@ -124,8 +124,10 @@ const useThemeColors = () => {
 // Helper for authenticated fetch
 const authFetch = (url, options = {}) => {
   const token = localStorage.getItem('kolo_token');
+  const savedLocale = localStorage.getItem('kolo_locale') || 'fr';
   const headers = {
     ...options.headers,
+    'Accept-Language': savedLocale,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
   return fetch(url, { ...options, headers });
@@ -3824,7 +3826,7 @@ const LanguageSelector = ({ c, locale }) => {
   return (
     <div 
       className="settings-row" 
-      style={{ borderBottom: 'none', cursor: 'pointer', position: 'relative' }}
+      style={{ cursor: 'pointer', position: 'relative' }}
       data-testid="language-selector"
       onClick={() => setShowLangMenu(!showLangMenu)}
     >
@@ -3877,6 +3879,109 @@ const LanguageSelector = ({ c, locale }) => {
               <span style={{ fontSize: '20px' }}>{lang.flag}</span>
               <span style={{ flex: 1 }}>{lang.label}</span>
               {lang.code === locale && <Check size={18} style={{ color: c('accent') }} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== CURRENCY SELECTOR COMPONENT ====================
+const SETTINGS_CURRENCIES = [
+  { code: 'EUR', label: 'Euro', symbol: '€' },
+  { code: 'USD', label: 'US Dollar', symbol: '$' },
+  { code: 'GBP', label: 'British Pound', symbol: '£' },
+];
+
+const CurrencySelector = ({ c, locale }) => {
+  const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
+  const [currency, setCurrencyState] = useState(() => localStorage.getItem('kolo_currency') || 'EUR');
+  const currentCurrency = SETTINGS_CURRENCIES.find(cur => cur.code === currency) || SETTINGS_CURRENCIES[0];
+
+  const handleCurrencyChange = async (newCurrency) => {
+    localStorage.setItem('kolo_currency', newCurrency);
+    setCurrencyState(newCurrency);
+    setShowCurrencyMenu(false);
+    
+    // Save to backend
+    const token = localStorage.getItem('kolo_token');
+    if (token) {
+      try {
+        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/plans/set-currency`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ currency: newCurrency })
+        });
+      } catch (err) {
+        console.error('Failed to save currency:', err);
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="settings-row" 
+      style={{ borderBottom: 'none', cursor: 'pointer', position: 'relative' }}
+      data-testid="currency-selector"
+      onClick={() => setShowCurrencyMenu(!showCurrencyMenu)}
+    >
+      <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke={c('text')} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="6" x2="12" y2="18"></line>
+        <path d="M9 10h6a2 2 0 0 1 0 4H9"></path>
+      </svg>
+      <span style={{ flex: 1, fontSize: '15px', color: c('text') }}>
+        {locale === 'fr' ? 'Devise' : locale === 'de' ? 'Währung' : locale === 'it' ? 'Valuta' : 'Currency'}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '14px', color: c('muted') }}>{currentCurrency.symbol} {currentCurrency.code}</span>
+        <ChevronRight size={20} style={{ color: c('muted'), transform: showCurrencyMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+      </div>
+      
+      {showCurrencyMenu && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '4px',
+            background: c('cardBg'),
+            border: `1px solid ${c('border')}`,
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+            zIndex: 100
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {SETTINGS_CURRENCIES.map(cur => (
+            <button
+              key={cur.code}
+              onClick={() => handleCurrencyChange(cur.code)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%',
+                padding: '14px 16px',
+                background: cur.code === currency ? 'rgba(0, 74, 173, 0.1)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: c('text'),
+                fontSize: '15px',
+                textAlign: 'left',
+                transition: 'background 0.2s'
+              }}
+              data-testid={`currency-option-${cur.code}`}
+            >
+              <span style={{ fontSize: '18px', fontWeight: '600', width: '24px' }}>{cur.symbol}</span>
+              <span style={{ flex: 1 }}>{cur.label}</span>
+              {cur.code === currency && <Check size={18} style={{ color: c('accent') }} />}
             </button>
           ))}
         </div>
@@ -4434,6 +4539,8 @@ const SettingsTab = ({ onClose }) => {
         </div>
         {/* Language selector */}
         <LanguageSelector c={c} locale={locale} />
+        {/* Currency selector */}
+        <CurrencySelector c={c} locale={locale} />
       </div>
 
       {/* Permissions section */}

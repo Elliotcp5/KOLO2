@@ -3,79 +3,99 @@ import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { Edit3 } from 'lucide-react';
 
-// Configuration by project type
-const SLIDER_CONFIG = {
-  buyer: {
-    min: 0,
-    max: 800,
-    step: 10,
-    ticks: [0, 100, 200, 300, 500, 800],
-    formatValue: (val) => val >= 800 ? '800k+' : `${val}k€`,
-    formatTick: (tick) => tick === 800 ? '800k+' : `${tick}k`,
-    isRange: true,
-    label: {
-      fr: 'Budget',
-      en: 'Budget',
-      de: 'Budget',
-      it: 'Budget'
+// Currency symbols
+const CURRENCY_SYMBOLS = {
+  EUR: '€',
+  USD: '$',
+  GBP: '£'
+};
+
+// Get user currency from localStorage
+const getUserCurrency = () => {
+  return localStorage.getItem('kolo_currency') || 'EUR';
+};
+
+const getCurrencySymbol = () => {
+  return CURRENCY_SYMBOLS[getUserCurrency()] || '€';
+};
+
+// Configuration by project type - now with dynamic currency
+const getSliderConfig = () => {
+  const symbol = getCurrencySymbol();
+  
+  return {
+    buyer: {
+      min: 0,
+      max: 800,
+      step: 10,
+      ticks: [0, 100, 200, 300, 500, 800],
+      formatValue: (val) => val >= 800 ? `800k+` : `${val}k${symbol}`,
+      formatTick: (tick) => tick === 800 ? '800k+' : `${tick}k`,
+      isRange: true,
+      label: {
+        fr: 'Budget',
+        en: 'Budget',
+        de: 'Budget',
+        it: 'Budget'
+      },
+      undefinedLabel: {
+        fr: 'Budget à définir',
+        en: 'Budget to be defined',
+        de: 'Budget noch festzulegen',
+        it: 'Budget da definire'
+      }
     },
-    undefinedLabel: {
-      fr: 'Budget à définir',
-      en: 'Budget to be defined',
-      de: 'Budget noch festzulegen',
-      it: 'Budget da definire'
+    seller: {
+      min: 0,
+      max: 2000,
+      step: 25,
+      ticks: [0, 250, 500, 750, 1000, 2000],
+      formatValue: (val) => {
+        if (val === 0) return `0${symbol}`;
+        if (val >= 1000) return `${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}M${symbol}`;
+        return `${val}k${symbol}`;
+      },
+      formatTick: (tick) => {
+        if (tick === 0) return '0';
+        if (tick >= 1000) return `${tick/1000}M`;
+        return `${tick}k`;
+      },
+      isRange: false, // Single value, not range
+      label: {
+        fr: 'Prix de vente souhaité TTC',
+        en: 'Desired sale price (incl. fees)',
+        de: 'Gewünschter Verkaufspreis inkl. Gebühren',
+        it: 'Prezzo di vendita desiderato (tutto incluso)'
+      },
+      undefinedLabel: {
+        fr: 'Prix à définir',
+        en: 'Price to be defined',
+        de: 'Preis noch festzulegen',
+        it: 'Prezzo da definire'
+      }
+    },
+    renter: {
+      min: 0,
+      max: 5000,
+      step: 100,
+      ticks: [0, 500, 1000, 2000, 3000, 5000],
+      formatValue: (val) => `${val}${symbol}/${getUserCurrency() === 'EUR' ? 'mois' : 'mo'}`,
+      formatTick: (tick) => tick >= 1000 ? `${tick/1000}k` : `${tick}`,
+      isRange: true,
+      label: {
+        fr: 'Budget loyer',
+        en: 'Rent budget',
+        de: 'Mietbudget',
+        it: 'Budget affitto'
+      },
+      undefinedLabel: {
+        fr: 'Budget à définir',
+        en: 'Budget to be defined',
+        de: 'Budget noch festzulegen',
+        it: 'Budget da definire'
+      }
     }
-  },
-  seller: {
-    min: 0,
-    max: 2000,
-    step: 25,
-    ticks: [0, 250, 500, 750, 1000, 2000],
-    formatValue: (val) => {
-      if (val === 0) return '0€';
-      if (val >= 1000) return `${(val/1000).toFixed(val % 1000 === 0 ? 0 : 1)}M€`;
-      return `${val}k€`;
-    },
-    formatTick: (tick) => {
-      if (tick === 0) return '0';
-      if (tick >= 1000) return `${tick/1000}M`;
-      return `${tick}k`;
-    },
-    isRange: false, // Single value, not range
-    label: {
-      fr: 'Prix de vente souhaité TTC',
-      en: 'Desired sale price (incl. fees)',
-      de: 'Gewünschter Verkaufspreis inkl. Gebühren',
-      it: 'Prezzo di vendita desiderato (tutto incluso)'
-    },
-    undefinedLabel: {
-      fr: 'Prix à définir',
-      en: 'Price to be defined',
-      de: 'Preis noch festzulegen',
-      it: 'Prezzo da definire'
-    }
-  },
-  renter: {
-    min: 0,
-    max: 5000,
-    step: 100,
-    ticks: [0, 500, 1000, 2000, 3000, 5000],
-    formatValue: (val) => `${val}€/mois`,
-    formatTick: (tick) => tick >= 1000 ? `${tick/1000}k` : `${tick}`,
-    isRange: true,
-    label: {
-      fr: 'Budget loyer',
-      en: 'Rent budget',
-      de: 'Mietbudget',
-      it: 'Budget affitto'
-    },
-    undefinedLabel: {
-      fr: 'Budget à définir',
-      en: 'Budget to be defined',
-      de: 'Budget noch festzulegen',
-      it: 'Budget da definire'
-    }
-  }
+  };
 };
 
 export function BudgetSlider({
@@ -92,6 +112,8 @@ export function BudgetSlider({
   const { locale } = useLocale();
   const isDark = theme === 'dark';
   
+  // Get config dynamically to pick up currency changes
+  const SLIDER_CONFIG = getSliderConfig();
   const config = SLIDER_CONFIG[projectType] || SLIDER_CONFIG.buyer;
   
   const [localMin, setLocalMin] = useState(minValue || config.min);
@@ -429,7 +451,7 @@ export function BudgetSlider({
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
                 style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
               >
-                {projectType === 'renter' ? '€/mois' : '€'}
+                {projectType === 'renter' ? `${getCurrencySymbol()}/${locale === 'fr' ? 'mois' : 'mo'}` : getCurrencySymbol()}
               </span>
             </div>
             <div className="flex gap-2">
