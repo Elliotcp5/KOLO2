@@ -1630,26 +1630,36 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.8)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: 'center',
-          zIndex: 10000,
-          padding: '16px'
-        }} onClick={() => setShowAddTaskModal(false)}>
+          zIndex: 10000
+        }} onClick={() => { setShowAddTaskModal(false); setShowProspectPicker(false); }}>
           <div style={{
             background: c('bg'),
-            borderRadius: '20px',
-            padding: '24px',
+            borderRadius: '20px 20px 0 0',
+            padding: '20px',
+            paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
             width: '100%',
-            maxWidth: '400px',
+            maxWidth: '430px',
             maxHeight: '85vh',
             overflowY: 'auto',
-            border: `1px solid ${c('border')}`
+            border: `1px solid ${c('border')}`,
+            borderBottom: 'none'
           }} onClick={(e) => e.stopPropagation()}>
+            {/* Handle bar */}
+            <div style={{ 
+              width: '40px', 
+              height: '4px', 
+              background: c('border'),
+              borderRadius: '2px',
+              margin: '0 auto 16px'
+            }} />
+            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '17px', fontWeight: '600', color: c('text') }}>
                 {locale === 'fr' ? 'Nouvelle tâche' : 'New task'}
               </h2>
-              <button onClick={() => setShowAddTaskModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => { setShowAddTaskModal(false); setShowProspectPicker(false); }} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>

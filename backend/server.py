@@ -3217,8 +3217,15 @@ async def get_ai_task_suggestions(request: Request):
     user = await require_active_subscription(request)
     
     # Get language from Accept-Language header
-    accept_lang = request.headers.get("accept-language", "fr")
-    lang = "fr" if accept_lang.startswith("fr") else "en"
+    accept_lang = request.headers.get("accept-language", "fr").lower()
+    if accept_lang.startswith("fr"):
+        lang = "fr"
+    elif accept_lang.startswith("de"):
+        lang = "de"
+    elif accept_lang.startswith("it"):
+        lang = "it"
+    else:
+        lang = "en"
     
     # Get all active prospects
     all_prospects = await db.prospects.find(
@@ -3291,8 +3298,8 @@ async def get_ai_task_suggestions(request: Request):
             raise HTTPException(status_code=500, detail="AI service not configured")
         
         # Language-specific system messages
-        if lang == "fr":
-            system_msg = """Coach commercial IMMOBILIER. Suggère la prochaine action selon l'étape du cycle de vente:
+        system_messages = {
+            "fr": """Coach commercial IMMOBILIER. Suggère la prochaine action selon l'étape du cycle de vente:
 - Nouveau prospect → Appel découverte / qualifier le projet
 - Projet qualifié → Proposer des biens correspondants
 - Biens proposés → Organiser une visite
@@ -3301,9 +3308,9 @@ async def get_ai_task_suggestions(request: Request):
 - Inactif → Relancer avec une nouveauté du marché
 
 JSON uniquement: {"suggestions": [{"prospect_id": "ID_EXACT", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
-Utilise EXACTEMENT les prospect_id fournis. Pour prospection: prospect_id=null. Max 3, concis."""
-        else:
-            system_msg = """Real estate SALES coach. Suggest the next action based on the sales cycle stage:
+Utilise EXACTEMENT les prospect_id fournis. Pour prospection: prospect_id=null. Max 3, concis.""",
+            
+            "en": """Real estate SALES coach. Suggest the next action based on the sales cycle stage:
 - New prospect → Discovery call / qualify the project
 - Qualified project → Propose matching properties
 - Properties proposed → Schedule a viewing
@@ -3312,7 +3319,32 @@ Utilise EXACTEMENT les prospect_id fournis. Pour prospection: prospect_id=null. 
 - Inactive → Follow up with market news
 
 JSON only: {"suggestions": [{"prospect_id": "EXACT_ID", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
-Use EXACTLY the prospect_ids provided. For prospecting: prospect_id=null. Max 3, concise."""
+Use EXACTLY the prospect_ids provided. For prospecting: prospect_id=null. Max 3, concise.""",
+            
+            "de": """IMMOBILIEN-Verkaufscoach. Schlage die nächste Aktion basierend auf der Verkaufsphase vor:
+- Neuer Interessent → Kennenlerngespräch / Projekt qualifizieren
+- Qualifiziertes Projekt → Passende Immobilien vorschlagen
+- Immobilien vorgeschlagen → Besichtigung vereinbaren
+- Besichtigung erfolgt → Feedback einholen / Suche anpassen
+- Interessiert → Zum Angebot begleiten
+- Inaktiv → Mit Marktneuigkeiten nachfassen
+
+Nur JSON: {"suggestions": [{"prospect_id": "EXAKTE_ID", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
+Verwende GENAU die angegebenen prospect_ids. Für Akquise: prospect_id=null. Max 3, prägnant.""",
+            
+            "it": """Coach commerciale IMMOBILIARE. Suggerisci la prossima azione in base alla fase del ciclo di vendita:
+- Nuovo prospect → Chiamata conoscitiva / qualificare il progetto
+- Progetto qualificato → Proporre immobili corrispondenti
+- Immobili proposti → Organizzare una visita
+- Visita effettuata → Raccogliere feedback / adeguare la ricerca
+- Interessato → Accompagnare verso l'offerta
+- Inattivo → Ricontattare con novità di mercato
+
+Solo JSON: {"suggestions": [{"prospect_id": "ID_ESATTO", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
+Usa ESATTAMENTE i prospect_id forniti. Per prospezione: prospect_id=null. Max 3, conciso."""
+        }
+        
+        system_msg = system_messages.get(lang, system_messages["en"])
         
         chat = LlmChat(
             api_key=api_key,
@@ -3323,65 +3355,112 @@ Use EXACTLY the prospect_ids provided. For prospecting: prospect_id=null. Max 3,
         if prospects_needing_action:
             # Prospects without tasks - suggest next actions
             target = prospects_needing_action[:5]
-            if lang == "fr":
-                prospects_context = "\n".join([
-                    f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']}j depuis dernier contact, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:100] if p.get('notes') else 'non précisé'}"
-                    for p in target
-                ])
-                prompt = f"""PROSPECTS SANS TÂCHE PLANIFIÉE - anticipe leur prochaine action:
+            
+            prompts_needing_action = {
+                "fr": lambda ctx: f"""PROSPECTS SANS TÂCHE PLANIFIÉE - anticipe leur prochaine action:
 
-{prospects_context}
+{ctx}
 
-Suggère la prochaine étape logique pour faire avancer chaque projet. Pense à l'étape suivante dans le cycle de vente immobilier."""
-            else:
-                prospects_context = "\n".join([
-                    f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']} days since last contact, status: {p.get('status', 'new')}, project: {p.get('notes', 'not specified')[:100] if p.get('notes') else 'not specified'}"
-                    for p in target
-                ])
-                prompt = f"""PROSPECTS WITHOUT SCHEDULED TASK - anticipate their next action:
+Suggère la prochaine étape logique pour faire avancer chaque projet. Pense à l'étape suivante dans le cycle de vente immobilier.""",
+                
+                "en": lambda ctx: f"""PROSPECTS WITHOUT SCHEDULED TASK - anticipate their next action:
 
-{prospects_context}
+{ctx}
 
-Suggest the next logical step to move each project forward. Think about the next step in the real estate sales cycle."""
+Suggest the next logical step to move each project forward. Think about the next step in the real estate sales cycle.""",
+                
+                "de": lambda ctx: f"""INTERESSENTEN OHNE GEPLANTE AUFGABE - antizipiere ihre nächste Aktion:
+
+{ctx}
+
+Schlage den nächsten logischen Schritt vor, um jedes Projekt voranzubringen. Denke an den nächsten Schritt im Immobilien-Verkaufszyklus.""",
+                
+                "it": lambda ctx: f"""PROSPECT SENZA ATTIVITÀ PIANIFICATA - anticipa la loro prossima azione:
+
+{ctx}
+
+Suggerisci il prossimo passo logico per far avanzare ogni progetto. Pensa alla prossima fase del ciclo di vendita immobiliare."""
+            }
+            
+            context_templates = {
+                "fr": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']}j depuis dernier contact, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:100] if p.get('notes') else 'non précisé'}",
+                "en": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']} days since last contact, status: {p.get('status', 'new')}, project: {p.get('notes', 'not specified')[:100] if p.get('notes') else 'not specified'}",
+                "de": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']} Tage seit letztem Kontakt, Status: {p.get('status', 'new')}, Projekt: {p.get('notes', 'nicht angegeben')[:100] if p.get('notes') else 'nicht angegeben'}",
+                "it": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']} giorni dall'ultimo contatto, stato: {p.get('status', 'new')}, progetto: {p.get('notes', 'non specificato')[:100] if p.get('notes') else 'non specificato'}"
+            }
+            
+            ctx_template = context_templates.get(lang, context_templates["en"])
+            prospects_context = "\n".join([ctx_template(p) for p in target])
+            prompt_template = prompts_needing_action.get(lang, prompts_needing_action["en"])
+            prompt = prompt_template(prospects_context)
 
         elif prospects_with_tasks:
             # All have tasks - suggest future actions for existing prospects OR prospection
             target = prospects_with_tasks[:3]
-            if lang == "fr":
-                tasks_context = "\n".join([
-                    f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} tâche(s) planifiée(s), projet: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
-                    for p in target
-                ])
-                prompt = f"""Tous les prospects ont des tâches planifiées. Anticipe les PROCHAINES étapes:
+            
+            prompts_with_tasks = {
+                "fr": lambda ctx: f"""Tous les prospects ont des tâches planifiées. Anticipe les PROCHAINES étapes:
 
-{tasks_context}
+{ctx}
 
 Suggère des actions FUTURES pour ces prospects (après leurs tâches actuelles) OU une action de prospection.
-IMPORTANT: Utilise les IDs exacts fournis ci-dessus, ou prospect_id=null pour prospection générique."""
-            else:
-                tasks_context = "\n".join([
-                    f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} scheduled task(s), project: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
-                    for p in target
-                ])
-                prompt = f"""All prospects have scheduled tasks. Anticipate the NEXT steps:
+IMPORTANT: Utilise les IDs exacts fournis ci-dessus, ou prospect_id=null pour prospection générique.""",
+                
+                "en": lambda ctx: f"""All prospects have scheduled tasks. Anticipate the NEXT steps:
 
-{tasks_context}
+{ctx}
 
 Suggest FUTURE actions for these prospects (after their current tasks) OR a prospecting action.
-IMPORTANT: Use the exact IDs provided above, or prospect_id=null for generic prospecting."""
+IMPORTANT: Use the exact IDs provided above, or prospect_id=null for generic prospecting.""",
+                
+                "de": lambda ctx: f"""Alle Interessenten haben geplante Aufgaben. Antizipiere die NÄCHSTEN Schritte:
+
+{ctx}
+
+Schlage ZUKÜNFTIGE Aktionen für diese Interessenten vor (nach ihren aktuellen Aufgaben) ODER eine Akquise-Aktion.
+WICHTIG: Verwende die exakten IDs oben, oder prospect_id=null für allgemeine Akquise.""",
+                
+                "it": lambda ctx: f"""Tutti i prospect hanno attività pianificate. Anticipa i PROSSIMI passi:
+
+{ctx}
+
+Suggerisci azioni FUTURE per questi prospect (dopo le loro attività attuali) O un'azione di prospezione.
+IMPORTANTE: Usa gli ID esatti forniti sopra, o prospect_id=null per prospezione generica."""
+            }
+            
+            task_templates = {
+                "fr": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} tâche(s) planifiée(s), projet: {p.get('notes', '?')[:60] if p.get('notes') else '?'}",
+                "en": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} scheduled task(s), project: {p.get('notes', '?')[:60] if p.get('notes') else '?'}",
+                "de": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} geplante Aufgabe(n), Projekt: {p.get('notes', '?')[:60] if p.get('notes') else '?'}",
+                "it": lambda p: f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} attività pianificata/e, progetto: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
+            }
+            
+            task_template = task_templates.get(lang, task_templates["en"])
+            tasks_context = "\n".join([task_template(p) for p in target])
+            prompt_template = prompts_with_tasks.get(lang, prompts_with_tasks["en"])
+            prompt = prompt_template(tasks_context)
 
         else:
             # No prospects
-            if lang == "fr":
-                prompt = """Aucun prospect actif. Suggère des actions de prospection:
+            no_prospect_prompts = {
+                "fr": """Aucun prospect actif. Suggère des actions de prospection:
 1. Prospection téléphonique (pige immo)
 2. Prospection terrain
-3. Réseaux sociaux / annonces"""
-            else:
-                prompt = """No active prospects. Suggest prospecting actions:
+3. Réseaux sociaux / annonces""",
+                "en": """No active prospects. Suggest prospecting actions:
 1. Phone prospecting (real estate leads)
 2. Field prospecting
-3. Social media / ads"""
+3. Social media / ads""",
+                "de": """Keine aktiven Interessenten. Schlage Akquise-Aktionen vor:
+1. Telefonakquise (Immobilien-Leads)
+2. Vor-Ort-Akquise
+3. Social Media / Anzeigen""",
+                "it": """Nessun prospect attivo. Suggerisci azioni di prospezione:
+1. Prospezione telefonica (lead immobiliari)
+2. Prospezione sul campo
+3. Social media / annunci"""
+            }
+            prompt = no_prospect_prompts.get(lang, no_prospect_prompts["en"])
         
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
@@ -3412,71 +3491,57 @@ IMPORTANT: Use the exact IDs provided above, or prospect_id=null for generic pro
         logger.error(f"AI response parsing error: {e}")
         # Fallback - always return something
         fallback = []
+        
+        fallback_texts = {
+            "fr": {"follow_up": "Suivre", "plan_next": "Planifier la prochaine étape", "prospecting": "Prospection", "session": "Session de prospection", "grow": "Développer votre portefeuille"},
+            "en": {"follow_up": "Follow up with", "plan_next": "Plan the next step", "prospecting": "Prospecting", "session": "Prospecting session", "grow": "Grow your portfolio"},
+            "de": {"follow_up": "Nachfassen bei", "plan_next": "Nächsten Schritt planen", "prospecting": "Akquise", "session": "Akquise-Sitzung", "grow": "Portfolio erweitern"},
+            "it": {"follow_up": "Seguire", "plan_next": "Pianificare il prossimo passo", "prospecting": "Prospezione", "session": "Sessione di prospezione", "grow": "Espandere il portafoglio"}
+        }
+        texts = fallback_texts.get(lang, fallback_texts["en"])
+        
         if prospects_needing_action:
             for p in prospects_needing_action[:2]:
-                if lang == "fr":
-                    fallback.append({
-                        "prospect_id": p["prospect_id"],
-                        "prospect_name": p["full_name"],
-                        "task_title": f"Suivre {p['full_name']}",
-                        "task_type": "call",
-                        "reason": "Planifier la prochaine étape",
-                        "priority": "medium"
-                    })
-                else:
-                    fallback.append({
-                        "prospect_id": p["prospect_id"],
-                        "prospect_name": p["full_name"],
-                        "task_title": f"Follow up with {p['full_name']}",
-                        "task_type": "call",
-                        "reason": "Plan the next step",
-                        "priority": "medium"
-                    })
+                fallback.append({
+                    "prospect_id": p["prospect_id"],
+                    "prospect_name": p["full_name"],
+                    "task_title": f"{texts['follow_up']} {p['full_name']}",
+                    "task_type": "call",
+                    "reason": texts["plan_next"],
+                    "priority": "medium"
+                })
         if not fallback:
-            if lang == "fr":
-                fallback.append({
-                    "prospect_id": None,
-                    "prospect_name": "Prospection",
-                    "task_title": "Session de prospection",
-                    "task_type": "prospection",
-                    "reason": "Développer votre portefeuille",
-                    "priority": "medium"
-                })
-            else:
-                fallback.append({
-                    "prospect_id": None,
-                    "prospect_name": "Prospecting",
-                    "task_title": "Prospecting session",
-                    "task_type": "prospection",
-                    "reason": "Grow your portfolio",
-                    "priority": "medium"
-                })
+            fallback.append({
+                "prospect_id": None,
+                "prospect_name": texts["prospecting"],
+                "task_title": texts["session"],
+                "task_type": "prospection",
+                "reason": texts["grow"],
+                "priority": "medium"
+            })
         return {"suggestions": fallback}
         
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
-        if lang == "fr":
-            return {
-                "suggestions": [{
-                    "prospect_id": None,
-                    "prospect_name": "Prospection",
-                    "task_title": "Prospection nouveaux clients",
-                    "task_type": "prospection",
-                    "reason": "Développez votre portefeuille",
-                    "priority": "medium"
-                }]
-            }
-        else:
-            return {
-                "suggestions": [{
-                    "prospect_id": None,
-                    "prospect_name": "Prospecting",
-                    "task_title": "New client prospecting",
-                    "task_type": "prospection",
-                    "reason": "Grow your portfolio",
-                    "priority": "medium"
-                }]
-            }
+        
+        error_texts = {
+            "fr": {"prospecting": "Prospection", "new_clients": "Prospection nouveaux clients", "grow": "Développez votre portefeuille"},
+            "en": {"prospecting": "Prospecting", "new_clients": "New client prospecting", "grow": "Grow your portfolio"},
+            "de": {"prospecting": "Akquise", "new_clients": "Neukundenakquise", "grow": "Erweitern Sie Ihr Portfolio"},
+            "it": {"prospecting": "Prospezione", "new_clients": "Prospezione nuovi clienti", "grow": "Espandi il tuo portafoglio"}
+        }
+        texts = error_texts.get(lang, error_texts["en"])
+        
+        return {
+            "suggestions": [{
+                "prospect_id": None,
+                "prospect_name": texts["prospecting"],
+                "task_title": texts["new_clients"],
+                "task_type": "prospection",
+                "reason": texts["grow"],
+                "priority": "medium"
+            }]
+        }
 
 @api_router.post("/tasks/ai-suggestions/accept")
 async def accept_ai_suggestion(request: Request):
@@ -3827,26 +3892,58 @@ async def get_ai_suggestion_for_prospect(prospect_id: str, request: Request):
     project_type = prospect.get("project_type", "buyer")
     status = prospect.get("status", "nouveau")
     
-    # Determine task type and reason
+    # Determine task type and reason with full i18n support
+    reasons = {
+        "inactive_long": {
+            "fr": f"Pas de contact depuis {days_since_contact} jours - un appel permettrait de relancer {prospect_name}",
+            "en": f"No contact for {days_since_contact} days - a call would help re-engage {prospect_name}",
+            "de": f"Kein Kontakt seit {days_since_contact} Tagen - ein Anruf würde helfen, {prospect_name} wieder zu aktivieren",
+            "it": f"Nessun contatto da {days_since_contact} giorni - una chiamata aiuterebbe a riattivare {prospect_name}"
+        },
+        "inactive_medium": {
+            "fr": f"Pas de nouvelles depuis {days_since_contact} jours - un SMS de suivi serait approprié",
+            "en": f"No news for {days_since_contact} days - a follow-up SMS would be appropriate",
+            "de": f"Keine Nachrichten seit {days_since_contact} Tagen - eine Follow-up SMS wäre angemessen",
+            "it": f"Nessuna notizia da {days_since_contact} giorni - un SMS di follow-up sarebbe appropriato"
+        },
+        "new_prospect": {
+            "fr": f"Nouveau prospect - un appel de présentation permettrait de qualifier le projet",
+            "en": f"New prospect - an introduction call would help qualify the project",
+            "de": f"Neuer Interessent - ein Vorstellungsgespräch würde helfen, das Projekt zu qualifizieren",
+            "it": f"Nuovo prospect - una chiamata di presentazione aiuterebbe a qualificare il progetto"
+        },
+        "maintain_contact": {
+            "fr": f"Maintenir le contact avec {prospect_name} pour rester présent",
+            "en": f"Maintain contact with {prospect_name} to stay top of mind",
+            "de": f"Kontakt mit {prospect_name} pflegen, um präsent zu bleiben",
+            "it": f"Mantenere il contatto con {prospect_name} per restare presente"
+        }
+    }
+    
     if days_since_contact >= 14:
         task_type = "appel"
-        reason_fr = f"Pas de contact depuis {days_since_contact} jours - un appel permettrait de relancer {prospect_name}"
-        reason_en = f"No contact for {days_since_contact} days - a call would help re-engage {prospect_name}"
+        reason_key = "inactive_long"
     elif days_since_contact >= 7:
         task_type = "sms"
-        reason_fr = f"Pas de nouvelles depuis {days_since_contact} jours - un SMS de suivi serait approprié"
-        reason_en = f"No news for {days_since_contact} days - a follow-up SMS would be appropriate"
+        reason_key = "inactive_medium"
     elif status in ["nouveau", "new"]:
         task_type = "appel"
-        reason_fr = f"Nouveau prospect - un appel de présentation permettrait de qualifier le projet"
-        reason_en = f"New prospect - an introduction call would help qualify the project"
+        reason_key = "new_prospect"
     else:
         task_type = "sms"
-        reason_fr = f"Maintenir le contact avec {prospect_name} pour rester présent"
-        reason_en = f"Maintain contact with {prospect_name} to stay top of mind"
+        reason_key = "maintain_contact"
     
-    locale = request.headers.get("Accept-Language", "fr")[:2]
-    reason = reason_fr if locale == "fr" else reason_en
+    accept_lang = request.headers.get("Accept-Language", "fr").lower()
+    if accept_lang.startswith("fr"):
+        locale = "fr"
+    elif accept_lang.startswith("de"):
+        locale = "de"
+    elif accept_lang.startswith("it"):
+        locale = "it"
+    else:
+        locale = "en"
+    
+    reason = reasons[reason_key].get(locale, reasons[reason_key]["en"])
     
     return {
         "suggestion": {
