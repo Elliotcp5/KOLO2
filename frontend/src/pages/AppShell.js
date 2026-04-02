@@ -25,7 +25,8 @@ const PROSPECT_STATUSES = {
   contacte: { fr: 'Contacté', en: 'Contacted', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
   qualifie: { fr: 'Qualifié', en: 'Qualified', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' },
   offre: { fr: 'Offre', en: 'Offer', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
-  signe: { fr: 'Signé', en: 'Signed', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' }
+  signe: { fr: 'Signé', en: 'Signed', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' },
+  perdu: { fr: 'Perdu', en: 'Lost', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' }
 };
 
 // Helper to get status info (handles legacy status names)
@@ -2585,8 +2586,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const [pendingStatus, setPendingStatus] = useState(null);
 
   const handleStatusChange = async (newStatus) => {
-    // If status is "closed" (won) or "lost", ask for confirmation
-    if (newStatus === 'closed' || newStatus === 'lost') {
+    // If status is "perdu", ask for confirmation before deleting
+    if (newStatus === 'perdu') {
       setPendingStatus(newStatus);
       setShowConfirmDialog(true);
       return;
@@ -2607,11 +2608,6 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         setProspectData(prev => ({ ...prev, status: newStatus }));
         toast.success(t('statusUpdated'));
         onUpdate();
-        
-        // If marked as closed or lost, go back to list
-        if (newStatus === 'closed' || newStatus === 'lost') {
-          onBack();
-        }
       }
     } catch (error) {
       console.error('Failed to update status:', error);
@@ -2619,8 +2615,28 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     }
   };
 
+  const deleteProspect = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        toast.success(locale === 'fr' ? 'Prospect supprimé' : 'Prospect deleted');
+        onUpdate();
+        onBack();
+      }
+    } catch (error) {
+      console.error('Failed to delete prospect:', error);
+      toast.error(t('updateError'));
+    }
+  };
+
   const confirmStatusChange = () => {
-    if (pendingStatus) {
+    if (pendingStatus === 'perdu') {
+      // Delete the prospect
+      deleteProspect();
+    } else if (pendingStatus) {
       updateStatus(pendingStatus);
     }
     setShowConfirmDialog(false);
@@ -2662,7 +2678,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     { value: 'contacte', label: locale === 'fr' ? 'Contacté' : 'Contacted', color: '#3B82F6' },
     { value: 'qualifie', label: locale === 'fr' ? 'Qualifié' : 'Qualified', color: '#8B5CF6' },
     { value: 'offre', label: locale === 'fr' ? 'Offre' : 'Offer', color: '#F59E0B' },
-    { value: 'signe', label: locale === 'fr' ? 'Signé' : 'Signed', color: '#22C55E' }
+    { value: 'signe', label: locale === 'fr' ? 'Signé' : 'Signed', color: '#22C55E' },
+    { value: 'perdu', label: locale === 'fr' ? 'Perdu' : 'Lost', color: '#EF4444' }
   ];
 
   if (loading) {
@@ -2936,10 +2953,18 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             border: `1px solid ${c('border')}`
           }}>
             <h3 style={{ marginBottom: '12px', fontSize: '18px', color: c('text') }}>
-              {t('confirmStatusChange')}
+              {pendingStatus === 'perdu' 
+                ? (locale === 'fr' ? 'Supprimer ce prospect ?' : 'Delete this prospect?')
+                : t('confirmStatusChange')
+              }
             </h3>
             <p style={{ color: c('muted'), marginBottom: '24px', fontSize: '14px' }}>
-              {t('prospectWillDisappear')}
+              {pendingStatus === 'perdu'
+                ? (locale === 'fr' 
+                    ? 'Êtes-vous sûr de vouloir marquer ce prospect comme perdu ? Il sera définitivement effacé.'
+                    : 'Are you sure you want to mark this prospect as lost? It will be permanently deleted.')
+                : t('prospectWillDisappear')
+              }
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
@@ -2966,7 +2991,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 style={{ 
                   flex: 1,
                   padding: '12px',
-                  background: pendingStatus === 'lost' ? '#ef4444' : '#22c55e',
+                  background: pendingStatus === 'perdu' ? '#ef4444' : '#22c55e',
                   border: 'none',
                   borderRadius: '999px',
                   color: 'white',
@@ -2975,7 +3000,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                   cursor: 'pointer'
                 }}
               >
-                {t('confirm')}
+                {pendingStatus === 'perdu' 
+                  ? (locale === 'fr' ? 'Supprimer' : 'Delete')
+                  : t('confirm')
+                }
               </button>
             </div>
           </div>
