@@ -657,9 +657,9 @@ const LandingPage = () => {
               
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>1. COMPANY INFORMATION</h3>
               <p>KOLO is operated by:</p>
-              <p><strong>KOLO LTD</strong><br/>124 City Road<br/>London, EC1V 2NX<br/>United Kingdom</p>
+              <p><strong>KOLO.io LTD</strong><br/>124 City Road<br/>London, EC1V 2NX<br/>United Kingdom</p>
               <p>Email: contact@trykolo.io</p>
-              <p>KOLO LTD is a company incorporated under the laws of England and Wales.</p>
+              <p>KOLO.io LTD is a company incorporated under the laws of England and Wales.</p>
               
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>2. PURPOSE OF THE PLATFORM</h3>
               <p>KOLO is a mobile-first SaaS (Software as a Service) platform designed to help real estate agents and other professionals optimize their workflow through artificial intelligence.</p>
@@ -709,7 +709,7 @@ const LandingPage = () => {
               <p>KOLO shall not be held liable for business losses, data loss caused by user actions, or service interruptions beyond reasonable control.</p>
               
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>9. INTELLECTUAL PROPERTY</h3>
-              <p>All elements of the KOLO platform, including software, design, branding, and content are the exclusive property of KOLO LTD, unless otherwise stated.</p>
+              <p>All elements of the KOLO platform, including software, design, branding, and content are the exclusive property of KOLO.io LTD, unless otherwise stated.</p>
               <p>Any reproduction, distribution, or unauthorized use is strictly prohibited.</p>
               
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>10. SUPPORT</h3>
