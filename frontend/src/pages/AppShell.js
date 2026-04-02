@@ -3842,17 +3842,17 @@ const LanguageSelector = ({ c, locale }) => {
       {showLangMenu && (
         <div 
           style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
+            position: 'fixed',
+            top: 'auto',
+            left: '24px',
+            right: '24px',
             marginTop: '4px',
             background: c('cardBg'),
             border: `1px solid ${c('border')}`,
             borderRadius: '12px',
             overflow: 'hidden',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-            zIndex: 100
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            zIndex: 9999
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -3945,17 +3945,17 @@ const CurrencySelector = ({ c, locale }) => {
       {showCurrencyMenu && (
         <div 
           style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
+            position: 'fixed',
+            top: 'auto',
+            left: '24px',
+            right: '24px',
             marginTop: '4px',
             background: c('cardBg'),
             border: `1px solid ${c('border')}`,
             borderRadius: '12px',
             overflow: 'hidden',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-            zIndex: 100
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            zIndex: 9999
           }}
           onClick={(e) => e.stopPropagation()}
         >

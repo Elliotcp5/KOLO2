@@ -3216,6 +3216,10 @@ async def get_ai_task_suggestions(request: Request):
     """Get AI-powered task suggestions - ALWAYS returns proactive suggestions"""
     user = await require_active_subscription(request)
     
+    # Get language from Accept-Language header
+    accept_lang = request.headers.get("accept-language", "fr")
+    lang = "fr" if accept_lang.startswith("fr") else "en"
+    
     # Get all active prospects
     all_prospects = await db.prospects.find(
         {
@@ -3276,7 +3280,7 @@ async def get_ai_task_suggestions(request: Request):
     # Sort by days since activity (most inactive first)
     prospects_needing_action.sort(key=lambda x: x["days_since_activity"], reverse=True)
     
-    # Build AI context
+    # Build AI context with language-aware prompts
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         import json
@@ -3286,10 +3290,9 @@ async def get_ai_task_suggestions(request: Request):
         if not api_key:
             raise HTTPException(status_code=500, detail="AI service not configured")
         
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
-            system_message="""Coach commercial IMMOBILIER. Suggère la prochaine action selon l'étape du cycle de vente:
+        # Language-specific system messages
+        if lang == "fr":
+            system_msg = """Coach commercial IMMOBILIER. Suggère la prochaine action selon l'étape du cycle de vente:
 - Nouveau prospect → Appel découverte / qualifier le projet
 - Projet qualifié → Proposer des biens correspondants
 - Biens proposés → Organiser une visite
@@ -3299,41 +3302,86 @@ async def get_ai_task_suggestions(request: Request):
 
 JSON uniquement: {"suggestions": [{"prospect_id": "ID_EXACT", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
 Utilise EXACTEMENT les prospect_id fournis. Pour prospection: prospect_id=null. Max 3, concis."""
+        else:
+            system_msg = """Real estate SALES coach. Suggest the next action based on the sales cycle stage:
+- New prospect → Discovery call / qualify the project
+- Qualified project → Propose matching properties
+- Properties proposed → Schedule a viewing
+- Viewing done → Gather feedback / adjust search
+- Interested → Guide towards offer
+- Inactive → Follow up with market news
+
+JSON only: {"suggestions": [{"prospect_id": "EXACT_ID", "prospect_name": "...", "task_title": "...", "task_type": "call|sms|email|visit", "reason": "..."}]}
+Use EXACTLY the prospect_ids provided. For prospecting: prospect_id=null. Max 3, concise."""
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"task_suggestions_{user.user_id}_{datetime.now().timestamp()}",
+            system_message=system_msg
         ).with_model("openai", "gpt-4.1-nano")
         
         if prospects_needing_action:
             # Prospects without tasks - suggest next actions
             target = prospects_needing_action[:5]
-            prospects_context = "\n".join([
-                f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']}j depuis dernier contact, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:100] if p.get('notes') else 'non précisé'}"
-                for p in target
-            ])
-            prompt = f"""PROSPECTS SANS TÂCHE PLANIFIÉE - anticipe leur prochaine action:
+            if lang == "fr":
+                prospects_context = "\n".join([
+                    f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']}j depuis dernier contact, statut: {p.get('status', 'new')}, projet: {p.get('notes', 'non précisé')[:100] if p.get('notes') else 'non précisé'}"
+                    for p in target
+                ])
+                prompt = f"""PROSPECTS SANS TÂCHE PLANIFIÉE - anticipe leur prochaine action:
 
 {prospects_context}
 
 Suggère la prochaine étape logique pour faire avancer chaque projet. Pense à l'étape suivante dans le cycle de vente immobilier."""
+            else:
+                prospects_context = "\n".join([
+                    f"- {p['full_name']} (ID: {p['prospect_id']}): {p['days_since_activity']} days since last contact, status: {p.get('status', 'new')}, project: {p.get('notes', 'not specified')[:100] if p.get('notes') else 'not specified'}"
+                    for p in target
+                ])
+                prompt = f"""PROSPECTS WITHOUT SCHEDULED TASK - anticipate their next action:
+
+{prospects_context}
+
+Suggest the next logical step to move each project forward. Think about the next step in the real estate sales cycle."""
 
         elif prospects_with_tasks:
             # All have tasks - suggest future actions for existing prospects OR prospection
             target = prospects_with_tasks[:3]
-            tasks_context = "\n".join([
-                f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} tâche(s) planifiée(s), projet: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
-                for p in target
-            ])
-            prompt = f"""Tous les prospects ont des tâches planifiées. Anticipe les PROCHAINES étapes:
+            if lang == "fr":
+                tasks_context = "\n".join([
+                    f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} tâche(s) planifiée(s), projet: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
+                    for p in target
+                ])
+                prompt = f"""Tous les prospects ont des tâches planifiées. Anticipe les PROCHAINES étapes:
 
 {tasks_context}
 
 Suggère des actions FUTURES pour ces prospects (après leurs tâches actuelles) OU une action de prospection.
 IMPORTANT: Utilise les IDs exacts fournis ci-dessus, ou prospect_id=null pour prospection générique."""
+            else:
+                tasks_context = "\n".join([
+                    f"- {p['full_name']} (ID: {p['prospect_id']}): {len(p['upcoming_tasks'])} scheduled task(s), project: {p.get('notes', '?')[:60] if p.get('notes') else '?'}"
+                    for p in target
+                ])
+                prompt = f"""All prospects have scheduled tasks. Anticipate the NEXT steps:
+
+{tasks_context}
+
+Suggest FUTURE actions for these prospects (after their current tasks) OR a prospecting action.
+IMPORTANT: Use the exact IDs provided above, or prospect_id=null for generic prospecting."""
 
         else:
             # No prospects
-            prompt = """Aucun prospect actif. Suggère des actions de prospection:
+            if lang == "fr":
+                prompt = """Aucun prospect actif. Suggère des actions de prospection:
 1. Prospection téléphonique (pige immo)
 2. Prospection terrain
 3. Réseaux sociaux / annonces"""
+            else:
+                prompt = """No active prospects. Suggest prospecting actions:
+1. Phone prospecting (real estate leads)
+2. Field prospecting
+3. Social media / ads"""
         
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
@@ -3366,37 +3414,69 @@ IMPORTANT: Utilise les IDs exacts fournis ci-dessus, ou prospect_id=null pour pr
         fallback = []
         if prospects_needing_action:
             for p in prospects_needing_action[:2]:
+                if lang == "fr":
+                    fallback.append({
+                        "prospect_id": p["prospect_id"],
+                        "prospect_name": p["full_name"],
+                        "task_title": f"Suivre {p['full_name']}",
+                        "task_type": "call",
+                        "reason": "Planifier la prochaine étape",
+                        "priority": "medium"
+                    })
+                else:
+                    fallback.append({
+                        "prospect_id": p["prospect_id"],
+                        "prospect_name": p["full_name"],
+                        "task_title": f"Follow up with {p['full_name']}",
+                        "task_type": "call",
+                        "reason": "Plan the next step",
+                        "priority": "medium"
+                    })
+        if not fallback:
+            if lang == "fr":
                 fallback.append({
-                    "prospect_id": p["prospect_id"],
-                    "prospect_name": p["full_name"],
-                    "task_title": f"Suivre {p['full_name']}",
-                    "task_type": "call",
-                    "reason": "Planifier la prochaine étape",
+                    "prospect_id": None,
+                    "prospect_name": "Prospection",
+                    "task_title": "Session de prospection",
+                    "task_type": "prospection",
+                    "reason": "Développer votre portefeuille",
                     "priority": "medium"
                 })
-        if not fallback:
-            fallback.append({
-                "prospect_id": None,
-                "prospect_name": "Prospection",
-                "task_title": "Session de prospection",
-                "task_type": "prospection",
-                "reason": "Développer votre portefeuille",
-                "priority": "medium"
-            })
+            else:
+                fallback.append({
+                    "prospect_id": None,
+                    "prospect_name": "Prospecting",
+                    "task_title": "Prospecting session",
+                    "task_type": "prospection",
+                    "reason": "Grow your portfolio",
+                    "priority": "medium"
+                })
         return {"suggestions": fallback}
         
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
-        return {
-            "suggestions": [{
-                "prospect_id": None,
-                "prospect_name": "Prospection",
-                "task_title": "Prospection nouveaux clients",
-                "task_type": "prospection",
-                "reason": "Développez votre portefeuille",
-                "priority": "medium"
-            }]
-        }
+        if lang == "fr":
+            return {
+                "suggestions": [{
+                    "prospect_id": None,
+                    "prospect_name": "Prospection",
+                    "task_title": "Prospection nouveaux clients",
+                    "task_type": "prospection",
+                    "reason": "Développez votre portefeuille",
+                    "priority": "medium"
+                }]
+            }
+        else:
+            return {
+                "suggestions": [{
+                    "prospect_id": None,
+                    "prospect_name": "Prospecting",
+                    "task_title": "New client prospecting",
+                    "task_type": "prospection",
+                    "reason": "Grow your portfolio",
+                    "priority": "medium"
+                }]
+            }
 
 @api_router.post("/tasks/ai-suggestions/accept")
 async def accept_ai_suggestion(request: Request):
