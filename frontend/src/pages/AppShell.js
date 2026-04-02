@@ -2444,17 +2444,22 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prospect_id: prospect.prospect_id,
-          prospect_name: prospectData.full_name,
-          task_type: suggestedTask.task_type,
-          reason: suggestedTask.reason
+          task_title: suggestedTask.reason,
+          task_type: suggestedTask.task_type
         })
       });
       if (response.ok) {
         toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
         setShowSuggestionModal(false);
         setSuggestedTask(null);
+        // Refresh tasks list
+        onUpdate();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || (locale === 'fr' ? 'Erreur' : 'Error'));
       }
     } catch (error) {
+      console.error('Failed to accept suggestion:', error);
       toast.error(locale === 'fr' ? 'Erreur' : 'Error');
     }
   };
