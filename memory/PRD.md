@@ -345,11 +345,22 @@ yarn cap:sync       # Sync web build to native
    - Proper fallback to English for unknown locales
    - All `server.py` email calls now pass user's `locale` parameter
 
-### P1: Stripe Webhook Verification - COMPLETED ✅
-- `/api/webhook/stripe` endpoint verified and responding correctly
-- Handles `checkout.session.completed`, `customer.subscription.*` events
-- Properly updates user plan in MongoDB
-- Sends localized confirmation emails
+### P0: Stripe Payment & Plan Update Fixes - COMPLETED ✅
+1. **Subscription Sync After Payment**:
+   - Added `email` and `locale` to Stripe checkout session metadata
+   - Created `/api/plans/sync` endpoint for manual subscription sync
+   - AppShell.js detects `?upgrade=success` and syncs subscription
+   - Welcome toast "Bienvenue sur KOLO Pro+ ! 🎉" appears after payment
+
+2. **Trial Logic Fixed**:
+   - Added `trial_used` field to `/api/plans/current`
+   - PricingPage shows "Essai gratuit 14 jours" only if `!trialUsed`
+   - If trial already used, button shows "Choisir Pro/Pro+"
+
+3. **Plan Display Fixed**:
+   - Improved `get_user_effective_plan()` with fallback logic
+   - Settings page shows correct plan (PRO+) with "Active" badge
+   - PricingPage shows "Votre plan actuel" for current plan
 
 ### FAB "+" Import Contacts Choice - COMPLETED ✅
 1. **AddProspectSheet Enhanced** (`/app/frontend/src/components/AddProspectSheet.js`):
@@ -363,11 +374,8 @@ yarn cap:sync       # Sync web build to native
    - Uses `@capacitor-community/contacts` for native device contact access
    - On web, "Import from contacts" falls back to manual entry
    - Pre-fills form fields with imported contact data
-   
-3. **Localized Labels**:
-   - Added `chooseMethod`, `importContacts`, `importContactsDesc`, `manualEntry`, `manualEntryDesc` to all 4 languages
 
 ### Testing Status
-- **Backend**: 100% (18/18 tests passed)
+- **Backend**: 100% (10/10 tests passed)
 - **Frontend**: 100% (all UI tests passed)
-- **Test Report**: `/app/test_reports/iteration_23.json`
+- **Test Report**: `/app/test_reports/iteration_24.json`
