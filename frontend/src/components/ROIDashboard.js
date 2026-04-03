@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePlan } from '../context/PlanContext';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
+import { ProBadge } from './ProBadge';
 import { TrendingUp, Euro, Award, Lock, ChevronRight } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -138,16 +139,10 @@ export function ROIDashboard({
             border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`
           }}
         >
-          <Lock size={16} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
           <span style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}>
             {labels.roiDashboard}
           </span>
-          <span 
-            className="text-xs px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: '#9333EA', color: 'white' }}
-          >
-            {labels.proPlus}
-          </span>
+          <ProBadge plan="pro_plus" size="small" />
           
           <PaywallBottomSheet
             feature="roi_dashboard"
@@ -178,12 +173,7 @@ export function ROIDashboard({
               {labels.roiDashboard}
             </span>
           </div>
-          <span 
-            className="text-xs px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: '#9333EA', color: 'white' }}
-          >
-            {labels.proPlus}
-          </span>
+          <ProBadge plan="pro_plus" size="medium" />
         </div>
         
         <button

@@ -1638,7 +1638,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             background: c('bg'),
             borderRadius: '20px 20px 0 0',
             padding: '20px',
-            paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
             width: '100%',
             maxWidth: '430px',
             maxHeight: '85vh',

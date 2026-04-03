@@ -2,7 +2,8 @@ import React from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePlan } from '../context/PlanContext';
-import { Flame, Snowflake, Thermometer, Lock } from 'lucide-react';
+import { Flame, Snowflake, Thermometer } from 'lucide-react';
+import { ProBadge } from './ProBadge';
 
 // Labels
 const LABELS = {
@@ -78,27 +79,13 @@ export function HeatScoreBadge({
   const hasHeatScore = planData?.features?.heat_score ?? false;
   
   if (!hasHeatScore) {
-    // Show locked state
+    // Show locked state with clear PRO+ badge
     return (
-      <button
+      <ProBadge 
+        plan="pro_plus" 
+        size={size === 'small' ? 'small' : 'medium'} 
         onClick={onLockedClick}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-full transition-all opacity-60 hover:opacity-100"
-        style={{
-          backgroundColor: isDark ? '#2a2a3b' : '#f3f4f6',
-          border: `1px solid ${isDark ? '#3a3a4b' : '#e5e7eb'}`
-        }}
-        title={labels.heatScore}
-      >
-        <Lock size={size === 'small' ? 12 : 14} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
-        {showLabel && (
-          <span 
-            className="text-xs"
-            style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
-          >
-            {labels.proPlus}
-          </span>
-        )}
-      </button>
+      />
     );
   }
   
@@ -165,21 +152,15 @@ export function HeatScoreBar({
         className="w-full p-3 rounded-xl flex items-center justify-between transition-all"
         style={{
           backgroundColor: isDark ? '#2a2a3b' : '#f7f7fa',
-          opacity: 0.6
+          opacity: 0.7
         }}
       >
         <div className="flex items-center gap-2">
-          <Lock size={18} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
           <span style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}>
             {labels.heatScore}
           </span>
         </div>
-        <span 
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: '#9333EA', color: 'white' }}
-        >
-          {labels.proPlus}
-        </span>
+        <ProBadge plan="pro_plus" size="medium" />
       </button>
     );
   }

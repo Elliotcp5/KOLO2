@@ -380,6 +380,10 @@ const translations = {
     subscribeToUnlock: "Subscribe to continue using KOLO",
     featuresLocked: "Features locked",
     reactivate: "Reactivate subscription",
+    
+    // PRO Feature Labels (short and clear for all languages)
+    proFeature: "PRO",
+    proPlusFeature: "PRO+",
   },
   fr: {
     // Landing Navigation
@@ -761,6 +765,10 @@ const translations = {
     subscribeToUnlock: "S'abonner pour continuer à utiliser KOLO",
     featuresLocked: "Fonctionnalités verrouillées",
     reactivate: "Réactiver l'abonnement",
+    
+    // PRO Feature Labels
+    proFeature: "PRO",
+    proPlusFeature: "PRO+",
   },
   de: {
     // Landing Navigation
@@ -1142,6 +1150,10 @@ const translations = {
     subscribeToUnlock: "Abonnieren Sie, um KOLO weiter zu nutzen",
     featuresLocked: "Funktionen gesperrt",
     reactivate: "Abonnement reaktivieren",
+    
+    // PRO Feature Labels
+    proFeature: "PRO",
+    proPlusFeature: "PRO+",
   },
   it: {
     // Landing Navigation
@@ -1523,6 +1535,10 @@ const translations = {
     subscribeToUnlock: "Abbonati per continuare a usare KOLO",
     featuresLocked: "Funzionalità bloccate",
     reactivate: "Riattiva abbonamento",
+    
+    // PRO Feature Labels
+    proFeature: "PRO",
+    proPlusFeature: "PRO+",
   }
 };
 export default translations;

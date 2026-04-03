@@ -397,3 +397,54 @@ yarn cap:sync       # Sync web build to native
 - **Frontend**: 100% (all UI tests passed)
 - **Test Report**: `/app/test_reports/iteration_24.json`
 - **Visual Verification**: Landing page and Pricing page skip-trial links validated on desktop and mobile (April 3, 2026)
+
+---
+
+## Session Update - April 3, 2026 (Fork #2)
+
+### Completed Tasks
+
+#### 1. Fixed Registration Flow with PRO/PRO+ Plan Selection ✅
+- **Problem**: When user clicked "Try PRO+" from landing page, account was created with PRO trial instead of PRO+
+- **Solution**:
+  - Added `plan` optional field to `RegisterRequest` in `server.py`
+  - Backend `/api/auth/register` now accepts and uses the plan parameter
+  - Default remains PRO if no plan specified
+  - Updated `LandingPageNew.js` to pass plan via `navigate('/register', { state: { plan: 'pro_plus' } })`
+  - Updated `RegisterPage.js` to:
+    - Read plan from `location.state?.plan`
+    - Display dynamic badge ("✨ 14-day PRO+ free trial" or "✨ 14-day PRO free trial")
+    - Pass plan to backend registration
+    - Show localized welcome toast
+- **Files Modified**: `server.py`, `RegisterPage.js`, `LandingPageNew.js`
+- **Tested**: API verified - `effective_plan: pro_plus` for PRO+ registration ✅
+
+#### 2. Fixed "Create Task" Button Hidden Behind Bottom Nav ✅
+- **Problem**: When adding a task manually, the "Create task" button was partially hidden behind the bottom navigation menu
+- **Solution**: Increased `paddingBottom` from `calc(20px + env(safe-area-inset-bottom))` to `calc(100px + env(safe-area-inset-bottom))` in the Add Task Modal
+- **File Modified**: `AppShell.js` (line ~1641)
+- **Tested**: Button now fully visible on mobile ✅
+
+#### 3. Clear PRO/PRO+ Feature Badges ✅
+- **Problem**: It wasn't clear enough when a feature was reserved for PRO or PRO+ users
+- **Solution**:
+  - Created new `ProBadge` component (`/app/frontend/src/components/ProBadge.js`)
+  - Badge displays "PRO" or "PRO+" with lock icon, gradient background, and consistent styling
+  - Updated `HeatScoreBadge.js` to use the new ProBadge component
+  - Updated `ROIDashboard.js` to use the new ProBadge component
+  - Added i18n keys `proFeature` and `proPlusFeature` to all 4 languages
+- **Files Modified**: `ProBadge.js` (new), `HeatScoreBadge.js`, `ROIDashboard.js`, `translations.js`
+
+### Files Created This Session
+- `/app/frontend/src/components/ProBadge.js` - Reusable PRO/PRO+ badge component
+
+### Next Action Items
+1. **User Testing**: Verify registration flow with PRO/PRO+ from landing page
+2. **Visual Review**: Confirm PRO badges are clear on locked features
+3. **App Store Submission**: Application is ready for submission
+
+### Future Tasks (Postponed - App Store Launch Imminent)
+- P2: Modularize `server.py` into FastAPI routers
+- P2: Break down `AppShell.js` into smaller components
+- P2: Refactor React Hooks dependency arrays
+
