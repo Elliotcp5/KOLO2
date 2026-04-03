@@ -327,3 +327,47 @@ yarn cap:sync       # Sync web build to native
    - Replaces native HTML `<select>` for iOS Capacitor compatibility
    - Displays prospect name and phone number
    - Includes "No prospect" option
+
+---
+
+## Recent Updates (April 3, 2026)
+
+### P0: Email Localization - COMPLETED ✅
+1. **4-Language Email Templates**:
+   - All transactional emails now support `fr`, `en`, `de`, `it` locales
+   - `EMAIL_CONTENT` dictionary added to `/app/backend/email_service.py`
+   - Localized templates:
+     - Welcome email (trial and free)
+     - Trial reminder emails (J+7, J+12)
+     - Trial expired email
+     - Password reset email
+     - Subscription confirmation email
+   - Proper fallback to English for unknown locales
+   - All `server.py` email calls now pass user's `locale` parameter
+
+### P1: Stripe Webhook Verification - COMPLETED ✅
+- `/api/webhook/stripe` endpoint verified and responding correctly
+- Handles `checkout.session.completed`, `customer.subscription.*` events
+- Properly updates user plan in MongoDB
+- Sends localized confirmation emails
+
+### FAB "+" Import Contacts Choice - COMPLETED ✅
+1. **AddProspectSheet Enhanced** (`/app/frontend/src/components/AddProspectSheet.js`):
+   - **Step 0 (NEW)**: Choice screen with two options:
+     - "Import from contacts" (`data-testid="import-contacts-btn"`)
+     - "Manual entry" (`data-testid="manual-entry-btn"`)
+   - **Step 1**: Contact form (Full name, Phone, Email)
+   - **Step 2**: Project form (Type, Budget, Delay, Notes)
+   
+2. **Native Contacts Integration**:
+   - Uses `@capacitor-community/contacts` for native device contact access
+   - On web, "Import from contacts" falls back to manual entry
+   - Pre-fills form fields with imported contact data
+   
+3. **Localized Labels**:
+   - Added `chooseMethod`, `importContacts`, `importContactsDesc`, `manualEntry`, `manualEntryDesc` to all 4 languages
+
+### Testing Status
+- **Backend**: 100% (18/18 tests passed)
+- **Frontend**: 100% (all UI tests passed)
+- **Test Report**: `/app/test_reports/iteration_23.json`
