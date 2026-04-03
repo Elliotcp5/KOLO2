@@ -2969,7 +2969,7 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
 @api_router.post("/auth/register")
 @limiter.limit("10/minute")
 async def register_free_trial(request: Request, register_data: RegisterRequest, response: Response):
-    """Register for free 7-day trial without payment"""
+    """Register for free 14-day Pro trial without payment"""
     logger.info(f"Free trial registration attempt for: {register_data.email}")
     
     # SECURITY: Validate and sanitize email
@@ -2995,8 +2995,8 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     if existing_user:
         raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
     
-    # Calculate trial end date (7 days from now)
-    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Calculate trial end date (14 days from now)
+    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=14)
     
     # Create Stripe customer for trial users
     stripe_customer_id = None
@@ -3011,8 +3011,8 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
             phone=phone,
             metadata={
                 "source": "kolo_registration",
-                "initial_plan": "starter",
-                "trial_status": "7_day_trial",
+                "initial_plan": "pro",
+                "trial_status": "14_day_trial",
                 "trial_ends_at": trial_ends_at.isoformat()
             }
         )
@@ -3031,6 +3031,9 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
         "phone": phone,
         "auth_provider": "email",
         "password_hash": hash_password(register_data.password),
+        "plan": "pro",  # Trial plan
+        "trial_plan": "pro",  # Active trial
+        "trial_start_date": datetime.now(timezone.utc).isoformat(),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
         "stripe_customer_id": stripe_customer_id,
@@ -3039,6 +3042,7 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     }
     
     await db.users.insert_one(user_doc)
+    logger.info(f"MongoDB: User document inserted for {email}")
     logger.info(f"Free trial account created for {register_data.email}, trial ends: {trial_ends_at}")
     
     # Send welcome email (background)
