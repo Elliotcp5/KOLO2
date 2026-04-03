@@ -375,7 +375,25 @@ yarn cap:sync       # Sync web build to native
    - On web, "Import from contacts" falls back to manual entry
    - Pre-fills form fields with imported contact data
 
+### P1: Skip Trial Link - COMPLETED ✅ (April 3, 2026)
+1. **Landing Page - "Or subscribe directly →"**:
+   - Added discreet link below the hero micro-points (✓ 14-day trial, ✓ No credit card, ✓ Cancel anytime)
+   - Clicking redirects to `/pricing` page
+   - Styled: gray text, underlined, small font, 0.7 opacity (hover: 1.0)
+   - Localized for all 4 languages (fr, en, de, it)
+   - CSS class `.hero-skip-trial` in `landing.css`
+
+2. **Pricing Page - "or pay now"**:
+   - Added discreet link below CTA buttons for PRO and PRO+ plans
+   - Only visible when `showSkipTrial = true`:
+     - User is on free plan
+     - User is not currently in a trial
+     - User has never used their free trial
+   - Clicking triggers `handlePayNow()` which goes directly to Stripe checkout (skipping trial)
+   - Styled: 12px gray text, underlined, subtle opacity
+
 ### Testing Status
-- **Backend**: 100% (10/10 tests passed)
+- **Backend**: 100% (all tests passed)
 - **Frontend**: 100% (all UI tests passed)
 - **Test Report**: `/app/test_reports/iteration_24.json`
+- **Visual Verification**: Landing page and Pricing page skip-trial links validated on desktop and mobile (April 3, 2026)
