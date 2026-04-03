@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePlan } from '../context/PlanContext';
-import { X, User, Phone, Mail, ChevronRight, Home, Tag, Key, Clock, Flame, Calendar, Sparkles } from 'lucide-react';
+import { X, User, Phone, Mail, ChevronRight, Home, Tag, Key, Clock, Flame, Calendar, Sparkles, Users, Edit3 } from 'lucide-react';
 import { BudgetSlider } from './BudgetSlider';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { Contacts } from '@capacitor-community/contacts';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -26,6 +28,11 @@ const DELAY_OPTIONS = [
 // Labels for each language
 const LABELS = {
   en: {
+    chooseMethod: 'Add a prospect',
+    importContacts: 'Import from contacts',
+    importContactsDesc: 'Select from your phone contacts',
+    manualEntry: 'Manual entry',
+    manualEntryDesc: 'Enter details manually',
     step1Title: 'Contact',
     step2Title: 'Project',
     fullName: 'Full name',
@@ -50,9 +57,16 @@ const LABELS = {
     aiHeader: '✦',
     namePlaceholder: 'John Doe',
     phonePlaceholder: '+33 6 12 34 56 78',
-    emailPlaceholder: 'email@example.com'
+    emailPlaceholder: 'email@example.com',
+    contactsPermissionDenied: 'Contacts permission denied',
+    noContactSelected: 'No contact selected'
   },
   fr: {
+    chooseMethod: 'Ajouter un prospect',
+    importContacts: 'Importer de mes contacts',
+    importContactsDesc: 'Sélectionner depuis votre répertoire',
+    manualEntry: 'Saisie manuelle',
+    manualEntryDesc: 'Entrer les détails manuellement',
     step1Title: 'Contact',
     step2Title: 'Projet',
     fullName: 'Nom complet',
@@ -77,9 +91,16 @@ const LABELS = {
     aiHeader: '✦',
     namePlaceholder: 'Jean Dupont',
     phonePlaceholder: '+33 6 12 34 56 78',
-    emailPlaceholder: 'email@exemple.com'
+    emailPlaceholder: 'email@exemple.com',
+    contactsPermissionDenied: 'Permission contacts refusée',
+    noContactSelected: 'Aucun contact sélectionné'
   },
   de: {
+    chooseMethod: 'Interessent hinzufügen',
+    importContacts: 'Aus Kontakten importieren',
+    importContactsDesc: 'Aus Ihrem Telefonbuch auswählen',
+    manualEntry: 'Manuelle Eingabe',
+    manualEntryDesc: 'Details manuell eingeben',
     step1Title: 'Kontakt',
     step2Title: 'Projekt',
     fullName: 'Vollständiger Name',
@@ -104,9 +125,16 @@ const LABELS = {
     aiHeader: '✦',
     namePlaceholder: 'Max Mustermann',
     phonePlaceholder: '+49 170 1234567',
-    emailPlaceholder: 'email@beispiel.de'
+    emailPlaceholder: 'email@beispiel.de',
+    contactsPermissionDenied: 'Kontaktberechtigung verweigert',
+    noContactSelected: 'Kein Kontakt ausgewählt'
   },
   it: {
+    chooseMethod: 'Aggiungi un potenziale cliente',
+    importContacts: 'Importa dai contatti',
+    importContactsDesc: 'Seleziona dalla tua rubrica',
+    manualEntry: 'Inserimento manuale',
+    manualEntryDesc: 'Inserisci i dettagli manualmente',
     step1Title: 'Contatto',
     step2Title: 'Progetto',
     fullName: 'Nome completo',
@@ -131,7 +159,9 @@ const LABELS = {
     aiHeader: '✦',
     namePlaceholder: 'Mario Rossi',
     phonePlaceholder: '+39 320 1234567',
-    emailPlaceholder: 'email@esempio.it'
+    emailPlaceholder: 'email@esempio.it',
+    contactsPermissionDenied: 'Permesso contatti negato',
+    noContactSelected: 'Nessun contatto selezionato'
   }
 };
 
@@ -148,8 +178,11 @@ export function AddProspectSheet({
   const isDark = theme === 'dark';
   const labels = LABELS[locale] || LABELS.en;
   
-  // Form state
-  const [step, setStep] = useState(1);
+  // Check if running on native device
+  const isNative = Capacitor.isNativePlatform();
+  
+  // Form state - step 0 = choice, 1 = contact, 2 = project
+  const [step, setStep] = useState(0);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -172,18 +205,83 @@ export function AddProspectSheet({
   // Reset form when opening
   useEffect(() => {
     if (isOpen) {
-      setStep(1);
-      setFullName(initialData?.full_name || '');
-      setPhone(initialData?.phone || '');
-      setEmail(initialData?.email || '');
-      setProjectType(initialData?.project_type || null);
-      setBudgetMin(initialData?.budget_min || 100);
-      setBudgetMax(initialData?.budget_max || 400);
-      setBudgetUndefined(initialData?.budget_undefined || false);
-      setDelay(initialData?.delay || null);
-      setNotes(initialData?.notes || '');
+      // If initialData is provided, skip to step 1 (contact form)
+      if (initialData) {
+        setStep(1);
+        setFullName(initialData.full_name || '');
+        setPhone(initialData.phone || '');
+        setEmail(initialData.email || '');
+        setProjectType(initialData.project_type || null);
+        setBudgetMin(initialData.budget_min || 100);
+        setBudgetMax(initialData.budget_max || 400);
+        setBudgetUndefined(initialData.budget_undefined || false);
+        setDelay(initialData.delay || null);
+        setNotes(initialData.notes || '');
+      } else {
+        // Start at step 0 (choice screen)
+        setStep(0);
+        setFullName('');
+        setPhone('');
+        setEmail('');
+        setProjectType(null);
+        setBudgetMin(100);
+        setBudgetMax(400);
+        setBudgetUndefined(false);
+        setDelay(null);
+        setNotes('');
+      }
     }
   }, [isOpen, initialData]);
+  
+  // Import from contacts handler
+  const handleImportContacts = async () => {
+    if (!isNative) {
+      // On web, just go to manual entry
+      setStep(1);
+      return;
+    }
+    
+    try {
+      // Request permission
+      const permission = await Contacts.requestPermissions();
+      if (permission.contacts !== 'granted') {
+        toast.error(labels.contactsPermissionDenied);
+        return;
+      }
+      
+      // Pick a contact
+      const result = await Contacts.pickContact({
+        projection: {
+          name: true,
+          phones: true,
+          emails: true
+        }
+      });
+      
+      if (result && result.contact) {
+        const contact = result.contact;
+        const name = contact.name?.display || contact.name?.given || '';
+        const phoneNumber = contact.phones?.[0]?.number || '';
+        const emailAddress = contact.emails?.[0]?.address || '';
+        
+        setFullName(name);
+        setPhone(phoneNumber);
+        setEmail(emailAddress);
+        setStep(1); // Go to contact form with pre-filled data
+      } else {
+        toast.error(labels.noContactSelected);
+      }
+    } catch (err) {
+      console.error('Contact import error:', err);
+      // Fall back to manual entry
+      setStep(1);
+    }
+  };
+  
+  // Handle manual entry choice
+  const handleManualEntry = () => {
+    setStep(1);
+  };
   
   // Form validation
   const isStep1Valid = fullName.trim().length >= 2 && phone.trim().length >= 6;
@@ -323,34 +421,111 @@ export function AddProspectSheet({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pb-4">
           <button
-            onClick={step === 2 ? () => setStep(1) : onClose}
+            onClick={step === 2 ? () => setStep(1) : step === 1 ? () => setStep(0) : onClose}
             className="text-sm font-medium"
             style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}
           >
-            {step === 2 ? '← ' : ''}{labels.cancel}
+            {step > 0 ? '← ' : ''}{labels.cancel}
           </button>
           
           <h2 
             className="text-lg font-bold"
             style={{ color: isDark ? '#ffffff' : '#0E0B1E' }}
           >
-            {step === 1 ? labels.step1Title : labels.step2Title}
+            {step === 0 ? labels.chooseMethod : step === 1 ? labels.step1Title : labels.step2Title}
           </h2>
           
           <div className="w-16" /> {/* Spacer */}
         </div>
         
-        {/* Step indicators */}
-        <div className="flex gap-2 px-5 mb-5">
-          <div 
-            className="flex-1 h-1 rounded-full"
-            style={{ backgroundColor: '#6C63FF' }}
-          />
-          <div 
-            className="flex-1 h-1 rounded-full"
-            style={{ backgroundColor: step === 2 ? '#6C63FF' : (isDark ? '#2a2a3b' : '#e5e7eb') }}
-          />
-        </div>
+        {/* Step indicators - only show for steps 1 and 2 */}
+        {step > 0 && (
+          <div className="flex gap-2 px-5 mb-5">
+            <div 
+              className="flex-1 h-1 rounded-full"
+              style={{ backgroundColor: '#6C63FF' }}
+            />
+            <div 
+              className="flex-1 h-1 rounded-full"
+              style={{ backgroundColor: step === 2 ? '#6C63FF' : (isDark ? '#2a2a3b' : '#e5e7eb') }}
+            />
+          </div>
+        )}
+        
+        {/* Step 0: Choice */}
+        {step === 0 && (
+          <div className="px-5 space-y-4 pb-6">
+            {/* Import from contacts option */}
+            <button
+              onClick={handleImportContacts}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: isDark ? '#2a2a3b' : '#f7f7fa',
+                border: '1px solid transparent'
+              }}
+              data-testid="import-contacts-btn"
+            >
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ 
+                  background: 'linear-gradient(135deg, #4F46E5, #9333EA)',
+                }}
+              >
+                <Users size={22} color="white" />
+              </div>
+              <div className="flex-1 text-left">
+                <div 
+                  className="font-semibold"
+                  style={{ color: isDark ? '#ffffff' : '#0E0B1E' }}
+                >
+                  {labels.importContacts}
+                </div>
+                <div 
+                  className="text-sm"
+                  style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}
+                >
+                  {labels.importContactsDesc}
+                </div>
+              </div>
+              <ChevronRight size={20} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
+            </button>
+            
+            {/* Manual entry option */}
+            <button
+              onClick={handleManualEntry}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: isDark ? '#2a2a3b' : '#f7f7fa',
+                border: '1px solid transparent'
+              }}
+              data-testid="manual-entry-btn"
+            >
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ 
+                  backgroundColor: isDark ? '#3a3a4b' : '#e5e7eb'
+                }}
+              >
+                <Edit3 size={22} style={{ color: isDark ? '#a0a4ae' : '#6b7280' }} />
+              </div>
+              <div className="flex-1 text-left">
+                <div 
+                  className="font-semibold"
+                  style={{ color: isDark ? '#ffffff' : '#0E0B1E' }}
+                >
+                  {labels.manualEntry}
+                </div>
+                <div 
+                  className="text-sm"
+                  style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}
+                >
+                  {labels.manualEntryDesc}
+                </div>
+              </div>
+              <ChevronRight size={20} style={{ color: isDark ? '#6b7280' : '#9ca3af' }} />
+            </button>
+          </div>
+        )}
         
         {/* Step 1: Contact */}
         {step === 1 && (

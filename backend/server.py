@@ -1848,7 +1848,8 @@ async def start_trial(request: StartTrialRequest, http_request: Request):
     # Send welcome email for trial (J+0)
     import asyncio
     user_name = user_doc.get("name", "").split(" ")[0] or "Agent"
-    asyncio.create_task(send_welcome_email(user.email, user_name, is_trial=True, trial_plan=request.plan))
+    user_locale = user_doc.get("locale", "fr")
+    asyncio.create_task(send_welcome_email(user.email, user_name, is_trial=True, trial_plan=request.plan, locale=user_locale))
     
     return {
         "message": f"Essai gratuit {request.plan.upper()} démarré",
@@ -2466,6 +2467,7 @@ async def send_trial_reminder_emails(request: Request):
             email = user.get("email")
             user_name = user.get("name", "").split(" ")[0] or "Agent"
             trial_plan = user.get("trial_plan", "pro")
+            user_locale = user.get("locale", "fr")
             
             # Check if we already sent this reminder today
             last_reminder = user.get("last_trial_reminder")
@@ -2479,19 +2481,19 @@ async def send_trial_reminder_emails(request: Request):
             
             if days_left == 7:
                 # J+7 reminder
-                await send_trial_reminder_email(email, user_name, 7, trial_plan)
+                await send_trial_reminder_email(email, user_name, 7, trial_plan, locale=user_locale)
                 results["j7"] += 1
                 email_sent = True
                 
             elif days_left == 2:
                 # J+12 reminder (2 days left)
-                await send_trial_reminder_email(email, user_name, 2, trial_plan)
+                await send_trial_reminder_email(email, user_name, 2, trial_plan, locale=user_locale)
                 results["j12"] += 1
                 email_sent = True
                 
             elif days_left <= 0:
                 # J+14 - Trial expired
-                await send_trial_expired_email(email, user_name, trial_plan)
+                await send_trial_expired_email(email, user_name, trial_plan, locale=user_locale)
                 results["j14"] += 1
                 
                 # Downgrade to free
@@ -2600,7 +2602,8 @@ async def forgot_password(request: ForgotPasswordRequest, http_request: Request)
     
     # Send password reset email
     user_name = user_doc.get("name", "").split(" ")[0] or "Utilisateur"
-    asyncio.create_task(send_password_reset_email(request.email, user_name, reset_token, base_url))
+    user_locale = user_doc.get("locale", "fr")
+    asyncio.create_task(send_password_reset_email(request.email, user_name, reset_token, base_url, locale=user_locale))
     
     logger.info(f"Password reset email sent to {request.email}")
     
@@ -2904,7 +2907,8 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     
     # Send welcome email (background)
     import asyncio
-    asyncio.create_task(send_welcome_email_background(email, name, is_trial=True, trial_plan="pro"))
+    user_locale = register_data.locale if hasattr(register_data, 'locale') and register_data.locale else "fr"
+    asyncio.create_task(send_welcome_email_background(email, name, is_trial=True, trial_plan="pro", locale=user_locale))
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
@@ -2939,10 +2943,10 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     }
 
 # Background task: Send welcome email after registration
-async def send_welcome_email_background(email: str, name: str, is_trial: bool = True, trial_plan: str = "pro"):
+async def send_welcome_email_background(email: str, name: str, is_trial: bool = True, trial_plan: str = "pro", locale: str = "fr"):
     """Send welcome email in background"""
     try:
-        await send_welcome_email(email, name, is_trial, trial_plan)
+        await send_welcome_email(email, name, is_trial, trial_plan, locale=locale)
     except Exception as e:
         logger.error(f"Failed to send welcome email to {email}: {e}")
 
@@ -2957,11 +2961,13 @@ async def register_with_trial(request: Request, register_data: RegisterRequest, 
     result = await register_free_trial(request, register_data, response)
     
     # Send welcome email in background
+    user_locale = register_data.locale if hasattr(register_data, 'locale') and register_data.locale else "fr"
     asyncio.create_task(send_welcome_email_background(
         register_data.email, 
         register_data.full_name, 
         is_trial=True, 
-        trial_plan="pro"
+        trial_plan="pro",
+        locale=user_locale
     ))
     
     return result
