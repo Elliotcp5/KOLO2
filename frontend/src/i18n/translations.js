@@ -317,6 +317,9 @@ const translations = {
     sendResetLink: "Send reset link",
     resetLinkSent: "If this email exists, you will receive a reset link",
     enterNewPassword: "Enter new password",
+    invalidCredentials: "Incorrect email or password",
+    networkError: "Unable to connect to server",
+    loginError: "Login error",
     
     // New Prospect
     cancel: "Cancel",
@@ -695,6 +698,9 @@ const translations = {
     sendResetLink: "Envoyer le lien",
     resetLinkSent: "Si cet email existe, vous recevrez un lien de réinitialisation",
     enterNewPassword: "Entrez le nouveau mot de passe",
+    invalidCredentials: "Email ou mot de passe incorrect",
+    networkError: "Impossible de contacter le serveur",
+    loginError: "Erreur de connexion",
     
     // New Prospect
     cancel: "Annuler",
@@ -1073,6 +1079,9 @@ const translations = {
     sendResetLink: "Link senden",
     resetLinkSent: "Wenn diese E-Mail existiert, erhalten Sie einen Reset-Link",
     enterNewPassword: "Neues Passwort eingeben",
+    invalidCredentials: "Falsche E-Mail oder Passwort",
+    networkError: "Verbindung zum Server nicht möglich",
+    loginError: "Anmeldefehler",
     
     // New Prospect
     cancel: "Abbrechen",
@@ -1451,6 +1460,9 @@ const translations = {
     sendResetLink: "Invia link",
     resetLinkSent: "Se questa email esiste, riceverai un link di reset",
     enterNewPassword: "Inserisci nuova password",
+    invalidCredentials: "Email o password errati",
+    networkError: "Impossibile contattare il server",
+    loginError: "Errore di accesso",
     
     // New Prospect
     cancel: "Annulla",

@@ -266,12 +266,16 @@ export default function PricingPage() {
   return (
     <div 
       className="min-h-screen pb-8"
-      style={{ backgroundColor: isDark ? '#0E0B1E' : '#f7f7fa' }}
+      style={{ 
+        backgroundColor: isDark ? '#0E0B1E' : '#f7f7fa',
+        paddingTop: 'env(safe-area-inset-top, 0)'
+      }}
     >
       {/* Header */}
       <div 
-        className="sticky top-0 z-10 px-4 py-4 flex items-center gap-4"
+        className="sticky z-10 px-4 py-4 flex items-center gap-4"
         style={{ 
+          top: 'env(safe-area-inset-top, 0)',
           backgroundColor: isDark ? '#0E0B1E' : '#f7f7fa',
           borderBottom: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`
         }}

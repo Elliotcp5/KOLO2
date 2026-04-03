@@ -22,20 +22,22 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
-    try {
-      const API_BASE = window.location.origin;
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          password: password 
-        })
-      });
+    const API_BASE = window.location.origin;
+    
+    // Use XMLHttpRequest to avoid fetch interception issues
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/api/auth/login`, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    xhr.onload = function() {
+      let data;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = { detail: xhr.responseText };
+      }
       
-      const data = await res.json();
-      
-      if (res.ok && data.token) {
+      if (xhr.status === 200 && data.token) {
         localStorage.setItem('kolo_token', data.token);
         login({
           user_id: data.user_id,
@@ -46,14 +48,31 @@ const LoginPage = () => {
         });
         window.location.href = '/app';
       } else {
-        setError(data.detail || 'Email ou mot de passe incorrect');
+        // Handle specific error messages
+        const errorMessage = data.detail || '';
+        if (errorMessage.includes('incorrect') || errorMessage.includes('passe') || xhr.status === 401) {
+          setError(t('invalidCredentials') || 'Email ou mot de passe incorrect');
+        } else {
+          setError(errorMessage || t('loginError') || 'Erreur de connexion');
+        }
         setLoading(false);
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Erreur de connexion au serveur');
+    };
+    
+    xhr.onerror = function() {
+      console.error('Login network error');
+      setError(t('networkError') || 'Impossible de contacter le serveur');
       setLoading(false);
-    }
+    };
+    
+    xhr.send(JSON.stringify({ 
+      email: email.trim().toLowerCase(), 
+      password: password 
+    }));
+  };
+
+  const handleForgotPassword = () => {
+    navigate('/forgot-password');
   };
 
   return (
@@ -177,12 +196,30 @@ const LoginPage = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '13px',
-              fontWeight: '500',
-              color: 'var(--ink-mid)'
-            }}>{t('password')}</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: 'var(--ink-mid)'
+              }}>{t('password')}</label>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '13px',
+                  color: 'var(--blue)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontWeight: '500'
+                }}
+              >
+                {t('forgotPassword')}
+              </button>
+            </div>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}

@@ -4,19 +4,21 @@
   background: var(--bg);
   min-height: 100vh;
   overflow-x: hidden;
+  /* Safe area for iOS notch */
+  padding-top: env(safe-area-inset-top, 0);
 }
 
 /* ===== NAVBAR ===== */
 .landing-nav {
   position: fixed;
-  top: 0;
+  top: env(safe-area-inset-top, 0);
   left: 0;
   right: 0;
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 40px;
+  padding: 16px 40px;
   background: transparent;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -236,7 +238,7 @@
 
 /* ===== HERO ===== */
 .hero {
-  padding: 140px 0 80px;
+  padding: calc(140px + env(safe-area-inset-top, 0)) 0 80px;
   text-align: center;
   background: var(--bg);
 }

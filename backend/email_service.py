@@ -454,6 +454,8 @@ async def send_email(to_email: str, subject: str, html_content: str) -> dict:
         logger.error("RESEND_API_KEY not configured")
         return {"success": False, "error": "Email service not configured"}
     
+    logger.info(f"Attempting to send email to {to_email}: {subject}")
+    
     try:
         resend.api_key = resend_api_key
         
@@ -465,11 +467,12 @@ async def send_email(to_email: str, subject: str, html_content: str) -> dict:
         }
         
         result = resend.Emails.send(params)
-        logger.info(f"Email sent to {to_email}: {subject}")
-        return {"success": True, "id": result.get("id") if isinstance(result, dict) else str(result)}
+        email_id = result.get("id") if isinstance(result, dict) else str(result)
+        logger.info(f"✅ Email sent successfully to {to_email}: {subject} (ID: {email_id})")
+        return {"success": True, "id": email_id}
         
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+        logger.error(f"❌ Failed to send email to {to_email}: {e}")
         return {"success": False, "error": str(e)}
 
 
