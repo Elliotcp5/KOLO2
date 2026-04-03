@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
-# Test credentials
-TEST_EMAIL = "pressardelliot@gmail.com"
-TEST_PASSWORD = "Test123"
+# Test credentials - loaded from environment or use test defaults
+TEST_EMAIL = os.environ.get('TEST_EMAIL', 'test@test.com')
+TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'testtest')
 
 
 class TestHealthAndGeo:

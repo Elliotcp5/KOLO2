@@ -115,7 +115,7 @@ const SubscribePage = () => {
               locale === 'fr' ? 'Application mobile PWA' : 'Mobile PWA app',
               locale === 'fr' ? 'Support prioritaire' : 'Priority support'
             ].map((feature, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div key={`feature-${i}-${feature.slice(0,10)}`} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '24px',
                   height: '24px',

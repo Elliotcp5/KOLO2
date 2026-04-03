@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +16,13 @@ router = APIRouter(prefix="/cron", tags=["cron"])
 # Import shared dependencies
 from database import db
 
-# Cron key for authentication
-CRON_SECRET = "kolo_cron_secret_2026"
+# Cron key for authentication - loaded from environment
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
 
 def verify_cron_key(x_cron_key: Optional[str] = Header(None)):
     """Verify cron request authentication"""
-    if x_cron_key != CRON_SECRET:
+    if not CRON_SECRET or x_cron_key != CRON_SECRET:
         raise HTTPException(status_code=401, detail="Invalid cron key")
     return True
 

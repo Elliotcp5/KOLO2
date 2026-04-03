@@ -973,7 +973,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 }}>
                   {aiSuggestions.slice(1).map((suggestion, index) => (
                     <div 
-                      key={index}
+                      key={suggestion.prospect_id || `suggestion-${index}`}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -3756,7 +3756,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             }
             
             return recentEvents.map((event, index) => (
-              <div key={index} style={{ 
+              <div key={event.created_at || `event-${index}`} style={{ 
                 display: 'flex', 
                 alignItems: 'flex-start', 
                 gap: '12px',
@@ -5551,7 +5551,7 @@ const TasksTab = ({ onRefresh }) => {
                   
                   return (
                   <div 
-                    key={index}
+                    key={suggestion.task_id || suggestion.prospect_id || `ai-suggestion-${index}`}
                     style={{
                       background: 'var(--surface-2)',
                       borderRadius: '16px',

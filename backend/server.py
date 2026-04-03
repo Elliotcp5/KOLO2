@@ -989,9 +989,6 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
             # Already paid recently, redirect to account creation
             return RedirectResponse(url=f"{origin_url}/create-account?session_id={recent_payment.get('session_id', '')}", status_code=303)
     
-    host_url = str(http_request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    
     success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin_url}/subscribe"
     
@@ -2077,7 +2074,6 @@ async def get_roi_dashboard(request: Request):
     average_commission = total_revenue / sales_count if sales_count > 0 else 0
     
     # Calculate ROI multiplier based on PRO+ price
-    effective_plan = get_user_effective_plan(user_doc)
     currency = user_doc.get("currency", "EUR")
     plan_price = PLAN_PRICING.get("pro_plus", {}).get(currency, {}).get("monthly", 2499) / 100
     roi_multiplier = round(total_revenue / plan_price) if plan_price > 0 else 0
@@ -2151,21 +2147,15 @@ async def generate_weekly_report(request: Request):
         "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
     })
     
-    # 5. Total active prospects
-    active_prospects = await db.prospects.count_documents({
-        "user_id": user.user_id,
-        "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
-    })
-    
     # Build email HTML
     locale = user_doc.get("locale", "fr")
     user_name = user_doc.get("name", "Agent").split(" ")[0]
     
     email_subjects = {
-        "fr": f"📊 Votre rapport hebdomadaire KOLO",
-        "en": f"📊 Your weekly KOLO report",
-        "de": f"📊 Ihr wöchentlicher KOLO-Bericht",
-        "it": f"📊 Il tuo report settimanale KOLO"
+        "fr": "📊 Votre rapport hebdomadaire KOLO",
+        "en": "📊 Your weekly KOLO report",
+        "de": "📊 Ihr wöchentlicher KOLO-Bericht",
+        "it": "📊 Il tuo report settimanale KOLO"
     }
     
     # Simple, clean email template
@@ -2495,7 +2485,7 @@ async def reset_password(request: ResetPasswordRequest):
 @api_router.post("/auth/create-account")
 async def create_account_after_payment(request: CreateAccountRequest, response: Response, http_request: Request):
     """Create account after successful Stripe payment - simplified and robust"""
-    logger.debug(f"=== CREATE ACCOUNT CALLED ===")
+    logger.debug("=== CREATE ACCOUNT CALLED ===")
     logger.debug(f"Email: {request.email}, Payment Token: {request.payment_token[:20]}...")
     
     try:
@@ -3807,7 +3797,7 @@ async def generate_ai_message(request: Request, prospect_id: str):
     try:
         body = await request.json()
         context = body.get("context", "follow_up")
-    except:
+    except Exception:
         context = "follow_up"
     
     try:
@@ -3884,12 +3874,11 @@ async def get_ai_suggestion_for_prospect(prospect_id: str, request: Request):
         try:
             last_dt = datetime.fromisoformat(last_contact.replace('Z', '+00:00'))
             days_since_contact = (datetime.now(timezone.utc) - last_dt).days
-        except:
+        except (ValueError, TypeError):
             pass
     
     # Generate suggestion based on context
     prospect_name = prospect.get("full_name", prospect.get("name", "Client"))
-    project_type = prospect.get("project_type", "buyer")
     status = prospect.get("status", "nouveau")
     
     # Determine task type and reason with full i18n support
@@ -3907,10 +3896,10 @@ async def get_ai_suggestion_for_prospect(prospect_id: str, request: Request):
             "it": f"Nessuna notizia da {days_since_contact} giorni - un SMS di follow-up sarebbe appropriato"
         },
         "new_prospect": {
-            "fr": f"Nouveau prospect - un appel de présentation permettrait de qualifier le projet",
-            "en": f"New prospect - an introduction call would help qualify the project",
-            "de": f"Neuer Interessent - ein Vorstellungsgespräch würde helfen, das Projekt zu qualifizieren",
-            "it": f"Nuovo prospect - una chiamata di presentazione aiuterebbe a qualificare il progetto"
+            "fr": "Nouveau prospect - un appel de présentation permettrait de qualifier le projet",
+            "en": "New prospect - an introduction call would help qualify the project",
+            "de": "Neuer Interessent - ein Vorstellungsgespräch würde helfen, das Projekt zu qualifizieren",
+            "it": "Nuovo prospect - una chiamata di presentazione aiuterebbe a qualificare il progetto"
         },
         "maintain_contact": {
             "fr": f"Maintenir le contact avec {prospect_name} pour rester présent",
@@ -4089,7 +4078,7 @@ async def send_sms_to_prospect(request: Request, prospect_id: str):
     try:
         body = await request.json()
         message = body.get("message", "")
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Message required")
     
     if not message:
