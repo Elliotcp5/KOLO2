@@ -126,6 +126,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState('free');
   const [isInTrial, setIsInTrial] = useState(false);
+  const [trialUsed, setTrialUsed] = useState(false);
   
   const isDark = theme === 'dark';
   
@@ -137,6 +138,7 @@ export default function PricingPage() {
         if (data) {
           setCurrentPlan(data.effective_plan || 'free');
           setIsInTrial(data.trial !== null);
+          setTrialUsed(data.trial_used || false);
           // Only set currency on initial load if user has one saved
           if (data.currency) {
             setCurrency(data.currency);
@@ -173,19 +175,36 @@ export default function PricingPage() {
     
     setLoading(true);
     
-    // Check if user can start a trial
-    if (!isInTrial && currentPlan === 'free') {
+    // Check if user can start a trial (only if not already in trial, on free plan, and hasn't used trial)
+    if (!isInTrial && currentPlan === 'free' && !trialUsed) {
       const result = await startTrial(plan, token);
       if (result.success) {
+        setLoading(false);
         navigate('/app?trial_started=true');
         return;
+      } else {
+        // Show error message if trial failed (e.g., already used trial)
+        if (result.error && result.error.includes('déjà utilisé')) {
+          toast.error(
+            locale === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit. Passez directement au paiement.' :
+            locale === 'de' ? 'Sie haben Ihre Testphase bereits genutzt. Fahren Sie mit der Zahlung fort.' :
+            locale === 'it' ? 'Hai già utilizzato la tua prova gratuita. Procedi con il pagamento.' :
+            'You have already used your free trial. Proceed to payment.'
+          );
+        }
+        // Continue to Stripe checkout (fall through)
       }
     }
     
-    // Otherwise, redirect to Stripe checkout
+    // Redirect to Stripe checkout for payment
     const result = await upgradePlan(plan, billingPeriod, token);
     if (result.success && result.checkout_url) {
       window.location.href = result.checkout_url;
+    } else {
+      toast.error(
+        locale === 'fr' ? 'Erreur lors de la création du paiement' :
+        'Error creating payment session'
+      );
     }
     
     setLoading(false);
@@ -229,13 +248,15 @@ export default function PricingPage() {
              'Start for free';
     }
     
-    if (currentPlan === 'free' && !isInTrial) {
+    // Show "Free trial" ONLY if user hasn't used trial yet and is on free plan
+    if (currentPlan === 'free' && !isInTrial && !trialUsed) {
       return locale === 'fr' ? 'Essai gratuit 14 jours' :
              locale === 'de' ? '14 Tage kostenlos testen' :
              locale === 'it' ? 'Prova gratuita 14 giorni' :
              'Free 14-day trial';
     }
     
+    // Otherwise show "Choose [plan]"
     return locale === 'fr' ? `Choisir ${plan === 'pro_plus' ? 'Pro+' : 'Pro'}` :
            locale === 'de' ? `${plan === 'pro_plus' ? 'Pro+' : 'Pro'} wählen` :
            locale === 'it' ? `Scegli ${plan === 'pro_plus' ? 'Pro+' : 'Pro'}` :

@@ -6347,6 +6347,7 @@ const AppShell = () => {
   const location = useLocation();
   const { theme, changeTheme, initializeFromUser } = useTheme();
   const { fetchPlanData, planData, checkFeature } = usePlan();
+  const { locale } = useLocale();
   const [activeTab, setActiveTab] = useState('today');
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -6361,6 +6362,54 @@ const AppShell = () => {
   useEffect(() => {
     const loadUserPrefs = async () => {
       try {
+        const token = localStorage.getItem('kolo_token');
+        
+        // Check for payment success redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const upgradeSuccess = urlParams.get('upgrade');
+        const trialStarted = urlParams.get('trial_started');
+        
+        if (upgradeSuccess === 'success' && token) {
+          // Sync subscription status after payment
+          try {
+            const syncResponse = await fetch(`${API_URL}/api/plans/sync`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json();
+              if (syncData.synced && syncData.plan !== 'free') {
+                const planName = syncData.plan === 'pro_plus' ? 'Pro+' : 'Pro';
+                toast.success(
+                  locale === 'fr' ? `Bienvenue sur KOLO ${planName} ! 🎉` :
+                  locale === 'de' ? `Willkommen bei KOLO ${planName}! 🎉` :
+                  locale === 'it' ? `Benvenuto in KOLO ${planName}! 🎉` :
+                  `Welcome to KOLO ${planName}! 🎉`
+                );
+              }
+            }
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, '/app');
+          } catch (syncError) {
+            console.error('Failed to sync subscription:', syncError);
+          }
+        }
+        
+        if (trialStarted === 'true') {
+          toast.success(
+            locale === 'fr' ? 'Votre essai gratuit de 14 jours a commencé ! 🎉' :
+            locale === 'de' ? 'Ihre 14-tägige Testphase hat begonnen! 🎉' :
+            locale === 'it' ? 'La tua prova gratuita di 14 giorni è iniziata! 🎉' :
+            'Your 14-day free trial has started! 🎉'
+          );
+          window.history.replaceState({}, document.title, '/app');
+        }
+        
         const response = await authFetch(`${API_URL}/api/auth/me`);
         if (response.ok) {
           const userData = await response.json();
@@ -6378,7 +6427,6 @@ const AppShell = () => {
           setUserName(userData.full_name || '');
           
           // Fetch plan data and wait for it
-          const token = localStorage.getItem('kolo_token');
           if (token) {
             await fetchPlanData(token);
           }
@@ -6389,7 +6437,7 @@ const AppShell = () => {
       setUserPrefsLoaded(true);
     };
     loadUserPrefs();
-  }, [initializeFromUser, fetchPlanData]);
+  }, [initializeFromUser, fetchPlanData, locale]);
 
   useEffect(() => {
     if (location.pathname.includes('/prospects')) {

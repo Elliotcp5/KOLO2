@@ -247,6 +247,30 @@ export function PlanProvider({ children }) {
     }
   }, []);
 
+  const syncPlan = useCallback(async (token) => {
+    try {
+      const response = await fetch(`${API_URL}/api/plans/sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Refresh plan data after sync
+        await fetchPlanData(token);
+        return { success: true, ...data };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.detail };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }, [fetchPlanData]);
+
   useEffect(() => {
     setLoading(false);
   }, []);
@@ -259,6 +283,7 @@ export function PlanProvider({ children }) {
     fetchPlanData,
     fetchPricing,
     startTrial,
+    syncPlan,
     checkFeature,
     canAddProspect,
     canUseAISuggestion,

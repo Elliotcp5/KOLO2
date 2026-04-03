@@ -1621,7 +1621,7 @@ async def reactivate_subscription(http_request: Request):
 # ==================== PLAN & FEATURE ENDPOINTS ====================
 
 def get_user_effective_plan(user_doc: dict) -> str:
-    """Get user's effective plan considering trials"""
+    """Get user's effective plan considering trials and subscriptions"""
     now = datetime.now(timezone.utc)
     
     # Check if user is in an active trial
@@ -1639,8 +1639,18 @@ def get_user_effective_plan(user_doc: dict) -> str:
     
     # Check subscription status
     sub_status = user_doc.get("subscription_status", "none")
+    stored_plan = user_doc.get("plan", "free")
+    
+    # If subscription is active or trialing, return the stored plan
     if sub_status in ["active", "trialing"]:
-        return user_doc.get("plan", "free")
+        return stored_plan
+    
+    # FALLBACK: If user has a plan set (from webhook) but status wasn't updated,
+    # trust the plan if there's a stripe_customer_id (meaning they paid)
+    if stored_plan in ["pro", "pro_plus"] and user_doc.get("stripe_customer_id"):
+        # Check subscription_id exists (they have/had a subscription)
+        if user_doc.get("subscription_id"):
+            return stored_plan
     
     return "free"
 
@@ -1747,9 +1757,11 @@ async def get_current_plan(request: Request):
             "ai_suggestions": ai_limit
         },
         "trial": trial_info,
+        "trial_used": user_doc.get("trial_start_date") is not None,  # Has user already used trial?
         "subscription_status": user_doc.get("subscription_status", "none"),
         "subscription_ends_at": user_doc.get("subscription_ends_at"),
-        "cancel_at_period_end": user_doc.get("cancel_at_period_end", False)
+        "cancel_at_period_end": user_doc.get("cancel_at_period_end", False),
+        "currency": user_doc.get("currency", "EUR")
     }
 
 @api_router.get("/plans/pricing")
@@ -1805,6 +1817,126 @@ async def get_pricing(request: Request, currency: Optional[str] = None):
             }
         }
     }
+
+@api_router.post("/plans/sync")
+async def sync_user_plan(http_request: Request):
+    """
+    Sync user's subscription status from Stripe.
+    Called after payment to ensure plan is updated.
+    """
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+    
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    email = user.email
+    
+    # First check if there's a pending payment success record
+    payment_success = await db.payment_success.find_one(
+        {"email": email, "used": False},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    
+    if payment_success:
+        # Apply the payment success directly
+        plan = payment_success.get("plan", "pro")
+        status = payment_success.get("status", "active")
+        trial_ends_at = payment_success.get("trial_ends_at")
+        
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {
+                "plan": plan,
+                "subscription_status": status,
+                "subscription_id": payment_success.get("subscription_id"),
+                "stripe_customer_id": payment_success.get("customer_id"),
+                "trial_ends_at": trial_ends_at,
+                "trial_plan": plan if status == "trialing" else None,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Mark payment success as used
+        await db.payment_success.update_one(
+            {"token": payment_success.get("token")},
+            {"$set": {"used": True}}
+        )
+        
+        return {
+            "synced": True,
+            "source": "payment_success_record",
+            "plan": plan,
+            "subscription_status": status
+        }
+    
+    # Otherwise, search in Stripe
+    stripe_customer_id = user_doc.get("stripe_customer_id")
+    
+    if not stripe_customer_id:
+        # Try to find by email
+        customers = stripe.Customer.list(email=email, limit=1)
+        if not customers.data:
+            return {"synced": False, "reason": "no_stripe_customer", "plan": user_doc.get("plan", "free")}
+        stripe_customer_id = customers.data[0].id
+    
+    # Get subscriptions
+    try:
+        subscriptions = stripe.Subscription.list(customer=stripe_customer_id, status="all", limit=5)
+    except Exception as e:
+        logger.error(f"Stripe error fetching subscriptions: {e}")
+        return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
+    
+    active_sub = None
+    for sub in subscriptions.data:
+        if sub.status in ["active", "trialing"]:
+            active_sub = sub
+            break
+    
+    if not active_sub:
+        return {"synced": True, "reason": "no_active_subscription", "plan": user_doc.get("plan", "free")}
+    
+    # Determine plan from price
+    plan = "free"
+    if active_sub.items and active_sub.items.data:
+        price = active_sub.items.data[0].price
+        amount = price.unit_amount if price else 0
+        if amount >= 2000:
+            plan = "pro_plus"
+        elif amount >= 500:
+            plan = "pro"
+    
+    trial_end = datetime.fromtimestamp(active_sub.trial_end, tz=timezone.utc) if active_sub.trial_end else None
+    
+    # Update user
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {
+            "stripe_customer_id": stripe_customer_id,
+            "subscription_id": active_sub.id,
+            "subscription_status": active_sub.status,
+            "plan": plan,
+            "trial_plan": plan if active_sub.status == "trialing" else None,
+            "trial_ends_at": trial_end.isoformat() if trial_end else None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "synced": True,
+        "source": "stripe",
+        "plan": plan,
+        "subscription_status": active_sub.status,
+        "trial_ends_at": trial_end.isoformat() if trial_end else None
+    }
+
+
 
 class StartTrialRequest(BaseModel):
     plan: str  # pro or pro_plus
@@ -1959,8 +2091,10 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
         price_id = price.id
     
     # Create checkout session
+    user_locale = user_doc.get("locale", "fr")
     session = stripe.checkout.Session.create(
         customer=stripe_customer_id,
+        customer_email=user.email,  # Ensure email is set
         mode="subscription",
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
@@ -1968,8 +2102,10 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
         cancel_url=f"{origin_url}/pricing?upgrade=cancelled",
         metadata={
             "user_id": user.user_id,
+            "email": user.email,  # CRITICAL: Include email for webhook
             "plan": request.plan,
-            "billing_period": request.billing_period
+            "billing_period": request.billing_period,
+            "locale": user_locale
         }
     )
     
