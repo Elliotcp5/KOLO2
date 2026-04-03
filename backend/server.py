@@ -1027,7 +1027,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
             )
             price_id = price.id
         
-        # Create checkout session with subscription and 7-day trial
+        # Create checkout session with subscription and 14-day trial
         # Using only 'card' payment method to avoid duplicate Apple Pay buttons
         session = stripe.checkout.Session.create(
             mode="subscription",
@@ -1037,7 +1037,7 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
                 "quantity": 1
             }],
             subscription_data={
-                "trial_period_days": 7,
+                "trial_period_days": 14,
                 "metadata": {
                     "email": email,
                     "locale": locale,
@@ -1189,22 +1189,61 @@ async def handle_subscription_update(sub):
     current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
     cancel_at_period_end = sub.cancel_at_period_end
     
+    # Determine plan from subscription price
+    plan = "free"
+    if sub.items and sub.items.data:
+        price = sub.items.data[0].price
+        amount = price.unit_amount if price else 0
+        # PRO+ is more expensive than PRO
+        if amount >= 2000:  # $20+ or equivalent
+            plan = "pro_plus"
+        elif amount >= 500:  # $5+ or equivalent
+            plan = "pro"
+    
     # Find user by stripe customer ID
     user_doc = await db.users.find_one({"stripe_customer_id": customer_id})
     
     if user_doc:
+        update_data = {
+            "subscription_id": subscription_id,
+            "subscription_status": status,
+            "trial_ends_at": trial_end.isoformat() if trial_end else None,
+            "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+            "cancel_at_period_end": cancel_at_period_end,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Update plan if subscription is active or trialing
+        if status in ["active", "trialing"]:
+            update_data["plan"] = plan
+            if status == "trialing":
+                update_data["trial_plan"] = plan
+        
         await db.users.update_one(
             {"stripe_customer_id": customer_id},
-            {"$set": {
-                "subscription_id": subscription_id,
-                "subscription_status": status,
-                "trial_ends_at": trial_end.isoformat() if trial_end else None,
-                "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
-                "cancel_at_period_end": cancel_at_period_end,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": update_data}
         )
-        logger.info(f"Updated subscription status for customer {customer_id}: {status}")
+        logger.info(f"Updated subscription for customer {customer_id}: status={status}, plan={plan}")
+        
+        # Send confirmation email
+        try:
+            user_email = user_doc.get("email")
+            user_name = user_doc.get("full_name", user_doc.get("name", "")).split(" ")[0]
+            locale = user_doc.get("locale", "fr")
+            
+            if user_email and status in ["active", "trialing"]:
+                from email_service import send_subscription_confirmation_email
+                await send_subscription_confirmation_email(
+                    email=user_email,
+                    name=user_name,
+                    plan=plan,
+                    is_trial=(status == "trialing"),
+                    trial_end=trial_end,
+                    locale=locale
+                )
+                logger.info(f"Sent subscription confirmation email to {user_email}")
+        except Exception as e:
+            logger.error(f"Failed to send confirmation email: {e}")
 
 async def handle_subscription_deleted(sub):
     """Handle subscription cancelled/deleted"""
@@ -1219,6 +1258,88 @@ async def handle_subscription_deleted(sub):
         }}
     )
     logger.info(f"Subscription cancelled for customer {customer_id}")
+
+
+@api_router.post("/admin/sync-subscription")
+async def admin_sync_subscription(request: Request):
+    """Admin endpoint to sync user subscription from Stripe"""
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+    
+    body = await request.json()
+    email = body.get("email")
+    admin_key = body.get("admin_key")
+    
+    # Simple admin protection
+    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required")
+    
+    # Find user
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Search for customer in Stripe by email
+    customers = stripe.Customer.list(email=email, limit=1)
+    if not customers.data:
+        return {"status": "no_stripe_customer", "message": f"No Stripe customer found for {email}"}
+    
+    customer = customers.data[0]
+    customer_id = customer.id
+    
+    # Get active subscriptions
+    subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=5)
+    
+    active_sub = None
+    for sub in subscriptions.data:
+        if sub.status in ["active", "trialing"]:
+            active_sub = sub
+            break
+    
+    if not active_sub:
+        return {"status": "no_active_subscription", "message": f"No active subscription found for {email}"}
+    
+    # Determine plan from price
+    plan = "free"
+    if active_sub.items and active_sub.items.data:
+        price = active_sub.items.data[0].price
+        amount = price.unit_amount if price else 0
+        if amount >= 2000:
+            plan = "pro_plus"
+        elif amount >= 500:
+            plan = "pro"
+    
+    trial_end = datetime.fromtimestamp(active_sub.trial_end, tz=timezone.utc) if active_sub.trial_end else None
+    current_period_end = datetime.fromtimestamp(active_sub.current_period_end, tz=timezone.utc) if active_sub.current_period_end else None
+    
+    # Update user
+    update_result = await db.users.update_one(
+        {"email": email},
+        {"$set": {
+            "stripe_customer_id": customer_id,
+            "subscription_id": active_sub.id,
+            "subscription_status": active_sub.status,
+            "plan": plan,
+            "trial_plan": plan if active_sub.status == "trialing" else None,
+            "trial_ends_at": trial_end.isoformat() if trial_end else None,
+            "subscription_ends_at": current_period_end.isoformat() if current_period_end else None,
+            "cancel_at_period_end": active_sub.cancel_at_period_end,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "status": "success",
+        "message": f"Subscription synced for {email}",
+        "plan": plan,
+        "subscription_status": active_sub.status,
+        "trial_ends_at": trial_end.isoformat() if trial_end else None,
+        "modified_count": update_result.modified_count
+    }
+
 
 @api_router.post("/payments/validate-token")
 async def validate_payment_token(token: str):

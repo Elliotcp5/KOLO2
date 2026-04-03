@@ -300,3 +300,94 @@ async def send_password_reset_email(to_email: str, user_name: str, reset_token: 
     
     html = get_password_reset_email_html(user_name, reset_link)
     return await send_email(to_email, subject, html)
+
+
+async def send_subscription_confirmation_email(
+    email: str, 
+    name: str, 
+    plan: str, 
+    is_trial: bool = False,
+    trial_end: Optional[datetime] = None,
+    locale: str = "fr"
+) -> dict:
+    """Send subscription/trial confirmation email"""
+    plan_display = "Pro+" if plan == "pro_plus" else "Pro"
+    
+    if locale == "fr":
+        if is_trial:
+            subject = f"🎉 Votre essai {plan_display} est activé !"
+            days_left = (trial_end - datetime.now(timezone.utc)).days if trial_end else 7
+            message = f"Bienvenue {name} ! Votre essai gratuit {plan_display} de {days_left} jours est maintenant actif."
+            features_title = f"Votre essai {plan_display} inclut :"
+        else:
+            subject = f"✅ Bienvenue dans KOLO {plan_display} !"
+            message = f"Merci {name} ! Votre abonnement {plan_display} est maintenant actif."
+            features_title = f"Votre abonnement {plan_display} inclut :"
+    else:
+        if is_trial:
+            subject = f"🎉 Your {plan_display} trial is active!"
+            days_left = (trial_end - datetime.now(timezone.utc)).days if trial_end else 7
+            message = f"Welcome {name}! Your {days_left}-day {plan_display} free trial is now active."
+            features_title = f"Your {plan_display} trial includes:"
+        else:
+            subject = f"✅ Welcome to KOLO {plan_display}!"
+            message = f"Thank you {name}! Your {plan_display} subscription is now active."
+            features_title = f"Your {plan_display} subscription includes:"
+    
+    if plan == "pro_plus":
+        features = [
+            "Prospects illimités" if locale == "fr" else "Unlimited prospects",
+            "Suggestions IA illimitées" if locale == "fr" else "Unlimited AI suggestions",
+            "SMS 1-clic IA" if locale == "fr" else "1-click AI SMS",
+            "Score de chaleur" if locale == "fr" else "Heat scores",
+            "Dashboard ROI" if locale == "fr" else "ROI Dashboard",
+            "Support prioritaire" if locale == "fr" else "Priority support"
+        ]
+    else:
+        features = [
+            "Prospects illimités" if locale == "fr" else "Unlimited prospects",
+            "Suggestions IA illimitées" if locale == "fr" else "Unlimited AI suggestions",
+            "SMS 1-clic IA" if locale == "fr" else "1-click AI SMS",
+            "Historique des interactions" if locale == "fr" else "Interaction history"
+        ]
+    
+    features_html = "".join([f"<li style='margin-bottom: 8px;'>✓ {f}</li>" for f in features])
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f7f7fa;">
+        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h1 style="color: #0E0B1E; font-size: 28px; margin: 0;">KOLO</h1>
+            </div>
+            
+            <h2 style="color: #0E0B1E; font-size: 22px; margin-bottom: 16px;">{subject.replace('🎉 ', '').replace('✅ ', '')}</h2>
+            
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+                {message}
+            </p>
+            
+            <div style="background: linear-gradient(135deg, rgba(0,74,173,0.1), rgba(203,108,230,0.1)); border-radius: 12px; padding: 24px; margin: 24px 0;">
+                <h3 style="color: #004AAD; margin: 0 0 16px 0; font-size: 16px;">{features_title}</h3>
+                <ul style="color: #374151; margin: 0; padding-left: 0; list-style: none; line-height: 1.8;">
+                    {features_html}
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin-top: 32px;">
+                <a href="https://app.kolo.io/app" style="display: inline-block; background: linear-gradient(135deg, #004AAD, #CB6CE6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 999px; font-weight: 600; font-size: 16px;">
+                    {"Accéder à KOLO" if locale == "fr" else "Open KOLO"}
+                </a>
+            </div>
+            
+            <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 32px;">
+                © 2026 KOLO.io LTD. {"Tous droits réservés." if locale == "fr" else "All rights reserved."}
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return await send_email(email, subject, html)
