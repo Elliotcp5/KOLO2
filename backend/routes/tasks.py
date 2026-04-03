@@ -23,14 +23,18 @@ async def list_tasks(request: Request, include_completed: bool = True):
     
     tasks = await db.tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(1000)
     
-    for task in tasks:
-        if task.get("prospect_id"):
-            prospect = await db.prospects.find_one(
-                {"prospect_id": task["prospect_id"]},
-                {"_id": 0, "full_name": 1, "phone": 1, "email": 1}
-            )
-            if prospect:
-                task["prospect"] = prospect
+    # Batch prospect lookup to avoid N+1 queries
+    prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
+    if prospect_ids:
+        prospects_cursor = await db.prospects.find(
+            {"prospect_id": {"$in": prospect_ids}},
+            {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1}
+        ).to_list(len(prospect_ids))
+        prospects_map = {p["prospect_id"]: p for p in prospects_cursor}
+        
+        for task in tasks:
+            if task.get("prospect_id") and task["prospect_id"] in prospects_map:
+                task["prospect"] = prospects_map[task["prospect_id"]]
     
     return {"tasks": tasks}
 
@@ -53,14 +57,18 @@ async def list_today_tasks(request: Request):
         ]
     }, {"_id": 0}).sort("due_date", 1).to_list(100)
     
-    for task in tasks:
-        if task.get("prospect_id"):
-            prospect = await db.prospects.find_one(
-                {"prospect_id": task["prospect_id"]},
-                {"_id": 0, "full_name": 1, "phone": 1, "email": 1}
-            )
-            if prospect:
-                task["prospect"] = prospect
+    # Batch prospect lookup to avoid N+1 queries
+    prospect_ids = list(set(t.get("prospect_id") for t in tasks if t.get("prospect_id")))
+    if prospect_ids:
+        prospects_cursor = await db.prospects.find(
+            {"prospect_id": {"$in": prospect_ids}},
+            {"_id": 0, "prospect_id": 1, "full_name": 1, "phone": 1, "email": 1}
+        ).to_list(len(prospect_ids))
+        prospects_map = {p["prospect_id"]: p for p in prospects_cursor}
+        
+        for task in tasks:
+            if task.get("prospect_id") and task["prospect_id"] in prospects_map:
+                task["prospect"] = prospects_map[task["prospect_id"]]
     
     return {"tasks": tasks}
 
