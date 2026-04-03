@@ -381,6 +381,7 @@ class RegisterRequest(BaseModel):
     full_name: str
     phone: str
     country_code: str = "+33"
+    plan: Optional[str] = None  # Optional: 'pro' or 'pro_plus' for trial
 
 class LoginRequest(BaseModel):
     email: str
@@ -2969,7 +2970,7 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
 @api_router.post("/auth/register")
 @limiter.limit("10/minute")
 async def register_free_trial(request: Request, register_data: RegisterRequest, response: Response):
-    """Register for free 14-day Pro trial without payment"""
+    """Register for free 14-day Pro/Pro+ trial without payment"""
     logger.info(f"Free trial registration attempt for: {register_data.email}")
     
     # SECURITY: Validate and sanitize email
@@ -2990,13 +2991,16 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     if not name or len(name) < 2:
         raise HTTPException(status_code=400, detail="Nom invalide (minimum 2 caractères)")
     
+    # Determine trial plan (default to 'pro' if not specified or invalid)
+    trial_plan = register_data.plan if register_data.plan in ['pro', 'pro_plus'] else 'pro'
+    
+    # Calculate trial end date (14 days from now)
+    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=14)
+    
     # Check if email already exists
     existing_user = await db.users.find_one({"email": email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Un compte existant utilise déjà cette adresse email")
-    
-    # Calculate trial end date (14 days from now)
-    trial_ends_at = datetime.now(timezone.utc) + timedelta(days=14)
     
     # Create Stripe customer for trial users
     stripe_customer_id = None
@@ -3011,7 +3015,7 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
             phone=phone,
             metadata={
                 "source": "kolo_registration",
-                "initial_plan": "pro",
+                "initial_plan": trial_plan,
                 "trial_status": "14_day_trial",
                 "trial_ends_at": trial_ends_at.isoformat()
             }
@@ -3031,8 +3035,8 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
         "phone": phone,
         "auth_provider": "email",
         "password_hash": hash_password(register_data.password),
-        "plan": "pro",  # Trial plan
-        "trial_plan": "pro",  # Active trial
+        "plan": trial_plan,  # Trial plan (pro or pro_plus)
+        "trial_plan": trial_plan,  # Active trial
         "trial_start_date": datetime.now(timezone.utc).isoformat(),
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends_at.isoformat(),
@@ -3043,12 +3047,12 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     
     await db.users.insert_one(user_doc)
     logger.info(f"MongoDB: User document inserted for {email}")
-    logger.info(f"Free trial account created for {register_data.email}, trial ends: {trial_ends_at}")
+    logger.info(f"Free trial account created for {register_data.email} with {trial_plan} plan, trial ends: {trial_ends_at}")
     
     # Send welcome email (background)
     import asyncio
     user_locale = register_data.locale if hasattr(register_data, 'locale') and register_data.locale else "fr"
-    asyncio.create_task(send_welcome_email_background(email, name, is_trial=True, trial_plan="pro", locale=user_locale))
+    asyncio.create_task(send_welcome_email_background(email, name, is_trial=True, trial_plan=trial_plan, locale=user_locale))
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"

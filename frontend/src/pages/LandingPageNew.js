@@ -513,7 +513,7 @@ const LandingPage = () => {
                 <li><span className="check-icon">✓</span> {locale === 'fr' ? "Historique des interactions" : "Interaction history"}</li>
                 <li><span className="check-icon">✓</span> {locale === 'fr' ? "Notes contextuelles" : "Contextual notes"}</li>
               </ul>
-              <button className="btn-primary full" onClick={() => navigate('/register')}>
+              <button className="btn-primary full" onClick={() => navigate('/register', { state: { plan: 'pro' } })}>
                 {t('startFreeMonth')} <ArrowRight size={18} />
               </button>
               <p className="pricing-micro">{t('pricingBadge')}</p>
@@ -533,7 +533,7 @@ const LandingPage = () => {
                 <li><span className="check-icon">📧</span> {locale === 'fr' ? "Rapport hebdo par email" : "Weekly email report"}</li>
                 <li><span className="check-icon">⭐</span> {locale === 'fr' ? "Support prioritaire" : "Priority support"}</li>
               </ul>
-              <button className="btn-secondary full" onClick={() => navigate('/register')}>
+              <button className="btn-secondary full" onClick={() => navigate('/register', { state: { plan: 'pro_plus' } })}>
                 {t('startFreeMonth')}
               </button>
             </div>

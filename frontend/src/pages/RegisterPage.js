@@ -9,11 +9,12 @@ import '../styles/landing.css';
 const RegisterPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { login } = useAuth();
   
-  // Get email from landing page if passed
+  // Get email and plan from landing page if passed
   const initialEmail = location.state?.email || '';
+  const selectedPlan = location.state?.plan || null; // 'pro' or 'pro_plus'
   
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -41,22 +42,32 @@ const RegisterPage = () => {
 
     try {
       const API_BASE = window.location.origin;
+      
+      // Build registration payload - include plan if selected from landing page
+      const registerPayload = { 
+        email: email.trim().toLowerCase(), 
+        password: password,
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        country_code: '+33'
+      };
+      
+      // Add plan to registration if user came from landing page with a plan selection
+      if (selectedPlan && (selectedPlan === 'pro' || selectedPlan === 'pro_plus')) {
+        registerPayload.plan = selectedPlan;
+      }
+      
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          password: password,
-          full_name: fullName.trim(),
-          phone: phone.trim(),
-          country_code: '+33'
-        })
+        body: JSON.stringify(registerPayload)
       });
       
       const data = await res.json();
       
       if (res.ok && data.token) {
         localStorage.setItem('kolo_token', data.token);
+        
         login({
           user_id: data.user_id,
           email: data.email,
@@ -64,7 +75,20 @@ const RegisterPage = () => {
           trial_ends_at: data.trial_ends_at,
           token: data.token
         });
-        toast.success(t('accountCreatedWelcome'));
+        
+        // Show appropriate welcome message based on plan
+        if (selectedPlan) {
+          const planLabel = selectedPlan === 'pro_plus' ? 'PRO+' : 'PRO';
+          toast.success(
+            locale === 'fr' ? `Bienvenue ! Votre essai ${planLabel} de 14 jours a commencé 🎉` :
+            locale === 'de' ? `Willkommen! Ihre 14-tägige ${planLabel}-Testversion hat begonnen 🎉` :
+            locale === 'it' ? `Benvenuto! La tua prova ${planLabel} di 14 giorni è iniziata 🎉` :
+            `Welcome! Your 14-day ${planLabel} trial has started 🎉`
+          );
+        } else {
+          toast.success(t('accountCreatedWelcome'));
+        }
+        
         window.location.href = '/app';
       } else {
         if (data.detail && data.detail.includes('existe')) {
@@ -79,6 +103,22 @@ const RegisterPage = () => {
       setError(t('serverError'));
       setLoading(false);
     }
+  };
+
+  // Determine badge text based on selected plan
+  const getBadgeText = () => {
+    if (selectedPlan === 'pro_plus') {
+      return locale === 'fr' ? '✨ Essai PRO+ gratuit 14 jours' :
+             locale === 'de' ? '✨ 14 Tage PRO+ kostenlos testen' :
+             locale === 'it' ? '✨ Prova PRO+ gratuita 14 giorni' :
+             '✨ 14-day PRO+ free trial';
+    } else if (selectedPlan === 'pro') {
+      return locale === 'fr' ? '✨ Essai PRO gratuit 14 jours' :
+             locale === 'de' ? '✨ 14 Tage PRO kostenlos testen' :
+             locale === 'it' ? '✨ Prova PRO gratuita 14 giorni' :
+             '✨ 14-day PRO free trial';
+    }
+    return t('freeTrialBadge');
   };
 
   return (
@@ -141,20 +181,24 @@ const RegisterPage = () => {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          background: 'linear-gradient(135deg, rgba(0, 74, 173, 0.08) 0%, rgba(203, 108, 230, 0.12) 100%)',
-          border: '1px solid rgba(0, 74, 173, 0.15)',
+          background: selectedPlan 
+            ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(147, 51, 234, 0.16) 100%)'
+            : 'linear-gradient(135deg, rgba(0, 74, 173, 0.08) 0%, rgba(203, 108, 230, 0.12) 100%)',
+          border: selectedPlan 
+            ? '1px solid rgba(79, 70, 229, 0.25)'
+            : '1px solid rgba(0, 74, 173, 0.15)',
           borderRadius: '999px',
           padding: '10px 20px',
           margin: '0 auto 24px',
           width: 'fit-content'
         }}>
-          <Sparkles size={16} style={{ color: 'var(--blue)' }} />
+          <Sparkles size={16} style={{ color: selectedPlan ? '#7C3AED' : 'var(--blue)' }} />
           <span style={{
             fontFamily: 'var(--font-body)',
             fontSize: '13px',
             fontWeight: '600',
-            color: 'var(--ink-mid)'
-          }}>{t('freeTrialBadge')}</span>
+            color: selectedPlan ? '#6D28D9' : 'var(--ink-mid)'
+          }}>{getBadgeText()}</span>
         </div>
 
         {/* Title */}
