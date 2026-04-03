@@ -210,6 +210,31 @@ export default function PricingPage() {
     setLoading(false);
   };
   
+  // Direct payment without trial
+  const handlePayNow = async (plan) => {
+    const token = localStorage.getItem('kolo_token');
+    
+    if (!token) {
+      navigate('/register');
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Go directly to Stripe checkout (skip trial)
+    const result = await upgradePlan(plan, billingPeriod, token);
+    if (result.success && result.checkout_url) {
+      window.location.href = result.checkout_url;
+    } else {
+      toast.error(
+        locale === 'fr' ? 'Erreur lors de la création du paiement' :
+        'Error creating payment session'
+      );
+    }
+    
+    setLoading(false);
+  };
+  
   const getPriceDisplay = (plan) => {
     if (plan === 'free') {
       // Use currency symbol based on selected currency
@@ -399,6 +424,8 @@ export default function PricingPage() {
             isCurrentPlan={currentPlan === 'pro'}
             isPopular={true}
             onSelect={() => handleSelectPlan('pro')}
+            onPayNow={() => handlePayNow('pro')}
+            showSkipTrial={currentPlan === 'free' && !isInTrial && !trialUsed}
             buttonText={getButtonText('pro')}
             isDark={isDark}
             locale={locale}
@@ -415,6 +442,8 @@ export default function PricingPage() {
             billingPeriod={billingPeriod}
             isCurrentPlan={currentPlan === 'pro_plus'}
             onSelect={() => handleSelectPlan('pro_plus')}
+            onPayNow={() => handlePayNow('pro_plus')}
+            showSkipTrial={currentPlan === 'free' && !isInTrial && !trialUsed}
             buttonText={getButtonText('pro_plus')}
             isDark={isDark}
             locale={locale}
@@ -450,7 +479,9 @@ function PlanCard({
   billingPeriod,
   isCurrentPlan, 
   isPopular,
-  onSelect, 
+  onSelect,
+  onPayNow,
+  showSkipTrial,
   buttonText,
   isDark,
   locale,
@@ -562,6 +593,30 @@ function PlanCard({
       >
         {loading ? '...' : buttonText}
       </button>
+      
+      {/* Skip trial link - only show when trial is available */}
+      {showSkipTrial && (
+        <p 
+          className="text-center mt-2"
+          style={{ fontSize: '12px', color: isDark ? '#6b7280' : '#9ca3af' }}
+        >
+          <span 
+            onClick={onPayNow}
+            style={{ 
+              cursor: 'pointer', 
+              textDecoration: 'underline',
+              opacity: 0.8
+            }}
+            onMouseOver={(e) => e.target.style.opacity = 1}
+            onMouseOut={(e) => e.target.style.opacity = 0.8}
+          >
+            {locale === 'fr' ? 'ou payer maintenant' :
+             locale === 'de' ? 'oder jetzt bezahlen' :
+             locale === 'it' ? 'o paga ora' :
+             'or pay now'}
+          </span>
+        </p>
+      )}
     </div>
   );
 }

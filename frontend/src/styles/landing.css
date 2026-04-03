@@ -341,6 +341,18 @@
   content: '';
 }
 
+.hero-skip-trial {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.hero-skip-trial span:hover {
+  opacity: 1 !important;
+  color: var(--blue);
+}
+
 /* ===== PHONE MOCKUPS ===== */
 .hero-phones {
   display: flex;

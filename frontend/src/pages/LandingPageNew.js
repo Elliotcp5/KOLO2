@@ -160,6 +160,21 @@ const LandingPage = () => {
             <span>✓ {t('noCreditCard')}</span>
             <span>✓ {t('cancelAnytime')}</span>
           </p>
+          <p className="hero-skip-trial">
+            <span 
+              onClick={() => navigate('/pricing')}
+              style={{ 
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                opacity: 0.7
+              }}
+            >
+              {locale === 'fr' ? 'Ou passer directement à l\'abonnement →' :
+               locale === 'de' ? 'Oder direkt zum Abo →' :
+               locale === 'it' ? 'O passa direttamente all\'abbonamento →' :
+               'Or subscribe directly →'}
+            </span>
+          </p>
 
           {/* Phone Mockups - Symmetrical */}
           <div className="hero-phones">
