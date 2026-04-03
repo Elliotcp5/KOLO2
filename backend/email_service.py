@@ -444,7 +444,7 @@ def get_password_reset_email_html(user_name: str, reset_link: str, locale: str =
 
 
 async def send_email(to_email: str, subject: str, html_content: str) -> dict:
-    """Send email via Resend API"""
+    """Send email via Resend API with anti-spam best practices"""
     import resend
     
     resend_api_key = os.environ.get("RESEND_API_KEY")
@@ -456,6 +456,20 @@ async def send_email(to_email: str, subject: str, html_content: str) -> dict:
     
     logger.info(f"Attempting to send email to {to_email}: {subject}")
     
+    # Add unsubscribe footer to HTML content (helps avoid spam)
+    unsubscribe_footer = """
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+        <p style="color: #9ca3af; font-size: 11px; margin: 0;">
+            KOLO.io LTD · Dublin, Ireland<br>
+            <a href="https://trykolo.io/unsubscribe?email={email}" style="color: #9ca3af; text-decoration: underline;">Se désabonner</a>
+        </p>
+    </div>
+    """.format(email=to_email)
+    
+    # Insert unsubscribe before closing body tag
+    if "</body>" in html_content:
+        html_content = html_content.replace("</body>", f"{unsubscribe_footer}</body>")
+    
     try:
         resend.api_key = resend_api_key
         
@@ -463,7 +477,14 @@ async def send_email(to_email: str, subject: str, html_content: str) -> dict:
             "from": f"KOLO <{sender_email}>",
             "to": [to_email],
             "subject": subject,
-            "html": html_content
+            "html": html_content,
+            "headers": {
+                "X-Entity-Ref-ID": f"kolo-{to_email}-{subject[:20]}",
+                "List-Unsubscribe": f"<https://trykolo.io/unsubscribe?email={to_email}>"
+            },
+            "tags": [
+                {"name": "category", "value": "transactional"}
+            ]
         }
         
         result = resend.Emails.send(params)
