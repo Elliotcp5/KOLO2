@@ -20,7 +20,8 @@ from email_service import (
     send_welcome_email, 
     send_trial_reminder_email, 
     send_trial_expired_email,
-    send_password_reset_email
+    send_password_reset_email,
+    send_subscription_confirmation_email
 )
 
 # ==================== SECURITY: Rate Limiting ====================
@@ -1153,11 +1154,22 @@ async def stripe_webhook(request: Request):
             email = session.metadata.get("email") or session.customer_email
             subscription_id = session.subscription
             customer_id = session.customer
+            locale = session.metadata.get("locale", "fr")
             
             if email and subscription_id:
                 # Get subscription details
                 sub = stripe.Subscription.retrieve(subscription_id)
                 trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
+                
+                # Determine plan from price
+                plan = "free"
+                if sub.items and sub.items.data:
+                    price = sub.items.data[0].price
+                    amount = price.unit_amount if price else 0
+                    if amount >= 2000:
+                        plan = "pro_plus"
+                    elif amount >= 500:
+                        plan = "pro"
                 
                 # Store payment success
                 token_doc = {
@@ -1166,6 +1178,7 @@ async def stripe_webhook(request: Request):
                     "subscription_id": subscription_id,
                     "customer_id": customer_id,
                     "status": sub.status,
+                    "plan": plan,
                     "trial_ends_at": trial_end.isoformat() if trial_end else None,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "token": f"pay_{uuid.uuid4().hex}",
@@ -1174,6 +1187,40 @@ async def stripe_webhook(request: Request):
                 }
                 await db.payment_success.insert_one(token_doc)
                 logger.info(f"Payment success recorded for {email}")
+                
+                # CRITICAL: Update user directly by email (not just by stripe_customer_id)
+                user_doc = await db.users.find_one({"email": email}, {"_id": 0})
+                if user_doc:
+                    update_data = {
+                        "stripe_customer_id": customer_id,
+                        "subscription_id": subscription_id,
+                        "subscription_status": sub.status,
+                        "plan": plan,
+                        "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    if sub.status == "trialing":
+                        update_data["trial_plan"] = plan
+                    
+                    await db.users.update_one({"email": email}, {"$set": update_data})
+                    logger.info(f"Updated user {email} to plan {plan} with status {sub.status}")
+                    
+                    # Send confirmation email
+                    try:
+                        user_name = user_doc.get("full_name", user_doc.get("name", "")).split(" ")[0] or "Client"
+                        await send_subscription_confirmation_email(
+                            email=email,
+                            name=user_name,
+                            plan=plan,
+                            is_trial=(sub.status == "trialing"),
+                            trial_end=trial_end,
+                            locale=locale
+                        )
+                        logger.info(f"Sent subscription confirmation email to {email}")
+                    except Exception as email_err:
+                        logger.error(f"Failed to send confirmation email to {email}: {email_err}")
+                else:
+                    logger.warning(f"User not found for email {email} during checkout completion")
         
         return {"status": "ok"}
     except Exception as e:
@@ -1232,7 +1279,6 @@ async def handle_subscription_update(sub):
             locale = user_doc.get("locale", "fr")
             
             if user_email and status in ["active", "trialing"]:
-                from email_service import send_subscription_confirmation_email
                 await send_subscription_confirmation_email(
                     email=user_email,
                     name=user_name,
