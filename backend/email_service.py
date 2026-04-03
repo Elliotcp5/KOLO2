@@ -256,49 +256,78 @@ async def send_email(to_email: str, subject: str, html_content: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
-async def send_welcome_email(to_email: str, user_name: str, is_trial: bool = False, trial_plan: str = "pro") -> dict:
+async def send_welcome_email(to_email: str, user_name: str, is_trial: bool = False, trial_plan: str = "pro", locale: str = "fr") -> dict:
     """Send welcome email to new user"""
     plan_name = "Pro+" if trial_plan == "pro_plus" else "Pro"
     
-    if is_trial:
-        subject = f"🎉 Bienvenue dans votre essai KOLO {plan_name}"
-    else:
-        subject = "🎉 Bienvenue sur KOLO !"
+    subjects = {
+        "fr": f"🎉 Bienvenue dans votre essai KOLO {plan_name}" if is_trial else "🎉 Bienvenue sur KOLO !",
+        "en": f"🎉 Welcome to your KOLO {plan_name} trial" if is_trial else "🎉 Welcome to KOLO!",
+        "de": f"🎉 Willkommen zu Ihrer KOLO {plan_name} Testphase" if is_trial else "🎉 Willkommen bei KOLO!",
+        "it": f"🎉 Benvenuto nella tua prova KOLO {plan_name}" if is_trial else "🎉 Benvenuto su KOLO!"
+    }
+    subject = subjects.get(locale, subjects["en"])
     
-    html = get_welcome_email_html(user_name, is_trial, trial_plan)
+    html = get_welcome_email_html(user_name, is_trial, trial_plan, locale)
     return await send_email(to_email, subject, html)
 
 
-async def send_trial_reminder_email(to_email: str, user_name: str, days_left: int, trial_plan: str = "pro") -> dict:
+async def send_trial_reminder_email(to_email: str, user_name: str, days_left: int, trial_plan: str = "pro", locale: str = "fr") -> dict:
     """Send trial reminder email"""
     plan_name = "Pro+" if trial_plan == "pro_plus" else "Pro"
     
-    if days_left == 7:
-        subject = f"⏰ Il vous reste 7 jours d'essai {plan_name}"
-    elif days_left == 2:
-        subject = f"⚠️ Plus que 2 jours pour profiter de KOLO {plan_name}"
+    if locale == "fr":
+        if days_left == 7:
+            subject = f"⏰ Il vous reste 7 jours d'essai {plan_name}"
+        elif days_left == 2:
+            subject = f"⚠️ Plus que 2 jours pour profiter de KOLO {plan_name}"
+        else:
+            subject = f"⏰ {days_left} jours restants sur votre essai {plan_name}"
+    elif locale == "de":
+        subject = f"⏰ Noch {days_left} Tage in Ihrer {plan_name} Testphase"
+    elif locale == "it":
+        subject = f"⏰ {days_left} giorni rimanenti nella tua prova {plan_name}"
     else:
-        subject = f"⏰ {days_left} jours restants sur votre essai {plan_name}"
+        if days_left == 7:
+            subject = f"⏰ 7 days left in your {plan_name} trial"
+        elif days_left == 2:
+            subject = f"⚠️ Only 2 days left to enjoy KOLO {plan_name}"
+        else:
+            subject = f"⏰ {days_left} days remaining in your {plan_name} trial"
     
-    html = get_trial_reminder_email_html(user_name, days_left, trial_plan)
+    html = get_trial_reminder_email_html(user_name, days_left, trial_plan, locale)
     return await send_email(to_email, subject, html)
 
 
-async def send_trial_expired_email(to_email: str, user_name: str, trial_plan: str = "pro") -> dict:
+async def send_trial_expired_email(to_email: str, user_name: str, trial_plan: str = "pro", locale: str = "fr") -> dict:
     """Send trial expiration email"""
     plan_name = "Pro+" if trial_plan == "pro_plus" else "Pro"
-    subject = f"Votre essai KOLO {plan_name} est terminé"
     
-    html = get_trial_expired_email_html(user_name, trial_plan)
+    subjects = {
+        "fr": f"Votre essai KOLO {plan_name} est terminé",
+        "en": f"Your KOLO {plan_name} trial has ended",
+        "de": f"Ihre KOLO {plan_name} Testphase ist beendet",
+        "it": f"La tua prova KOLO {plan_name} è terminata"
+    }
+    subject = subjects.get(locale, subjects["en"])
+    
+    html = get_trial_expired_email_html(user_name, trial_plan, locale)
     return await send_email(to_email, subject, html)
 
 
-async def send_password_reset_email(to_email: str, user_name: str, reset_token: str, base_url: str) -> dict:
+async def send_password_reset_email(to_email: str, user_name: str, reset_token: str, base_url: str, locale: str = "fr") -> dict:
     """Send password reset email"""
     reset_link = f"{base_url}/reset-password?token={reset_token}"
-    subject = "🔐 Réinitialiser votre mot de passe KOLO"
     
-    html = get_password_reset_email_html(user_name, reset_link)
+    subjects = {
+        "fr": "🔐 Réinitialiser votre mot de passe KOLO",
+        "en": "🔐 Reset your KOLO password",
+        "de": "🔐 Setzen Sie Ihr KOLO-Passwort zurück",
+        "it": "🔐 Reimposta la tua password KOLO"
+    }
+    subject = subjects.get(locale, subjects["en"])
+    
+    html = get_password_reset_email_html(user_name, reset_link, locale)
     return await send_email(to_email, subject, html)
 
 
