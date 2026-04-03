@@ -59,7 +59,8 @@ const LABELS = {
     phonePlaceholder: '+33 6 12 34 56 78',
     emailPlaceholder: 'email@example.com',
     contactsPermissionDenied: 'Contacts permission denied',
-    noContactSelected: 'No contact selected'
+    noContactSelected: 'No contact selected',
+    webContactsNotSupported: 'Feature exclusively available on the KOLO app on the App Store'
   },
   fr: {
     chooseMethod: 'Ajouter un prospect',
@@ -93,7 +94,8 @@ const LABELS = {
     phonePlaceholder: '+33 6 12 34 56 78',
     emailPlaceholder: 'email@exemple.com',
     contactsPermissionDenied: 'Permission contacts refusée',
-    noContactSelected: 'Aucun contact sélectionné'
+    noContactSelected: 'Aucun contact sélectionné',
+    webContactsNotSupported: 'Fonctionnalité exclusivement disponible sur l\'application KOLO dans l\'App Store'
   },
   de: {
     chooseMethod: 'Interessent hinzufügen',
@@ -127,7 +129,8 @@ const LABELS = {
     phonePlaceholder: '+49 170 1234567',
     emailPlaceholder: 'email@beispiel.de',
     contactsPermissionDenied: 'Kontaktberechtigung verweigert',
-    noContactSelected: 'Kein Kontakt ausgewählt'
+    noContactSelected: 'Kein Kontakt ausgewählt',
+    webContactsNotSupported: 'Funktion exklusiv in der KOLO App im App Store verfügbar'
   },
   it: {
     chooseMethod: 'Aggiungi un potenziale cliente',
@@ -161,7 +164,8 @@ const LABELS = {
     phonePlaceholder: '+39 320 1234567',
     emailPlaceholder: 'email@esempio.it',
     contactsPermissionDenied: 'Permesso contatti negato',
-    noContactSelected: 'Nessun contatto selezionato'
+    noContactSelected: 'Nessun contatto selezionato',
+    webContactsNotSupported: 'Funzionalità disponibile esclusivamente nell\'app KOLO sull\'App Store'
   }
 };
 
@@ -236,8 +240,10 @@ export function AddProspectSheet({
   // Import from contacts handler
   const handleImportContacts = async () => {
     if (!isNative) {
-      // On web, just go to manual entry
-      setStep(1);
+      // On web, show error message and don't proceed
+      toast.error(labels.webContactsNotSupported, {
+        duration: 4000
+      });
       return;
     }
     
@@ -273,8 +279,7 @@ export function AddProspectSheet({
       }
     } catch (err) {
       console.error('Contact import error:', err);
-      // Fall back to manual entry
-      setStep(1);
+      toast.error(labels.webContactsNotSupported);
     }
   };
   
@@ -339,7 +344,7 @@ export function AddProspectSheet({
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('session_token');
+      const token = localStorage.getItem('kolo_token');
       
       const response = await fetch(`${API_URL}/api/prospects`, {
         method: 'POST',

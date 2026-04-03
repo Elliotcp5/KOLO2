@@ -129,19 +129,22 @@ export function BudgetSlider({
     return ((value - config.min) / (config.max - config.min)) * 100;
   };
   
-  const getValueFromPercentage = (percentage) => {
+  const getValueFromPercentage = useCallback((percentage) => {
     const rawValue = (percentage / 100) * (config.max - config.min) + config.min;
     return Math.round(rawValue / config.step) * config.step;
-  };
+  }, [config.max, config.min, config.step]);
   
   const handleMouseDown = (thumb) => (e) => {
     if (disabled || budgetUndefined) return;
     e.preventDefault();
+    e.stopPropagation();
     setDragging(thumb);
   };
   
   const handleMouseMove = useCallback((e) => {
     if (!dragging || !sliderRef.current || disabled || budgetUndefined) return;
+    
+    e.preventDefault();
     
     const rect = sliderRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -160,7 +163,7 @@ export function BudgetSlider({
       // Single value mode
       setLocalSingle(Math.max(config.min, Math.min(config.max, value)));
     }
-  }, [dragging, localMin, localMax, config, disabled, budgetUndefined]);
+  }, [dragging, localMin, localMax, config, disabled, budgetUndefined, getValueFromPercentage]);
   
   const handleMouseUp = useCallback(() => {
     if (dragging && onChange) {
@@ -175,16 +178,19 @@ export function BudgetSlider({
   
   useEffect(() => {
     if (dragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleMouseMove);
-      window.addEventListener('touchend', handleMouseUp);
+      const handleMove = (e) => handleMouseMove(e);
+      const handleUp = () => handleMouseUp();
+      
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleUp);
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleUp);
       
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-        window.removeEventListener('touchmove', handleMouseMove);
-        window.removeEventListener('touchend', handleMouseUp);
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleUp);
+        window.removeEventListener('touchmove', handleMove);
+        window.removeEventListener('touchend', handleUp);
       };
     }
   }, [dragging, handleMouseMove, handleMouseUp]);

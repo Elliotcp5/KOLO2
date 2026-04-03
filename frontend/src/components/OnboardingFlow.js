@@ -85,10 +85,10 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   const t = content[locale] || content.fr;
   const totalSteps = 5;
 
-  // Animation on step change
+  // Animation on step change - smoother transition
   useEffect(() => {
     setAnimatingIn(true);
-    const timer = setTimeout(() => setAnimatingIn(false), 300);
+    const timer = setTimeout(() => setAnimatingIn(false), 500);
     return () => clearTimeout(timer);
   }, [step]);
 
@@ -219,8 +219,8 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
     margin: '0 auto',
     width: '100%',
     opacity: animatingIn ? 0 : 1,
-    transform: animatingIn ? 'translateY(20px)' : 'translateY(0)',
-    transition: 'all 0.3s ease'
+    transform: animatingIn ? 'translateY(15px) scale(0.98)' : 'translateY(0) scale(1)',
+    transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
   };
 
   // Progress indicator
