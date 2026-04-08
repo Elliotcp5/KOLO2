@@ -9,6 +9,9 @@ workflows:
       vars:
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: io.kolo.app
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
@@ -20,10 +23,6 @@ workflows:
         script: npx cap init KOLO io.kolo.app --web-dir build || true
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Write API key
-        script: |
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/AuthKey.p8
-          chmod 600 /tmp/AuthKey.p8
       - name: Build iOS
         script: |
           cd ios/App
@@ -33,14 +32,8 @@ workflows:
             -configuration Release \
             -archivePath $CM_BUILD_DIR/App.xcarchive \
             -destination "generic/platform=iOS" \
-            DEVELOPMENT_TEAM=2XRB82J4W9 \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="KOLO App Store" \
             archive \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath /tmp/AuthKey.p8 \
-            -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+            -allowProvisioningUpdates
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
