@@ -25,11 +25,15 @@ workflows:
           npx cap add ios
       - name: Sync Capacitor
         script: npx cap sync ios
+      - name: Install Pods
+        script: |
+          cd ios/App
+          pod install
       - name: Build iOS
         script: |
           cd ios/App
-          pod install || true
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild \
+            -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -archivePath $CM_BUILD_DIR/App.xcarchive \
