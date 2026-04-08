@@ -5,6 +5,8 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      groups:
+        - Apple
       vars:
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
