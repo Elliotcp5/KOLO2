@@ -5,6 +5,9 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      vars:
+        BUNDLE_ID: "io.kolo.app"
+        APP_STORE_APPLE_ID: "6761818371"
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
@@ -13,7 +16,7 @@ workflows:
       - name: Build web app
         script: CI=false npm run build
       - name: Init Capacitor
-        script: npx cap init KOLO com.kolo.app --web-dir build || true
+        script: npx cap init KOLO io.kolo.app --web-dir build || true
       - name: Add iOS platform
         script: |
           rm -rf ios
@@ -24,6 +27,23 @@ workflows:
         script: |
           cd ios/App
           pod install || true
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release -archivePath build/App.xcarchive archive CODE_SIGNING_ALLOWED=NO
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/App.xcarchive \
+            archive \
+            -allowProvisioningUpdates
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/App.xcarchive \
+            -exportOptionsPlist /tmp/ExportOptions.plist \
+            -exportPath $CM_BUILD_DIR/export \
+            -allowProvisioningUpdates
     artifacts:
-      - ios/App/build/**/*
+      - $CM_BUILD_DIR/export/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
