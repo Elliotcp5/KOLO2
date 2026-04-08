@@ -4,7 +4,6 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      cocoapods: default
       groups:
         - Apple
       vars:
@@ -19,29 +18,13 @@ workflows:
         script: CI=false npm run build
       - name: Init Capacitor
         script: npx cap init KOLO io.kolo.app --web-dir build || true
-      - name: Add iOS platform
-        script: |
-          rm -rf ios
-          npx cap add ios
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Debug structure
-        script: |
-          echo "=== ROOT ==="
-          ls -la
-          echo "=== IOS ==="
-          ls -la ios || echo "NO IOS FOLDER"
-          echo "=== IOS/APP ==="
-          ls -la ios/App || echo "NO IOS/APP FOLDER"
-      - name: Install Pods
-        script: |
-          cd ios/App
-          pod install
       - name: Build iOS
         script: |
           cd ios/App
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath $CM_BUILD_DIR/App.xcarchive \
