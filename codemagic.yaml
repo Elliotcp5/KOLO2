@@ -28,8 +28,14 @@ workflows:
             -scheme App \
             -configuration Release \
             -archivePath $CM_BUILD_DIR/App.xcarchive \
+            -destination "generic/platform=iOS" \
+            DEVELOPMENT_TEAM=2XRB82J4W9 \
+            CODE_SIGN_STYLE=Automatic \
             archive \
-            -allowProvisioningUpdates
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
