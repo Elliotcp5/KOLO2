@@ -2,55 +2,37 @@ workflows:
   ios-workflow:
     name: iOS Build
     max_build_duration: 60
-    instance_type: mac_mini_m1
-    
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: io.kolo.app
+      xcode: latest
+      cocoapods: default
       vars:
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
-      node: 18
-      xcode: latest
-      cocoapods: default
-
     scripts:
       - name: Install dependencies
-        script: |
-          cd frontend
-          npm install
-          
+        script: npm install --legacy-peer-deps
+      - name: Install Capacitor
+        script: npm install @capacitor/cli @capacitor/core @capacitor/ios --legacy-peer-deps
+      - name: Build web app
+        script: CI=false npm run build
       - name: Init Capacitor
+        script: npx cap init KOLO io.kolo.app --web-dir build || true
+      - name: Add iOS platform
         script: |
-          cd frontend
-          npx cap init KOLO io.kolo.app --web-dir build || true
-          
-      - name: Build React app
-        script: |
-          cd frontend
-          npm run build
-          
+          rm -rf ios
+          npx cap add ios
       - name: Sync Capacitor
-        script: |
-          cd frontend
-          npx cap sync ios
-          
-      - name: Install CocoaPods
-        script: |
-          cd frontend/ios/App
-          pod install
-          
+        script: npx cap sync ios
       - name: Build iOS
         script: |
-          cd frontend/ios/App
+          cd ios/App
+          pod install || true
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -archivePath $CM_BUILD_DIR/App.xcarchive \
             archive \
             -allowProvisioningUpdates
-            
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
@@ -58,10 +40,8 @@ workflows:
             -exportOptionsPlist /tmp/ExportOptions.plist \
             -exportPath $CM_BUILD_DIR/export \
             -allowProvisioningUpdates
-
     artifacts:
       - $CM_BUILD_DIR/export/*.ipa
-
     publishing:
       app_store_connect:
         auth: integration
