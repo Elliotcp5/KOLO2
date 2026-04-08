@@ -242,10 +242,23 @@ export default function PricingPage() {
       return { monthly: freeDisplay, annual: freeDisplay, annualMonthly: freeDisplay };
     }
     
+    // Fallback pricing data for each currency
+    const fallbackPricing = {
+      pro: {
+        EUR: { monthly: '9,99€', annual: '99,90€', annualMonthly: '8,33€' },
+        USD: { monthly: '$10.99', annual: '$109.90', annualMonthly: '$9.16' },
+        GBP: { monthly: '£8.99', annual: '£89.90', annualMonthly: '£7.49' },
+      },
+      pro_plus: {
+        EUR: { monthly: '24,99€', annual: '249,90€', annualMonthly: '20,83€' },
+        USD: { monthly: '$27.99', annual: '$279.90', annualMonthly: '$23.33' },
+        GBP: { monthly: '£21.99', annual: '£219.90', annualMonthly: '£18.33' },
+      }
+    };
+    
     if (!pricing?.plans?.[plan]) {
-      return plan === 'pro' 
-        ? { monthly: '9,99€', annual: '99,90€', annualMonthly: '8,33€' }
-        : { monthly: '24,99€', annual: '249,90€', annualMonthly: '20,83€' };
+      const fallback = fallbackPricing[plan]?.[currency] || fallbackPricing[plan]?.EUR;
+      return fallback || { monthly: '-', annual: '-', annualMonthly: '-' };
     }
     
     const p = pricing.plans[plan];

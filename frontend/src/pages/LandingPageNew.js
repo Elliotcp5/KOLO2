@@ -11,6 +11,26 @@ const LANGUAGES = [
   { code: 'it', label: 'IT' },
 ];
 
+const CURRENCIES = [
+  { code: 'EUR', symbol: '€', label: 'EUR' },
+  { code: 'USD', symbol: '$', label: 'USD' },
+  { code: 'GBP', symbol: '£', label: 'GBP' },
+];
+
+// Pricing data for landing page
+const LANDING_PRICING = {
+  pro: {
+    EUR: { monthly: '9,99€', symbol: '€' },
+    USD: { monthly: '$10.99', symbol: '$' },
+    GBP: { monthly: '£8.99', symbol: '£' },
+  },
+  pro_plus: {
+    EUR: { monthly: '24,99€', symbol: '€' },
+    USD: { monthly: '$27.99', symbol: '$' },
+    GBP: { monthly: '£21.99', symbol: '£' },
+  }
+};
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { locale, changeLanguage, t } = useLocale();
@@ -20,6 +40,8 @@ const LandingPage = () => {
   const [showToast, setShowToast] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
+  const [currency, setCurrency] = useState('EUR');
+  const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,11 +119,73 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
+          {/* Currency selector - discreet */}
+          <div className="currency-selector" style={{ position: 'relative' }}>
+            <button 
+              className="currency-btn"
+              onClick={() => { setShowCurrencyMenu(!showCurrencyMenu); setShowLangMenu(false); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#6b7280',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.2s'
+              }}
+            >
+              {CURRENCIES.find(c => c.code === currency)?.symbol || '€'}
+              <ChevronDown size={12} />
+            </button>
+            {showCurrencyMenu && (
+              <div className="currency-menu" style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '4px',
+                background: '#1a1a24',
+                borderRadius: '8px',
+                padding: '4px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                zIndex: 100,
+                minWidth: '70px'
+              }}>
+                {CURRENCIES.map(curr => (
+                  <button
+                    key={curr.code}
+                    onClick={() => { setCurrency(curr.code); setShowCurrencyMenu(false); }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: currency === curr.code ? 'rgba(108, 99, 255, 0.2)' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: currency === curr.code ? '#6C63FF' : '#a0a4ae',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {curr.symbol} {curr.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
           {/* Language selector */}
           <div className="lang-selector">
             <button 
               className="lang-btn"
-              onClick={() => setShowLangMenu(!showLangMenu)}
+              onClick={() => { setShowLangMenu(!showLangMenu); setShowCurrencyMenu(false); }}
             >
               <span className="lang-full">{currentLang.label}</span>
               <span className="lang-short">{locale.toUpperCase()}</span>
@@ -485,7 +569,7 @@ const LandingPage = () => {
             <div className="pricing-card pricing-starter reveal-scale stagger-1">
               <div className="plan-name">STARTER</div>
               <div className="price-row">
-                <span className="price-amount">0€</span>
+                <span className="price-amount">{currency === 'EUR' ? '0€' : currency === 'USD' ? '$0' : '£0'}</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
@@ -503,7 +587,7 @@ const LandingPage = () => {
               <div className="popular-badge">{locale === 'fr' ? 'Populaire' : 'Popular'}</div>
               <div className="plan-name">PRO</div>
               <div className="price-row">
-                <span className="price-amount">{locale === 'fr' ? '9,99€' : '€9.99'}</span>
+                <span className="price-amount">{LANDING_PRICING.pro[currency]?.monthly || '9,99€'}</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
@@ -523,7 +607,7 @@ const LandingPage = () => {
             <div className="pricing-card pricing-proplus reveal-scale stagger-3">
               <div className="plan-name">PRO+</div>
               <div className="price-row">
-                <span className="price-amount">{locale === 'fr' ? '24,99€' : '€24.99'}</span>
+                <span className="price-amount">{LANDING_PRICING.pro_plus[currency]?.monthly || '24,99€'}</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
