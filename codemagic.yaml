@@ -23,10 +23,6 @@ workflows:
         script: npx cap init KOLO io.kolo.app --web-dir build || true
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Set build number
-        script: |
-          cd ios/App
-          agvtool new-version -all $BUILD_NUMBER
       - name: Build iOS
         script: |
           cd ios/App
