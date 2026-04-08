@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.kolo.app',
+  appId: 'io.kolo.app',
   appName: 'KOLO',
   webDir: 'build',
   server: {

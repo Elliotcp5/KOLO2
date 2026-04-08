@@ -1,0 +1,69 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: io.kolo.app
+      vars:
+        BUNDLE_ID: "io.kolo.app"
+        APP_STORE_APPLE_ID: "6761818371"
+      node: 18
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd frontend
+          npm install
+          
+      - name: Init Capacitor
+        script: |
+          cd frontend
+          npx cap init KOLO io.kolo.app --web-dir build || true
+          
+      - name: Build React app
+        script: |
+          cd frontend
+          npm run build
+          
+      - name: Sync Capacitor
+        script: |
+          cd frontend
+          npx cap sync ios
+          
+      - name: Install CocoaPods
+        script: |
+          cd frontend/ios/App
+          pod install
+          
+      - name: Build iOS
+        script: |
+          cd frontend/ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/App.xcarchive \
+            archive \
+            -allowProvisioningUpdates
+            
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/App.xcarchive \
+            -exportOptionsPlist /tmp/ExportOptions.plist \
+            -exportPath $CM_BUILD_DIR/export \
+            -allowProvisioningUpdates
+
+    artifacts:
+      - $CM_BUILD_DIR/export/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
