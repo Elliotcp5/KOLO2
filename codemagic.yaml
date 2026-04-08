@@ -34,7 +34,6 @@ workflows:
             -destination "generic/platform=iOS" \
             DEVELOPMENT_TEAM=2XRB82J4W9 \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
             archive \
             -allowProvisioningUpdates \
             -authenticationKeyPath /tmp/AuthKey.p8 \
