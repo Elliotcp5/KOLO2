@@ -20,9 +20,6 @@ workflows:
         script: npx cap init KOLO io.kolo.app --web-dir build || true
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Write API key
-        script: |
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/AuthKey.p8
       - name: Build iOS
         script: |
           cd ios/App
@@ -34,11 +31,16 @@ workflows:
             -destination "generic/platform=iOS" \
             DEVELOPMENT_TEAM=2XRB82J4W9 \
             CODE_SIGN_STYLE=Automatic \
+            OTHER_CODE_SIGN_FLAGS="--keychain /Library/Keychains/System.keychain" \
             archive \
             -allowProvisioningUpdates \
+            -allowProvisioningDeviceRegistration \
             -authenticationKeyPath /tmp/AuthKey.p8 \
             -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+      - name: Write API key
+        script: |
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/AuthKey.p8
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
