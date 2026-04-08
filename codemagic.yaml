@@ -25,6 +25,14 @@ workflows:
           npx cap add ios
       - name: Sync Capacitor
         script: npx cap sync ios
+      - name: Debug structure
+        script: |
+          echo "=== ROOT ==="
+          ls -la
+          echo "=== IOS ==="
+          ls -la ios || echo "NO IOS FOLDER"
+          echo "=== IOS/APP ==="
+          ls -la ios/App || echo "NO IOS/APP FOLDER"
       - name: Install Pods
         script: |
           cd ios/App
