@@ -19,10 +19,8 @@ workflows:
         script: npm install @capacitor/cli @capacitor/core @capacitor/ios --legacy-peer-deps
       - name: Build web app
         script: CI=false npm run build
-      - name: Init Capacitor
-        script: npx cap init KOLO io.kolo.app --web-dir build || true
-      - name: Sync Capacitor
-        script: npx cap sync ios
+      - name: Copy web assets
+        script: npx cap copy ios
       - name: Set build number
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 3" ios/App/App/Info.plist
