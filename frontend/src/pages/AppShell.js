@@ -48,6 +48,7 @@ const UI_LABELS = {
     goodAfternoon: 'Bon après-midi !',
     goodEvening: 'Bonsoir !',
     taskCreated: 'Tâche créée !',
+    taskAdded: 'Tâche ajoutée !',
     error: 'Erreur',
     generationError: 'Erreur de génération',
     smsSent: 'SMS envoyé !',
@@ -60,13 +61,48 @@ const UI_LABELS = {
     followUp: 'Suivi',
     newTask: 'Nouvelle tâche',
     createTask: 'Créer la tâche',
-    taskTitle: 'Titre de la tâche',
+    taskTitle: 'Titre *',
+    taskTitlePlaceholder: 'Ex: Appeler pour suivi',
     taskDescription: 'Description (optionnel)',
     taskType: 'Type de tâche',
-    dueDate: 'Date d\'échéance',
+    dueDate: 'Date *',
+    dueTime: 'Heure (optionnel)',
     prospect: 'Prospect',
     noProspect: 'Aucun prospect',
-    address: 'Adresse (optionnel)'
+    address: 'Adresse (optionnel)',
+    addressPlaceholder: 'Ex: 123 Rue de Paris',
+    upToDate: 'À jour',
+    allProspectsWellFollowed: 'Tous vos prospects sont bien suivis !',
+    add: 'Ajouter',
+    hide: 'Masquer',
+    other: 'Autre',
+    others: 'autres',
+    trialEnded: 'Essai terminé',
+    trialEndedDesc: 'Votre essai est terminé. Souscrivez pour continuer.',
+    subscribeNow: "S'abonner maintenant",
+    noTasks: 'Aucune tâche',
+    createFirstTask: 'Créez votre première tâche',
+    doneExclamation: 'Fait !',
+    overdue: 'En retard',
+    followUpNow: 'Relancer maintenant',
+    at: 'à',
+    contact: 'Contact',
+    generateAiFollowUp: 'Générer une relance IA',
+    generating: 'Génération...',
+    aiSuggestedMessage: 'Message suggéré par l\'IA',
+    cancel: 'Annuler',
+    send: 'Envoyer',
+    viewProspectDetails: 'Voir la fiche prospect',
+    writingPerfectMessage: 'Rédaction du message parfait',
+    regenerate: 'Régénérer',
+    linkToProspect: 'Lier à un prospect (optionnel)',
+    selectProspect: '-- Sélectionner un prospect --',
+    selectAProspect: 'Sélectionner un prospect',
+    noProspectAvailable: 'Aucun prospect disponible',
+    manual: 'Manuel',
+    network: 'Réseau',
+    referral: 'Recommandation',
+    noSuggestion: 'Aucune suggestion pour ce prospect'
   },
   en: {
     myProfile: 'My profile',
@@ -85,6 +121,7 @@ const UI_LABELS = {
     goodAfternoon: 'Good afternoon!',
     goodEvening: 'Good evening!',
     taskCreated: 'Task created!',
+    taskAdded: 'Task added!',
     error: 'Error',
     generationError: 'Generation error',
     smsSent: 'SMS sent!',
@@ -97,13 +134,48 @@ const UI_LABELS = {
     followUp: 'Follow-up',
     newTask: 'New task',
     createTask: 'Create task',
-    taskTitle: 'Task title',
+    taskTitle: 'Title *',
+    taskTitlePlaceholder: 'Ex: Call for follow-up',
     taskDescription: 'Description (optional)',
     taskType: 'Task type',
-    dueDate: 'Due date',
+    dueDate: 'Date *',
+    dueTime: 'Time (optional)',
     prospect: 'Prospect',
     noProspect: 'No prospect',
-    address: 'Address (optional)'
+    address: 'Address (optional)',
+    addressPlaceholder: 'Ex: 123 Main Street',
+    upToDate: 'Up to date',
+    allProspectsWellFollowed: 'All your prospects are well followed!',
+    add: 'Add',
+    hide: 'Hide',
+    other: 'Other',
+    others: 'more',
+    trialEnded: 'Trial ended',
+    trialEndedDesc: 'Your trial has ended. Subscribe to continue.',
+    subscribeNow: 'Subscribe now',
+    noTasks: 'No tasks',
+    createFirstTask: 'Create your first task',
+    doneExclamation: 'Done!',
+    overdue: 'Overdue',
+    followUpNow: 'Follow up now',
+    at: 'at',
+    contact: 'Contact',
+    generateAiFollowUp: 'Generate AI follow-up',
+    generating: 'Generating...',
+    aiSuggestedMessage: 'AI suggested message',
+    cancel: 'Cancel',
+    send: 'Send',
+    viewProspectDetails: 'View prospect details',
+    writingPerfectMessage: 'Writing the perfect message',
+    regenerate: 'Regenerate',
+    linkToProspect: 'Link to prospect (optional)',
+    selectProspect: '-- Select a prospect --',
+    selectAProspect: 'Select a prospect',
+    noProspectAvailable: 'No prospects available',
+    manual: 'Manual',
+    network: 'Network',
+    referral: 'Referral',
+    noSuggestion: 'No suggestion for this prospect'
   },
   de: {
     myProfile: 'Mein Profil',
@@ -122,6 +194,7 @@ const UI_LABELS = {
     goodAfternoon: 'Guten Nachmittag!',
     goodEvening: 'Guten Abend!',
     taskCreated: 'Aufgabe erstellt!',
+    taskAdded: 'Aufgabe hinzugefügt!',
     error: 'Fehler',
     generationError: 'Generierungsfehler',
     smsSent: 'SMS gesendet!',
@@ -134,13 +207,48 @@ const UI_LABELS = {
     followUp: 'Nachverfolgung',
     newTask: 'Neue Aufgabe',
     createTask: 'Aufgabe erstellen',
-    taskTitle: 'Aufgabentitel',
+    taskTitle: 'Titel *',
+    taskTitlePlaceholder: 'z.B.: Anruf zur Nachverfolgung',
     taskDescription: 'Beschreibung (optional)',
     taskType: 'Aufgabentyp',
-    dueDate: 'Fälligkeitsdatum',
+    dueDate: 'Datum *',
+    dueTime: 'Uhrzeit (optional)',
     prospect: 'Interessent',
     noProspect: 'Kein Interessent',
-    address: 'Adresse (optional)'
+    address: 'Adresse (optional)',
+    addressPlaceholder: 'z.B.: Hauptstraße 123',
+    upToDate: 'Aktuell',
+    allProspectsWellFollowed: 'Alle Interessenten werden gut betreut!',
+    add: 'Hinzufügen',
+    hide: 'Ausblenden',
+    other: 'Andere',
+    others: 'weitere',
+    trialEnded: 'Testphase beendet',
+    trialEndedDesc: 'Ihre Testphase ist beendet. Abonnieren Sie, um fortzufahren.',
+    subscribeNow: 'Jetzt abonnieren',
+    noTasks: 'Keine Aufgaben',
+    createFirstTask: 'Erstellen Sie Ihre erste Aufgabe',
+    doneExclamation: 'Erledigt!',
+    overdue: 'Überfällig',
+    followUpNow: 'Jetzt nachfassen',
+    at: 'um',
+    contact: 'Kontakt',
+    generateAiFollowUp: 'KI-Nachverfolgung generieren',
+    generating: 'Generiere...',
+    aiSuggestedMessage: 'KI-vorgeschlagene Nachricht',
+    cancel: 'Abbrechen',
+    send: 'Senden',
+    viewProspectDetails: 'Interessent-Details anzeigen',
+    writingPerfectMessage: 'Perfekte Nachricht wird verfasst',
+    regenerate: 'Neu generieren',
+    linkToProspect: 'Mit Interessent verknüpfen (optional)',
+    selectProspect: '-- Interessent auswählen --',
+    selectAProspect: 'Interessent auswählen',
+    noProspectAvailable: 'Keine Interessenten verfügbar',
+    manual: 'Manuell',
+    network: 'Netzwerk',
+    referral: 'Empfehlung',
+    noSuggestion: 'Kein Vorschlag für diesen Interessenten'
   },
   it: {
     myProfile: 'Il mio profilo',
@@ -159,6 +267,7 @@ const UI_LABELS = {
     goodAfternoon: 'Buon pomeriggio!',
     goodEvening: 'Buonasera!',
     taskCreated: 'Attività creata!',
+    taskAdded: 'Attività aggiunta!',
     error: 'Errore',
     generationError: 'Errore di generazione',
     smsSent: 'SMS inviato!',
@@ -171,13 +280,48 @@ const UI_LABELS = {
     followUp: 'Follow-up',
     newTask: 'Nuova attività',
     createTask: 'Crea attività',
-    taskTitle: 'Titolo attività',
+    taskTitle: 'Titolo *',
+    taskTitlePlaceholder: 'Es: Chiamare per follow-up',
     taskDescription: 'Descrizione (opzionale)',
     taskType: 'Tipo di attività',
-    dueDate: 'Data di scadenza',
+    dueDate: 'Data *',
+    dueTime: 'Ora (opzionale)',
     prospect: 'Prospect',
     noProspect: 'Nessun prospect',
-    address: 'Indirizzo (opzionale)'
+    address: 'Indirizzo (opzionale)',
+    addressPlaceholder: 'Es: Via Roma 123',
+    upToDate: 'Aggiornato',
+    allProspectsWellFollowed: 'Tutti i prospect sono ben seguiti!',
+    add: 'Aggiungi',
+    hide: 'Nascondi',
+    other: 'Altro',
+    others: 'altri',
+    trialEnded: 'Prova terminata',
+    trialEndedDesc: 'La tua prova è terminata. Abbonati per continuare.',
+    subscribeNow: 'Abbonati ora',
+    noTasks: 'Nessuna attività',
+    createFirstTask: 'Crea la tua prima attività',
+    doneExclamation: 'Fatto!',
+    overdue: 'In ritardo',
+    followUpNow: 'Ricontatta ora',
+    at: 'alle',
+    contact: 'Contatto',
+    generateAiFollowUp: 'Genera follow-up IA',
+    generating: 'Generazione...',
+    aiSuggestedMessage: 'Messaggio suggerito dall\'IA',
+    cancel: 'Annulla',
+    send: 'Invia',
+    viewProspectDetails: 'Vedi dettagli prospect',
+    writingPerfectMessage: 'Scrittura del messaggio perfetto',
+    regenerate: 'Rigenera',
+    linkToProspect: 'Collega a un prospect (opzionale)',
+    selectProspect: '-- Seleziona un prospect --',
+    selectAProspect: 'Seleziona un prospect',
+    noProspectAvailable: 'Nessun prospect disponibile',
+    manual: 'Manuale',
+    network: 'Rete',
+    referral: 'Referenza',
+    noSuggestion: 'Nessun suggerimento per questo prospect'
   }
 };
 
@@ -846,7 +990,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
-          {stats.totalToday - stats.completedToday} {locale === 'fr' ? 'tâches en retard à traiter' : 'overdue tasks to handle'}
+          {stats.totalToday - stats.completedToday} {labels.overdueTasks}
         </div>
       )}
 
@@ -870,7 +1014,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           }}
           data-testid="segment-today"
         >
-          {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+          {labels.today}
         </button>
         <button
           onClick={() => setViewMode('all')}
@@ -1008,10 +1152,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               <div style={{ fontSize: '12px', color: c('muted') }}>
                 {aiSuggestions.length > 0 
                   ? labels.inactiveProspects
-                  : (locale === 'fr' ? 'Tous vos prospects sont bien suivis !' : 
-                     locale === 'de' ? 'Alle Ihre Interessenten werden gut betreut!' :
-                     locale === 'it' ? 'Tutti i tuoi prospect sono ben seguiti!' :
-                     'All your prospects are well followed!')
+                  : labels.allProspectsWellFollowed
                 }
               </div>
             </div>
@@ -1025,7 +1166,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 color: '#22c55e',
                 fontWeight: '600'
               }}>
-                ✓ {locale === 'fr' ? 'À jour' : 'Up to date'}
+                ✓ {labels.upToDate}
               </div>
             )}
           </div>
@@ -1042,7 +1183,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(suggestion)
                   }).then(() => {
-                    toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+                    toast.success(labels.taskAdded);
                     fetchTasks();
                     setAiSuggestions(prev => prev.slice(1));
                   });
@@ -1080,7 +1221,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 gap: '4px'
               }}>
                 <Plus size={14} />
-                {locale === 'fr' ? 'Ajouter' : 'Add'}
+                {labels.add}
               </button>
             </div>
           )}
@@ -1103,8 +1244,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                   gap: '4px'
                 }}>
                   {showAllSuggestions 
-                    ? (locale === 'fr' ? 'Masquer' : 'Hide')
-                    : `+${aiSuggestions.length - 1} ${locale === 'fr' ? 'autre' : 'more'}${aiSuggestions.length > 2 ? 's' : ''}`
+                    ? labels.hide
+                    : `+${aiSuggestions.length - 1} ${labels.others}`
                   }
                   <ChevronRight 
                     size={12} 
@@ -1153,7 +1294,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(suggestion)
                           }).then(() => {
-                            toast.success(locale === 'fr' ? 'Tâche ajoutée !' : 'Task added!');
+                            toast.success(labels.taskAdded);
                             fetchTasks();
                             setAiSuggestions(prev => prev.filter((_, i) => i !== index + 1));
                           });
@@ -1209,19 +1350,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            {locale === 'fr' ? 'Essai terminé' : 'Trial ended'}
+            {labels.trialEnded}
           </h3>
           <p className="subtitle" style={{ marginBottom: '24px' }}>
-            {locale === 'fr' 
-              ? "Abonnez-vous pour continuer à utiliser toutes les fonctionnalités de KOLO" 
-              : "Subscribe to continue using all KOLO features"}
+            {labels.trialEndedDesc}
           </p>
           <button 
             className="btn-primary"
             onClick={() => navigate('/subscribe')}
             data-testid="subscribe-button"
           >
-            {locale === 'fr' ? "S'abonner maintenant" : 'Subscribe now'}
+            {labels.subscribeNow}
           </button>
         </div>
       ) : (viewMode === 'today' ? tasks : allTasks).length === 0 ? (
@@ -1246,10 +1385,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <Check strokeWidth={2} size={32} style={{ color: '#22c55e' }} />
           </div>
           <h3 style={{ fontSize: '18px', fontWeight: '600', color: c('text'), marginBottom: '8px' }}>
-            {viewMode === 'today' ? t('allCaughtUp') : (locale === 'fr' ? 'Aucune tâche' : 'No tasks')}
+            {viewMode === 'today' ? t('allCaughtUp') : labels.noTasks}
           </h3>
           <p style={{ fontSize: '14px', color: c('muted') }}>
-            {viewMode === 'today' ? t('noPendingTask') : (locale === 'fr' ? 'Créez votre première tâche' : 'Create your first task')}
+            {viewMode === 'today' ? t('noPendingTask') : labels.createFirstTask}
           </p>
         </div>
       ) : (
@@ -1296,7 +1435,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                   }}>
                     <Check size={24} style={{ color: 'white' }} />
                     <span style={{ marginLeft: '8px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
-                      {locale === 'fr' ? 'Fait !' : 'Done!'}
+                      {locale === 'fr' ? 'Fait !' : locale === 'de' ? 'Erledigt!' : locale === 'it' ? 'Fatto!' : 'Done!'}
                     </span>
                   </div>
                 )}
@@ -1384,10 +1523,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             padding: 0
                           }}
                         >
-                          {locale === 'fr' ? 'En retard — Relancer maintenant' : 'Overdue — Follow up now'}
+                          {locale === 'fr' ? 'En retard — Relancer maintenant' : locale === 'de' ? 'Überfällig — Jetzt nachfassen' : locale === 'it' ? 'In ritardo — Ricontatta ora' : 'Overdue — Follow up now'}
                         </button>
                       )}
-                      {isCompleted && <span style={{ color: 'var(--success)' }}>({locale === 'fr' ? 'Fait' : 'Done'})</span>}
+                      {isCompleted && <span style={{ color: 'var(--success)' }}>({locale === 'fr' ? 'Fait' : locale === 'de' ? 'Erledigt' : locale === 'it' ? 'Fatto' : 'Done'})</span>}
                     </div>
                   </div>
                   
@@ -1545,13 +1684,13 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             data-testid={`proactive-ai-btn-${task.task_id}`}
                           >
                             <Sparkles size={16} />
-                            {locale === 'fr' ? 'Générer une relance IA' : 'Generate AI follow-up'}
+                            {labels.generateAiFollowUp}
                           </button>
                         ) : proactiveAiLoading ? (
                           <div style={{ textAlign: 'center', padding: '20px' }}>
                             <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
                             <p style={{ color: 'var(--muted)', fontSize: '13px', marginTop: '8px' }}>
-                              {locale === 'fr' ? 'Génération...' : 'Generating...'}
+                              {labels.generating}
                             </p>
                           </div>
                         ) : (
@@ -1592,7 +1731,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                                   cursor: 'pointer'
                                 }}
                               >
-                                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                                {labels.cancel}
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); sendProactiveSms(task); }}
@@ -1618,7 +1757,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                                 ) : (
                                   <>
                                     <Send size={14} />
-                                    {locale === 'fr' ? 'Envoyer' : 'Send'}
+                                    {labels.send}
                                   </>
                                 )}
                               </button>
@@ -1646,7 +1785,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                           justifyContent: 'center',
                           gap: '6px'
                         }}>
-                        {locale === 'fr' ? 'Voir la fiche prospect' : 'View prospect details'}
+                        {labels.viewProspectDetails}
                         <ChevronRight size={14} />
                       </button>
                     )}
@@ -1763,7 +1902,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     ) : (
                       <>
                         <Send size={14} />
-                        {locale === 'fr' ? 'Envoyer' : 'Send'}
+                        {labels.send}
                       </>
                     )}
                   </button>
@@ -1860,11 +1999,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {/* Title - Required */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
-                {locale === 'fr' ? 'Titre *' : 'Title *'}
+                {labels.taskTitle}
               </label>
               <input
                 type="text"
-                placeholder={locale === 'fr' ? 'Ex: Appeler pour suivi' : 'Ex: Call for follow-up'}
+                placeholder={labels.taskTitlePlaceholder}
                 value={newTask.title}
                 onChange={(e) => setNewTask({...newTask, title: e.target.value})}
                 data-testid="new-task-title"
@@ -2030,7 +2169,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {/* Due Date - Required */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
-                {locale === 'fr' ? 'Date *' : 'Date *'}
+                {labels.dueDate}
               </label>
               <input
                 type="date"
@@ -2054,7 +2193,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {/* Due Time - Optional */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
-                {locale === 'fr' ? 'Heure (optionnel)' : 'Time (optional)'}
+                {labels.dueTime}
               </label>
               <input
                 type="time"
@@ -2078,12 +2217,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {/* Address - Optional */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px', display: 'block' }}>
-                {locale === 'fr' ? 'Adresse (optionnel)' : 'Address (optional)'}
+                {labels.address}
               </label>
               <input
                 type="text"
                 className="input-dark"
-                placeholder={locale === 'fr' ? 'Ex: 123 Rue de Paris' : 'Ex: 123 Main Street'}
+                placeholder={labels.addressPlaceholder}
                 value={newTask.address}
                 onChange={(e) => setNewTask({...newTask, address: e.target.value})}
                 data-testid="new-task-address"
@@ -3463,7 +3602,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                   cursor: 'pointer'
                 }}
               >
-                {locale === 'fr' ? 'Ajouter' : 'Add'}
+                {labels.add}
               </button>
             </div>
           </div>
@@ -6341,6 +6480,7 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
 const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
   const { locale } = useLocale();
   const { c, isDark } = useThemeColors();
+  const labels = UI_LABELS[locale] || UI_LABELS.en;
   
   return (
     <>
@@ -6410,7 +6550,7 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
             letterSpacing: '0.02em',
             color: activeTab === 'today' ? '#004aad' : '#8A849E'
           }}>
-            {locale === 'fr' ? "Aujourd'hui" : 'Today'}
+            {labels.today}
           </span>
         </button>
         

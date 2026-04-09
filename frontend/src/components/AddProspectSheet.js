@@ -312,7 +312,7 @@ export function AddProspectSheet({
                        labels.delay6plus;
     
     const budgetText = budgetUndefined 
-      ? (locale === 'fr' ? 'budget à définir' : 'budget TBD')
+      ? (locale === 'fr' ? 'budget à définir' : locale === 'de' ? 'Budget TBD' : locale === 'it' ? 'budget da definire' : 'budget TBD')
       : `${budgetMin}k–${budgetMax}k€`;
     
     return `${labels.aiHeader} ${typeLabel} · ${delayLabel} · ${budgetText}`;
@@ -367,7 +367,7 @@ export function AddProspectSheet({
       
       if (response.ok) {
         const data = await response.json();
-        toast.success(`✓ ${fullName.split(' ')[0]} ${locale === 'fr' ? 'ajouté à vos prospects' : 'added to your prospects'}`);
+        toast.success(`✓ ${fullName.split(' ')[0]} ${locale === 'fr' ? 'ajouté à vos prospects' : locale === 'de' ? 'zu Ihren Interessenten hinzugefügt' : locale === 'it' ? 'aggiunto ai tuoi prospect' : 'added to your prospects'}`);
         onSuccess?.(data);
         onClose();
       } else {
@@ -668,9 +668,9 @@ export function AddProspectSheet({
                 style={{ color: isDark ? '#a0a4ae' : '#6b7280' }}
               >
                 {projectType === 'seller' 
-                  ? (locale === 'fr' ? 'Prix de vente souhaité TTC' : 'Desired sale price (incl. fees)')
+                  ? (locale === 'fr' ? 'Prix de vente souhaité TTC' : locale === 'de' ? 'Gewünschter Verkaufspreis (inkl. Gebühren)' : locale === 'it' ? 'Prezzo di vendita desiderato (IVA incl.)' : 'Desired sale price (incl. fees)')
                   : projectType === 'renter'
-                    ? (locale === 'fr' ? 'Budget loyer' : 'Rent budget')
+                    ? (locale === 'fr' ? 'Budget loyer' : locale === 'de' ? 'Mietbudget' : locale === 'it' ? 'Budget affitto' : 'Rent budget')
                     : labels.budget
                 }
                 {!hasBudgetSlider && (

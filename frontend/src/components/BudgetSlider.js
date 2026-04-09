@@ -457,7 +457,7 @@ export function BudgetSlider({
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
                 style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
               >
-                {projectType === 'renter' ? `${getCurrencySymbol()}/${locale === 'fr' ? 'mois' : 'mo'}` : getCurrencySymbol()}
+                {projectType === 'renter' ? `${getCurrencySymbol()}/${locale === 'fr' ? 'mois' : locale === 'de' ? 'Monat' : locale === 'it' ? 'mese' : 'mo'}` : getCurrencySymbol()}
               </span>
             </div>
             <div className="flex gap-2">
@@ -469,7 +469,7 @@ export function BudgetSlider({
                   color: isDark ? '#ffffff' : '#0E0B1E'
                 }}
               >
-                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                {locale === 'fr' ? 'Annuler' : locale === 'de' ? 'Abbrechen' : locale === 'it' ? 'Annulla' : 'Cancel'}
               </button>
               <button
                 onClick={handleManualSubmit}
@@ -478,7 +478,7 @@ export function BudgetSlider({
                   background: 'linear-gradient(135deg, #004AAD, #CB6CE6)'
                 }}
               >
-                {locale === 'fr' ? 'Confirmer' : 'Confirm'}
+                {locale === 'fr' ? 'Confirmer' : locale === 'de' ? 'Bestätigen' : locale === 'it' ? 'Conferma' : 'Confirm'}
               </button>
             </div>
           </div>
