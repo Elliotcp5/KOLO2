@@ -31,9 +31,86 @@ const LANDING_PRICING = {
   }
 };
 
+// Landing page specific translations
+const LANDING_TEXTS = {
+  fr: {
+    upTo30Prospects: "Jusqu'à 30 prospects",
+    oneAiSuggestionDay: "1 suggestion IA/jour",
+    taskManagement: "Gestion des tâches",
+    startFree: "Commencer gratuitement",
+    popular: "Populaire",
+    unlimitedProspects: "Prospects illimités",
+    unlimitedAiSuggestions: "Suggestions IA illimitées",
+    oneClickSms: "SMS 1-clic IA",
+    interactionHistory: "Historique des interactions",
+    contextualNotes: "Notes contextuelles",
+    everythingInPro: "Tout ce qui est dans PRO",
+    hotLeadsAuto: "Prospects chauds identifiés auto",
+    commissionTracking: "Suivi de vos commissions",
+    weeklyEmailReport: "Rapport hebdo par email",
+    prioritySupport: "Support prioritaire",
+    legalNotice: "Mentions légales"
+  },
+  en: {
+    upTo30Prospects: "Up to 30 prospects",
+    oneAiSuggestionDay: "1 AI suggestion/day",
+    taskManagement: "Task management",
+    startFree: "Start for free",
+    popular: "Popular",
+    unlimitedProspects: "Unlimited prospects",
+    unlimitedAiSuggestions: "Unlimited AI suggestions",
+    oneClickSms: "1-click AI SMS",
+    interactionHistory: "Interaction history",
+    contextualNotes: "Contextual notes",
+    everythingInPro: "Everything in PRO",
+    hotLeadsAuto: "Hot leads auto-identified",
+    commissionTracking: "Commission tracking",
+    weeklyEmailReport: "Weekly email report",
+    prioritySupport: "Priority support",
+    legalNotice: "Legal Notice"
+  },
+  de: {
+    upTo30Prospects: "Bis zu 30 Interessenten",
+    oneAiSuggestionDay: "1 KI-Vorschlag/Tag",
+    taskManagement: "Aufgabenverwaltung",
+    startFree: "Kostenlos starten",
+    popular: "Beliebt",
+    unlimitedProspects: "Unbegrenzte Interessenten",
+    unlimitedAiSuggestions: "Unbegrenzte KI-Vorschläge",
+    oneClickSms: "1-Klick-KI-SMS",
+    interactionHistory: "Interaktionsverlauf",
+    contextualNotes: "Kontextuelle Notizen",
+    everythingInPro: "Alles in PRO",
+    hotLeadsAuto: "Heiße Leads automatisch erkannt",
+    commissionTracking: "Provisionsverfolgung",
+    weeklyEmailReport: "Wöchentlicher E-Mail-Bericht",
+    prioritySupport: "Prioritäts-Support",
+    legalNotice: "Impressum"
+  },
+  it: {
+    upTo30Prospects: "Fino a 30 prospect",
+    oneAiSuggestionDay: "1 suggerimento IA/giorno",
+    taskManagement: "Gestione attività",
+    startFree: "Inizia gratis",
+    popular: "Popolare",
+    unlimitedProspects: "Prospect illimitati",
+    unlimitedAiSuggestions: "Suggerimenti IA illimitati",
+    oneClickSms: "SMS IA 1-clic",
+    interactionHistory: "Cronologia interazioni",
+    contextualNotes: "Note contestuali",
+    everythingInPro: "Tutto in PRO",
+    hotLeadsAuto: "Lead caldi identificati auto",
+    commissionTracking: "Monitoraggio commissioni",
+    weeklyEmailReport: "Report settimanale via email",
+    prioritySupport: "Supporto prioritario",
+    legalNotice: "Note legali"
+  }
+};
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { locale, changeLanguage, t } = useLocale();
+  const lt = LANDING_TEXTS[locale] || LANDING_TEXTS.en;
   const [scrolled, setScrolled] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [email, setEmail] = useState('');
@@ -573,29 +650,29 @@ const LandingPage = () => {
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Jusqu'à 30 prospects" : "Up to 30 prospects"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "1 suggestion IA/jour" : "1 AI suggestion/day"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Gestion des tâches" : "Task management"}</li>
+                <li><span className="check-icon">✓</span> {lt.upTo30Prospects}</li>
+                <li><span className="check-icon">✓</span> {lt.oneAiSuggestionDay}</li>
+                <li><span className="check-icon">✓</span> {lt.taskManagement}</li>
               </ul>
               <button className="btn-secondary full" onClick={() => navigate('/register')}>
-                {locale === 'fr' ? 'Commencer gratuitement' : 'Start for free'}
+                {lt.startFree}
               </button>
             </div>
             
             {/* PRO Plan */}
             <div className="pricing-card pricing-pro reveal-scale stagger-2">
-              <div className="popular-badge">{locale === 'fr' ? 'Populaire' : 'Popular'}</div>
+              <div className="popular-badge">{lt.popular}</div>
               <div className="plan-name">PRO</div>
               <div className="price-row">
                 <span className="price-amount">{LANDING_PRICING.pro[currency]?.monthly || '9,99€'}</span>
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Prospects illimités" : "Unlimited prospects"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Suggestions IA illimitées" : "Unlimited AI suggestions"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "SMS 1-clic IA" : "1-click AI SMS"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Historique des interactions" : "Interaction history"}</li>
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Notes contextuelles" : "Contextual notes"}</li>
+                <li><span className="check-icon">✓</span> {lt.unlimitedProspects}</li>
+                <li><span className="check-icon">✓</span> {lt.unlimitedAiSuggestions}</li>
+                <li><span className="check-icon">✓</span> {lt.oneClickSms}</li>
+                <li><span className="check-icon">✓</span> {lt.interactionHistory}</li>
+                <li><span className="check-icon">✓</span> {lt.contextualNotes}</li>
               </ul>
               <button className="btn-primary full" onClick={() => navigate('/register', { state: { plan: 'pro' } })}>
                 {t('startFreeMonth')} <ArrowRight size={18} />
@@ -611,11 +688,11 @@ const LandingPage = () => {
                 <span className="price-period">/{t('pricingMonth')}</span>
               </div>
               <ul className="price-features">
-                <li><span className="check-icon">✓</span> {locale === 'fr' ? "Tout ce qui est dans PRO" : "Everything in PRO"}</li>
-                <li><span className="check-icon">🔥</span> {locale === 'fr' ? "Prospects chauds identifiés auto" : "Hot leads auto-identified"}</li>
-                <li><span className="check-icon">📊</span> {locale === 'fr' ? "Suivi de vos commissions" : "Commission tracking"}</li>
-                <li><span className="check-icon">📧</span> {locale === 'fr' ? "Rapport hebdo par email" : "Weekly email report"}</li>
-                <li><span className="check-icon">⭐</span> {locale === 'fr' ? "Support prioritaire" : "Priority support"}</li>
+                <li><span className="check-icon">✓</span> {lt.everythingInPro}</li>
+                <li><span className="check-icon">🔥</span> {lt.hotLeadsAuto}</li>
+                <li><span className="check-icon">📊</span> {lt.commissionTracking}</li>
+                <li><span className="check-icon">📧</span> {lt.weeklyEmailReport}</li>
+                <li><span className="check-icon">⭐</span> {lt.prioritySupport}</li>
               </ul>
               <button className="btn-secondary full" onClick={() => navigate('/register', { state: { plan: 'pro_plus' } })}>
                 {t('startFreeMonth')}
@@ -682,7 +759,7 @@ const LandingPage = () => {
               onClick={() => setShowLegalModal(true)}
               className="legal-notice-btn"
             >
-              {locale === 'fr' ? 'Mentions légales' : 'Legal Notice'}
+              {lt.legalNotice}
             </button>
           </div>
         </div>
@@ -727,7 +804,7 @@ const LandingPage = () => {
               alignItems: 'center'
             }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0E0B1E', margin: 0 }}>
-                {locale === 'fr' ? 'Mentions Légales' : 'Legal Notice'}
+                {lt.legalNotice}
               </h2>
               <button 
                 onClick={() => setShowLegalModal(false)}

@@ -21,12 +21,164 @@ import { getInitials } from '../utils/helpers';
 
 // Status configuration with colors
 const PROSPECT_STATUSES = {
-  nouveau: { fr: 'Nouveau', en: 'New', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' },
-  contacte: { fr: 'Contacté', en: 'Contacted', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
-  qualifie: { fr: 'Qualifié', en: 'Qualified', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' },
-  offre: { fr: 'Offre', en: 'Offer', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
-  signe: { fr: 'Signé', en: 'Signed', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' },
-  perdu: { fr: 'Perdu', en: 'Lost', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' }
+  nouveau: { fr: 'Nouveau', en: 'New', de: 'Neu', it: 'Nuovo', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' },
+  contacte: { fr: 'Contacté', en: 'Contacted', de: 'Kontaktiert', it: 'Contattato', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
+  qualifie: { fr: 'Qualifié', en: 'Qualified', de: 'Qualifiziert', it: 'Qualificato', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' },
+  offre: { fr: 'Offre', en: 'Offer', de: 'Angebot', it: 'Offerta', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
+  signe: { fr: 'Signé', en: 'Signed', de: 'Unterzeichnet', it: 'Firmato', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' },
+  perdu: { fr: 'Perdu', en: 'Lost', de: 'Verloren', it: 'Perso', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' }
+};
+
+// UI Labels for all languages
+const UI_LABELS = {
+  fr: {
+    myProfile: 'Mon profil',
+    today: "Aujourd'hui",
+    tasks: 'Tâches',
+    allMyTasks: 'Toutes mes tâches',
+    done: 'Faites',
+    toDo: 'À faire',
+    aiAssistant: 'Assistant IA',
+    suggestionsIA: 'suggestions IA',
+    suggestionIA: 'suggestion IA',
+    inactiveProspects: 'Prospects inactifs à relancer',
+    overdueTasks: 'tâches en retard à traiter',
+    perfectDay: 'Journée parfaite ! Tout est fait.',
+    greatDayAhead: 'Belle journée devant vous.',
+    goodAfternoon: 'Bon après-midi !',
+    goodEvening: 'Bonsoir !',
+    taskCreated: 'Tâche créée !',
+    error: 'Erreur',
+    generationError: 'Erreur de génération',
+    smsSent: 'SMS envoyé !',
+    smsError: "Erreur d'envoi SMS",
+    connectionError: 'Erreur de connexion',
+    call: 'Appeler',
+    visit: 'Visite',
+    administrative: 'Administratif',
+    prospection: 'Prospection',
+    followUp: 'Suivi',
+    newTask: 'Nouvelle tâche',
+    createTask: 'Créer la tâche',
+    taskTitle: 'Titre de la tâche',
+    taskDescription: 'Description (optionnel)',
+    taskType: 'Type de tâche',
+    dueDate: 'Date d\'échéance',
+    prospect: 'Prospect',
+    noProspect: 'Aucun prospect',
+    address: 'Adresse (optionnel)'
+  },
+  en: {
+    myProfile: 'My profile',
+    today: 'Today',
+    tasks: 'Tasks',
+    allMyTasks: 'All my tasks',
+    done: 'Done',
+    toDo: 'To do',
+    aiAssistant: 'AI Assistant',
+    suggestionsIA: 'AI suggestions',
+    suggestionIA: 'AI suggestion',
+    inactiveProspects: 'Inactive prospects to follow up',
+    overdueTasks: 'overdue tasks to handle',
+    perfectDay: 'Perfect day! All done.',
+    greatDayAhead: 'Great day ahead.',
+    goodAfternoon: 'Good afternoon!',
+    goodEvening: 'Good evening!',
+    taskCreated: 'Task created!',
+    error: 'Error',
+    generationError: 'Generation error',
+    smsSent: 'SMS sent!',
+    smsError: 'SMS send error',
+    connectionError: 'Connection error',
+    call: 'Call',
+    visit: 'Visit',
+    administrative: 'Administrative',
+    prospection: 'Prospecting',
+    followUp: 'Follow-up',
+    newTask: 'New task',
+    createTask: 'Create task',
+    taskTitle: 'Task title',
+    taskDescription: 'Description (optional)',
+    taskType: 'Task type',
+    dueDate: 'Due date',
+    prospect: 'Prospect',
+    noProspect: 'No prospect',
+    address: 'Address (optional)'
+  },
+  de: {
+    myProfile: 'Mein Profil',
+    today: 'Heute',
+    tasks: 'Aufgaben',
+    allMyTasks: 'Alle meine Aufgaben',
+    done: 'Erledigt',
+    toDo: 'Zu erledigen',
+    aiAssistant: 'KI-Assistent',
+    suggestionsIA: 'KI-Vorschläge',
+    suggestionIA: 'KI-Vorschlag',
+    inactiveProspects: 'Inaktive Interessenten nachverfolgen',
+    overdueTasks: 'überfällige Aufgaben zu bearbeiten',
+    perfectDay: 'Perfekter Tag! Alles erledigt.',
+    greatDayAhead: 'Ein toller Tag liegt vor Ihnen.',
+    goodAfternoon: 'Guten Nachmittag!',
+    goodEvening: 'Guten Abend!',
+    taskCreated: 'Aufgabe erstellt!',
+    error: 'Fehler',
+    generationError: 'Generierungsfehler',
+    smsSent: 'SMS gesendet!',
+    smsError: 'SMS-Sendefehler',
+    connectionError: 'Verbindungsfehler',
+    call: 'Anrufen',
+    visit: 'Besuch',
+    administrative: 'Verwaltung',
+    prospection: 'Akquise',
+    followUp: 'Nachverfolgung',
+    newTask: 'Neue Aufgabe',
+    createTask: 'Aufgabe erstellen',
+    taskTitle: 'Aufgabentitel',
+    taskDescription: 'Beschreibung (optional)',
+    taskType: 'Aufgabentyp',
+    dueDate: 'Fälligkeitsdatum',
+    prospect: 'Interessent',
+    noProspect: 'Kein Interessent',
+    address: 'Adresse (optional)'
+  },
+  it: {
+    myProfile: 'Il mio profilo',
+    today: 'Oggi',
+    tasks: 'Attività',
+    allMyTasks: 'Tutte le mie attività',
+    done: 'Completate',
+    toDo: 'Da fare',
+    aiAssistant: 'Assistente IA',
+    suggestionsIA: 'suggerimenti IA',
+    suggestionIA: 'suggerimento IA',
+    inactiveProspects: 'Prospect inattivi da ricontattare',
+    overdueTasks: 'attività in ritardo da gestire',
+    perfectDay: 'Giornata perfetta! Tutto fatto.',
+    greatDayAhead: 'Una bella giornata ti aspetta.',
+    goodAfternoon: 'Buon pomeriggio!',
+    goodEvening: 'Buonasera!',
+    taskCreated: 'Attività creata!',
+    error: 'Errore',
+    generationError: 'Errore di generazione',
+    smsSent: 'SMS inviato!',
+    smsError: 'Errore invio SMS',
+    connectionError: 'Errore di connessione',
+    call: 'Chiamare',
+    visit: 'Visita',
+    administrative: 'Amministrativo',
+    prospection: 'Prospezione',
+    followUp: 'Follow-up',
+    newTask: 'Nuova attività',
+    createTask: 'Crea attività',
+    taskTitle: 'Titolo attività',
+    taskDescription: 'Descrizione (opzionale)',
+    taskType: 'Tipo di attività',
+    dueDate: 'Data di scadenza',
+    prospect: 'Prospect',
+    noProspect: 'Nessun prospect',
+    address: 'Indirizzo (opzionale)'
+  }
 };
 
 // Helper to get status info (handles legacy status names)
@@ -138,6 +290,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const { t, formatDate, locale } = useLocale();
   const { c, isDark } = useThemeColors();
   const navigate = useNavigate();
+  const labels = UI_LABELS[locale] || UI_LABELS.en;
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,26 +339,23 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
     const hour = new Date().getHours();
     const overdueTasks = tasks.filter(t => !t.completed && new Date(t.due_date) < new Date());
     const pendingTasks = tasks.filter(t => !t.completed);
+    const labels = UI_LABELS[locale] || UI_LABELS.en;
     
     // Priority: Overdue > Pending count > Time of day
     if (overdueTasks.length > 0) {
-      return locale === 'fr' 
-        ? `${overdueTasks.length} tâche${overdueTasks.length > 1 ? 's' : ''} en retard à traiter.`
-        : `${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''} to handle.`;
+      return `${overdueTasks.length} ${labels.overdueTasks}`;
     }
     
     if (pendingTasks.length === 0 && stats.completedToday > 0) {
-      return locale === 'fr' 
-        ? 'Journée parfaite ! Tout est fait.'
-        : 'Perfect day! All done.';
+      return labels.perfectDay;
     }
     
     if (hour >= 5 && hour < 12) {
-      return locale === 'fr' ? 'Belle journée devant vous.' : 'Great day ahead.';
+      return labels.greatDayAhead;
     } else if (hour >= 12 && hour < 18) {
-      return locale === 'fr' ? 'Bon après-midi !' : 'Good afternoon!';
+      return labels.goodAfternoon;
     } else {
-      return locale === 'fr' ? 'Bonsoir !' : 'Good evening!';
+      return labels.goodEvening;
     }
   };
 
@@ -333,17 +483,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
       
       if (response.ok) {
         if ('vibrate' in navigator) navigator.vibrate([10, 40, 20]);
-        toast.success(locale === 'fr' ? 'Tâche créée !' : 'Task created!');
+        toast.success(labels.taskCreated);
         setShowAddTaskModal(false);
         setNewTask({ prospect_id: '', title: '', due_date: '', due_time: '', address: '', task_type: 'call' });
         fetchTasks();
         fetchStats();
       } else {
-        toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+        toast.error(labels.error);
       }
     } catch (error) {
       console.error('Create task error:', error);
-      toast.error(locale === 'fr' ? 'Erreur' : 'Error');
+      toast.error(labels.error);
     } finally {
       setCreatingTask(false);
     }
@@ -374,7 +524,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
       }
     } catch (error) {
       console.error('Failed to generate message:', error);
-      toast.error(locale === 'fr' ? 'Erreur de génération' : 'Generation error');
+      toast.error(labels.generationError);
     } finally {
       setMessageLoading(false);
     }
@@ -427,17 +577,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           navigator.vibrate([15, 30, 15]); // Double tap pattern
         }
         trackSmsSent();
-        toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
+        toast.success(labels.smsSent);
         setProactiveAiTaskId(null);
         setProactiveAiMessage('');
         // Mark task as completed
         handleCompleteTask(task.task_id);
       } else {
         const data = await response.json();
-        toast.error(data.detail || (locale === 'fr' ? 'Erreur d\'envoi SMS' : 'SMS send error'));
+        toast.error(data.detail || labels.smsError);
       }
     } catch (error) {
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+      toast.error(labels.connectionError);
     } finally {
       setSendingSms(false);
     }
@@ -459,19 +609,19 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           navigator.vibrate([15, 30, 15]); // Double tap pattern
         }
         trackSmsSent();
-        toast.success(locale === 'fr' ? 'SMS envoyé !' : 'SMS sent!');
+        toast.success(labels.smsSent);
         setShowSmsModal(false);
         // Mark task as completed
         handleCompleteTask(selectedTask.task_id);
       } else {
         const data = await response.json();
         // More specific error handling
-        const errorMsg = data.detail || (locale === 'fr' ? 'Erreur d\'envoi SMS' : 'SMS send error');
+        const errorMsg = data.detail || labels.smsError;
         toast.error(errorMsg);
       }
     } catch (error) {
       console.error('SMS send error:', error);
-      toast.error(locale === 'fr' ? 'Erreur de connexion' : 'Connection error');
+      toast.error(labels.connectionError);
     } finally {
       setSendingSms(false);
     }
@@ -581,16 +731,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   
   // Get task type label
   const getTaskTypeLabel = (type) => {
-    const labels = {
-      call: locale === 'fr' ? 'Appeler' : 'Call',
+    const labels = UI_LABELS[locale] || UI_LABELS.en;
+    const typeLabels = {
+      call: labels.call,
       email: 'Email',
       sms: 'SMS',
-      visit: locale === 'fr' ? 'Visite' : 'Visit',
-      administrative: locale === 'fr' ? 'Administratif' : 'Administrative',
-      prospection: locale === 'fr' ? 'Prospection' : 'Prospecting',
-      follow_up: locale === 'fr' ? 'Suivi' : 'Follow-up'
+      visit: labels.visit,
+      administrative: labels.administrative,
+      prospection: labels.prospection,
+      follow_up: labels.followUp
     };
-    return labels[type] || '';
+    return typeLabels[type] || '';
   };
   
   // Check if task type has action buttons
@@ -650,7 +801,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           }}>
             {userInitials || ''}
           </div>
-          <span style={{ color: c('text'), fontSize: '14px', fontWeight: '500' }}>{locale === 'fr' ? 'Mon profil' : 'My profile'}</span>
+          <span style={{ color: c('text'), fontSize: '14px', fontWeight: '500' }}>{labels.myProfile}</span>
         </button>
       </div>
 
@@ -662,7 +813,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
         fontFamily: 'var(--font-heading)',
         marginBottom: '4px'
       }}>
-        {viewMode === 'today' ? (locale === 'fr' ? "Aujourd'hui" : 'Today') : (locale === 'fr' ? 'Tâches' : 'Tasks')}
+        {viewMode === 'today' ? labels.today : labels.tasks}
       </h1>
 
       {/* Date */}
@@ -739,7 +890,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           }}
           data-testid="segment-all-tasks"
         >
-          {locale === 'fr' ? 'Toutes mes tâches' : 'All my tasks'}
+          {labels.allMyTasks}
         </button>
         {/* Add Task Button */}
         <button
@@ -776,7 +927,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {stats.completedToday}<span style={{ color: c('muted'), fontWeight: '400' }}> / {stats.totalToday}</span>
           </div>
           <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
-            {locale === 'fr' ? 'Faites' : 'Done'}
+            {labels.done}
           </div>
         </div>
         <div style={{
@@ -814,7 +965,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {Math.max(0, stats.totalToday - stats.completedToday)}
           </div>
           <div style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
-            {locale === 'fr' ? 'À faire' : 'To do'}
+            {labels.toDo}
           </div>
         </div>
       </div>
@@ -850,14 +1001,17 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '14px', color: c('text'), fontWeight: '600' }}>
                 {aiSuggestions.length > 0 
-                  ? `${aiSuggestions.length} ${locale === 'fr' ? 'suggestion' : 'suggestion'}${aiSuggestions.length > 1 ? 's' : ''} IA`
-                  : (locale === 'fr' ? 'Assistant IA' : 'AI Assistant')
+                  ? `${aiSuggestions.length} ${aiSuggestions.length > 1 ? labels.suggestionsIA : labels.suggestionIA}`
+                  : labels.aiAssistant
                 }
               </div>
               <div style={{ fontSize: '12px', color: c('muted') }}>
                 {aiSuggestions.length > 0 
-                  ? (locale === 'fr' ? 'Prospects inactifs à relancer' : 'Inactive prospects to follow up')
-                  : (locale === 'fr' ? 'Tous vos prospects sont bien suivis !' : 'All your prospects are well followed!')
+                  ? labels.inactiveProspects
+                  : (locale === 'fr' ? 'Tous vos prospects sont bien suivis !' : 
+                     locale === 'de' ? 'Alle Ihre Interessenten werden gut betreut!' :
+                     locale === 'it' ? 'Tutti i tuoi prospect sono ben seguiti!' :
+                     'All your prospects are well followed!')
                 }
               </div>
             </div>
@@ -1657,7 +1811,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '17px', fontWeight: '600', color: c('text') }}>
-                {locale === 'fr' ? 'Nouvelle tâche' : 'New task'}
+                {labels.newTask}
               </h2>
               <button onClick={() => { setShowAddTaskModal(false); setShowProspectPicker(false); }} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
@@ -1667,15 +1821,15 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             {/* Task Type Selection */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', color: c('muted'), marginBottom: '8px', display: 'block' }}>
-                {locale === 'fr' ? 'Type de tâche' : 'Task type'}
+                {labels.taskType}
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {[
-                  { value: 'call', label: locale === 'fr' ? 'Appel' : 'Call', icon: Phone },
+                  { value: 'call', label: labels.call, icon: Phone },
                   { value: 'sms', label: 'SMS', icon: MessageSquare },
                   { value: 'email', label: 'Email', icon: Mail },
-                  { value: 'visit', label: locale === 'fr' ? 'Visite' : 'Visit', icon: MapPin },
-                  { value: 'other', label: locale === 'fr' ? 'Autre' : 'Other', icon: FileText }
+                  { value: 'visit', label: labels.visit, icon: MapPin },
+                  { value: 'other', label: locale === 'fr' ? 'Autre' : locale === 'de' ? 'Andere' : locale === 'it' ? 'Altro' : 'Other', icon: FileText }
                 ].map(type => {
                   const Icon = type.icon;
                   return (
@@ -1961,7 +2115,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               {creatingTask ? (
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
               ) : (
-                locale === 'fr' ? 'Créer la tâche' : 'Create task'
+                labels.createTask
               )}
             </button>
           </div>
@@ -1975,6 +2129,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
 const ProspectsTab = ({ onSelectProspect }) => {
   const { t, locale } = useLocale();
   const { c, isDark } = useThemeColors();
+  const labels = UI_LABELS[locale] || UI_LABELS.en;
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
