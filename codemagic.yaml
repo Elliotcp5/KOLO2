@@ -24,6 +24,7 @@ workflows:
       - name: Set build number
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 5" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 5" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
@@ -60,6 +61,8 @@ workflows:
             <dict>
               <key>io.kolo.app</key>
               <string>KOLO App Store</string>
+              <key>io.kolo.app.Clip</key>
+              <string>KOLO App Clip App Store</string>
             </dict>
           </dict>
           </plist>
