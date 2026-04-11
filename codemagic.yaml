@@ -23,8 +23,8 @@ workflows:
         script: npx cap copy ios
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 11" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 11" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 12" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 12" ios/App/AppClip/Info.plist
       - name: Build AppClip
         script: |
           cd ios/App
@@ -41,18 +41,6 @@ workflows:
             CONFIGURATION_BUILD_DIR=$CM_BUILD_DIR/AppClipBuild \
             build \
             -allowProvisioningUpdates
-      - name: Add icon to AppClip
-        script: |
-          APPCLIP=$CM_BUILD_DIR/AppClipBuild/AppClip.app
-          cp ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png "$APPCLIP/AppIcon60x60@2x.png" 2>/dev/null || \
-          cp ios/App/AppClip/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png "$APPCLIP/AppIcon60x60@2x.png"
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons dict" "$APPCLIP/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" "$APPCLIP/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" "$APPCLIP/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon60x60@2x" "$APPCLIP/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" "$APPCLIP/Info.plist" 2>/dev/null || true
-          echo "Icons in AppClip:"
-          ls "$APPCLIP/"*.png 2>/dev/null || echo "no png found"
       - name: Build iOS
         script: |
           cd ios/App
@@ -106,8 +94,29 @@ workflows:
             -exportOptionsPlist /tmp/ExportOptions.plist \
             -exportPath $CM_BUILD_DIR/export \
             -allowProvisioningUpdates
+      - name: Inject icon into IPA
+        script: |
+          cd $CM_BUILD_DIR/export
+          mkdir -p ipa_work
+          cp App.ipa ipa_work/
+          cd ipa_work
+          unzip -q App.ipa
+          APPCLIP="Payload/App.app/AppClips/AppClip.app"
+          ICON_SRC="$CM_BUILD_DIR/../clone/ios/App/AppClip/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png"
+          cp "$ICON_SRC" "$APPCLIP/AppIcon60x60@2x.png"
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APPCLIP/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" "$APPCLIP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleIcons" "$APPCLIP/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons dict" "$APPCLIP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" "$APPCLIP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" "$APPCLIP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon60x60@2x" "$APPCLIP/Info.plist"
+          rm App.ipa
+          zip -qr App.ipa Payload/ Symbols/ Signatures/ 2>/dev/null || zip -qr App.ipa Payload/
+          cp App.ipa $CM_BUILD_DIR/export/App.ipa
+          echo "Done injecting icon"
     artifacts:
-      - $CM_BUILD_DIR/export/*.ipa
+      - $CM_BUILD_DIR/export/App.ipa
     publishing:
       app_store_connect:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
