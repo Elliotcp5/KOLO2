@@ -23,8 +23,8 @@ workflows:
         script: npx cap copy ios
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 12" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 12" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 13" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 13" ios/App/AppClip/Info.plist
       - name: Build AppClip
         script: |
           cd ios/App
@@ -98,9 +98,8 @@ workflows:
         script: |
           cd $CM_BUILD_DIR/export
           mkdir -p ipa_work
-          cp App.ipa ipa_work/
           cd ipa_work
-          unzip -q App.ipa
+          unzip -q ../App.ipa
           APPCLIP="Payload/App.app/AppClips/AppClip.app"
           ICON_SRC="$CM_BUILD_DIR/../clone/ios/App/AppClip/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png"
           cp "$ICON_SRC" "$APPCLIP/AppIcon60x60@2x.png"
@@ -111,10 +110,14 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" "$APPCLIP/Info.plist"
           /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" "$APPCLIP/Info.plist"
           /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon60x60@2x" "$APPCLIP/Info.plist"
-          rm App.ipa
-          zip -qr App.ipa Payload/ Symbols/ Signatures/ 2>/dev/null || zip -qr App.ipa Payload/
-          cp App.ipa $CM_BUILD_DIR/export/App.ipa
-          echo "Done injecting icon"
+          /usr/bin/codesign --force --sign "Apple Distribution: ELLIOT ALBERIC PRESSARD (2XRB82J4W9)" \
+            --entitlements $CM_BUILD_DIR/../clone/ios/App/AppClip/AppClip.entitlements \
+            "$APPCLIP"
+          /usr/bin/codesign --force --sign "Apple Distribution: ELLIOT ALBERIC PRESSARD (2XRB82J4W9)" \
+            "Payload/App.app"
+          rm ../App.ipa
+          zip -qr ../App.ipa Payload/ Symbols/ Signatures/ 2>/dev/null || zip -qr ../App.ipa Payload/
+          echo "Done"
     artifacts:
       - $CM_BUILD_DIR/export/App.ipa
     publishing:
