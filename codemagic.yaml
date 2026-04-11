@@ -21,10 +21,15 @@ workflows:
         script: CI=false npm run build
       - name: Copy web assets
         script: npx cap copy ios
+      - name: Restore project.pbxproj
+        script: |
+          git checkout ios/App/App.xcodeproj/project.pbxproj
+          echo "project.pbxproj restored"
+          grep -c "Embed App Clips" ios/App/App.xcodeproj/project.pbxproj && echo "Embed App Clips phase present" || echo "WARNING: missing"
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 14" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 14" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 15" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 15" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
