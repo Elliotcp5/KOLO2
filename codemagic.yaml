@@ -23,8 +23,8 @@ workflows:
         script: npx cap copy ios
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 6" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 6" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 7" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 7" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
