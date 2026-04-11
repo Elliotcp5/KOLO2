@@ -28,8 +28,8 @@ workflows:
           grep -c "Embed App Clips" ios/App/App.xcodeproj/project.pbxproj && echo "Embed App Clips phase present" || echo "WARNING: missing"
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 15" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 15" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 16" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 16" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
