@@ -26,8 +26,8 @@ workflows:
           cp /tmp/project.pbxproj.bak ios/App/App.xcodeproj/project.pbxproj
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 19" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 19" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 20" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 20" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
@@ -42,12 +42,17 @@ workflows:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             archive \
             -allowProvisioningUpdates
-      - name: Debug archive
+      - name: Embed AppClip in archive
         script: |
-          echo "=== Contenu de l'archive ==="
-          find $CM_BUILD_DIR/App.xcarchive -name "*.app" 2>/dev/null
-          echo "=== AppClips dans App.app ==="
-          ls $CM_BUILD_DIR/App.xcarchive/Products/Applications/App.app/AppClips 2>/dev/null || echo "Pas de dossier AppClips"
+          DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "App-*" -type d | head -1)
+          UNINSTALLED="$DERIVED_DATA/Build/Intermediates.noindex/ArchiveIntermediates/App/IntermediateBuildFilesPath/UninstalledProducts/iphoneos/AppClip.app"
+          ARCHIVE_APP="$CM_BUILD_DIR/App.xcarchive/Products/Applications/App.app"
+          echo "AppClip source: $UNINSTALLED"
+          ls "$UNINSTALLED" && echo "AppClip found" || echo "AppClip NOT found"
+          mkdir -p "$ARCHIVE_APP/AppClips"
+          cp -r "$UNINSTALLED" "$ARCHIVE_APP/AppClips/"
+          echo "AppClips folder:"
+          ls "$ARCHIVE_APP/AppClips/"
       - name: Export IPA
         script: |
           cat > /tmp/ExportOptions.plist << EOF
