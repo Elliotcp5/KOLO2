@@ -21,19 +21,13 @@ workflows:
         script: CI=false npm run build
       - name: Copy web assets
         script: |
-          echo "=== AVANT cap copy ==="
-          grep -c "Embed App Clips" ios/App/App.xcodeproj/project.pbxproj && echo "Embed App Clips PRESENT" || echo "Embed App Clips ABSENT"
           cp ios/App/App.xcodeproj/project.pbxproj /tmp/project.pbxproj.bak
           npx cap copy ios
-          echo "=== APRES cap copy ==="
-          grep -c "Embed App Clips" ios/App/App.xcodeproj/project.pbxproj && echo "Embed App Clips PRESENT" || echo "Embed App Clips ABSENT"
           cp /tmp/project.pbxproj.bak ios/App/App.xcodeproj/project.pbxproj
-          echo "=== APRES restauration ==="
-          grep -c "Embed App Clips" ios/App/App.xcodeproj/project.pbxproj && echo "Embed App Clips PRESENT" || echo "Embed App Clips ABSENT"
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 18" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 18" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 19" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 19" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
@@ -48,6 +42,12 @@ workflows:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             archive \
             -allowProvisioningUpdates
+      - name: Debug archive
+        script: |
+          echo "=== Contenu de l'archive ==="
+          find $CM_BUILD_DIR/App.xcarchive -name "*.app" 2>/dev/null
+          echo "=== AppClips dans App.app ==="
+          ls $CM_BUILD_DIR/App.xcarchive/Products/Applications/App.app/AppClips 2>/dev/null || echo "Pas de dossier AppClips"
       - name: Export IPA
         script: |
           cat > /tmp/ExportOptions.plist << EOF
