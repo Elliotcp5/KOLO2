@@ -26,8 +26,8 @@ workflows:
           cp /tmp/project.pbxproj.bak ios/App/App.xcodeproj/project.pbxproj
       - name: Set build number
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 20" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 20" ios/App/AppClip/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 21" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 21" ios/App/AppClip/Info.plist
       - name: Build iOS
         script: |
           cd ios/App
@@ -47,11 +47,16 @@ workflows:
           DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "App-*" -type d | head -1)
           UNINSTALLED="$DERIVED_DATA/Build/Intermediates.noindex/ArchiveIntermediates/App/IntermediateBuildFilesPath/UninstalledProducts/iphoneos/AppClip.app"
           ARCHIVE_APP="$CM_BUILD_DIR/App.xcarchive/Products/Applications/App.app"
-          echo "AppClip source: $UNINSTALLED"
-          ls "$UNINSTALLED" && echo "AppClip found" || echo "AppClip NOT found"
           mkdir -p "$ARCHIVE_APP/AppClips"
           cp -r "$UNINSTALLED" "$ARCHIVE_APP/AppClips/"
-          echo "AppClips folder:"
+          echo "AppClip embedded, re-signing..."
+          /usr/bin/codesign --force --sign "Apple Distribution: ELLIOT ALBERIC PRESSARD (2XRB82J4W9)" \
+            --preserve-metadata=identifier,entitlements \
+            "$ARCHIVE_APP/AppClips/AppClip.app"
+          /usr/bin/codesign --force --sign "Apple Distribution: ELLIOT ALBERIC PRESSARD (2XRB82J4W9)" \
+            --preserve-metadata=identifier,entitlements \
+            "$ARCHIVE_APP"
+          echo "Done. AppClips:"
           ls "$ARCHIVE_APP/AppClips/"
       - name: Export IPA
         script: |
