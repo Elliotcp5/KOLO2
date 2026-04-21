@@ -208,28 +208,87 @@ export function BudgetSlider({
     }
   }, [minValue, maxValue, singleValue, config]);
 
-  // iOS / WebKit : attach native non-passive touchstart listeners on thumbs so
-  // we can preventDefault and claim the gesture BEFORE the page tries to scroll.
-  // (React synthetic onTouchStart is always passive on iOS, can't preventDefault.)
+  // iOS / WebKit : attach native non-passive touch listeners on thumbs so we
+  // can preventDefault and claim the gesture BEFORE the page tries to scroll.
+  // (React synthetic onTouch* is always passive on iOS, can't preventDefault.)
+  // We attach touchstart + touchmove + touchend PERMANENTLY to avoid the
+  // race condition where the useEffect that adds touchmove fires too late.
   useEffect(() => {
     if (disabled || budgetUndefined) return;
-    const attach = (ref, thumb) => {
+
+    const getPointerX = (evt) => evt.touches?.[0]?.clientX ?? evt.clientX;
+
+    const attachThumb = (ref, thumb) => {
       const el = ref?.current;
       if (!el) return () => {};
-      const handler = (e) => {
+
+      let active = false;
+
+      const onStart = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        active = true;
         setDragging(thumb);
       };
-      el.addEventListener('touchstart', handler, { passive: false });
-      return () => el.removeEventListener('touchstart', handler);
+
+      const onMove = (e) => {
+        if (!active || !sliderRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = sliderRef.current.getBoundingClientRect();
+        const clientX = getPointerX(e);
+        const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+        const value = getValueFromPercentage(percentage);
+        if (config.isRange) {
+          if (thumb === 'min') {
+            setLocalMin((prev) => {
+              const cap = Math.min(value, (localMax ?? config.max) - config.step);
+              return Math.max(config.min, cap);
+            });
+          } else if (thumb === 'max') {
+            setLocalMax((prev) => {
+              const cap = Math.max(value, (localMin ?? config.min) + config.step);
+              return Math.min(config.max, cap);
+            });
+          }
+        } else {
+          setLocalSingle(Math.max(config.min, Math.min(config.max, value)));
+        }
+      };
+
+      const onEnd = (e) => {
+        if (!active) return;
+        active = false;
+        setDragging(null);
+        if (onChange) {
+          if (config.isRange) {
+            onChange({ min: localMin, max: localMax });
+          } else {
+            onChange({ value: localSingle });
+          }
+        }
+      };
+
+      el.addEventListener('touchstart', onStart, { passive: false });
+      el.addEventListener('touchmove', onMove, { passive: false });
+      el.addEventListener('touchend', onEnd, { passive: false });
+      el.addEventListener('touchcancel', onEnd, { passive: false });
+
+      return () => {
+        el.removeEventListener('touchstart', onStart);
+        el.removeEventListener('touchmove', onMove);
+        el.removeEventListener('touchend', onEnd);
+        el.removeEventListener('touchcancel', onEnd);
+      };
     };
+
     const cleanups = [
-      attach(minThumbRef, 'min'),
-      attach(maxThumbRef, 'max'),
-      attach(singleThumbRef, 'single'),
+      attachThumb(minThumbRef, 'min'),
+      attachThumb(maxThumbRef, 'max'),
+      attachThumb(singleThumbRef, 'single'),
     ];
     return () => cleanups.forEach((fn) => fn && fn());
-  }, [disabled, budgetUndefined, config.isRange]);
+  }, [disabled, budgetUndefined, config, localMin, localMax, localSingle, getValueFromPercentage, onChange]);
   
   const handleManualSubmit = () => {
     const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);

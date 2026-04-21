@@ -80,6 +80,17 @@ html.capacitor-native .bottom-nav {
   transform: none !important;
 }
 
+/* Quand le clavier iOS est ouvert, les bottom-sheets / modals fixés doivent
+   avoir un padding-bottom = hauteur du clavier pour que leur contenu
+   (textarea "notes", inputs en bas du formulaire, etc.) soit scrollable
+   au-dessus du clavier. La variable --kolo-keyboard-height est mise à jour
+   en temps réel par useIOSKeyboardScroll. */
+html.kolo-keyboard-open .fixed.bottom-0,
+html.kolo-keyboard-open [role="dialog"],
+html.kolo-keyboard-open .kolo-bottom-sheet {
+  padding-bottom: calc(var(--kolo-keyboard-height, 0px) + 20px) !important;
+}
+
 html.capacitor-native,
 html.capacitor-native body {
   width: 100%;
