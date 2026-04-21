@@ -225,7 +225,7 @@ export default function PricingPage() {
     // Go directly to Stripe checkout (skip trial)
     const result = await upgradePlan(plan, billingPeriod, token);
     if (result.success && result.checkout_url) {
-      window.location.href = result.checkout_url;
+      await openExternalUrl(result.checkout_url);
     } else {
       toast.error(
         locale === 'fr' ? 'Erreur lors de la création du paiement' :

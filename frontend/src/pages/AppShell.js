@@ -4214,7 +4214,7 @@ const CurrencySelector = ({ c, locale }) => {
     const token = localStorage.getItem('kolo_token');
     if (token) {
       try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/plans/set-currency`, {
+        await fetch(`https://trykolo.io/api/plans/set-currency`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

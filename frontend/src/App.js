@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { SplashScreen } from "@capacitor/splash-screen";
 import { LocaleProvider } from "./context/LocaleContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
@@ -136,6 +138,13 @@ const AppRouter = () => {
 };
 
 function App() {
+  // Cache le splash screen Capacitor dès que React est monté (évite l'écran blanc)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      SplashScreen.hide().catch(() => {});
+    }
+  }, []);
+
   return (
     <div className="App">
       <ThemeProvider>
