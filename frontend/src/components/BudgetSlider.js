@@ -128,6 +128,13 @@ export function BudgetSlider({
   const maxThumbRef = useRef(null);
   const singleThumbRef = useRef(null);
   
+  // Refs to read current values inside stable event listeners without re-attaching them
+  const stateRef = useRef({ localMin, localMax, localSingle, config, disabled: false, budgetUndefined: false });
+  stateRef.current = { localMin, localMax, localSingle, config, disabled, budgetUndefined };
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const getValueFromPercentageRef = useRef(null);
+  
   const getPercentage = (value) => {
     return ((value - config.min) / (config.max - config.min)) * 100;
   };
@@ -208,14 +215,15 @@ export function BudgetSlider({
     }
   }, [minValue, maxValue, singleValue, config]);
 
-  // iOS / WebKit : attach native non-passive touch listeners on thumbs so we
-  // can preventDefault and claim the gesture BEFORE the page tries to scroll.
-  // (React synthetic onTouch* is always passive on iOS, can't preventDefault.)
-  // We attach touchstart + touchmove + touchend PERMANENTLY to avoid the
-  // race condition where the useEffect that adds touchmove fires too late.
+  // Maintain ref for getValueFromPercentage
   useEffect(() => {
-    if (disabled || budgetUndefined) return;
+    getValueFromPercentageRef.current = getValueFromPercentage;
+  }, [getValueFromPercentage]);
 
+  // iOS / WebKit : attach native non-passive touch listeners on thumbs ONCE.
+  // We use refs to read current state so the listeners NEVER detach during a
+  // drag (detaching mid-drag lets iOS steal the touch → slider "gets stuck").
+  useEffect(() => {
     const getPointerX = (evt) => evt.touches?.[0]?.clientX ?? evt.clientX;
 
     const attachThumb = (ref, thumb) => {
@@ -225,6 +233,8 @@ export function BudgetSlider({
       let active = false;
 
       const onStart = (e) => {
+        const s = stateRef.current;
+        if (s.disabled || s.budgetUndefined) return;
         e.preventDefault();
         e.stopPropagation();
         active = true;
@@ -235,36 +245,38 @@ export function BudgetSlider({
         if (!active || !sliderRef.current) return;
         e.preventDefault();
         e.stopPropagation();
+        const s = stateRef.current;
         const rect = sliderRef.current.getBoundingClientRect();
         const clientX = getPointerX(e);
         const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-        const value = getValueFromPercentage(percentage);
-        if (config.isRange) {
+        const getValue = getValueFromPercentageRef.current;
+        if (!getValue) return;
+        const value = getValue(percentage);
+
+        if (s.config.isRange) {
           if (thumb === 'min') {
-            setLocalMin((prev) => {
-              const cap = Math.min(value, (localMax ?? config.max) - config.step);
-              return Math.max(config.min, cap);
-            });
+            const newMin = Math.min(value, s.localMax - s.config.step);
+            setLocalMin(Math.max(s.config.min, newMin));
           } else if (thumb === 'max') {
-            setLocalMax((prev) => {
-              const cap = Math.max(value, (localMin ?? config.min) + config.step);
-              return Math.min(config.max, cap);
-            });
+            const newMax = Math.max(value, s.localMin + s.config.step);
+            setLocalMax(Math.min(s.config.max, newMax));
           }
         } else {
-          setLocalSingle(Math.max(config.min, Math.min(config.max, value)));
+          setLocalSingle(Math.max(s.config.min, Math.min(s.config.max, value)));
         }
       };
 
-      const onEnd = (e) => {
+      const onEnd = () => {
         if (!active) return;
         active = false;
         setDragging(null);
-        if (onChange) {
-          if (config.isRange) {
-            onChange({ min: localMin, max: localMax });
+        const s = stateRef.current;
+        const fn = onChangeRef.current;
+        if (fn) {
+          if (s.config.isRange) {
+            fn({ min: s.localMin, max: s.localMax });
           } else {
-            onChange({ value: localSingle });
+            fn({ value: s.localSingle });
           }
         }
       };
@@ -288,7 +300,8 @@ export function BudgetSlider({
       attachThumb(singleThumbRef, 'single'),
     ];
     return () => cleanups.forEach((fn) => fn && fn());
-  }, [disabled, budgetUndefined, config, localMin, localMax, localSingle, getValueFromPercentage, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // stable — refs handle state updates
   
   const handleManualSubmit = () => {
     const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);
