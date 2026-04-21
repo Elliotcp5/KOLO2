@@ -1,10 +1,14 @@
-// Contact picker service for KOLO - Native + Web support
+// Contact picker service for KOLO — Native (Capacitor) + Web fallback
 import { Capacitor } from '@capacitor/core';
+import { Contacts } from '@capacitor-community/contacts';
 
 class ContactPickerService {
   constructor() {
     this.isNative = Capacitor.isNativePlatform();
-    this.isWebSupported = 'contacts' in navigator && 'ContactsManager' in window;
+    // Web Contact Picker API (Chrome Android / some PWAs)
+    this.isWebSupported = typeof navigator !== 'undefined'
+      && 'contacts' in navigator
+      && 'ContactsManager' in window;
   }
 
   /**
@@ -19,16 +23,40 @@ class ContactPickerService {
    */
   getNotSupportedReason(locale = 'fr') {
     if (this.isSupported()) return null;
-    
     if (locale === 'fr') {
       return "L'import de contacts n'est pas disponible sur ce navigateur. Utilisez l'application mobile ou Chrome sur Android.";
     }
-    return "Contact import is not available on this browser. Use the mobile app or Chrome on Android.";
+    if (locale === 'de') {
+      return 'Kontakt-Import ist auf diesem Browser nicht verfügbar. Verwenden Sie die mobile App oder Chrome auf Android.';
+    }
+    if (locale === 'it') {
+      return "L'importazione dei contatti non è disponibile su questo browser. Usa l'app mobile o Chrome su Android.";
+    }
+    return 'Contact import is not available on this browser. Use the mobile app or Chrome on Android.';
+  }
+
+  /**
+   * Request contacts permission (native iOS/Android only)
+   * Returns true if granted, false otherwise.
+   */
+  async requestPermission() {
+    if (!this.isNative) return true; // Web has no explicit request step
+
+    try {
+      const current = await Contacts.checkPermissions();
+      if (current.contacts === 'granted') return true;
+
+      const result = await Contacts.requestPermissions();
+      return result.contacts === 'granted';
+    } catch (err) {
+      console.error('Contacts permission request failed:', err);
+      return false;
+    }
   }
 
   /**
    * Pick a single contact
-   * Returns: { name: string, phone: string, email?: string } or null
+   * Returns: { name: string, phone: string, email: string } or null (cancelled / no data)
    */
   async pickContact() {
     if (this.isNative) {
@@ -40,112 +68,79 @@ class ContactPickerService {
   }
 
   /**
-   * Pick contact using native iOS/Android
+   * Native iOS/Android via @capacitor-community/contacts
    */
   async pickContactNative() {
     try {
-      // For native, we need to use a Capacitor plugin
-      // Using cordova-plugin-contacts or similar
-      
-      // Check if Contacts plugin is available
-      if (window.Contacts && window.Contacts.pickContact) {
-        return new Promise((resolve, reject) => {
-          window.Contacts.pickContact((contact) => {
-            if (!contact) {
-              resolve(null);
-              return;
-            }
-            
-            // Extract name
-            let name = '';
-            if (contact.displayName) {
-              name = contact.displayName;
-            } else if (contact.name) {
-              const n = contact.name;
-              name = [n.givenName, n.familyName].filter(Boolean).join(' ');
-            }
-            
-            // Extract phone
-            let phone = '';
-            if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
-              // Prefer mobile number
-              const mobile = contact.phoneNumbers.find(p => 
-                p.type && p.type.toLowerCase().includes('mobile')
-              );
-              phone = mobile ? mobile.value : contact.phoneNumbers[0].value;
-            }
-            
-            // Extract email
-            let email = '';
-            if (contact.emails && contact.emails.length > 0) {
-              email = contact.emails[0].value;
-            }
-            
-            resolve({ name, phone, email });
-          }, (error) => {
-            console.error('Contact pick error:', error);
-            reject(error);
-          });
-        });
+      const granted = await this.requestPermission();
+      if (!granted) return null;
+
+      const result = await Contacts.pickContact({
+        projection: {
+          name: true,
+          phones: true,
+          emails: true,
+        },
+      });
+
+      if (!result || !result.contact) return null;
+
+      const contact = result.contact;
+
+      // Name — try display, else compose from given+family
+      let name = '';
+      if (contact.name) {
+        name = contact.name.display
+          || [contact.name.given, contact.name.middle, contact.name.family].filter(Boolean).join(' ')
+          || '';
       }
-      
-      // Fallback: use Capacitor Contacts plugin if available
-      // This would require @capacitor-community/contacts
-      console.warn('Native contacts not available, falling back to web picker');
-      return this.pickContactWeb();
-      
+
+      // Phone — prefer mobile if tagged, else first available
+      let phone = '';
+      if (Array.isArray(contact.phones) && contact.phones.length > 0) {
+        const mobile = contact.phones.find((p) => {
+          const lbl = (p.label || p.type || '').toString().toLowerCase();
+          return lbl.includes('mobile') || lbl.includes('cell');
+        });
+        phone = (mobile && mobile.number) || contact.phones[0].number || '';
+      }
+
+      // Email — first available
+      let email = '';
+      if (Array.isArray(contact.emails) && contact.emails.length > 0) {
+        email = contact.emails[0].address || '';
+      }
+
+      return { name, phone, email };
     } catch (error) {
+      // User cancelled → no error popup, just null
+      if (error && /cancel/i.test(String(error.message || error))) return null;
       console.error('Native contact pick failed:', error);
       return null;
     }
   }
 
   /**
-   * Pick contact using Web Contact Picker API
+   * Web Contact Picker API fallback (Chrome Android)
    */
   async pickContactWeb() {
     if (!this.isWebSupported) return null;
 
     try {
       const props = ['name', 'tel', 'email'];
-      const opts = { multiple: false };
-      
-      const contacts = await navigator.contacts.select(props, opts);
-      
-      if (!contacts || contacts.length === 0) {
-        return null;
-      }
-      
+      const contacts = await navigator.contacts.select(props, { multiple: false });
+
+      if (!contacts || contacts.length === 0) return null;
       const contact = contacts[0];
-      
+
       return {
-        name: contact.name && contact.name[0] ? contact.name[0] : '',
-        phone: contact.tel && contact.tel[0] ? contact.tel[0] : '',
-        email: contact.email && contact.email[0] ? contact.email[0] : ''
+        name: (contact.name && contact.name[0]) || '',
+        phone: (contact.tel && contact.tel[0]) || '',
+        email: (contact.email && contact.email[0]) || '',
       };
-      
     } catch (error) {
       console.error('Web contact pick failed:', error);
       return null;
-    }
-  }
-
-  /**
-   * Request contacts permission (for native)
-   */
-  async requestPermission() {
-    if (!this.isNative) {
-      // Web doesn't need explicit permission request
-      return true;
-    }
-
-    try {
-      // Check Capacitor permissions if plugin available
-      // This depends on the specific contacts plugin being used
-      return true;
-    } catch (error) {
-      console.error('Permission request failed:', error);
-      return false;
     }
   }
 }

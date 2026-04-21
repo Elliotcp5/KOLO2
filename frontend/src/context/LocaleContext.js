@@ -108,15 +108,7 @@ export const LocaleProvider = ({ children }) => {
     // BUT NOT the locale if user manually changed it
     const fetchGeo = async () => {
       try {
-        const hostname = window.location.hostname;
-        let apiUrl = '';
-        if (hostname === 'trykolo.io' || hostname === 'www.trykolo.io') {
-          apiUrl = '';
-        } else if (hostname.includes('.preview.emergentagent.com')) {
-          apiUrl = `https://${hostname}`;
-        } else {
-          apiUrl = process.env.REACT_APP_BACKEND_URL || '';
-        }
+        const apiUrl = 'https://trykolo.io';
         
         const response = await fetch(`${apiUrl}/api/geo?locale=${browserLocale}&country=${regionFromLocale || ''}`);
         if (response.ok) {

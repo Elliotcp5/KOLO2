@@ -6,7 +6,7 @@ import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { Award, Euro, X, PartyPopper, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 // Labels
 const LABELS = {

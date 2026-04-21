@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { Contacts } from '@capacitor-community/contacts';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 // Project type options
 const PROJECT_TYPES = [

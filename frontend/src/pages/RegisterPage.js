@@ -41,7 +41,7 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      const API_BASE = window.location.origin;
+      const API_BASE = 'https://trykolo.io';
       
       // Build registration payload - include plan if selected from landing page
       const registerPayload = { 

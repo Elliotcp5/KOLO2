@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 const PlanContext = createContext(null);
 

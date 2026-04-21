@@ -6,7 +6,7 @@ import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { ProBadge } from './ProBadge';
 import { TrendingUp, Euro, Award, Lock, ChevronRight } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 // Labels
 const LABELS = {

@@ -5,7 +5,7 @@ import { usePlan } from '../context/PlanContext';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { MessageSquare, Phone, MapPin, FileText, Sparkles, Lock, Clock } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 // Labels
 const LABELS = {

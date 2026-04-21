@@ -233,7 +233,7 @@ class PushNotificationService {
         badge: '/logo192.png',
         tag,
         vibrate: [200, 100, 200],
-        data: { url: window.location.origin + '/app' }
+        data: { url: 'https://trykolo.io/app' }
       });
     }
   }

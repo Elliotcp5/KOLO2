@@ -22,7 +22,7 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
-    const API_BASE = window.location.origin;
+    const API_BASE = 'https://trykolo.io';
     
     // Use XMLHttpRequest to avoid fetch interception issues
     const xhr = new XMLHttpRequest();

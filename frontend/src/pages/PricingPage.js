@@ -6,7 +6,7 @@ import { usePlan, PLAN_FEATURES } from '../context/PlanContext';
 import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
 import { openExternalUrl } from '../utils/externalUrl';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = 'https://trykolo.io';
 
 // Feature descriptions for each plan
 const FEATURE_DESCRIPTIONS = {
