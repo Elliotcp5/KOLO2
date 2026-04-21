@@ -124,6 +124,9 @@ export function BudgetSlider({
   const [manualInputValue, setManualInputValue] = useState('');
   
   const sliderRef = useRef(null);
+  const minThumbRef = useRef(null);
+  const maxThumbRef = useRef(null);
+  const singleThumbRef = useRef(null);
   
   const getPercentage = (value) => {
     return ((value - config.min) / (config.max - config.min)) * 100;
@@ -204,6 +207,29 @@ export function BudgetSlider({
       setLocalSingle(singleValue || config.max / 4);
     }
   }, [minValue, maxValue, singleValue, config]);
+
+  // iOS / WebKit : attach native non-passive touchstart listeners on thumbs so
+  // we can preventDefault and claim the gesture BEFORE the page tries to scroll.
+  // (React synthetic onTouchStart is always passive on iOS, can't preventDefault.)
+  useEffect(() => {
+    if (disabled || budgetUndefined) return;
+    const attach = (ref, thumb) => {
+      const el = ref?.current;
+      if (!el) return () => {};
+      const handler = (e) => {
+        e.preventDefault();
+        setDragging(thumb);
+      };
+      el.addEventListener('touchstart', handler, { passive: false });
+      return () => el.removeEventListener('touchstart', handler);
+    };
+    const cleanups = [
+      attach(minThumbRef, 'min'),
+      attach(maxThumbRef, 'max'),
+      attach(singleThumbRef, 'single'),
+    ];
+    return () => cleanups.forEach((fn) => fn && fn());
+  }, [disabled, budgetUndefined, config.isRange]);
   
   const handleManualSubmit = () => {
     const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);
@@ -269,6 +295,7 @@ export function BudgetSlider({
             
             {/* Min thumb */}
             <div
+              ref={minThumbRef}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
               style={{
                 left: `${minPercent}%`,
@@ -285,11 +312,11 @@ export function BudgetSlider({
                 zIndex: dragging === 'min' ? 10 : 5
               }}
               onMouseDown={handleMouseDown('min')}
-              onTouchStart={handleMouseDown('min')}
             />
             
             {/* Max thumb */}
             <div
+              ref={maxThumbRef}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
               style={{
                 left: `${maxPercent}%`,
@@ -306,7 +333,6 @@ export function BudgetSlider({
                 zIndex: dragging === 'max' ? 10 : 5
               }}
               onMouseDown={handleMouseDown('max')}
-              onTouchStart={handleMouseDown('max')}
             />
           </>
         ) : (
@@ -323,6 +349,7 @@ export function BudgetSlider({
             
             {/* Single thumb */}
             <div
+              ref={singleThumbRef}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
               style={{
                 left: `${singlePercent}%`,
@@ -339,7 +366,6 @@ export function BudgetSlider({
                 zIndex: 10
               }}
               onMouseDown={handleMouseDown('single')}
-              onTouchStart={handleMouseDown('single')}
             />
           </>
         )}

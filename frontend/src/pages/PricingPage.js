@@ -181,6 +181,14 @@ export default function PricingPage() {
       const result = await startTrial(plan, token);
       if (result.success) {
         setLoading(false);
+        const planLabel = plan === 'pro_plus' ? 'PRO+' : 'PRO';
+        toast.success(
+          locale === 'fr' ? `Essai gratuit ${planLabel} démarré ! 🎉 14 jours offerts` :
+          locale === 'de' ? `${planLabel} Testversion gestartet! 🎉 14 Tage kostenlos` :
+          locale === 'it' ? `Prova gratuita ${planLabel} avviata! 🎉 14 giorni gratis` :
+          `${planLabel} free trial started! 🎉 14 days free`,
+          { duration: 4000 }
+        );
         navigate('/app?trial_started=true');
         return;
       } else {
@@ -199,6 +207,7 @@ export default function PricingPage() {
     
     // Redirect to Stripe checkout for payment
     const result = await upgradePlan(plan, billingPeriod, token);
+    console.log('[KOLO] upgradePlan result:', result);
     if (result.success && result.checkout_url) {
       const opened = await openExternalUrl(result.checkout_url);
       if (!opened) {
@@ -206,16 +215,18 @@ export default function PricingPage() {
           locale === 'fr' ? 'Impossible d\'ouvrir la page de paiement' :
           locale === 'de' ? 'Zahlungsseite kann nicht geöffnet werden' :
           locale === 'it' ? 'Impossibile aprire la pagina di pagamento' :
-          'Unable to open payment page'
+          'Unable to open payment page',
+          { duration: 6000 }
         );
       }
     } else {
-      const errDetail = result.error ? ` (${result.error})` : '';
+      const errDetail = result.error ? `\n${result.error}` : '';
       toast.error(
         (locale === 'fr' ? 'Erreur lors de la création du paiement' :
          locale === 'de' ? 'Fehler beim Erstellen der Zahlung' :
          locale === 'it' ? 'Errore durante la creazione del pagamento' :
-         'Error creating payment session') + errDetail
+         'Error creating payment session') + errDetail,
+        { duration: 8000 }
       );
     }
     

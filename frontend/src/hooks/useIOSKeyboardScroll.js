@@ -1,4 +1,6 @@
 // Hook : gère proprement le clavier iOS/Android sur inputs/textareas.
+// — Ajoute un padding-bottom dynamique au body quand le clavier est ouvert
+//   pour que le contenu puisse scroll au-dessus du clavier
 // — Scrolle automatiquement l'élément focusé au-dessus du clavier
 // — Empêche le password / email caché sous le clavier sur Login / Register / etc.
 import { useEffect } from 'react';
@@ -11,45 +13,46 @@ export function useIOSKeyboardScroll() {
 
     let keyboardHeight = 0;
 
+    const setBodyPadding = (height) => {
+      try {
+        document.body.style.paddingBottom = height ? `${height}px` : '';
+      } catch (_) {}
+    };
+
     const scrollFocusedIntoView = () => {
       const el = document.activeElement;
       if (!el) return;
       const tag = (el.tagName || '').toUpperCase();
       if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
 
-      // Attend un tick pour laisser le clavier s'installer
+      // Attend que le clavier soit visible + body resized
       setTimeout(() => {
         try {
-          const rect = el.getBoundingClientRect();
-          const visibleBottom = window.innerHeight - keyboardHeight;
-          // Si l'input est caché derrière le clavier, scroll it visible
-          if (rect.bottom > visibleBottom - 20 || rect.top < 60) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        } catch (_) {
-          // ignore
-        }
-      }, 120);
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (_) {}
+      }, 150);
     };
 
     let showHandle, hideHandle;
     (async () => {
       showHandle = await Keyboard.addListener('keyboardWillShow', (info) => {
         keyboardHeight = info?.keyboardHeight || 0;
+        setBodyPadding(keyboardHeight);
         scrollFocusedIntoView();
       });
       hideHandle = await Keyboard.addListener('keyboardWillHide', () => {
         keyboardHeight = 0;
+        setBodyPadding(0);
       });
     })();
 
-    // Fallback : écoute aussi les focus d'inputs (utile si le plugin Keyboard
-    // ne dispatch pas assez vite sur certains devices)
+    // Fallback : écoute aussi les focus d'inputs
     const onFocusIn = () => scrollFocusedIntoView();
     document.addEventListener('focusin', onFocusIn);
 
     return () => {
       document.removeEventListener('focusin', onFocusIn);
+      setBodyPadding(0);
       try { showHandle && showHandle.remove(); } catch (_) {}
       try { hideHandle && hideHandle.remove(); } catch (_) {}
     };
