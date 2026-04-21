@@ -2062,7 +2062,18 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
     stripe.api_key = STRIPE_API_KEY
     
     # Get or create Stripe customer
+    # Also validate that the stored customer still exists in Stripe (it may have been purged
+    # when rotating API keys or switching Stripe accounts). If not → create a new one.
     stripe_customer_id = user_doc.get("stripe_customer_id")
+    if stripe_customer_id:
+        try:
+            cust = stripe.Customer.retrieve(stripe_customer_id)
+            if getattr(cust, "deleted", False):
+                stripe_customer_id = None
+        except Exception as e:
+            logger.warning(f"Stored stripe_customer_id {stripe_customer_id} invalid, will recreate: {e}")
+            stripe_customer_id = None
+
     if not stripe_customer_id:
         customer = stripe.Customer.create(
             email=user.email,
@@ -2109,6 +2120,9 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
         price_id = price.id
     
     # Create checkout session
+    # IMPORTANT Stripe rule: cannot pass both `customer` AND `customer_email`.
+    # If we have a stripe_customer_id → use it (email is already attached to that customer).
+    # If we don't → fall back to customer_email so Stripe creates a new customer with that email.
     user_locale = user_doc.get("locale", "fr")
     if native_scheme:
         success_url = f"{native_scheme}checkout-success?plan={request.plan}"
@@ -2117,22 +2131,26 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
         success_url = f"{origin_url}/app?upgrade=success&plan={request.plan}"
         cancel_url = f"{origin_url}/pricing?upgrade=cancelled"
 
-    session = stripe.checkout.Session.create(
-        customer=stripe_customer_id,
-        customer_email=user.email,  # Ensure email is set
-        mode="subscription",
-        payment_method_types=["card"],
-        line_items=[{"price": price_id, "quantity": 1}],
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
+    session_kwargs = {
+        "mode": "subscription",
+        "payment_method_types": ["card"],
+        "line_items": [{"price": price_id, "quantity": 1}],
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "metadata": {
             "user_id": user.user_id,
             "email": user.email,  # CRITICAL: Include email for webhook
             "plan": request.plan,
             "billing_period": request.billing_period,
-            "locale": user_locale
-        }
-    )
+            "locale": user_locale,
+        },
+    }
+    if stripe_customer_id:
+        session_kwargs["customer"] = stripe_customer_id
+    else:
+        session_kwargs["customer_email"] = user.email
+
+    session = stripe.checkout.Session.create(**session_kwargs)
     
     return {"checkout_url": session.url, "session_id": session.id}
 
