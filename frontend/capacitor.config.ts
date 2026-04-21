@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 500,
       launchAutoHide: true,
       backgroundColor: '#0F0F0F',
       androidSplashResourceName: 'splash',
@@ -37,7 +37,6 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     preferredContentMode: 'mobile',
     backgroundColor: '#0F0F0F',
-    scrollEnabled: false,
     limitsNavigationsToAppBoundDomains: false,
   },
   android: {

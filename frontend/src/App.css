@@ -58,7 +58,7 @@ html {
 }
 
 /* Native iOS / Android (Capacitor) : l'app doit prendre TOUT l'écran,
-   pas de cadre flottant, pas d'ombre, pas de max-width. */
+   pas de cadre flottant, pas d'ombre, pas de max-width, SCROLL VERTICAL OK. */
 html.capacitor-native body,
 html.capacitor-native .mobile-frame {
   max-width: none !important;
@@ -67,6 +67,8 @@ html.capacitor-native .mobile-frame {
   box-shadow: none !important;
   border-left: none !important;
   border-right: none !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
 }
 
 /* Bottom nav doit aussi prendre toute la largeur de l'écran natif */

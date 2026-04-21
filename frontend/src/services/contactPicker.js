@@ -69,12 +69,15 @@ class ContactPickerService {
 
   /**
    * Native iOS/Android via @capacitor-community/contacts
+   * 
+   * On iOS, pickContact() uses CNContactPickerViewController — a system picker
+   * that does NOT require the user to grant contacts permission.
+   * The system transfers the chosen contact to the app without DB access.
+   * → We do NOT call requestPermission() before, because if user has previously
+   *   denied contacts access, it would block the picker even though it doesn't need it.
    */
   async pickContactNative() {
     try {
-      const granted = await this.requestPermission();
-      if (!granted) return null;
-
       const result = await Contacts.pickContact({
         projection: {
           name: true,

@@ -214,7 +214,6 @@ textarea::placeholder {
   margin: 0 auto;
   background: var(--bg);
   position: relative;
-  overflow: hidden;
 }
 
 /* ===== ANIMATIONS ===== */
