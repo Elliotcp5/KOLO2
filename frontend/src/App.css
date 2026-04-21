@@ -57,6 +57,35 @@ html {
   }
 }
 
+/* Native iOS / Android (Capacitor) : l'app doit prendre TOUT l'écran,
+   pas de cadre flottant, pas d'ombre, pas de max-width. */
+html.capacitor-native body,
+html.capacitor-native .mobile-frame {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* Bottom nav doit aussi prendre toute la largeur de l'écran natif */
+html.capacitor-native .bottom-nav {
+  max-width: none !important;
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  transform: none !important;
+}
+
+html.capacitor-native,
+html.capacitor-native body {
+  width: 100%;
+  min-height: 100vh;
+  /* Use dynamic viewport height to handle the keyboard/safe area correctly on iOS */
+  min-height: 100dvh;
+}
+
 /* Safe area padding */
 .safe-area-top {
   padding-top: max(20px, var(--safe-area-top));
