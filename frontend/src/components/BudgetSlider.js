@@ -143,68 +143,7 @@ export function BudgetSlider({
     const rawValue = (percentage / 100) * (config.max - config.min) + config.min;
     return Math.round(rawValue / config.step) * config.step;
   }, [config.max, config.min, config.step]);
-  
-  const handleMouseDown = (thumb) => (e) => {
-    if (disabled || budgetUndefined) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setDragging(thumb);
-  };
-  
-  const handleMouseMove = useCallback((e) => {
-    if (!dragging || !sliderRef.current || disabled || budgetUndefined) return;
-    
-    e.preventDefault();
-    
-    const rect = sliderRef.current.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-    const value = getValueFromPercentage(percentage);
-    
-    if (config.isRange) {
-      if (dragging === 'min') {
-        const newMin = Math.min(value, localMax - config.step);
-        setLocalMin(Math.max(config.min, newMin));
-      } else if (dragging === 'max') {
-        const newMax = Math.max(value, localMin + config.step);
-        setLocalMax(Math.min(config.max, newMax));
-      }
-    } else {
-      // Single value mode
-      setLocalSingle(Math.max(config.min, Math.min(config.max, value)));
-    }
-  }, [dragging, localMin, localMax, config, disabled, budgetUndefined, getValueFromPercentage]);
-  
-  const handleMouseUp = useCallback(() => {
-    if (dragging && onChange) {
-      if (config.isRange) {
-        onChange({ min: localMin, max: localMax });
-      } else {
-        onChange({ value: localSingle });
-      }
-    }
-    setDragging(null);
-  }, [dragging, localMin, localMax, localSingle, config.isRange, onChange]);
-  
-  useEffect(() => {
-    if (dragging) {
-      const handleMove = (e) => handleMouseMove(e);
-      const handleUp = () => handleMouseUp();
-      
-      window.addEventListener('mousemove', handleMove);
-      window.addEventListener('mouseup', handleUp);
-      window.addEventListener('touchmove', handleMove, { passive: false });
-      window.addEventListener('touchend', handleUp);
-      
-      return () => {
-        window.removeEventListener('mousemove', handleMove);
-        window.removeEventListener('mouseup', handleUp);
-        window.removeEventListener('touchmove', handleMove);
-        window.removeEventListener('touchend', handleUp);
-      };
-    }
-  }, [dragging, handleMouseMove, handleMouseUp]);
-  
+
   // Update local state when props change
   useEffect(() => {
     if (config.isRange) {
@@ -220,34 +159,43 @@ export function BudgetSlider({
     getValueFromPercentageRef.current = getValueFromPercentage;
   }, [getValueFromPercentage]);
 
-  // iOS / WebKit : attach native non-passive touch listeners on thumbs ONCE.
-  // We use refs to read current state so the listeners NEVER detach during a
-  // drag (detaching mid-drag lets iOS steal the touch → slider "gets stuck").
+  // ==========================================================================
+  // Pointer Events + setPointerCapture — la méthode MODERNE pour drag cross-platform
+  // iOS 13+ / Android / Desktop, tout est unifié.
+  //
+  // setPointerCapture(pointerId) : garantit que tous les événements
+  // pointermove/pointerup suivants vont à CET element, même si le doigt
+  // sort de sa zone. Ça élimine tous les bugs "slider coincé" sur iOS.
+  //
+  // touch-action: none sur le thumb : dit au navigateur "ne fais RIEN avec
+  // ce touch (pas de scroll, pas de zoom)". C'est la ceinture de sécurité.
+  // ==========================================================================
   useEffect(() => {
-    const getPointerX = (evt) => evt.touches?.[0]?.clientX ?? evt.clientX;
-
     const attachThumb = (ref, thumb) => {
       const el = ref?.current;
       if (!el) return () => {};
 
-      let active = false;
+      // Empêche iOS de prendre le touch pour scroller
+      el.style.touchAction = 'none';
+      el.style.userSelect = 'none';
+      el.style.webkitUserSelect = 'none';
 
-      const onStart = (e) => {
+      const onPointerDown = (e) => {
         const s = stateRef.current;
         if (s.disabled || s.budgetUndefined) return;
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
         e.preventDefault();
         e.stopPropagation();
-        active = true;
         setDragging(thumb);
       };
 
-      const onMove = (e) => {
-        if (!active || !sliderRef.current) return;
+      const onPointerMove = (e) => {
+        if (!el.hasPointerCapture?.(e.pointerId)) return;
+        if (!sliderRef.current) return;
         e.preventDefault();
-        e.stopPropagation();
         const s = stateRef.current;
         const rect = sliderRef.current.getBoundingClientRect();
-        const clientX = getPointerX(e);
+        const clientX = e.clientX;
         const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
         const getValue = getValueFromPercentageRef.current;
         if (!getValue) return;
@@ -266,9 +214,8 @@ export function BudgetSlider({
         }
       };
 
-      const onEnd = () => {
-        if (!active) return;
-        active = false;
+      const onPointerUp = (e) => {
+        try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
         setDragging(null);
         const s = stateRef.current;
         const fn = onChangeRef.current;
@@ -281,16 +228,16 @@ export function BudgetSlider({
         }
       };
 
-      el.addEventListener('touchstart', onStart, { passive: false });
-      el.addEventListener('touchmove', onMove, { passive: false });
-      el.addEventListener('touchend', onEnd, { passive: false });
-      el.addEventListener('touchcancel', onEnd, { passive: false });
+      el.addEventListener('pointerdown', onPointerDown);
+      el.addEventListener('pointermove', onPointerMove);
+      el.addEventListener('pointerup', onPointerUp);
+      el.addEventListener('pointercancel', onPointerUp);
 
       return () => {
-        el.removeEventListener('touchstart', onStart);
-        el.removeEventListener('touchmove', onMove);
-        el.removeEventListener('touchend', onEnd);
-        el.removeEventListener('touchcancel', onEnd);
+        el.removeEventListener('pointerdown', onPointerDown);
+        el.removeEventListener('pointermove', onPointerMove);
+        el.removeEventListener('pointerup', onPointerUp);
+        el.removeEventListener('pointercancel', onPointerUp);
       };
     };
 
@@ -302,6 +249,14 @@ export function BudgetSlider({
     return () => cleanups.forEach((fn) => fn && fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // stable — refs handle state updates
+
+  // Stub handlers kept for backward compat with inline onMouseDown on track (used for click-to-set)
+  const handleMouseDown = (thumb) => (e) => {
+    if (disabled || budgetUndefined) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(thumb);
+  };
   
   const handleManualSubmit = () => {
     const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);
