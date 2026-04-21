@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /app/
+Disallow: /login
+Disallow: /register
+Disallow: /create-account
+Disallow: /subscribe
+Disallow: /forgot-password
+Disallow: /api/
+
+Sitemap: https://trykolo.io/sitemap.xml
+
+# Host
+Host: https://trykolo.io

@@ -8,6 +8,7 @@ import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContex
 import { PlanProvider } from "./context/PlanContext";
 import { trackPageView } from "./utils/analytics";
 import { useCapacitorDeepLinks } from "./hooks/useCapacitorDeepLinks";
+import { useSEO } from "./hooks/useSEO";
 
 // Pages
 import LandingPageNew from "./pages/LandingPageNew";
@@ -69,6 +70,9 @@ const ThemedToaster = () => {
 // Router component that checks for session_id in URL
 const AppRouter = () => {
   const location = useLocation();
+
+  // SEO multilingue dynamique (title, description, OG, html[lang])
+  useSEO();
 
   // Listener deep links natifs (iOS/Android) — retour Safari in-app Stripe
   useCapacitorDeepLinks();

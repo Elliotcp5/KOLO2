@@ -572,3 +572,57 @@ Onboarding fullscreen 4-slides déclenché automatiquement après paiement Strip
 - P2 : Décomposer `AppShell.js` (>6860 lignes) en sous-composants
 - P2 : Universal Links (`apple-app-site-association`) pour éviter le prompt iOS "Ouvrir dans KOLO ?"
 - P3 : Analytics sur l'onboarding (track complétion / skip rate)
+
+## Changelog - Brand identity + SEO/ASO (Feb 2026)
+
+### Onboarding v2 — Identité KOLO (DONE ✅)
+- Suppression du logo `Crown` (user feedback)
+- Slide 1 : **logo KOLO officiel** (PNG) avec halo gradient marque
+- Slides 2-4 : icônes lucide dans un chip **gradient bleu KOLO (#004AAD) → magenta (#CB6CE6)**
+- Badge **"PRO+"** en gradient marque (top-left) pour différencier le tier
+- Text-gradient KOLO sur les subtitles
+- Fond radial subtil aux couleurs marque
+- CTA Next en gradient marque
+- Confetti couleurs KOLO (#004AAD, #CB6CE6, #FFF)
+
+### SEO multilingue (DONE ✅)
+Fichiers touchés :
+- `/app/frontend/public/index.html` — refonte complète :
+  - Title + description optimisés (EN default)
+  - **hreflang** pour EN/FR/ES/DE/IT + x-default
+  - Canonical URL `https://trykolo.io/`
+  - Open Graph complet (locale + alternate locales)
+  - Twitter Card
+  - **JSON-LD SoftwareApplication** (aggregateRating, 3 offers, featureList)
+  - **JSON-LD Organization** (contactPoint, sameAs → App Store)
+  - `apple-itunes-app` (Smart App Banner iOS → lien direct App Store)
+  - `google-play-app`
+- `/app/frontend/public/robots.txt` — exclusion des routes privées
+- `/app/frontend/public/sitemap.xml` — multilingue avec hreflang par URL
+- `/app/frontend/src/hooks/useSEO.js` (nouveau) — title/description/OG/html[lang] **dynamiques selon locale** (EN/FR/ES/DE/IT)
+- Activé dans `App.js` via `useSEO()` dans AppRouter
+
+### ASO Pack (DONE ✅)
+- `/app/memory/ASO_SEO_PACK.md` : pack complet prêt à copier dans App Store Connect + Google Play Console, en **EN / ES / DE / FR** :
+  - App name (30 chars) × 4 langues
+  - Subtitle (30 chars) × 4
+  - Promotional text (170 chars) × 4
+  - Keywords (100 chars, sans espace) × 4
+  - Short description Play (80 chars) × 4
+  - Full description (4000 chars) × 4
+  - Checklist ASO + SEO
+  - Mots-clés longue traîne
+  - Compétiteurs à analyser
+
+## Next Action Items
+1. **Push GitHub → build Codemagic** (rien d'autre à faire côté code)
+2. App Store Connect : activer les 4 localisations EN/ES/DE/FR, copier depuis `/app/memory/ASO_SEO_PACK.md`
+3. Préparer 6 screenshots localisés par langue (6.5" iPhone + iPad 12.9")
+4. Soumettre à l'indexation Google Search Console (sitemap.xml)
+
+## Roadmap (post-lancement)
+- P2 : Ajout langue espagnole à l'app UI (actuellement FR/EN/DE/IT only ; ES a été ajouté SEO/ASO uniquement)
+- P2 : Blog `/blog` avec articles SEO ("Best CRM for real estate 2026") en 4 langues
+- P2 : App Preview videos (30s) → +30% de conversion App Store
+- P2 : Universal Links (`apple-app-site-association`)
+- P3 : Refactoring server.py + AppShell.js
