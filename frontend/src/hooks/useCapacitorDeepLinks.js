@@ -5,9 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { toast } from 'sonner';
-
-export function useCapacitorDeepLinks() {
+import { toast } from 'sonner';export function useCapacitorDeepLinks() {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,11 +21,13 @@ export function useCapacitorDeepLinks() {
         const lower = url.toLowerCase();
 
         if (lower.includes('checkout-success') || lower.includes('upgrade=success')) {
-          // Extrait les query params (après ?)
+          // Extrait les query params (après ?) et garantit upgrade=success
           const qIdx = url.indexOf('?');
-          const query = qIdx !== -1 ? url.substring(qIdx) : '?upgrade=success';
-          toast.success('Paiement réussi ! Bienvenue sur KOLO 🎉');
-          navigate(`/app${query}`);
+          const rawQuery = qIdx !== -1 ? url.substring(qIdx + 1) : '';
+          const params = new URLSearchParams(rawQuery);
+          params.set('upgrade', 'success');
+          const finalQuery = params.toString();
+          navigate(`/app?${finalQuery}`);
           return;
         }
 

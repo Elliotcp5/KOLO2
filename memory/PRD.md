@@ -529,3 +529,46 @@ Retour auto dans l'app depuis Safari in-app après checkout Stripe :
    - `SubscribePage.handlePayment()` ajoute `&native=1` à l'URL quand natif.
 
 Flow natif : clic "Upgrade" → Browser.open() fullscreen sur checkout.stripe.com → paiement → Stripe redirige vers `io.kolo.app://checkout-success` → iOS relance l'app → hook ferme Safari in-app + toast "Paiement réussi 🎉" + navigate `/app?upgrade=success`.
+
+## Changelog - Onboarding Premium post-paiement (Feb 2026)
+
+### WelcomePROOnboarding (P1) - IMPLEMENTED ✅
+Onboarding fullscreen 4-slides déclenché automatiquement après paiement Stripe réussi.
+
+1. **Composant** `/app/frontend/src/components/WelcomePROOnboarding.js` :
+   - 2 sets de 4 slides : PRO (purple→pink gradient) / PRO+ (orange→red→pink gradient)
+   - Localisé FR / EN / DE / IT
+   - Icônes lucide-react : Crown, Infinity, MessageSquare, Flame, TrendingUp, Sparkles
+   - Confetti à l'ouverture (`canvas-confetti`)
+   - Progress dots animés (largeur du dot actif = 24px)
+   - CTA "Next" devient "Commencer maintenant" au dernier slide
+   - Bouton X pour fermer (safe-area respectée)
+   - Animation icon entrance `cubic-bezier` scale + rotate
+
+2. **Déclenchement automatique** dans `AppShell.js` :
+   - `/app?upgrade=success&plan=pro` (ou pro_plus) → sync + ouverture
+   - Fallback robuste : si sync backend échoue, utilise le `plan` de l'URL
+   - Fonctionne identiquement en web (redirect Stripe) et natif (deep link `io.kolo.app://checkout-success?plan=...`)
+
+3. **Contenu PRO** :
+   - Bienvenue PRO → Prospects/IA illimités → SMS 1-click → Historique complet
+
+4. **Contenu PRO+** :
+   - Bienvenue PRO+ → Heat Score IA → ROI Dashboard → Rapports hebdo
+
+### Tests visuels ✅
+- Screenshot Slide 1 PRO+ : "Welcome to KOLO PRO+" (Crown, YOU'RE AT THE TOP) ✅
+- Screenshot Slide 3 PRO+ : "ROI Dashboard" (TrendingUp, REAL-TIME NUMBERS) ✅
+- Navigation Next fonctionnelle, dots de progression OK
+- Aucune régression sur la landing/login/app
+
+## Next Action Items
+1. Push KOLO2 vers GitHub → laisser tourner Codemagic → soumettre à TestFlight
+2. Test TestFlight : checkout Stripe → retour deep link → onboarding premium s'affiche
+3. Vérifier les 4 langues sur device en changeant la locale utilisateur avant checkout
+
+## Roadmap (post-App Store)
+- P2 : Modulariser `backend/server.py` en routers
+- P2 : Décomposer `AppShell.js` (>6860 lignes) en sous-composants
+- P2 : Universal Links (`apple-app-site-association`) pour éviter le prompt iOS "Ouvrir dans KOLO ?"
+- P3 : Analytics sur l'onboarding (track complétion / skip rate)

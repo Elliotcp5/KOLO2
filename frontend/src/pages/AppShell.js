@@ -8,6 +8,7 @@ import { usePlan } from '../context/PlanContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
 import OnboardingFlow from '../components/OnboardingFlow';
+import { WelcomePROOnboarding } from '../components/WelcomePROOnboarding';
 import { AddProspectSheet } from '../components/AddProspectSheet';
 import { SMSOneClickButton } from '../components/SMSOneClickButton';
 import { HeatScoreBadge } from '../components/HeatScoreBadge';
@@ -6653,6 +6654,7 @@ const AppShell = () => {
   const [userPrefsLoaded, setUserPrefsLoaded] = useState(false);
   const [userName, setUserName] = useState('');
   const [showAddProspectSheet, setShowAddProspectSheet] = useState(false);
+  const [welcomeProPlan, setWelcomeProPlan] = useState(null);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -6666,6 +6668,7 @@ const AppShell = () => {
         const trialStarted = urlParams.get('trial_started');
         
         if (upgradeSuccess === 'success' && token) {
+          const urlPlan = urlParams.get('plan');
           // Sync subscription status after payment
           try {
             const syncResponse = await fetch(`${API_URL}/api/plans/sync`, {
@@ -6676,23 +6679,28 @@ const AppShell = () => {
               }
             });
             
+            let activePlan = null;
             if (syncResponse.ok) {
               const syncData = await syncResponse.json();
-              if (syncData.synced && syncData.plan !== 'free') {
-                const planName = syncData.plan === 'pro_plus' ? 'Pro+' : 'Pro';
-                toast.success(
-                  locale === 'fr' ? `Bienvenue sur KOLO ${planName} ! 🎉` :
-                  locale === 'de' ? `Willkommen bei KOLO ${planName}! 🎉` :
-                  locale === 'it' ? `Benvenuto in KOLO ${planName}! 🎉` :
-                  `Welcome to KOLO ${planName}! 🎉`
-                );
+              if (syncData.synced && syncData.plan && syncData.plan !== 'free') {
+                activePlan = syncData.plan;
               }
+            }
+            // Fallback: use plan from URL param (si le webhook n'a pas encore mis à jour la DB)
+            if (!activePlan && (urlPlan === 'pro' || urlPlan === 'pro_plus')) {
+              activePlan = urlPlan;
+            }
+            if (activePlan) {
+              setWelcomeProPlan(activePlan);
             }
             
             // Clean URL
             window.history.replaceState({}, document.title, '/app');
           } catch (syncError) {
             console.error('Failed to sync subscription:', syncError);
+            if (urlPlan === 'pro' || urlPlan === 'pro_plus') {
+              setWelcomeProPlan(urlPlan);
+            }
           }
         }
         
@@ -6852,6 +6860,14 @@ const AppShell = () => {
       {/* Notification Permission Prompt */}
       {showNotificationPrompt && (
         <NotificationPrompt onClose={() => setShowNotificationPrompt(false)} />
+      )}
+
+      {/* Welcome PRO/PRO+ Onboarding (après checkout Stripe réussi) */}
+      {welcomeProPlan && (
+        <WelcomePROOnboarding
+          plan={welcomeProPlan}
+          onClose={() => setWelcomeProPlan(null)}
+        />
       )}
     </div>
   );
