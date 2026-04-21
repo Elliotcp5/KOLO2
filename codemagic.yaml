@@ -54,8 +54,13 @@ workflows:
       - name: Increment build number
         script: |
           cd frontend/ios/App
-          BUILD_NUMBER=$(($(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0) + 1))
+          # Récupère le plus grand build number entre App Store et TestFlight, +1
+          APP_STORE_NUM=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          TESTFLIGHT_NUM=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          MAX_NUM=$(( APP_STORE_NUM > TESTFLIGHT_NUM ? APP_STORE_NUM : TESTFLIGHT_NUM ))
+          BUILD_NUMBER=$((MAX_NUM + 1))
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
+          echo "App Store latest: $APP_STORE_NUM, TestFlight latest: $TESTFLIGHT_NUM"
           echo "Set build number to $BUILD_NUMBER"
 
       - name: iOS code signing setup
