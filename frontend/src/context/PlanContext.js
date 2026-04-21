@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -226,13 +227,14 @@ export function PlanProvider({ children }) {
 
   const upgradePlan = useCallback(async (plan, billingPeriod, token) => {
     try {
+      const isNative = Capacitor.isNativePlatform();
       const response = await fetch(`${API_URL}/api/plans/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ plan, billing_period: billingPeriod })
+        body: JSON.stringify({ plan, billing_period: billingPeriod, native: isNative })
       });
       
       if (response.ok) {

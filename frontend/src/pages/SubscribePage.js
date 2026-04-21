@@ -6,6 +6,7 @@ import { useLocale } from '../context/LocaleContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
 import { openExternalUrl } from '../utils/externalUrl';
+import { Capacitor } from '@capacitor/core';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -29,8 +30,9 @@ const SubscribePage = () => {
     if (loading) return;
     setLoading(true);
 
-    // Direct navigation to Stripe checkout (native: Safari in-app browser)
-    const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
+    const isNative = Capacitor.isNativePlatform();
+    const nativeParam = isNative ? '&native=1' : '';
+    const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}${nativeParam}`;
     await openExternalUrl(checkoutUrl);
   };
 

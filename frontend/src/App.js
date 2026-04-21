@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
 import { PlanProvider } from "./context/PlanContext";
 import { trackPageView } from "./utils/analytics";
+import { useCapacitorDeepLinks } from "./hooks/useCapacitorDeepLinks";
 
 // Pages
 import LandingPageNew from "./pages/LandingPageNew";
@@ -68,6 +69,9 @@ const ThemedToaster = () => {
 // Router component that checks for session_id in URL
 const AppRouter = () => {
   const location = useLocation();
+
+  // Listener deep links natifs (iOS/Android) — retour Safari in-app Stripe
+  useCapacitorDeepLinks();
 
   // Check URL fragment for session_id (from OAuth redirect)
   // This must happen synchronously during render to prevent race conditions

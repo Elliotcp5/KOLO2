@@ -495,3 +495,37 @@ Résolution des 5 blocages TestFlight avant soumission App Store :
 - Modulariser `backend/server.py`.
 - Décomposer `frontend/src/pages/AppShell.js` (>6600 lignes).
 - Nettoyer warnings `react-hooks/exhaustive-deps` (InteractionTimeline, AuthContext).
+
+## Changelog - Deep Links natifs Stripe (Feb 2026)
+
+### Deep Links Capacitor (P0) - IMPLEMENTED ✅
+Retour auto dans l'app depuis Safari in-app après checkout Stripe :
+
+1. **Consolidation codemagic.yaml** :
+   - Doublon `/app/frontend/codemagic.yaml` (bundle_id `com.kolo.app`, obsolète) **supprimé**.
+   - `/app/codemagic.yaml` à la racine = version unique, fusionnée : signing complet App Store Connect + Android, bundle_id correct `io.kolo.app`, non-destructif (pas de `rm -rf ios`), `submit_to_testflight: true`.
+
+2. **Plugin `@capacitor/app@5.0.8`** installé (listener `appUrlOpen`).
+   - Ajouté à Podfile : `pod 'CapacitorApp'`.
+
+3. **URL Scheme iOS** dans `Info.plist` :
+   ```
+   CFBundleURLTypes = [{ CFBundleURLSchemes = ["io.kolo.app", "kolo"] }]
+   ```
+
+4. **Hook React `useCapacitorDeepLinks`** (`/app/frontend/src/hooks/useCapacitorDeepLinks.js`) :
+   - Écoute `App.addListener('appUrlOpen', ...)`.
+   - Parse les URLs `io.kolo.app://checkout-success`, `checkout-cancelled`, `checkout-error?reason=...`, `create-account?session_id=...`.
+   - Ferme automatiquement le Safari in-app (`Browser.close()`) et redirige dans l'app avec toast de confirmation.
+   - Activé dans `App.js` à l'intérieur de `AppRouter`.
+
+5. **Backend** (`/api/plans/upgrade` + `/api/payments/checkout-redirect`) :
+   - Nouveau champ `native: bool` / query `native=1`.
+   - Si natif : `success_url = "io.kolo.app://checkout-success?plan=..."`, `cancel_url = "io.kolo.app://checkout-cancelled"`, erreurs → `checkout-error?reason=...`.
+   - Si web : URLs classiques `/app?upgrade=success` (inchangé).
+
+6. **Frontend** :
+   - `PlanContext.upgradePlan()` envoie `native: Capacitor.isNativePlatform()` dans le body.
+   - `SubscribePage.handlePayment()` ajoute `&native=1` à l'URL quand natif.
+
+Flow natif : clic "Upgrade" → Browser.open() fullscreen sur checkout.stripe.com → paiement → Stripe redirige vers `io.kolo.app://checkout-success` → iOS relance l'app → hook ferme Safari in-app + toast "Paiement réussi 🎉" + navigate `/app?upgrade=success`.

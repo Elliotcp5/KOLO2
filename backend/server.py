@@ -954,7 +954,7 @@ async def create_checkout(request: CreateCheckoutRequest, http_request: Request)
 
 # Direct redirect endpoint - works on all browsers including iOS
 @api_router.get("/payments/checkout-redirect")
-async def checkout_redirect(http_request: Request, locale: str = "en", country: str = "US", email: str = ""):
+async def checkout_redirect(http_request: Request, locale: str = "en", country: str = "US", email: str = "", native: int = 0):
     """Direct server-side redirect to Stripe checkout - bypasses JavaScript issues"""
     from starlette.responses import RedirectResponse
     
@@ -966,6 +966,9 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         origin_url = f"{parsed.scheme}://{parsed.netloc}"
     else:
         origin_url = str(http_request.base_url).rstrip('/')
+
+    # Native app: utilise le deep link io.kolo.app:// pour le retour Safari in-app
+    native_scheme = "io.kolo.app://" if native else None
     
     # Check if email has already paid in the last 30 days (prevent double billing)
     if email:
@@ -979,6 +982,8 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         
         if existing_user:
             # User already has active subscription
+            if native_scheme:
+                return RedirectResponse(url=f"{native_scheme}checkout-error?reason=already_subscribed", status_code=303)
             return RedirectResponse(url=f"{origin_url}/subscribe?error=already_subscribed", status_code=303)
         
         # Check for recent successful payment
@@ -989,10 +994,16 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         
         if recent_payment:
             # Already paid recently, redirect to account creation
+            if native_scheme:
+                return RedirectResponse(url=f"{native_scheme}create-account?session_id={recent_payment.get('session_id', '')}", status_code=303)
             return RedirectResponse(url=f"{origin_url}/create-account?session_id={recent_payment.get('session_id', '')}", status_code=303)
     
-    success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{origin_url}/subscribe"
+    if native_scheme:
+        success_url = f"{native_scheme}create-account?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{native_scheme}checkout-cancelled"
+    else:
+        success_url = f"{origin_url}/create-account?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{origin_url}/subscribe"
     
     # Get pricing based on country
     pricing = get_pricing_for_country(country)
@@ -1061,7 +1072,9 @@ async def checkout_redirect(http_request: Request, locale: str = "en", country: 
         return RedirectResponse(url=session.url, status_code=303)
     except Exception as e:
         logger.error(f"Checkout redirect error: {e}")
-        # Redirect back to subscribe page with error
+        # Redirect back to subscribe page with error (native or web)
+        if native_scheme:
+            return RedirectResponse(url=f"{native_scheme}checkout-error?reason=payment_failed", status_code=303)
         return RedirectResponse(url=f"{origin_url}/subscribe?error=payment_failed", status_code=303)
 
 @api_router.get("/payments/status/{session_id}")
@@ -2022,6 +2035,7 @@ async def check_feature(feature: str, request: Request):
 class UpgradePlanRequest(BaseModel):
     plan: str  # pro or pro_plus
     billing_period: str = "monthly"  # monthly or annual
+    native: bool = False  # True si la requête vient de l'app native iOS/Android (deep links)
 
 @api_router.post("/plans/upgrade")
 async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
@@ -2069,6 +2083,9 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
         origin_url = f"{parsed.scheme}://{parsed.netloc}"
     else:
         origin_url = str(http_request.base_url).rstrip('/')
+
+    # Native app: utilise le deep link io.kolo.app:// pour le retour Safari in-app
+    native_scheme = "io.kolo.app://" if request.native else None
     
     # Create or get price
     interval = "month" if request.billing_period == "monthly" else "year"
@@ -2093,14 +2110,21 @@ async def upgrade_plan(request: UpgradePlanRequest, http_request: Request):
     
     # Create checkout session
     user_locale = user_doc.get("locale", "fr")
+    if native_scheme:
+        success_url = f"{native_scheme}checkout-success?plan={request.plan}"
+        cancel_url = f"{native_scheme}checkout-cancelled"
+    else:
+        success_url = f"{origin_url}/app?upgrade=success&plan={request.plan}"
+        cancel_url = f"{origin_url}/pricing?upgrade=cancelled"
+
     session = stripe.checkout.Session.create(
         customer=stripe_customer_id,
         customer_email=user.email,  # Ensure email is set
         mode="subscription",
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
-        success_url=f"{origin_url}/app?upgrade=success&plan={request.plan}",
-        cancel_url=f"{origin_url}/pricing?upgrade=cancelled",
+        success_url=success_url,
+        cancel_url=cancel_url,
         metadata={
             "user_id": user.user_id,
             "email": user.email,  # CRITICAL: Include email for webhook
@@ -4631,6 +4655,11 @@ async def startup_event():
     # Start scheduler in a background thread
     scheduler_thread = threading.Thread(target=start_background_scheduler, daemon=True)
     scheduler_thread.start()
+    logger.info("Background notification scheduler started")
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
     logger.info("Background notification scheduler started")
 
 @app.on_event("shutdown")

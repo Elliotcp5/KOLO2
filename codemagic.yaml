@@ -1,51 +1,127 @@
 workflows:
-  ios-workflow:
-    name: iOS Build
-    max_build_duration: 60
+  kolo-ios-android:
+    name: KOLO iOS & Android Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+
     environment:
-      xcode: latest
-      cocoapods: default
-      node: 18
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: io.kolo.app
+      android_signing:
+        - kolo_keystore
+      groups:
+        - app_credentials
       vars:
+        PACKAGE_NAME: "io.kolo.app"
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
+      node: 18
+      xcode: latest
+      cocoapods: default
+      java: 17
+
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: release/*
+          include: true
+      cancel_previous_builds: true
+
     scripts:
       - name: Install frontend dependencies
         script: |
           cd frontend
           yarn install --frozen-lockfile || yarn install
-      - name: Build web app
+
+      - name: Build React app
         script: |
           cd frontend
           CI=false yarn build
+
       - name: Sync Capacitor (preserves custom iOS config)
         script: |
           cd frontend
           npx cap sync ios
+
       - name: CocoaPods install
         script: |
           cd frontend/ios/App
           pod install --repo-update
-      - name: Archive iOS app
+
+      - name: iOS code signing setup
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build iOS IPA
         script: |
           cd frontend/ios/App
-          xcodebuild -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath $CM_BUILD_DIR/App.xcarchive \
-            archive \
-            -allowProvisioningUpdates
-      - name: Export IPA
+          xcode-project build-ipa \
+            --workspace "App.xcworkspace" \
+            --scheme "App" \
+            --archive-flags="-destination 'generic/platform=iOS'"
+
+      - name: Android keystore setup
         script: |
-          xcodebuild -exportArchive \
-            -archivePath $CM_BUILD_DIR/App.xcarchive \
-            -exportOptionsPlist /tmp/ExportOptions.plist \
-            -exportPath $CM_BUILD_DIR/export \
-            -allowProvisioningUpdates
+          if [ -n "$CM_KEYSTORE" ]; then
+            echo $CM_KEYSTORE | base64 --decode > /tmp/kolo-keystore.jks
+            cat >> "$CM_BUILD_DIR/frontend/android/key.properties" <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=/tmp/kolo-keystore.jks
+          EOF
+          fi
+
+      - name: Sync Capacitor Android
+        script: |
+          cd frontend
+          npx cap sync android || true
+
+      - name: Build Android AAB
+        script: |
+          if [ -d frontend/android ]; then
+            cd frontend/android
+            ./gradlew bundleRelease
+          fi
+
+      - name: Build Android APK
+        script: |
+          if [ -d frontend/android ]; then
+            cd frontend/android
+            ./gradlew assembleRelease
+          fi
+
     artifacts:
-      - $CM_BUILD_DIR/export/*.ipa
+      - frontend/ios/App/build/ios/ipa/*.ipa
+      - frontend/android/app/build/outputs/**/*.aab
+      - frontend/android/app/build/outputs/**/*.apk
+      - frontend/build.log
+
     publishing:
+      email:
+        recipients:
+          - contact@trykolo.io
+        notify:
+          success: true
+          failure: true
+
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        submit_to_app_store: false
+        beta_groups:
+          - KOLO Beta Testers
+
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
