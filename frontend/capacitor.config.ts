@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: 'io.kolo.app',
   appName: 'KOLO',
   webDir: 'build',
+  overrideUserAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) KOLOApp/1.0 Mobile/15E148 Safari/604.1',
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
@@ -20,8 +21,9 @@ const config: CapacitorConfig = {
       splashImmersive: true,
     },
     StatusBar: {
-      style: 'dark',
+      style: 'light',
       backgroundColor: '#0F0F0F',
+      overlaysWebView: false,
     },
     Keyboard: {
       resize: 'body',
@@ -32,9 +34,11 @@ const config: CapacitorConfig = {
     },
   },
   ios: {
-    contentInset: 'automatic',
+    contentInset: 'never',
     preferredContentMode: 'mobile',
     backgroundColor: '#0F0F0F',
+    scrollEnabled: false,
+    limitsNavigationsToAppBoundDomains: false,
   },
   android: {
     backgroundColor: '#0F0F0F',

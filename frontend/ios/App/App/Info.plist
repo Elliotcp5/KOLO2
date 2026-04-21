@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>KOLO</string>
+	<string>KOLO</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,5 +45,19 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<key>NSContactsUsageDescription</key>
+	<string>KOLO a besoin d'accéder à vos contacts pour vous permettre d'importer rapidement vos prospects immobiliers.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>KOLO utilise l'appareil photo pour ajouter des photos à vos biens et prospects.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>KOLO accède à votre bibliothèque photos pour ajouter des images à vos biens immobiliers.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

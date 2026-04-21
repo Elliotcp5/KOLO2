@@ -5,6 +5,8 @@
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 /* Base styles */
@@ -22,7 +24,19 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  /* Désactive le rebond natif iOS (scroll bounce) pour éviter le lag perçu */
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
+
+/* iOS Capacitor : le WebView contient sa propre scroll area, on bloque le rebond global */
+html {
+  height: 100%;
+  background-color: var(--bg);
+}
+
+/* Les pages individuelles gèrent déjà leur propre padding via env(safe-area-inset-*). 
+   Ne PAS ajouter de padding safe-area au body, cela causerait un double décalage. */
 
 /* Mobile frame wrapper - centers app on desktop */
 .mobile-frame {

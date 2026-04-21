@@ -16,6 +16,7 @@ import { InteractionTimeline } from '../components/InteractionTimeline';
 import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
+import { openExternalUrl } from '../utils/externalUrl';
 // Refactored utilities
 import { getInitials } from '../utils/helpers';
 
@@ -4530,7 +4531,7 @@ const SettingsTab = ({ onClose }) => {
       if (response.ok) {
         const data = await response.json();
         if (data.url) {
-          window.open(data.url, '_blank');
+          await openExternalUrl(data.url, { sameTab: false });
         }
       } else {
         toast.error(locale === 'fr' ? 'Fonctionnalité bientôt disponible' : 'Feature coming soon');

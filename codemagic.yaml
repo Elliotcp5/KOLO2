@@ -5,28 +5,30 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      node: 18
       vars:
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
     scripts:
-      - name: Install dependencies
-        script: npm install --legacy-peer-deps
-      - name: Install Capacitor
-        script: npm install @capacitor/cli @capacitor/core @capacitor/ios --legacy-peer-deps
+      - name: Install frontend dependencies
+        script: |
+          cd frontend
+          yarn install --frozen-lockfile || yarn install
       - name: Build web app
-        script: CI=false npm run build
-      - name: Init Capacitor
-        script: npx cap init KOLO io.kolo.app --web-dir build || true
-      - name: Add iOS platform
         script: |
-          rm -rf ios
-          npx cap add ios
-      - name: Sync Capacitor
-        script: npx cap sync ios
-      - name: Build iOS
+          cd frontend
+          CI=false yarn build
+      - name: Sync Capacitor (preserves custom iOS config)
         script: |
-          cd ios/App
-          pod install || true
+          cd frontend
+          npx cap sync ios
+      - name: CocoaPods install
+        script: |
+          cd frontend/ios/App
+          pod install --repo-update
+      - name: Archive iOS app
+        script: |
+          cd frontend/ios/App
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
@@ -45,5 +47,5 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: false
+        submit_to_testflight: true
         submit_to_app_store: false

@@ -448,3 +448,50 @@ yarn cap:sync       # Sync web build to native
 - P2: Break down `AppShell.js` into smaller components
 - P2: Refactor React Hooks dependency arrays
 
+
+---
+
+## Changelog - Feb 2026 (iOS Capacitor fixes session)
+
+### iOS / Capacitor hardening (P0) - IMPLEMENTED ✅
+Résolution des 5 blocages TestFlight avant soumission App Store :
+
+1. **Safe area / barres noires** :
+   - `capacitor.config.ts` + `ios/App/App/capacitor.config.json` : `contentInset: 'never'`, `StatusBar.overlaysWebView: false`, `StatusBar.style: 'light'`, `backgroundColor: '#0F0F0F'`, ajout `scrollEnabled: false`.
+   - `App.css` : ajout variables `--safe-area-left/right`, `overscroll-behavior-y: none`, background sur `html`.
+
+2. **Import Contacts** :
+   - Ajout `NSContactsUsageDescription` dans `Info.plist` (en + NSCameraUsageDescription / NSPhotoLibraryUsageDescription pour éviter le rejet ATT App Review).
+   - Plugin `@capacitor-community/contacts` déjà dans le Podfile ✅.
+
+3. **Push Notifications** :
+   - Création `ios/App/App/App.entitlements` avec `aps-environment = development`.
+   - Ajout de `CODE_SIGN_ENTITLEMENTS = App/App.entitlements` dans Debug+Release du `project.pbxproj`.
+   - `AppDelegate.swift` : ajout des hooks `didRegisterForRemoteNotificationsWithDeviceToken` et `didFailToRegisterForRemoteNotificationsWithError` (notifications `capacitorDidRegisterForRemoteNotifications`).
+   - `Info.plist` : `UIBackgroundModes` avec `remote-notification`.
+
+4. **Paiements Stripe (Browser)** :
+   - Installation `@capacitor/browser@5.2.1` (**manquait** dans package.json).
+   - Ajout `pod 'CapacitorBrowser'` dans Podfile.
+   - Création `src/utils/externalUrl.js` → `openExternalUrl()` qui utilise `Browser.open` en natif (fullscreen) et `window.location.href` / `window.open` en web.
+   - Migration `PricingPage.js` (2 appels checkout), `SubscribePage.js` (checkout-redirect), `AppShell.js` (portail facturation `/api/billing/portal`).
+
+5. **Lag / UX natif** :
+   - Ajout `overrideUserAgent` (user-agent KOLO custom).
+   - `scrollEnabled: false` sur iOS config (désactive le scroll natif dupliqué WKWebView).
+   - CSS `overscroll-behavior-y: none` global pour bloquer le rebond iOS.
+
+### Codemagic - IMPLEMENTED ✅
+- **FIX CRITIQUE** : le `codemagic.yaml` précédent faisait `rm -rf ios && npx cap add ios`, ce qui **écrasait entièlement la config iOS custom** à chaque build.
+- Nouveau `codemagic.yaml` : préserve `ios/` (committé au repo), fait `cd frontend && yarn install && yarn build && npx cap sync ios && pod install --repo-update && xcodebuild archive`.
+- `submit_to_testflight: true` activé.
+
+## Next Action Items (P0 immédiat)
+- Push du repo vers GitHub et déclencher un build Codemagic → vérifier que `pod install` réussit sur `CapacitorBrowser`.
+- Vérifier dans Xcode que la capability "Push Notifications" est bien activée (le fichier entitlements est référencé, Xcode doit la détecter automatiquement).
+- Tester sur device : checkout Stripe (Safari in-app), contacts, push, safe area.
+
+## Roadmap P2 (post-soumission App Store)
+- Modulariser `backend/server.py`.
+- Décomposer `frontend/src/pages/AppShell.js` (>6600 lignes).
+- Nettoyer warnings `react-hooks/exhaustive-deps` (InteractionTimeline, AuthContext).

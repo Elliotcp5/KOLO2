@@ -4,6 +4,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useTheme } from '../context/ThemeContext';
 import { usePlan, PLAN_FEATURES } from '../context/PlanContext';
 import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
+import { openExternalUrl } from '../utils/externalUrl';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -199,7 +200,7 @@ export default function PricingPage() {
     // Redirect to Stripe checkout for payment
     const result = await upgradePlan(plan, billingPeriod, token);
     if (result.success && result.checkout_url) {
-      window.location.href = result.checkout_url;
+      await openExternalUrl(result.checkout_url);
     } else {
       toast.error(
         locale === 'fr' ? 'Erreur lors de la création du paiement' :

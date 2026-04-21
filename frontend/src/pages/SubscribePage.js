@@ -5,6 +5,7 @@ import { ArrowLeft, CreditCard, Check, Lock, Sparkles } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import { openExternalUrl } from '../utils/externalUrl';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -24,13 +25,13 @@ const SubscribePage = () => {
     }
   }, [searchParams, locale]);
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (loading) return;
     setLoading(true);
 
-    // Direct navigation to Stripe checkout
+    // Direct navigation to Stripe checkout (native: Safari in-app browser)
     const checkoutUrl = `${API_URL}/api/payments/checkout-redirect?locale=${locale || 'fr'}&country=${country || 'FR'}`;
-    window.location.href = checkoutUrl;
+    await openExternalUrl(checkoutUrl);
   };
 
   return (
