@@ -11,6 +11,7 @@ import { PlanProvider } from "./context/PlanContext";
 import { trackPageView } from "./utils/analytics";
 import { useCapacitorDeepLinks } from "./hooks/useCapacitorDeepLinks";
 import { useSEO } from "./hooks/useSEO";
+import { useIOSKeyboardScroll } from "./hooks/useIOSKeyboardScroll";
 
 // Pages
 import LandingPageNew from "./pages/LandingPageNew";
@@ -78,6 +79,9 @@ const AppRouter = () => {
 
   // Listener deep links natifs (iOS/Android) — retour Safari in-app Stripe
   useCapacitorDeepLinks();
+
+  // Gère le clavier iOS : scrolle l'input focusé au-dessus du clavier
+  useIOSKeyboardScroll();
 
   // Check URL fragment for session_id (from OAuth redirect)
   // This must happen synchronously during render to prevent race conditions

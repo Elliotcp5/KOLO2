@@ -4,7 +4,10 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
 export async function openExternalUrl(url, { sameTab = true } = {}) {
-  if (!url) return;
+  if (!url) {
+    console.warn('openExternalUrl called with empty url');
+    return false;
+  }
 
   if (Capacitor.isNativePlatform()) {
     try {
@@ -13,9 +16,16 @@ export async function openExternalUrl(url, { sameTab = true } = {}) {
         presentationStyle: 'fullscreen',
         windowName: '_self',
       });
-      return;
+      return true;
     } catch (err) {
-      console.error('Browser.open failed, falling back:', err);
+      console.error('Browser.open failed:', err);
+      // Dernière tentative : ouvrir via window.open (safari externe)
+      try {
+        window.open(url, '_system');
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
   }
 
@@ -24,4 +34,5 @@ export async function openExternalUrl(url, { sameTab = true } = {}) {
   } else {
     window.open(url, '_blank');
   }
+  return true;
 }

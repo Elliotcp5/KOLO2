@@ -11,86 +11,91 @@ class ContactPickerService {
       && 'ContactsManager' in window;
   }
 
-  /**
-   * Check if contact picking is supported on current platform
-   */
   isSupported() {
     return this.isNative || this.isWebSupported;
   }
 
-  /**
-   * Get the reason why contacts are not supported
-   */
   getNotSupportedReason(locale = 'fr') {
     if (this.isSupported()) return null;
-    if (locale === 'fr') {
-      return "L'import de contacts n'est pas disponible sur ce navigateur. Utilisez l'application mobile ou Chrome sur Android.";
-    }
-    if (locale === 'de') {
-      return 'Kontakt-Import ist auf diesem Browser nicht verfügbar. Verwenden Sie die mobile App oder Chrome auf Android.';
-    }
-    if (locale === 'it') {
-      return "L'importazione dei contatti non è disponibile su questo browser. Usa l'app mobile o Chrome su Android.";
-    }
-    return 'Contact import is not available on this browser. Use the mobile app or Chrome on Android.';
+    if (locale === 'fr') return "L'import de contacts n'est pas disponible sur ce navigateur.";
+    if (locale === 'de') return 'Kontakt-Import ist auf diesem Browser nicht verfügbar.';
+    if (locale === 'it') return "L'importazione dei contatti non è disponibile su questo browser.";
+    return 'Contact import is not available on this browser.';
   }
 
-  /**
-   * Request contacts permission (native iOS/Android only)
-   * Returns true if granted, false otherwise.
-   */
   async requestPermission() {
-    if (!this.isNative) return true; // Web has no explicit request step
-
+    if (!this.isNative) return 'granted';
     try {
       const current = await Contacts.checkPermissions();
-      if (current.contacts === 'granted') return true;
-
+      if (current.contacts === 'granted' || current.contacts === 'limited') {
+        return current.contacts;
+      }
       const result = await Contacts.requestPermissions();
-      return result.contacts === 'granted';
+      return result.contacts;
     } catch (err) {
       console.error('Contacts permission request failed:', err);
-      return false;
+      return 'denied';
     }
   }
 
-  /**
-   * Pick a single contact
-   * Returns: { name: string, phone: string, email: string } or null (cancelled / no data)
-   */
   async pickContact() {
-    if (this.isNative) {
-      return this.pickContactNative();
-    } else if (this.isWebSupported) {
-      return this.pickContactWeb();
-    }
+    if (this.isNative) return this.pickContactNative();
+    if (this.isWebSupported) return this.pickContactWeb();
     return null;
   }
 
   /**
    * Native iOS/Android via @capacitor-community/contacts
-   * 
-   * On iOS, pickContact() uses CNContactPickerViewController — a system picker
-   * that does NOT require the user to grant contacts permission.
-   * The system transfers the chosen contact to the app without DB access.
-   * → We do NOT call requestPermission() before, because if user has previously
-   *   denied contacts access, it would block the picker even though it doesn't need it.
+   *
+   * IMPORTANT : même si le CNContactPickerViewController (iOS) s'ouvre sans
+   * permission, le plugin capacitor-community/contacts lit les détails du
+   * contact (phones, emails) via CNContactStore — ce qui exige la permission
+   * "Contacts" côté système.
+   *
+   * Flow correct :
+   *   1. Check current permission state
+   *   2. Si 'prompt' → demander
+   *   3. Si 'denied' → throw {code: 'PERMISSION_DENIED'} pour que l'UI
+   *      puisse rediriger l'user vers Réglages iOS
+   *   4. Si 'granted' ou 'limited' → ouvrir le picker
    */
   async pickContactNative() {
+    // 1. Check permission state
+    let permState;
+    try {
+      const perm = await Contacts.checkPermissions();
+      permState = perm.contacts;
+    } catch (e) {
+      permState = 'prompt';
+    }
+
+    // 2. Request if not granted yet (prompt state)
+    if (permState !== 'granted' && permState !== 'limited') {
+      try {
+        const req = await Contacts.requestPermissions();
+        permState = req.contacts;
+      } catch (e) {
+        console.error('Contacts.requestPermissions failed:', e);
+      }
+    }
+
+    // 3. Si encore refusé → signal explicite pour que l'UI ouvre les Réglages
+    if (permState !== 'granted' && permState !== 'limited') {
+      const err = new Error('CONTACTS_PERMISSION_DENIED');
+      err.code = 'PERMISSION_DENIED';
+      throw err;
+    }
+
+    // 4. Permission OK → ouvrir le picker
     try {
       const result = await Contacts.pickContact({
-        projection: {
-          name: true,
-          phones: true,
-          emails: true,
-        },
+        projection: { name: true, phones: true, emails: true },
       });
 
       if (!result || !result.contact) return null;
 
       const contact = result.contact;
 
-      // Name — try display, else compose from given+family
       let name = '';
       if (contact.name) {
         name = contact.name.display
@@ -98,7 +103,6 @@ class ContactPickerService {
           || '';
       }
 
-      // Phone — prefer mobile if tagged, else first available
       let phone = '';
       if (Array.isArray(contact.phones) && contact.phones.length > 0) {
         const mobile = contact.phones.find((p) => {
@@ -108,7 +112,6 @@ class ContactPickerService {
         phone = (mobile && mobile.number) || contact.phones[0].number || '';
       }
 
-      // Email — first available
       let email = '';
       if (Array.isArray(contact.emails) && contact.emails.length > 0) {
         email = contact.emails[0].address || '';
@@ -116,26 +119,20 @@ class ContactPickerService {
 
       return { name, phone, email };
     } catch (error) {
-      // User cancelled → no error popup, just null
+      // User cancelled → silent
       if (error && /cancel/i.test(String(error.message || error))) return null;
       console.error('Native contact pick failed:', error);
       return null;
     }
   }
 
-  /**
-   * Web Contact Picker API fallback (Chrome Android)
-   */
   async pickContactWeb() {
     if (!this.isWebSupported) return null;
-
     try {
       const props = ['name', 'tel', 'email'];
       const contacts = await navigator.contacts.select(props, { multiple: false });
-
       if (!contacts || contacts.length === 0) return null;
       const contact = contacts[0];
-
       return {
         name: (contact.name && contact.name[0]) || '',
         phone: (contact.tel && contact.tel[0]) || '',

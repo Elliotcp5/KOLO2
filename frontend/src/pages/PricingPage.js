@@ -200,11 +200,22 @@ export default function PricingPage() {
     // Redirect to Stripe checkout for payment
     const result = await upgradePlan(plan, billingPeriod, token);
     if (result.success && result.checkout_url) {
-      await openExternalUrl(result.checkout_url);
+      const opened = await openExternalUrl(result.checkout_url);
+      if (!opened) {
+        toast.error(
+          locale === 'fr' ? 'Impossible d\'ouvrir la page de paiement' :
+          locale === 'de' ? 'Zahlungsseite kann nicht geöffnet werden' :
+          locale === 'it' ? 'Impossibile aprire la pagina di pagamento' :
+          'Unable to open payment page'
+        );
+      }
     } else {
+      const errDetail = result.error ? ` (${result.error})` : '';
       toast.error(
-        locale === 'fr' ? 'Erreur lors de la création du paiement' :
-        'Error creating payment session'
+        (locale === 'fr' ? 'Erreur lors de la création du paiement' :
+         locale === 'de' ? 'Fehler beim Erstellen der Zahlung' :
+         locale === 'it' ? 'Errore durante la creazione del pagamento' :
+         'Error creating payment session') + errDetail
       );
     }
     
@@ -225,11 +236,18 @@ export default function PricingPage() {
     // Go directly to Stripe checkout (skip trial)
     const result = await upgradePlan(plan, billingPeriod, token);
     if (result.success && result.checkout_url) {
-      await openExternalUrl(result.checkout_url);
+      const opened = await openExternalUrl(result.checkout_url);
+      if (!opened) {
+        toast.error(
+          locale === 'fr' ? 'Impossible d\'ouvrir la page de paiement' :
+          'Unable to open payment page'
+        );
+      }
     } else {
+      const errDetail = result.error ? ` (${result.error})` : '';
       toast.error(
-        locale === 'fr' ? 'Erreur lors de la création du paiement' :
-        'Error creating payment session'
+        (locale === 'fr' ? 'Erreur lors de la création du paiement' :
+         'Error creating payment session') + errDetail
       );
     }
     

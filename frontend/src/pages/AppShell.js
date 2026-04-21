@@ -6202,6 +6202,18 @@ const QuickAddProspectModal = ({ onClose, onSuccess }) => {
       }
     } catch (err) {
       console.error('Contact picker error:', err);
+      // Permission refusée : guider l'user vers les Réglages iOS
+      if (err && err.code === 'PERMISSION_DENIED') {
+        const msg = locale === 'fr'
+          ? "Accès aux contacts refusé. Activez-le dans Réglages > KOLO > Contacts."
+          : locale === 'de'
+          ? 'Kontaktzugriff verweigert. Aktivieren Sie ihn in Einstellungen > KOLO > Kontakte.'
+          : locale === 'it'
+          ? 'Accesso ai contatti negato. Attivalo in Impostazioni > KOLO > Contatti.'
+          : 'Contacts access denied. Enable it in Settings > KOLO > Contacts.';
+        toast.error(msg, { duration: 6000 });
+        return;
+      }
       toast.error(locale === 'fr' 
         ? 'Impossible d\'accéder aux contacts. Vérifiez les autorisations.' 
         : 'Unable to access contacts. Check permissions.');
