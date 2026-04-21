@@ -257,7 +257,7 @@ yarn cap:sync       # Sync web build to native
 - KOLO Pro+ (monthly/annual)
 
 **Webhook Endpoint:** `/api/webhook/stripe`
-**Webhook Secret:** `whsec_MZhxvMWoidY3rYuw0HPpOKTAs5UsKePGE`
+**Webhook Secret:** stocké dans `backend/.env` (variable `STRIPE_WEBHOOK_SECRET`, jamais committée)
 
 **Events Handled:**
 - `checkout.session.completed`
