@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
 import { useLocale } from '../context/LocaleContext';
 import { usePlan } from '../context/PlanContext';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
@@ -124,6 +125,10 @@ export function ROIDashboard({
   
   const handleUpgrade = () => {
     setShowPaywall(false);
+    if (isIOSNative()) {
+      showSubscribeOnWebAlert(locale || 'en');
+      return;
+    }
     window.location.href = '/pricing';
   };
   

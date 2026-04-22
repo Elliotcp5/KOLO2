@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
+import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
 import { usePlan } from '../context/PlanContext';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { MessageSquare, Phone, MapPin, FileText, Sparkles, Lock, Clock } from 'lucide-react';
@@ -167,6 +168,10 @@ export function InteractionTimeline({
   
   const handleUpgrade = () => {
     setShowPaywall(false);
+    if (isIOSNative()) {
+      showSubscribeOnWebAlert(locale || 'en');
+      return;
+    }
     window.location.href = '/pricing';
   };
   

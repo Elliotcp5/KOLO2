@@ -18,6 +18,7 @@ import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 import { openExternalUrl } from '../utils/externalUrl';
+import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
 // Refactored utilities
 import { getInitials } from '../utils/helpers';
 
@@ -4594,6 +4595,53 @@ const SettingsTab = ({ onClose }) => {
     navigate('/');
   };
 
+  const handleDeleteAccount = async () => {
+    const confirmMsg = locale === 'fr'
+      ? 'Supprimer définitivement votre compte KOLO ?\n\nToutes vos données (prospects, tâches, abonnement) seront effacées immédiatement et ne pourront pas être récupérées.'
+      : locale === 'de'
+      ? 'KOLO-Konto endgültig löschen?\n\nAlle Ihre Daten (Leads, Aufgaben, Abonnement) werden sofort gelöscht und können nicht wiederhergestellt werden.'
+      : locale === 'it'
+      ? 'Eliminare definitivamente il tuo account KOLO?\n\nTutti i tuoi dati (prospect, task, abbonamento) verranno cancellati immediatamente e non potranno essere recuperati.'
+      : 'Permanently delete your KOLO account?\n\nAll your data (prospects, tasks, subscription) will be erased immediately and cannot be recovered.';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    // Seconde confirmation (évite les accidents)
+    const finalConfirm = locale === 'fr'
+      ? 'Dernière confirmation : votre compte et toutes vos données seront supprimés MAINTENANT. Êtes-vous absolument sûr ?'
+      : locale === 'de'
+      ? 'Letzte Bestätigung: Ihr Konto und alle Daten werden JETZT gelöscht. Sind Sie absolut sicher?'
+      : locale === 'it'
+      ? 'Ultima conferma: il tuo account e tutti i dati saranno eliminati ADESSO. Sei assolutamente sicuro?'
+      : 'Final confirmation: your account and all data will be deleted NOW. Are you absolutely sure?';
+
+    if (!window.confirm(finalConfirm)) return;
+
+    try {
+      const token = localStorage.getItem('kolo_token');
+      const res = await fetch('https://trykolo.io/api/auth/me', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        toast.success(locale === 'fr' ? 'Compte supprimé' : 'Account deleted');
+        await logout();
+        navigate('/');
+      } else {
+        toast.error(
+          locale === 'fr' ? 'Erreur lors de la suppression. Réessayez.' :
+          locale === 'de' ? 'Fehler beim Löschen. Bitte erneut versuchen.' :
+          locale === 'it' ? 'Errore durante l\'eliminazione. Riprova.' :
+          'Deletion failed. Please try again.'
+        );
+      }
+    } catch (err) {
+      console.error('Account deletion error:', err);
+      toast.error(locale === 'fr' ? 'Erreur réseau' : 'Network error');
+    }
+  };
+
   return (
     <div style={{ padding: '24px', background: c('bg'), minHeight: '100vh' }}>
       {/* Header with back button */}
@@ -4937,7 +4985,13 @@ const SettingsTab = ({ onClose }) => {
           </div>
         </div>
         <button
-          onClick={() => navigate('/pricing')}
+          onClick={() => {
+            if (isIOSNative()) {
+              showSubscribeOnWebAlert(locale || 'en');
+              return;
+            }
+            navigate('/pricing');
+          }}
           style={{
             width: '100%',
             padding: '12px',
@@ -5003,6 +5057,30 @@ const SettingsTab = ({ onClose }) => {
         data-testid="cancel-subscription-final"
       >
         {locale === 'fr' ? 'Resilier l\'abonnement' : 'Cancel subscription'}
+      </button>
+
+      {/* Delete account — REQUIRED by Apple App Store Guideline 5.1.1(v) */}
+      <button
+        onClick={handleDeleteAccount}
+        data-testid="delete-account-button"
+        style={{
+          background: 'none',
+          border: 'none',
+          color: '#DC2626',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginTop: '24px',
+          padding: '12px 0',
+          width: '100%',
+          textAlign: 'center',
+          textDecoration: 'underline',
+        }}
+      >
+        {locale === 'fr' ? 'Supprimer mon compte' :
+         locale === 'de' ? 'Mein Konto löschen' :
+         locale === 'it' ? 'Elimina il mio account' :
+         'Delete my account'}
       </button>
 
       {/* Cancel Subscription Modal */}

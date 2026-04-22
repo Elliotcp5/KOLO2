@@ -5,6 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 import { usePlan, PLAN_FEATURES } from '../context/PlanContext';
 import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
 import { openExternalUrl } from '../utils/externalUrl';
+import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
+import { toast } from 'sonner';
 
 const API_URL = 'https://trykolo.io';
 
@@ -161,6 +163,14 @@ export default function PricingPage() {
   };
   
   const handleSelectPlan = async (plan) => {
+    // Apple App Store Guideline 2.1(b) compliance:
+    // On iOS native, we can NOT initiate in-app Stripe checkout for digital subscriptions.
+    // User must be redirected to manage subscription from our website.
+    if (isIOSNative() && plan !== 'free') {
+      showSubscribeOnWebAlert(locale || 'en');
+      return;
+    }
+
     const token = localStorage.getItem('kolo_token');
     
     if (!token) {
@@ -235,6 +245,12 @@ export default function PricingPage() {
   
   // Direct payment without trial
   const handlePayNow = async (plan) => {
+    // Apple App Store Guideline 2.1(b) compliance — same as handleSelectPlan
+    if (isIOSNative()) {
+      showSubscribeOnWebAlert(locale || 'en');
+      return;
+    }
+
     const token = localStorage.getItem('kolo_token');
     
     if (!token) {

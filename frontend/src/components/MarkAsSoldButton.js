@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
+import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
 import { usePlan } from '../context/PlanContext';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
 import { Award, Euro, X, PartyPopper, Lock } from 'lucide-react';
@@ -135,6 +136,10 @@ export function MarkAsSoldButton({
   
   const handleUpgrade = () => {
     setShowPaywall(false);
+    if (isIOSNative()) {
+      showSubscribeOnWebAlert(locale || 'en');
+      return;
+    }
     window.location.href = '/pricing';
   };
   

@@ -684,12 +684,72 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
         "subscription_status": subscription_status
     }
 
+
+# ============================================================================
+# Account deletion (Apple App Store Guideline 5.1.1(v) compliance)
+# User must be able to delete their account from within the app itself.
+# ============================================================================
+@api_router.delete("/auth/me")
+async def delete_my_account(request: Request):
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user_id = user.user_id
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+
+    # 1. Cancel Stripe subscription if any (best-effort, don't block deletion)
+    try:
+        import stripe
+        stripe_customer_id = user_doc.get("stripe_customer_id") if user_doc else None
+        if stripe_customer_id:
+            try:
+                subs = stripe.Subscription.list(customer=stripe_customer_id, status="active", limit=10)
+                for sub in subs.data:
+                    try:
+                        stripe.Subscription.delete(sub.id)
+                    except Exception as e:
+                        logger.warning(f"Could not cancel subscription {sub.id}: {e}")
+            except Exception as e:
+                logger.warning(f"Could not list subscriptions for {stripe_customer_id}: {e}")
+    except Exception as e:
+        logger.warning(f"Stripe cleanup error during account deletion for {user_id}: {e}")
+
+    # 2. Delete all user-owned data (prospects, tasks, interactions, sessions, etc.)
+    collections_with_user_id = [
+        "prospects", "tasks", "interactions", "ai_suggestions", "ai_usage",
+        "sms_logs", "notifications", "push_subscriptions", "login_attempts",
+        "payment_success", "trial_events",
+    ]
+    for coll_name in collections_with_user_id:
+        try:
+            await db[coll_name].delete_many({"user_id": user_id})
+        except Exception as e:
+            logger.warning(f"Could not clear {coll_name} for user {user_id}: {e}")
+
+    # 3. Delete sessions
+    try:
+        await db.sessions.delete_many({"user_id": user_id})
+    except Exception as e:
+        logger.warning(f"Could not clear sessions for user {user_id}: {e}")
+
+    # 4. Finally remove the user document itself
+    await db.users.delete_one({"user_id": user_id})
+
+    logger.info(f"Account deletion completed for user_id={user_id}")
+
+    return {
+        "success": True,
+        "message": "Account and all associated data have been permanently deleted.",
+    }
+
+
+
 @api_router.get("/auth/me")
 async def get_current_user(request: Request):
     user = await get_user_from_session(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
     # Get full user doc for plan info
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
     effective_plan = get_user_effective_plan(user_doc) if user_doc else "free"
