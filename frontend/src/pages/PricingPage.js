@@ -12,6 +12,7 @@ import {
   purchasePlan as iapPurchasePlan,
   restorePurchases as iapRestorePurchases,
   onPurchaseVerified,
+  setIAPUser,
 } from '../services/iapStore';
 import { toast } from 'sonner';
 
@@ -159,11 +160,12 @@ export default function PricingPage() {
           } else {
             fetchPricing('EUR');
           }
-          // Initialize StoreKit on iOS native using the authenticated user id
+          // Initialize StoreKit on iOS native using the authenticated user id.
+          // (Also initialized in AppShell at app open — this is a safety net.)
           if (isIOS && data.user_id) {
+            setIAPUser({ userId: data.user_id, token });
             initIAP({ userId: data.user_id, token }).then(res => {
               if (res?.ok) {
-                // getProducts is synchronous once initialize resolved
                 setIosOfferings(getIAPProducts());
               }
             });

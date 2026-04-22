@@ -6820,6 +6820,15 @@ const AppShell = () => {
           if (token) {
             await fetchPlanData(token);
           }
+
+          // Kick off Apple StoreKit IAP initialization on iOS (fire & forget).
+          // This ensures the store is ready by the time the user opens /pricing.
+          if (isIOSNative() && userData.user_id && token) {
+            try {
+              const { initIAP } = await import('../services/iapStore');
+              initIAP({ userId: userData.user_id, token });
+            } catch (_) {}
+          }
         }
       } catch (e) {
         console.error('Failed to load user preferences:', e);
