@@ -183,16 +183,26 @@ export default function PricingPage() {
     if (!isIOS) return;
     const unsubscribe = onPurchaseVerified(async (payload) => {
       const token = localStorage.getItem('kolo_token');
-      toast.success(
-        locale === 'fr' ? 'Abonnement activé ! 🎉' :
-        locale === 'de' ? 'Abonnement aktiviert! 🎉' :
-        locale === 'it' ? 'Abbonamento attivato! 🎉' :
-        'Subscription activated! 🎉',
-        { duration: 3000 }
-      );
-      try { if (token) await fetchPlanData(token); } catch (_) {}
+      // Immediately reflect the new plan in the UI
       if (payload?.plan && payload.plan !== 'free') {
-        setTimeout(() => navigate('/app'), 800);
+        setCurrentPlan(payload.plan);
+      }
+      const planLabel = payload?.plan === 'pro_plus' ? 'PRO+' : 'PRO';
+      toast.success(
+        locale === 'fr' ? `Bienvenue sur KOLO ${planLabel} ! 🎉` :
+        locale === 'de' ? `Willkommen bei KOLO ${planLabel}! 🎉` :
+        locale === 'it' ? `Benvenuto su KOLO ${planLabel}! 🎉` :
+        `Welcome to KOLO ${planLabel}! 🎉`,
+        { duration: 4000 }
+      );
+      // Refresh plan data from backend
+      try { if (token) await fetchPlanData(token); } catch (_) {}
+      // Navigate to /app with the success flag so AppShell triggers the
+      // WelcomePROOnboarding fullscreen intro (shared with Stripe flow).
+      if (payload?.plan && payload.plan !== 'free') {
+        setTimeout(() => {
+          navigate(`/app?upgrade=success&plan=${payload.plan}`);
+        }, 600);
       }
     });
     return unsubscribe;
@@ -243,8 +253,17 @@ export default function PricingPage() {
     
     setLoading(true);
     
-    // Check if user can start a trial (only if not already in trial, on free plan, and hasn't used trial)
-    if (!isInTrial && currentPlan === 'free' && !trialUsed) {
+    // TRIAL ELIGIBILITY RULE:
+    //   The 14-day free trial is a ONE-TIME benefit across the whole account
+    //   (per user request — it's not renewable per plan). A user currently
+    //   upgrading from a PRO trial to PRO+ pays immediately for PRO+ since
+    //   they already used their trial quota on PRO.
+    //
+    //   Eligible only if: plan === 'free' AND no trial in progress AND never
+    //   used a trial before. In all other cases → direct Stripe checkout.
+    const canUseTrial = currentPlan === 'free' && !isInTrial && !trialUsed;
+
+    if (canUseTrial) {
       const result = await startTrial(plan, token);
       if (result.success) {
         setLoading(false);
@@ -258,21 +277,12 @@ export default function PricingPage() {
         );
         navigate('/app?trial_started=true');
         return;
-      } else {
-        // Show error message if trial failed (e.g., already used trial)
-        if (result.error && result.error.includes('déjà utilisé')) {
-          toast.error(
-            locale === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit. Passez directement au paiement.' :
-            locale === 'de' ? 'Sie haben Ihre Testphase bereits genutzt. Fahren Sie mit der Zahlung fort.' :
-            locale === 'it' ? 'Hai già utilizzato la tua prova gratuita. Procedi con il pagamento.' :
-            'You have already used your free trial. Proceed to payment.'
-          );
-        }
-        // Continue to Stripe checkout (fall through)
       }
+      // Trial creation failed — fall through to direct checkout
     }
     
-    // Redirect to Stripe checkout for payment
+    // Direct Stripe checkout (user already used trial, or is upgrading from a
+    // paid / trialing plan to another tier).
     const result = await upgradePlan(plan, billingPeriod, token);
     console.log('[KOLO] upgradePlan result:', result);
     if (result.success && result.checkout_url) {
@@ -301,57 +311,6 @@ export default function PricingPage() {
   };
   
   // Direct payment without trial
-  const handlePayNow = async (plan) => {
-    // iOS native: StoreKit IAP (Apple handles any "intro offer" free trial on the product itself)
-    if (isIOS) {
-      const token = localStorage.getItem('kolo_token');
-      if (!token) {
-        navigate('/register');
-        return;
-      }
-      setLoading(true);
-      const result = await iapPurchasePlan(plan, billingPeriod);
-      setLoading(false);
-      if (result.userCancelled) return;
-      if (!result.success) {
-        toast.error(
-          (locale === 'fr' ? 'Échec du paiement' : 'Payment failed') +
-            (result.error ? ` (${result.error})` : '')
-        );
-      }
-      return;
-    }
-
-    const token = localStorage.getItem('kolo_token');
-    
-    if (!token) {
-      navigate('/register');
-      return;
-    }
-    
-    setLoading(true);
-    
-    // Go directly to Stripe checkout (skip trial)
-    const result = await upgradePlan(plan, billingPeriod, token);
-    if (result.success && result.checkout_url) {
-      const opened = await openExternalUrl(result.checkout_url);
-      if (!opened) {
-        toast.error(
-          locale === 'fr' ? 'Impossible d\'ouvrir la page de paiement' :
-          'Unable to open payment page'
-        );
-      }
-    } else {
-      const errDetail = result.error ? ` (${result.error})` : '';
-      toast.error(
-        (locale === 'fr' ? 'Erreur lors de la création du paiement' :
-         'Error creating payment session') + errDetail
-      );
-    }
-    
-    setLoading(false);
-  };
-  
   // Restore purchases — REQUIRED by Apple Guideline 3.1.1 on iOS native.
   const handleRestorePurchases = async () => {
     if (!isIOS) return;
@@ -598,8 +557,6 @@ export default function PricingPage() {
             isCurrentPlan={currentPlan === 'pro'}
             isPopular={true}
             onSelect={() => handleSelectPlan('pro')}
-            onPayNow={() => handlePayNow('pro')}
-            showSkipTrial={currentPlan === 'free' && !isInTrial && !trialUsed}
             buttonText={getButtonText('pro')}
             isDark={isDark}
             locale={locale}
@@ -616,8 +573,6 @@ export default function PricingPage() {
             billingPeriod={billingPeriod}
             isCurrentPlan={currentPlan === 'pro_plus'}
             onSelect={() => handleSelectPlan('pro_plus')}
-            onPayNow={() => handlePayNow('pro_plus')}
-            showSkipTrial={currentPlan === 'free' && !isInTrial && !trialUsed}
             buttonText={getButtonText('pro_plus')}
             isDark={isDark}
             locale={locale}
@@ -708,8 +663,6 @@ function PlanCard({
   isCurrentPlan, 
   isPopular,
   onSelect,
-  onPayNow,
-  showSkipTrial,
   buttonText,
   isDark,
   locale,
@@ -821,30 +774,6 @@ function PlanCard({
       >
         {loading ? '...' : buttonText}
       </button>
-      
-      {/* Skip trial link - only show when trial is available */}
-      {showSkipTrial && (
-        <p 
-          className="text-center mt-2"
-          style={{ fontSize: '12px', color: isDark ? '#6b7280' : '#9ca3af' }}
-        >
-          <span 
-            onClick={onPayNow}
-            style={{ 
-              cursor: 'pointer', 
-              textDecoration: 'underline',
-              opacity: 0.8
-            }}
-            onMouseOver={(e) => e.target.style.opacity = 1}
-            onMouseOut={(e) => e.target.style.opacity = 0.8}
-          >
-            {locale === 'fr' ? 'ou payer maintenant' :
-             locale === 'de' ? 'oder jetzt bezahlen' :
-             locale === 'it' ? 'o paga ora' :
-             'or pay now'}
-          </span>
-        </p>
-      )}
     </div>
   );
 }

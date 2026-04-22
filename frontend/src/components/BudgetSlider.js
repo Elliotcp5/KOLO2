@@ -80,10 +80,13 @@ const KOLO_RANGE_CSS = `
   width: 100%;
   height: 28px;
   background: transparent;
-  cursor: pointer;
   outline: none;
   padding: 0;
   margin: 0;
+  /* CRITICAL for overlapping double ranges: the input track itself must
+     not intercept touches — only the thumb pseudo-element does. Otherwise
+     the "top" input always wins and the other thumb becomes ungrabbable. */
+  pointer-events: none;
   touch-action: pan-y;
 }
 .kolo-range::-webkit-slider-runnable-track {
@@ -108,6 +111,8 @@ const KOLO_RANGE_CSS = `
   cursor: grab;
   margin-top: -11px;
   transition: transform 0.1s;
+  /* Re-enable pointer events only on the thumb itself */
+  pointer-events: auto;
 }
 .kolo-range::-webkit-slider-thumb:active {
   transform: scale(1.15);
@@ -122,9 +127,10 @@ const KOLO_RANGE_CSS = `
   border: 2px solid #6C63FF;
   box-shadow: 0 2px 8px rgba(108,99,255,0.35);
   cursor: grab;
+  pointer-events: auto;
 }
 .kolo-range:disabled { opacity: 0.3; cursor: not-allowed; }
-.kolo-range:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+.kolo-range:disabled::-webkit-slider-thumb { cursor: not-allowed; pointer-events: none; }
 `;
 
 function KoloRange({ min, max, step, value, onChange, disabled, zIndex = 1 }) {
