@@ -1380,140 +1380,175 @@ async def handle_subscription_deleted(sub):
     logger.info(f"Subscription cancelled for customer {customer_id}")
 
 
-# ==================== REVENUECAT WEBHOOK (iOS StoreKit IAP) ====================
+# ==================== APPLE STOREKIT IAP (iOS) ====================
 
-# Auth header secret shared with RevenueCat dashboard
-# (Project Settings → Webhooks → Authorization header).
-REVENUECAT_WEBHOOK_AUTH = os.environ.get('REVENUECAT_WEBHOOK_AUTH', '')
+# App-Specific Shared Secret from App Store Connect:
+#   App Store Connect → My Apps → KOLO → In-App Purchases → Manage →
+#   App-Specific Shared Secret.
+APPLE_SHARED_SECRET = os.environ.get('APPLE_IAP_SHARED_SECRET', '')
 
-# Map RevenueCat product_id → internal plan key (must match App Store Connect)
-RC_PRODUCT_TO_PLAN = {
+# Bundle id expected in the Apple receipt (defense-in-depth)
+APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'io.kolo.app')
+
+# Map Apple product_id → internal plan key (must match App Store Connect)
+APPLE_PRODUCT_TO_PLAN = {
     'PRO': 'pro',
     'PRO_plus': 'pro_plus',
 }
 
+# Apple verifyReceipt endpoints (production + sandbox fallback)
+APPLE_VERIFY_PROD = 'https://buy.itunes.apple.com/verifyReceipt'
+APPLE_VERIFY_SANDBOX = 'https://sandbox.itunes.apple.com/verifyReceipt'
 
-@api_router.post("/webhooks/revenuecat")
-async def revenuecat_webhook(request: Request):
+
+async def _apple_verify_receipt(receipt_b64: str) -> dict:
     """
-    RevenueCat webhook for iOS StoreKit subscription lifecycle.
-
-    Events handled:
-      - INITIAL_PURCHASE, RENEWAL, PRODUCT_CHANGE, UNCANCELLATION → active
-      - CANCELLATION                                             → active until period end
-      - EXPIRATION                                               → free
-      - BILLING_ISSUE                                            → keep active (grace)
-
-    Auth: RevenueCat sends `Authorization: Bearer <secret>` where <secret>
-    equals REVENUECAT_WEBHOOK_AUTH (configured in the RevenueCat dashboard).
+    POST the base64 receipt to Apple's verifyReceipt endpoint.
+    Handles the sandbox fallback automatically per Apple's docs (status 21007).
+    Returns the raw Apple response dict.
     """
-    # Verify auth header (constant-time compare)
-    if REVENUECAT_WEBHOOK_AUTH:
-        auth_header = request.headers.get("authorization", "")
-        expected = f"Bearer {REVENUECAT_WEBHOOK_AUTH}"
-        if not secrets.compare_digest(auth_header, expected):
-            logger.warning("RevenueCat webhook: invalid authorization header")
-            raise HTTPException(status_code=401, detail="Unauthorized")
-    else:
-        logger.warning("REVENUECAT_WEBHOOK_AUTH not set — webhook is UNAUTHENTICATED")
+    payload = {
+        'receipt-data': receipt_b64,
+        'password': APPLE_SHARED_SECRET,
+        'exclude-old-transactions': True,
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.post(APPLE_VERIFY_PROD, json=payload)
+        data = r.json()
+        # Status 21007 = receipt is from sandbox; retry against sandbox endpoint.
+        if data.get('status') == 21007:
+            r2 = await client.post(APPLE_VERIFY_SANDBOX, json=payload)
+            data = r2.json()
+    return data
+
+
+def _pick_latest_active_purchase(apple_response: dict) -> Optional[dict]:
+    """
+    From a verifyReceipt response, pick the most recent active subscription
+    transaction that matches a known KOLO product. Returns None if nothing active.
+    """
+    latest = apple_response.get('latest_receipt_info') or []
+    if not latest and apple_response.get('receipt'):
+        latest = apple_response['receipt'].get('in_app') or []
+
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    best = None
+    best_expires_ms = 0
+    for tx in latest:
+        product_id = tx.get('product_id')
+        if product_id not in APPLE_PRODUCT_TO_PLAN:
+            continue
+        # Apple expiration dates: expires_date_ms (ms since epoch, as string)
+        try:
+            expires_ms = int(tx.get('expires_date_ms') or 0)
+        except (TypeError, ValueError):
+            expires_ms = 0
+        if expires_ms > best_expires_ms:
+            best = tx
+            best_expires_ms = expires_ms
+    if not best:
+        return None
+    # Active if expiry in the future (plus small tolerance)
+    best['_is_active'] = best_expires_ms > now_ms
+    best['_expires_ms'] = best_expires_ms
+    return best
+
+
+@api_router.post("/iap/verify-apple-receipt")
+async def iap_verify_apple_receipt(request: Request):
+    """
+    Verify an Apple StoreKit receipt after a successful in-app purchase or
+    restoration. Updates the authenticated user's plan in MongoDB.
+
+    Body: { "receipt": "<base64 receipt-data>", "product_id": "PRO" | "PRO_plus" }
+    """
+    user = await require_auth(request)
 
     try:
-        payload = await request.json()
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    receipt_b64 = body.get('receipt')
+    if not receipt_b64 or not isinstance(receipt_b64, str):
+        raise HTTPException(status_code=400, detail="Missing receipt")
+
+    if not APPLE_SHARED_SECRET:
+        logger.error("APPLE_IAP_SHARED_SECRET is not configured")
+        raise HTTPException(status_code=500, detail="IAP not configured")
+
+    try:
+        apple = await _apple_verify_receipt(receipt_b64)
     except Exception as e:
-        logger.error(f"RevenueCat webhook: invalid JSON: {e}")
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+        logger.error(f"Apple verifyReceipt network error: {e}")
+        raise HTTPException(status_code=502, detail="Apple verification failed")
 
-    event = payload.get("event") or {}
-    event_type = event.get("type")
-    app_user_id = event.get("app_user_id") or event.get("original_app_user_id")
-    product_id = event.get("product_id")
-    expiration_at_ms = event.get("expiration_at_ms")
+    status = apple.get('status')
+    if status != 0:
+        logger.warning(f"Apple verifyReceipt failed status={status} user={user.user_id}")
+        return {
+            "success": False,
+            "status": "invalid_receipt",
+            "apple_status": status,
+        }
 
-    logger.info(
-        f"RevenueCat event: type={event_type} user={app_user_id} product={product_id}"
-    )
-
-    if not event_type or not app_user_id:
-        return {"status": "ignored", "reason": "missing_fields"}
-
-    # Determine target plan from product id
-    plan = RC_PRODUCT_TO_PLAN.get(product_id, 'free')
-
-    # Derive subscription_status + plan to write based on event type
-    update_data = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "platform": "ios",
-        "revenuecat_last_event": event_type,
-        "revenuecat_user_id": app_user_id,
-    }
-
-    if event_type in ("INITIAL_PURCHASE", "RENEWAL", "PRODUCT_CHANGE", "UNCANCELLATION"):
-        update_data["plan"] = plan
-        update_data["subscription_status"] = "active"
-        update_data["cancel_at_period_end"] = False
-    elif event_type == "CANCELLATION":
-        # Keep plan active until expiration; mark as scheduled to end
-        update_data["cancel_at_period_end"] = True
-    elif event_type == "EXPIRATION":
-        update_data["plan"] = "free"
-        update_data["subscription_status"] = "expired"
-    elif event_type == "BILLING_ISSUE":
-        # Grace period — Apple retries; don't downgrade yet
-        update_data["subscription_status"] = "past_due"
-    else:
-        # NON_RENEWING_PURCHASE, TRANSFER, SUBSCRIBER_ALIAS, TEST → no-op
-        return {"status": "ok", "event": event_type, "action": "noop"}
-
-    if expiration_at_ms:
-        try:
-            update_data["subscription_ends_at"] = datetime.fromtimestamp(
-                int(expiration_at_ms) / 1000, tz=timezone.utc
-            ).isoformat()
-        except Exception:
-            pass
-
-    # Find user — try by user_id first, then by revenuecat_user_id (in case of alias)
-    user_doc = await db.users.find_one({"user_id": app_user_id}, {"_id": 0})
-    if not user_doc:
-        user_doc = await db.users.find_one(
-            {"revenuecat_user_id": app_user_id}, {"_id": 0}
-        )
-
-    if not user_doc:
+    # Defense in depth: ensure receipt is for our bundle
+    bundle_id = (apple.get('receipt') or {}).get('bundle_id')
+    if bundle_id and bundle_id != APPLE_BUNDLE_ID:
         logger.warning(
-            f"RevenueCat webhook: user not found for app_user_id={app_user_id}"
+            f"Bundle id mismatch: receipt={bundle_id} expected={APPLE_BUNDLE_ID}"
         )
-        return {"status": "ok", "action": "user_not_found"}
+        raise HTTPException(status_code=400, detail="Bundle mismatch")
+
+    active = _pick_latest_active_purchase(apple)
+    if not active:
+        # No active KOLO subscription in this receipt → downgrade to free
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {
+                "plan": "free",
+                "subscription_status": "expired",
+                "platform": "ios",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return {"success": True, "plan": "free", "status": "expired"}
+
+    product_id = active.get('product_id')
+    plan = APPLE_PRODUCT_TO_PLAN.get(product_id, 'free')
+    expires_ms = active.get('_expires_ms') or 0
+    expires_iso = (
+        datetime.fromtimestamp(expires_ms / 1000, tz=timezone.utc).isoformat()
+        if expires_ms else None
+    )
+    original_tx_id = active.get('original_transaction_id')
+
+    update = {
+        "plan": plan,
+        "subscription_status": "active" if active.get('_is_active') else "expired",
+        "platform": "ios",
+        "apple_original_transaction_id": original_tx_id,
+        "apple_product_id": product_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if expires_iso:
+        update["subscription_ends_at"] = expires_iso
 
     await db.users.update_one(
-        {"user_id": user_doc["user_id"]},
-        {"$set": update_data},
+        {"user_id": user.user_id},
+        {"$set": update},
     )
     logger.info(
-        f"Updated user {user_doc['user_id']} from RevenueCat: "
-        f"plan={update_data.get('plan', user_doc.get('plan'))} "
-        f"status={update_data.get('subscription_status', user_doc.get('subscription_status'))}"
+        f"Apple IAP verified for {user.user_id}: plan={plan} expires={expires_iso}"
     )
 
-    # Send confirmation email on first purchase or renewal kickoff
-    if event_type == "INITIAL_PURCHASE":
-        try:
-            email = user_doc.get("email")
-            name = (user_doc.get("full_name") or user_doc.get("name") or "").split(" ")[0]
-            locale = user_doc.get("locale", "fr")
-            if email:
-                await send_subscription_confirmation_email(
-                    email=email,
-                    name=name,
-                    plan=plan,
-                    is_trial=False,
-                    trial_end=None,
-                    locale=locale,
-                )
-        except Exception as e:
-            logger.warning(f"RevenueCat: confirmation email failed: {e}")
-
-    return {"status": "ok", "event": event_type, "plan": plan}
+    return {
+        "success": True,
+        "plan": plan,
+        "status": update["subscription_status"],
+        "expires_at": expires_iso,
+        "product_id": product_id,
+    }
 
 
 @api_router.post("/admin/sync-subscription")

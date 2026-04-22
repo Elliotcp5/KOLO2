@@ -7,11 +7,12 @@ import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
 import { openExternalUrl } from '../utils/externalUrl';
 import { isIOSNative } from '../utils/iosCompliance';
 import {
-  initRevenueCat,
-  getOfferings as getRCOfferings,
-  purchasePlan as rcPurchasePlan,
-  restorePurchases as rcRestorePurchases,
-} from '../services/revenueCat';
+  initIAP,
+  getProducts as getIAPProducts,
+  purchasePlan as iapPurchasePlan,
+  restorePurchases as iapRestorePurchases,
+  onPurchaseVerified,
+} from '../services/iapStore';
 import { toast } from 'sonner';
 
 const API_URL = 'https://trykolo.io';
@@ -158,11 +159,12 @@ export default function PricingPage() {
           } else {
             fetchPricing('EUR');
           }
-          // Initialize RevenueCat on iOS native using the authenticated user id
+          // Initialize StoreKit on iOS native using the authenticated user id
           if (isIOS && data.user_id) {
-            initRevenueCat(data.user_id).then(res => {
+            initIAP({ userId: data.user_id, token }).then(res => {
               if (res?.ok) {
-                getRCOfferings().then(setIosOfferings);
+                // getProducts is synchronous once initialize resolved
+                setIosOfferings(getIAPProducts());
               }
             });
           }
@@ -173,6 +175,26 @@ export default function PricingPage() {
       fetchPricing('EUR');
     }
   }, [fetchPricing, fetchPlanData, isIOS]);
+
+  // Listen for backend-verified purchases/renewals and refresh plan data
+  useEffect(() => {
+    if (!isIOS) return;
+    const unsubscribe = onPurchaseVerified(async (payload) => {
+      const token = localStorage.getItem('kolo_token');
+      toast.success(
+        locale === 'fr' ? 'Abonnement activé ! 🎉' :
+        locale === 'de' ? 'Abonnement aktiviert! 🎉' :
+        locale === 'it' ? 'Abbonamento attivato! 🎉' :
+        'Subscription activated! 🎉',
+        { duration: 3000 }
+      );
+      try { if (token) await fetchPlanData(token); } catch (_) {}
+      if (payload?.plan && payload.plan !== 'free') {
+        setTimeout(() => navigate('/app'), 800);
+      }
+    });
+    return unsubscribe;
+  }, [isIOS, locale, fetchPlanData, navigate]);
   
   const handleCurrencyChange = (newCurrency) => {
     setCurrency(newCurrency);
@@ -180,7 +202,7 @@ export default function PricingPage() {
   };
   
   const handleSelectPlan = async (plan) => {
-    // iOS native: use StoreKit IAP via RevenueCat (Apple Guideline 2.1b compliant)
+    // iOS native: Apple StoreKit IAP (Guideline 2.1b compliant)
     if (isIOS && plan !== 'free') {
       const token = localStorage.getItem('kolo_token');
       if (!token) {
@@ -188,23 +210,10 @@ export default function PricingPage() {
         return;
       }
       setLoading(true);
-      const result = await rcPurchasePlan(plan);
-      if (result.success) {
-        toast.success(
-          locale === 'fr' ? 'Abonnement activé ! 🎉' :
-          locale === 'de' ? 'Abonnement aktiviert! 🎉' :
-          locale === 'it' ? 'Abbonamento attivato! 🎉' :
-          'Subscription activated! 🎉',
-          { duration: 3000 }
-        );
-        // Give the RevenueCat webhook ~1.5s to update our MongoDB
-        setTimeout(async () => {
-          try { await fetchPlanData(token); } catch (_) {}
-          navigate('/app');
-        }, 1500);
-      } else if (result.userCancelled) {
-        // Silent — user cancelled
-      } else {
+      const result = await iapPurchasePlan(plan);
+      setLoading(false);
+      if (result.userCancelled) return; // silent
+      if (!result.success) {
         toast.error(
           (locale === 'fr' ? 'Échec du paiement' :
            locale === 'de' ? 'Zahlung fehlgeschlagen' :
@@ -213,7 +222,7 @@ export default function PricingPage() {
           { duration: 6000 }
         );
       }
-      setLoading(false);
+      // Success path is handled by onPurchaseVerified listener above
       return;
     }
 
@@ -291,7 +300,7 @@ export default function PricingPage() {
   
   // Direct payment without trial
   const handlePayNow = async (plan) => {
-    // iOS native: StoreKit IAP (trial is handled by Apple's "intro offer" on the product itself)
+    // iOS native: StoreKit IAP (Apple handles any "intro offer" free trial on the product itself)
     if (isIOS) {
       const token = localStorage.getItem('kolo_token');
       if (!token) {
@@ -299,24 +308,15 @@ export default function PricingPage() {
         return;
       }
       setLoading(true);
-      const result = await rcPurchasePlan(plan);
-      if (result.success) {
-        toast.success(
-          locale === 'fr' ? 'Abonnement activé ! 🎉' :
-          'Subscription activated! 🎉',
-          { duration: 3000 }
-        );
-        setTimeout(async () => {
-          try { await fetchPlanData(token); } catch (_) {}
-          navigate('/app');
-        }, 1500);
-      } else if (!result.userCancelled) {
+      const result = await iapPurchasePlan(plan);
+      setLoading(false);
+      if (result.userCancelled) return;
+      if (!result.success) {
         toast.error(
           (locale === 'fr' ? 'Échec du paiement' : 'Payment failed') +
             (result.error ? ` (${result.error})` : '')
         );
       }
-      setLoading(false);
       return;
     }
 
@@ -354,26 +354,18 @@ export default function PricingPage() {
   const handleRestorePurchases = async () => {
     if (!isIOS) return;
     setRestoring(true);
-    const result = await rcRestorePurchases();
-    if (result.success && result.activeProduct) {
-      toast.success(
-        locale === 'fr' ? 'Achats restaurés ✨' :
-        locale === 'de' ? 'Käufe wiederhergestellt ✨' :
-        locale === 'it' ? 'Acquisti ripristinati ✨' :
-        'Purchases restored ✨',
-        { duration: 3000 }
-      );
-      const token = localStorage.getItem('kolo_token');
-      setTimeout(async () => {
-        try { if (token) await fetchPlanData(token); } catch (_) {}
-        navigate('/app');
-      }, 1200);
-    } else if (result.success) {
+    const result = await iapRestorePurchases();
+    setRestoring(false);
+    if (result.success) {
+      // The StoreKit restore callback will trigger onPurchaseVerified if any
+      // active subscription is found. If nothing triggers after 2s, we inform
+      // the user that nothing was restored.
       toast.info(
-        locale === 'fr' ? 'Aucun achat actif à restaurer' :
-        locale === 'de' ? 'Keine aktiven Käufe zu wiederherstellen' :
-        locale === 'it' ? 'Nessun acquisto attivo da ripristinare' :
-        'No active purchases to restore',
+        locale === 'fr' ? 'Restauration en cours…' :
+        locale === 'de' ? 'Wiederherstellung läuft…' :
+        locale === 'it' ? 'Ripristino in corso…' :
+        'Restoring purchases…',
+        { duration: 2500 }
       );
     } else {
       toast.error(
@@ -381,7 +373,6 @@ export default function PricingPage() {
         'Restore failed'
       );
     }
-    setRestoring(false);
   };
 
   const getPriceDisplay = (plan) => {
@@ -391,9 +382,9 @@ export default function PricingPage() {
       return { monthly: freeDisplay, annual: freeDisplay, annualMonthly: freeDisplay };
     }
     
-    // On iOS native, prefer localized prices from StoreKit (RevenueCat offerings)
-    if (isIOS && iosOfferings?.[plan]?.product?.priceString) {
-      const s = iosOfferings[plan].product.priceString;
+    // On iOS native, prefer localized prices from StoreKit
+    if (isIOS && iosOfferings?.[plan]?.pricing?.price) {
+      const s = iosOfferings[plan].pricing.price;
       return { monthly: s, annual: s, annualMonthly: s };
     }
     

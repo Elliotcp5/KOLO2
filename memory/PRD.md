@@ -629,78 +629,82 @@ Fichiers touchés :
 
 ---
 
-## Changelog - RevenueCat IAP Apple StoreKit (Feb 22, 2026)
+## Changelog - Apple StoreKit 2 IAP natif direct (Feb 22, 2026)
 
-### App Store Guideline 2.1(b) — IAP natif Apple (DONE ✅)
-Remplacement du contournement Safari externe par **Apple StoreKit natif via RevenueCat** — solution 100% compliant App Store, plus professionnelle et user-friendly qu'un redirect web.
+### App Store Guideline 2.1(b) — In-App Purchase 100% Apple natif (DONE ✅)
+**Décision finale** : après une itération courte avec RevenueCat, nous avons choisi d'intégrer **Apple StoreKit 2 directement** (sans intermédiaire) pour une expérience 100% native, zéro dépendance tierce, zéro commission externe.
 
-**Pourquoi :** Apple avait rejeté Stripe-in-app (rejet 2.1b). Le détour Safari externe fonctionnait mais causait une friction utilisateur. RevenueCat + StoreKit = achat natif en 1 tap avec Touch ID/Face ID, reçu Apple, renouvellement automatique géré par iOS.
+**Pourquoi direct Apple au lieu de RevenueCat :**
+- Aucun compte tiers à gérer, aucune commission supplémentaire
+- Zéro risque qu'un service tiers tombe et casse les paiements
+- Validation et renouvellements gérés 100% par iOS et l'App Store Server
+- Code backend simple et standard (appel HTTP à l'API Apple verifyReceipt)
 
 **Architecture :**
-- **Frontend iOS natif** : `@revenuecat/purchases-capacitor@7.5.10` (compatible Capacitor 5)
-- **Web / Android** : Stripe Checkout (inchangé)
-- **Backend** : 2 webhooks coexistent — Stripe (`/api/webhook/stripe`) et RevenueCat (`/api/webhooks/revenuecat`)
-- **Source de vérité** : MongoDB `users.plan` — mis à jour par webhook depuis les 2 sources
+- **Plugin Capacitor** : `cordova-plugin-purchase@13.15.3` + `cordova-plugin-purchase-storekit2@1.0.4` (adapter StoreKit 2)
+  - Maintenu depuis 2014 par j3k0, standard de l'industrie, compatible Capacitor 5
+  - Utilise l'API StoreKit 2 d'Apple (iOS 15+) pour les achats, renouvellements, restoration
+- **Backend FastAPI** : appelle `https://buy.itunes.apple.com/verifyReceipt` avec fallback automatique vers le endpoint sandbox (status 21007) — approche officielle Apple, toujours supportée
+- **Stripe** : préservé pour web + Android, coexistence propre
 
 **Produits App Store Connect (subscription group "KOLO PRO") :**
 - `PRO` (1 month) → maps to `plan="pro"`
 - `PRO_plus` (1 month) → maps to `plan="pro_plus"`
 
 **Fichiers créés :**
-- `/app/frontend/src/services/revenueCat.js` — service IAP : `initRevenueCat`, `getOfferings`, `purchasePlan`, `restorePurchases`, `getCustomerInfo`, `logoutRevenueCat`
+- `/app/frontend/src/services/iapStore.js` — service IAP StoreKit : `initIAP`, `getProducts`, `purchasePlan`, `restorePurchases`, `onPurchaseVerified` (listener pour refresh le plan après confirmation backend)
 
 **Fichiers modifiés :**
-- `/app/frontend/src/utils/iosCompliance.js` — réduit à la détection plateforme + `triggerUpgradeFlow(navigate)` helper ; suppression de `openWebCheckout` (Safari), shims rétro-compatibles vers `/pricing`
+- `/app/frontend/src/utils/iosCompliance.js` — réduit à `isIOSNative`, `isNative`, `triggerUpgradeFlow(navigate)` ; suppression `openWebCheckout` ; shims rétro-compatibles
 - `/app/frontend/src/pages/PricingPage.js` :
-  - Init RevenueCat au montage si iOS + utilisateur connecté
-  - `handleSelectPlan` et `handlePayNow` : sur iOS, appellent `rcPurchasePlan()` → dialogue Apple natif au lieu de Safari
-  - Toggle devise (EUR/USD/GBP) masqué sur iOS (Apple gère ses propres prix)
-  - Toggle monthly/annual masqué sur iOS (seul le mensuel existe en App Store Connect pour l'instant)
-  - Prix localisés automatiquement via `offerings[plan].product.priceString`
+  - Init StoreKit au montage si iOS + utilisateur connecté
+  - `handleSelectPlan` et `handlePayNow` : sur iOS, appellent `iapPurchasePlan()` → dialog Apple natif
+  - Listener `onPurchaseVerified` pour rafraîchir le plan dès que le backend confirme la validation du reçu Apple
+  - Toggle devise + toggle monthly/annual masqués sur iOS (Apple gère sa localisation et seul monthly existe)
+  - Prix localisés auto via `product.pricing.price` (StoreKit)
   - Bouton **"Restore purchases"** (obligatoire Apple 3.1.1) visible sur iOS
-  - Disclaimer légal iOS (auto-renouvellement, annulation via Réglages Apple)
-  - Liens CGU + Privacy visibles sur iOS
-- `/app/frontend/src/pages/AppShell.js` — bouton upgrade redirige simplement vers `/pricing` (qui gère IAP ou Stripe)
+  - Disclaimer légal auto-renouvellement + liens CGU/Privacy sur iOS
+- `/app/frontend/src/pages/AppShell.js` — bouton upgrade → `/pricing` (une seule page gère les deux plateformes)
 - `/app/frontend/src/components/ROIDashboard.js`, `MarkAsSoldButton.js`, `InteractionTimeline.js` — `showSubscribeOnWebAlert` remplacé par `triggerUpgradeFlow()` → navigate `/pricing`
 
 **Backend (`/app/backend/server.py`) :**
-- Nouveau endpoint `POST /api/webhooks/revenuecat` avec :
-  - Vérification auth `Authorization: Bearer <REVENUECAT_WEBHOOK_AUTH>` (constant-time compare)
-  - Events gérés : `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `UNCANCELLATION`, `CANCELLATION`, `EXPIRATION`, `BILLING_ISSUE`
-  - Mapping `product_id` → `plan` (PRO → pro, PRO_plus → pro_plus)
-  - Recherche user par `user_id` ou alias `revenuecat_user_id`
-  - Mise à jour `users.plan`, `subscription_status`, `subscription_ends_at`, `platform=ios`
-  - Envoi email confirmation sur INITIAL_PURCHASE
+- Nouveau endpoint `POST /api/iap/verify-apple-receipt` (authentifié) :
+  - Prend le reçu base64 envoyé par le frontend après achat
+  - Appelle `https://buy.itunes.apple.com/verifyReceipt` avec `APPLE_IAP_SHARED_SECRET` (App-Specific Shared Secret depuis App Store Connect)
+  - Fallback automatique sur le endpoint sandbox si status 21007 (reçu sandbox)
+  - Vérifie le bundle_id (`io.kolo.app`) contre le reçu — défense en profondeur
+  - Parse `latest_receipt_info` pour trouver la transaction active la plus récente matchant PRO ou PRO_plus
+  - Mise à jour `users.plan`, `subscription_status`, `subscription_ends_at`, `apple_original_transaction_id`, `apple_product_id`, `platform="ios"`
 - Stripe webhook et flow inchangés (coexistence propre)
 
-**Variables d'environnement ajoutées :**
-- `backend/.env`: `REVENUECAT_WEBHOOK_AUTH=` (à remplir avec la string choisie dans RevenueCat Dashboard)
-- `frontend/.env`: `REACT_APP_REVENUECAT_IOS_KEY=` (à remplir avec la clé publique iOS `appl_...` de RevenueCat)
+**Variables d'environnement :**
+- `backend/.env` ajoutées :
+  - `APPLE_IAP_SHARED_SECRET=` (**à remplir** depuis App Store Connect → My Apps → KOLO → In-App Purchases → Manage → App-Specific Shared Secret)
+  - `APPLE_BUNDLE_ID=io.kolo.app`
 
 **Tests backend (cURL) :** ✅
-- `INITIAL_PURCHASE(PRO)` → user passe à `plan=pro, status=active`
-- `INITIAL_PURCHASE(PRO_plus)` → `plan=pro_plus, status=active`
-- `EXPIRATION` → `plan=free, status=expired`
-- `TEST` / event inconnu → no-op `{status:"ok", action:"noop"}`
-- Payload vide → `{status:"ignored", reason:"missing_fields"}`
+- POST sans auth → `401 Not authenticated`
+- POST avec auth mais sans receipt → `400 Missing receipt`
+- POST sans APPLE_IAP_SHARED_SECRET → `500 IAP not configured` (fail-fast en production)
 
 ### Actions utilisateur requises pour mise en service
-1. **RevenueCat Dashboard** (app.revenuecat.com) :
-   - Créer projet KOLO, ajouter app iOS (bundle `io.kolo.app`)
-   - Attacher produits `PRO` et `PRO_plus` + créer un Offering `default`
-   - Configurer l'App Store Connect In-App Purchase Key (.p8) dans RevenueCat
-   - Récupérer la clé iOS publique (`appl_...`) → `REACT_APP_REVENUECAT_IOS_KEY`
-   - Configurer webhook : URL `https://trykolo.io/api/webhooks/revenuecat`, Authorization header = string aléatoire → `REVENUECAT_WEBHOOK_AUTH`
-2. **App Store Connect** :
-   - Signer les "Paid Apps Agreement" (Agreements, Tax and Banking)
-   - Sur chaque produit PRO / PRO_plus : renseigner prix (Tier), "Cleared for Sale", metadata localization FR/EN/DE/IT, review screenshot
-3. **Codemagic / build iOS** :
-   - `yarn build:ios` (auto `npx cap sync ios`)
-   - Vérifier dans Xcode : capability **In-App Purchase** activée (bundle io.kolo.app)
+1. **App Store Connect** :
+   - Signer les **Paid Apps Agreement** (Agreements, Tax and Banking) — sinon aucun IAP ne fonctionne
+   - Produits `PRO` et `PRO_plus` : renseigner prix (Tier), "Cleared for Sale", metadata localization FR/EN/DE/IT, review screenshot + review notes
+   - Récupérer l'**App-Specific Shared Secret** : My Apps → KOLO → In-App Purchases → Manage → App-Specific Shared Secret → me le fournir pour le renseigner dans `APPLE_IAP_SHARED_SECRET`
+2. **Codemagic / build iOS** :
+   - `yarn build:ios` (auto `npx cap sync ios`) — les 2 nouveaux plugins Cordova sont installés automatiquement par Capacitor
+   - Vérifier dans Xcode : capability **In-App Purchase** activée sur le target App
+3. **Déploiement backend** (Emergent Deploy) : ajouter `APPLE_IAP_SHARED_SECRET` en variable d'environnement
+4. **Test sandbox** :
+   - Créer un Sandbox Tester dans App Store Connect
+   - Installer TestFlight sur un iPhone physique (IAP ne marche PAS en simulateur)
+   - Se déconnecter du compte Apple ID perso → se connecter avec le Sandbox Tester dans Réglages → App Store
+   - Ouvrir l'app → /pricing → acheter PRO → reçu envoyé au backend → plan activé
 
 ## Next Action Items
-1. User : créer compte RevenueCat + configurer App Store Connect IAP + fournir clé iOS + secret webhook
-2. Déployer backend (Emergent Deploy) avec `REVENUECAT_WEBHOOK_AUTH` renseigné
-3. Rebuild TestFlight (build number auto-incrément via codemagic)
-4. Test sandbox : compte Sandbox Tester → achat PRO dans l'app → vérifier webhook → plan actif
-5. Soumettre à App Store avec note reviewer : "In-app purchases now handled via native StoreKit (per Guideline 2.1b)"
+1. Signer Paid Apps Agreement App Store Connect
+2. Fournir l'App-Specific Shared Secret
+3. Rebuild TestFlight via Codemagic
+4. Tester achat + restauration en sandbox sur iPhone physique
+5. Resoumettre à Apple avec note reviewer : "Now using native Apple StoreKit 2 In-App Purchases (no more Stripe on iOS)"
