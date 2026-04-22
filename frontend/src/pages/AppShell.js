@@ -6822,11 +6822,20 @@ const AppShell = () => {
           }
 
           // Kick off Apple StoreKit IAP initialization on iOS (fire & forget).
-          // This ensures the store is ready by the time the user opens /pricing.
+          // This ensures the store is ready by the time the user opens /pricing,
+          // and silently re-validates the current App Store receipt against our
+          // backend so the plan stays in sync if Apple changed anything while
+          // the app was closed (expiration, renewal, plan change, refund…).
           if (isIOSNative() && userData.user_id && token) {
             try {
-              const { initIAP } = await import('../services/iapStore');
-              initIAP({ userId: userData.user_id, token });
+              const { initIAP, silentRefreshReceipt } = await import('../services/iapStore');
+              initIAP({ userId: userData.user_id, token }).then((res) => {
+                if (res?.ok) {
+                  // Fire and forget — the `.approved()` handler updates MongoDB
+                  // and the /api/plans/status endpoint will reflect the new plan.
+                  silentRefreshReceipt().catch(() => {});
+                }
+              });
             } catch (_) {}
           }
         }

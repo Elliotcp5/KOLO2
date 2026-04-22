@@ -276,3 +276,28 @@ export async function restorePurchases() {
     return { success: false, error: e?.message || String(e) };
   }
 }
+
+/**
+ * Silent receipt refresh — asks the store to re-validate the current App Store
+ * receipt against our backend, without showing any UI to the user.
+ *
+ * Should be called at app launch so the MongoDB `users.plan` field stays in
+ * sync with Apple's latest subscription state (e.g. after a plan change or
+ * expiration that happened while the app was closed).
+ *
+ * Implementation: the store persists the local receipt and fires `.approved()`
+ * for the most recent active transaction on init; re-calling restorePurchases
+ * is the official Apple-recommended way to re-sync. We do it silently —
+ * the existing `.approved()` handler already verifies against our backend.
+ */
+export async function silentRefreshReceipt() {
+  if (!isIOSNative()) return { success: false, error: 'not_ios' };
+  const ready = await ensureReady();
+  if (!ready || !_store) return { success: false, error: 'not_initialized' };
+  try {
+    await _store.restorePurchases();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e?.message || String(e) };
+  }
+}

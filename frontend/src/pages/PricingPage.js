@@ -213,6 +213,43 @@ export default function PricingPage() {
     fetchPricing(newCurrency);
   };
   
+  // Translate raw IAP error codes into human-readable messages
+  const iapErrorMessage = (errorCode) => {
+    const messages = {
+      product_unavailable: {
+        fr: 'Vous avez déjà un abonnement actif pour ce plan. Gérez-le depuis Réglages → Apple ID → Abonnements.',
+        en: 'You already have an active subscription for this plan. Manage it from Settings → Apple ID → Subscriptions.',
+        de: 'Sie haben bereits ein aktives Abonnement für diesen Plan. Verwalten Sie es unter Einstellungen → Apple-ID → Abonnements.',
+        it: 'Hai già un abbonamento attivo per questo piano. Gestiscilo da Impostazioni → ID Apple → Abbonamenti.',
+      },
+      product_not_found: {
+        fr: 'Produit indisponible pour le moment. Réessayez dans quelques instants.',
+        en: 'Product unavailable right now. Please try again shortly.',
+        de: 'Produkt derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.',
+        it: 'Prodotto non disponibile al momento. Riprova tra poco.',
+      },
+      not_initialized: {
+        fr: 'Service de paiement non prêt. Patientez quelques secondes et réessayez.',
+        en: 'Payment service not ready. Please wait a few seconds and try again.',
+        de: 'Zahlungsdienst nicht bereit. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
+        it: 'Servizio di pagamento non pronto. Attendi qualche secondo e riprova.',
+      },
+      no_offer: {
+        fr: 'Aucune offre disponible pour ce plan. Veuillez réessayer plus tard.',
+        en: 'No offer available for this plan. Please try again later.',
+        de: 'Kein Angebot für diesen Plan verfügbar. Bitte versuchen Sie es später erneut.',
+        it: 'Nessuna offerta disponibile per questo piano. Riprova più tardi.',
+      },
+    };
+    const msg = messages[errorCode];
+    if (msg) return msg[locale] || msg.en;
+    // Generic fallback
+    return (locale === 'fr' ? 'Le paiement n\'a pas pu aboutir. Réessayez.' :
+            locale === 'de' ? 'Zahlung fehlgeschlagen. Bitte erneut versuchen.' :
+            locale === 'it' ? 'Pagamento non riuscito. Riprova.' :
+            'Payment failed. Please try again.');
+  };
+
   const handleSelectPlan = async (plan) => {
     // iOS native: Apple StoreKit IAP (Guideline 2.1b compliant)
     if (isIOS && plan !== 'free') {
@@ -226,13 +263,7 @@ export default function PricingPage() {
       setLoading(false);
       if (result.userCancelled) return; // silent
       if (!result.success) {
-        toast.error(
-          (locale === 'fr' ? 'Échec du paiement' :
-           locale === 'de' ? 'Zahlung fehlgeschlagen' :
-           locale === 'it' ? 'Pagamento non riuscito' :
-           'Payment failed') + (result.error ? ` (${result.error})` : ''),
-          { duration: 6000 }
-        );
+        toast.error(iapErrorMessage(result.error), { duration: 7000 });
       }
       // Success path is handled by onPurchaseVerified listener above
       return;
