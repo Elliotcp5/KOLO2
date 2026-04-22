@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { usePlan, PLAN_FEATURES } from '../context/PlanContext';
 import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
 import { openExternalUrl } from '../utils/externalUrl';
-import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
+import { isIOSNative, openWebCheckout } from '../utils/iosCompliance';
 import { toast } from 'sonner';
 
 const API_URL = 'https://trykolo.io';
@@ -164,10 +164,17 @@ export default function PricingPage() {
   
   const handleSelectPlan = async (plan) => {
     // Apple App Store Guideline 2.1(b) compliance:
-    // On iOS native, we can NOT initiate in-app Stripe checkout for digital subscriptions.
-    // User must be redirected to manage subscription from our website.
+    // On iOS native, open external Safari directly toward trykolo.io/subscribe.
+    // User stays logged in (token passed), checkout is 1-tap, and Stripe return
+    // fires a deep link back into the app with PRO activated.
     if (isIOSNative() && plan !== 'free') {
-      showSubscribeOnWebAlert(locale || 'en');
+      const opened = await openWebCheckout({ plan, locale: locale || 'fr' });
+      if (!opened) {
+        toast.error(
+          locale === 'fr' ? 'Impossible d\'ouvrir le paiement. Réessayez.' :
+          'Unable to open payment. Please try again.'
+        );
+      }
       return;
     }
 
@@ -245,9 +252,15 @@ export default function PricingPage() {
   
   // Direct payment without trial
   const handlePayNow = async (plan) => {
-    // Apple App Store Guideline 2.1(b) compliance — same as handleSelectPlan
+    // Apple 2.1(b) — iOS native : open external Safari checkout
     if (isIOSNative()) {
-      showSubscribeOnWebAlert(locale || 'en');
+      const opened = await openWebCheckout({ plan, locale: locale || 'fr' });
+      if (!opened) {
+        toast.error(
+          locale === 'fr' ? 'Impossible d\'ouvrir le paiement' :
+          'Unable to open payment'
+        );
+      }
       return;
     }
 

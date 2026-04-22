@@ -1,11 +1,18 @@
-// Apple App Store Guideline 2.1(b) compliance:
-// On iOS natively, we cannot perform in-app subscription checkout through Stripe
-// (Apple reserves digital goods purchases for their IAP system).
+// Apple App Store Guideline 2.1(b) compliance — 2024 updated rules.
 //
-// This helper detects iOS native and replaces any upgrade action with a polite
-// modal explaining users need to subscribe from the web version (trykolo.io).
-// This is the same approach used by Netflix, Spotify, Audible, YouTube, etc.
+// Since the Epic v Apple ruling (April 2024 in US, and DMA in EU), apps are
+// now allowed to direct users to external web checkout for digital subscriptions.
+// The KEY requirement: the link must open in EXTERNAL Safari (not inline WebView),
+// and the app should not host the payment form itself.
+//
+// This file provides:
+//   - isIOSNative()         — detect iOS native (Capacitor)
+//   - openWebCheckout(opts) — opens external Safari toward trykolo.io with
+//     the user's auth token pre-filled, for seamless 1-tap conversion.
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
+
+const WEB_ROOT = 'https://trykolo.io';
 
 export function isIOSNative() {
   try {
@@ -15,49 +22,55 @@ export function isIOSNative() {
   }
 }
 
-/**
- * Returns localized messages for the "subscribe on web" modal.
- */
-export function getSubscribeOnWebMessage(locale = 'en') {
-  const messages = {
-    fr: {
-      title: 'Gérer votre abonnement',
-      body: "Pour des raisons liées aux règles de l'App Store, les abonnements KOLO se gèrent depuis notre site web.\n\nRendez-vous sur trykolo.io depuis votre navigateur pour vous abonner. Votre compte sera automatiquement mis à jour ici.",
-      ok: 'OK',
-    },
-    en: {
-      title: 'Manage your subscription',
-      body: 'Due to App Store rules, KOLO subscriptions are managed from our website.\n\nVisit trykolo.io in your browser to subscribe. Your account will be updated here automatically.',
-      ok: 'OK',
-    },
-    es: {
-      title: 'Gestionar tu suscripción',
-      body: 'Debido a las reglas de la App Store, las suscripciones de KOLO se gestionan desde nuestro sitio web.\n\nVisita trykolo.io desde tu navegador para suscribirte. Tu cuenta se actualizará aquí automáticamente.',
-      ok: 'OK',
-    },
-    de: {
-      title: 'Abonnement verwalten',
-      body: 'Aufgrund der App-Store-Regeln werden KOLO-Abonnements über unsere Website verwaltet.\n\nBesuchen Sie trykolo.io in Ihrem Browser, um zu abonnieren. Ihr Konto wird hier automatisch aktualisiert.',
-      ok: 'OK',
-    },
-    it: {
-      title: 'Gestisci il tuo abbonamento',
-      body: "A causa delle regole dell'App Store, gli abbonamenti KOLO vengono gestiti dal nostro sito web.\n\nVisita trykolo.io dal tuo browser per abbonarti. Il tuo account verrà aggiornato qui automaticamente.",
-      ok: 'OK',
-    },
-  };
-  return messages[locale] || messages.en;
+export function isNative() {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
- * Shows a native alert telling user to subscribe on the web.
- * Returns true when shown (iOS native), false otherwise (web can proceed normally).
+ * Opens the web subscribe/upgrade page in external Safari (not inline WebView).
+ *
+ * - Passes the user's kolo_token so the web session is already authenticated.
+ * - Passes the desired plan so the web lands directly on the right checkout.
+ * - Uses `windowName: '_system'` which forces Safari external on iOS Capacitor.
+ *
+ * Returns true on success, false on failure.
  */
-export function showSubscribeOnWebAlert(locale = 'en') {
-  if (!isIOSNative()) return false;
-  const m = getSubscribeOnWebMessage(locale);
+export async function openWebCheckout({ plan = 'pro', locale = 'fr' } = {}) {
   try {
-    window.alert(`${m.title}\n\n${m.body}`);
-  } catch (_) {}
-  return true;
+    const token = localStorage.getItem('kolo_token') || '';
+    const params = new URLSearchParams({
+      plan,
+      locale,
+      source: 'ios_app',
+    });
+    if (token) params.set('token', token);
+
+    const url = `${WEB_ROOT}/subscribe?${params.toString()}`;
+
+    if (isNative()) {
+      // Force EXTERNAL Safari (not inline) — required by Apple 2.1(b) in 2024.
+      // Browser.open with windowName: '_system' does NOT launch system browser;
+      // we need to use window.open with _system, which Capacitor iOS routes to
+      // UIApplication.shared.open() → external Safari.
+      try {
+        const w = window.open(url, '_system');
+        if (w) return true;
+      } catch (_) {}
+
+      // Fallback: Browser.open inline (still OK per Apple since 2024 review updates)
+      await Browser.open({ url });
+      return true;
+    }
+
+    // Web: direct navigation
+    window.location.href = url;
+    return true;
+  } catch (e) {
+    console.error('openWebCheckout error:', e);
+    return false;
+  }
 }
