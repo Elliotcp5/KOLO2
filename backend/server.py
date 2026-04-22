@@ -1380,6 +1380,142 @@ async def handle_subscription_deleted(sub):
     logger.info(f"Subscription cancelled for customer {customer_id}")
 
 
+# ==================== REVENUECAT WEBHOOK (iOS StoreKit IAP) ====================
+
+# Auth header secret shared with RevenueCat dashboard
+# (Project Settings → Webhooks → Authorization header).
+REVENUECAT_WEBHOOK_AUTH = os.environ.get('REVENUECAT_WEBHOOK_AUTH', '')
+
+# Map RevenueCat product_id → internal plan key (must match App Store Connect)
+RC_PRODUCT_TO_PLAN = {
+    'PRO': 'pro',
+    'PRO_plus': 'pro_plus',
+}
+
+
+@api_router.post("/webhooks/revenuecat")
+async def revenuecat_webhook(request: Request):
+    """
+    RevenueCat webhook for iOS StoreKit subscription lifecycle.
+
+    Events handled:
+      - INITIAL_PURCHASE, RENEWAL, PRODUCT_CHANGE, UNCANCELLATION → active
+      - CANCELLATION                                             → active until period end
+      - EXPIRATION                                               → free
+      - BILLING_ISSUE                                            → keep active (grace)
+
+    Auth: RevenueCat sends `Authorization: Bearer <secret>` where <secret>
+    equals REVENUECAT_WEBHOOK_AUTH (configured in the RevenueCat dashboard).
+    """
+    # Verify auth header (constant-time compare)
+    if REVENUECAT_WEBHOOK_AUTH:
+        auth_header = request.headers.get("authorization", "")
+        expected = f"Bearer {REVENUECAT_WEBHOOK_AUTH}"
+        if not secrets.compare_digest(auth_header, expected):
+            logger.warning("RevenueCat webhook: invalid authorization header")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    else:
+        logger.warning("REVENUECAT_WEBHOOK_AUTH not set — webhook is UNAUTHENTICATED")
+
+    try:
+        payload = await request.json()
+    except Exception as e:
+        logger.error(f"RevenueCat webhook: invalid JSON: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    event = payload.get("event") or {}
+    event_type = event.get("type")
+    app_user_id = event.get("app_user_id") or event.get("original_app_user_id")
+    product_id = event.get("product_id")
+    expiration_at_ms = event.get("expiration_at_ms")
+
+    logger.info(
+        f"RevenueCat event: type={event_type} user={app_user_id} product={product_id}"
+    )
+
+    if not event_type or not app_user_id:
+        return {"status": "ignored", "reason": "missing_fields"}
+
+    # Determine target plan from product id
+    plan = RC_PRODUCT_TO_PLAN.get(product_id, 'free')
+
+    # Derive subscription_status + plan to write based on event type
+    update_data = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "platform": "ios",
+        "revenuecat_last_event": event_type,
+        "revenuecat_user_id": app_user_id,
+    }
+
+    if event_type in ("INITIAL_PURCHASE", "RENEWAL", "PRODUCT_CHANGE", "UNCANCELLATION"):
+        update_data["plan"] = plan
+        update_data["subscription_status"] = "active"
+        update_data["cancel_at_period_end"] = False
+    elif event_type == "CANCELLATION":
+        # Keep plan active until expiration; mark as scheduled to end
+        update_data["cancel_at_period_end"] = True
+    elif event_type == "EXPIRATION":
+        update_data["plan"] = "free"
+        update_data["subscription_status"] = "expired"
+    elif event_type == "BILLING_ISSUE":
+        # Grace period — Apple retries; don't downgrade yet
+        update_data["subscription_status"] = "past_due"
+    else:
+        # NON_RENEWING_PURCHASE, TRANSFER, SUBSCRIBER_ALIAS, TEST → no-op
+        return {"status": "ok", "event": event_type, "action": "noop"}
+
+    if expiration_at_ms:
+        try:
+            update_data["subscription_ends_at"] = datetime.fromtimestamp(
+                int(expiration_at_ms) / 1000, tz=timezone.utc
+            ).isoformat()
+        except Exception:
+            pass
+
+    # Find user — try by user_id first, then by revenuecat_user_id (in case of alias)
+    user_doc = await db.users.find_one({"user_id": app_user_id}, {"_id": 0})
+    if not user_doc:
+        user_doc = await db.users.find_one(
+            {"revenuecat_user_id": app_user_id}, {"_id": 0}
+        )
+
+    if not user_doc:
+        logger.warning(
+            f"RevenueCat webhook: user not found for app_user_id={app_user_id}"
+        )
+        return {"status": "ok", "action": "user_not_found"}
+
+    await db.users.update_one(
+        {"user_id": user_doc["user_id"]},
+        {"$set": update_data},
+    )
+    logger.info(
+        f"Updated user {user_doc['user_id']} from RevenueCat: "
+        f"plan={update_data.get('plan', user_doc.get('plan'))} "
+        f"status={update_data.get('subscription_status', user_doc.get('subscription_status'))}"
+    )
+
+    # Send confirmation email on first purchase or renewal kickoff
+    if event_type == "INITIAL_PURCHASE":
+        try:
+            email = user_doc.get("email")
+            name = (user_doc.get("full_name") or user_doc.get("name") or "").split(" ")[0]
+            locale = user_doc.get("locale", "fr")
+            if email:
+                await send_subscription_confirmation_email(
+                    email=email,
+                    name=name,
+                    plan=plan,
+                    is_trial=False,
+                    trial_end=None,
+                    locale=locale,
+                )
+        except Exception as e:
+            logger.warning(f"RevenueCat: confirmation email failed: {e}")
+
+    return {"status": "ok", "event": event_type, "plan": plan}
+
+
 @api_router.post("/admin/sync-subscription")
 async def admin_sync_subscription(request: Request):
     """Admin endpoint to sync user subscription from Stripe"""

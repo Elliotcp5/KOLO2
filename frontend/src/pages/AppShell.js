@@ -18,7 +18,7 @@ import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 import { openExternalUrl } from '../utils/externalUrl';
-import { isIOSNative, showSubscribeOnWebAlert } from '../utils/iosCompliance';
+import { isIOSNative } from '../utils/iosCompliance';
 // Refactored utilities
 import { getInitials } from '../utils/helpers';
 
@@ -4986,10 +4986,6 @@ const SettingsTab = ({ onClose }) => {
         </div>
         <button
           onClick={() => {
-            if (isIOSNative()) {
-              showSubscribeOnWebAlert(locale || 'en');
-              return;
-            }
             navigate('/pricing');
           }}
           style={{

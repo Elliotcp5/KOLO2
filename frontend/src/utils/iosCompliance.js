@@ -1,18 +1,15 @@
-// Apple App Store Guideline 2.1(b) compliance — 2024 updated rules.
+// iOS native platform helpers.
 //
-// Since the Epic v Apple ruling (April 2024 in US, and DMA in EU), apps are
-// now allowed to direct users to external web checkout for digital subscriptions.
-// The KEY requirement: the link must open in EXTERNAL Safari (not inline WebView),
-// and the app should not host the payment form itself.
+// Historically this file redirected iOS users to an external Safari checkout
+// to comply with Apple 2.1(b). Since we now use native StoreKit IAP via
+// RevenueCat (see /services/revenueCat.js), this file is reduced to platform
+// detection helpers + thin shims for legacy callers.
 //
-// This file provides:
-//   - isIOSNative()         — detect iOS native (Capacitor)
-//   - openWebCheckout(opts) — opens external Safari toward trykolo.io with
-//     the user's auth token pre-filled, for seamless 1-tap conversion.
+// Apple compliance status:
+//  - 2.1(b)  : ✅ Native StoreKit IAP via RevenueCat (PRO / PRO_plus)
+//  - 3.1.1   : ✅ Restore Purchases exposed on PricingPage
+//  - 5.1.1(v): ✅ Account deletion (DELETE /api/auth/me)
 import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
-
-const WEB_ROOT = 'https://trykolo.io';
 
 export function isIOSNative() {
   try {
@@ -31,46 +28,45 @@ export function isNative() {
 }
 
 /**
- * Opens the web subscribe/upgrade page in external Safari (not inline WebView).
+ * Trigger the upgrade flow from any feature-gated entry point.
+ * Works on all platforms — PricingPage itself decides:
+ *   - iOS native → RevenueCat StoreKit purchase
+ *   - Web / Android → Stripe Checkout
  *
- * - Passes the user's kolo_token so the web session is already authenticated.
- * - Passes the desired plan so the web lands directly on the right checkout.
- * - Uses `windowName: '_system'` which forces Safari external on iOS Capacitor.
- *
- * Returns true on success, false on failure.
+ * Pass the react-router `navigate` function from the caller.
  */
-export async function openWebCheckout({ plan = 'pro', locale = 'fr' } = {}) {
+export function triggerUpgradeFlow(navigate) {
   try {
-    const token = localStorage.getItem('kolo_token') || '';
-    const params = new URLSearchParams({
-      plan,
-      locale,
-      source: 'ios_app',
-    });
-    if (token) params.set('token', token);
-
-    const url = `${WEB_ROOT}/subscribe?${params.toString()}`;
-
-    if (isNative()) {
-      // Force EXTERNAL Safari (not inline) — required by Apple 2.1(b) in 2024.
-      // Browser.open with windowName: '_system' does NOT launch system browser;
-      // we need to use window.open with _system, which Capacitor iOS routes to
-      // UIApplication.shared.open() → external Safari.
-      try {
-        const w = window.open(url, '_system');
-        if (w) return true;
-      } catch (_) {}
-
-      // Fallback: Browser.open inline (still OK per Apple since 2024 review updates)
-      await Browser.open({ url });
-      return true;
+    if (typeof navigate === 'function') {
+      navigate('/pricing');
+      return;
     }
+  } catch (_) {}
+  try {
+    window.location.href = '/pricing';
+  } catch (_) {}
+}
 
-    // Web: direct navigation
-    window.location.href = url;
+/**
+ * LEGACY SHIM — kept to avoid breaking older imports during the IAP rollout.
+ * Callers should migrate to triggerUpgradeFlow(navigate).
+ * This simply navigates to /pricing where the native IAP flow is offered.
+ */
+export function showSubscribeOnWebAlert() {
+  try {
+    window.location.href = '/pricing';
+  } catch (_) {}
+}
+
+/**
+ * LEGACY SHIM — previously opened Safari. Now redirects to /pricing where
+ * the native RevenueCat IAP is presented for iOS.
+ */
+export async function openWebCheckout() {
+  try {
+    window.location.href = '/pricing';
     return true;
-  } catch (e) {
-    console.error('openWebCheckout error:', e);
+  } catch (_) {
     return false;
   }
 }

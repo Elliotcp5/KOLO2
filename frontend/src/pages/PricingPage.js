@@ -5,7 +5,13 @@ import { useTheme } from '../context/ThemeContext';
 import { usePlan, PLAN_FEATURES } from '../context/PlanContext';
 import { Check, ArrowLeft, Sparkles, Crown, Zap } from 'lucide-react';
 import { openExternalUrl } from '../utils/externalUrl';
-import { isIOSNative, openWebCheckout } from '../utils/iosCompliance';
+import { isIOSNative } from '../utils/iosCompliance';
+import {
+  initRevenueCat,
+  getOfferings as getRCOfferings,
+  purchasePlan as rcPurchasePlan,
+  restorePurchases as rcRestorePurchases,
+} from '../services/revenueCat';
 import { toast } from 'sonner';
 
 const API_URL = 'https://trykolo.io';
@@ -130,8 +136,11 @@ export default function PricingPage() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [isInTrial, setIsInTrial] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
+  const [iosOfferings, setIosOfferings] = useState(null);
+  const [restoring, setRestoring] = useState(false);
   
   const isDark = theme === 'dark';
+  const isIOS = isIOSNative();
   
   // Initial load - separate from currency changes
   useEffect(() => {
@@ -149,13 +158,21 @@ export default function PricingPage() {
           } else {
             fetchPricing('EUR');
           }
+          // Initialize RevenueCat on iOS native using the authenticated user id
+          if (isIOS && data.user_id) {
+            initRevenueCat(data.user_id).then(res => {
+              if (res?.ok) {
+                getRCOfferings().then(setIosOfferings);
+              }
+            });
+          }
         }
       });
     } else {
       // Not logged in, use default EUR
       fetchPricing('EUR');
     }
-  }, [fetchPricing, fetchPlanData]);
+  }, [fetchPricing, fetchPlanData, isIOS]);
   
   const handleCurrencyChange = (newCurrency) => {
     setCurrency(newCurrency);
@@ -163,18 +180,40 @@ export default function PricingPage() {
   };
   
   const handleSelectPlan = async (plan) => {
-    // Apple App Store Guideline 2.1(b) compliance:
-    // On iOS native, open external Safari directly toward trykolo.io/subscribe.
-    // User stays logged in (token passed), checkout is 1-tap, and Stripe return
-    // fires a deep link back into the app with PRO activated.
-    if (isIOSNative() && plan !== 'free') {
-      const opened = await openWebCheckout({ plan, locale: locale || 'fr' });
-      if (!opened) {
+    // iOS native: use StoreKit IAP via RevenueCat (Apple Guideline 2.1b compliant)
+    if (isIOS && plan !== 'free') {
+      const token = localStorage.getItem('kolo_token');
+      if (!token) {
+        navigate('/register');
+        return;
+      }
+      setLoading(true);
+      const result = await rcPurchasePlan(plan);
+      if (result.success) {
+        toast.success(
+          locale === 'fr' ? 'Abonnement activé ! 🎉' :
+          locale === 'de' ? 'Abonnement aktiviert! 🎉' :
+          locale === 'it' ? 'Abbonamento attivato! 🎉' :
+          'Subscription activated! 🎉',
+          { duration: 3000 }
+        );
+        // Give the RevenueCat webhook ~1.5s to update our MongoDB
+        setTimeout(async () => {
+          try { await fetchPlanData(token); } catch (_) {}
+          navigate('/app');
+        }, 1500);
+      } else if (result.userCancelled) {
+        // Silent — user cancelled
+      } else {
         toast.error(
-          locale === 'fr' ? 'Impossible d\'ouvrir le paiement. Réessayez.' :
-          'Unable to open payment. Please try again.'
+          (locale === 'fr' ? 'Échec du paiement' :
+           locale === 'de' ? 'Zahlung fehlgeschlagen' :
+           locale === 'it' ? 'Pagamento non riuscito' :
+           'Payment failed') + (result.error ? ` (${result.error})` : ''),
+          { duration: 6000 }
         );
       }
+      setLoading(false);
       return;
     }
 
@@ -252,15 +291,32 @@ export default function PricingPage() {
   
   // Direct payment without trial
   const handlePayNow = async (plan) => {
-    // Apple 2.1(b) — iOS native : open external Safari checkout
-    if (isIOSNative()) {
-      const opened = await openWebCheckout({ plan, locale: locale || 'fr' });
-      if (!opened) {
+    // iOS native: StoreKit IAP (trial is handled by Apple's "intro offer" on the product itself)
+    if (isIOS) {
+      const token = localStorage.getItem('kolo_token');
+      if (!token) {
+        navigate('/register');
+        return;
+      }
+      setLoading(true);
+      const result = await rcPurchasePlan(plan);
+      if (result.success) {
+        toast.success(
+          locale === 'fr' ? 'Abonnement activé ! 🎉' :
+          'Subscription activated! 🎉',
+          { duration: 3000 }
+        );
+        setTimeout(async () => {
+          try { await fetchPlanData(token); } catch (_) {}
+          navigate('/app');
+        }, 1500);
+      } else if (!result.userCancelled) {
         toast.error(
-          locale === 'fr' ? 'Impossible d\'ouvrir le paiement' :
-          'Unable to open payment'
+          (locale === 'fr' ? 'Échec du paiement' : 'Payment failed') +
+            (result.error ? ` (${result.error})` : '')
         );
       }
+      setLoading(false);
       return;
     }
 
@@ -294,11 +350,51 @@ export default function PricingPage() {
     setLoading(false);
   };
   
+  // Restore purchases — REQUIRED by Apple Guideline 3.1.1 on iOS native.
+  const handleRestorePurchases = async () => {
+    if (!isIOS) return;
+    setRestoring(true);
+    const result = await rcRestorePurchases();
+    if (result.success && result.activeProduct) {
+      toast.success(
+        locale === 'fr' ? 'Achats restaurés ✨' :
+        locale === 'de' ? 'Käufe wiederhergestellt ✨' :
+        locale === 'it' ? 'Acquisti ripristinati ✨' :
+        'Purchases restored ✨',
+        { duration: 3000 }
+      );
+      const token = localStorage.getItem('kolo_token');
+      setTimeout(async () => {
+        try { if (token) await fetchPlanData(token); } catch (_) {}
+        navigate('/app');
+      }, 1200);
+    } else if (result.success) {
+      toast.info(
+        locale === 'fr' ? 'Aucun achat actif à restaurer' :
+        locale === 'de' ? 'Keine aktiven Käufe zu wiederherstellen' :
+        locale === 'it' ? 'Nessun acquisto attivo da ripristinare' :
+        'No active purchases to restore',
+      );
+    } else {
+      toast.error(
+        locale === 'fr' ? 'Échec de la restauration' :
+        'Restore failed'
+      );
+    }
+    setRestoring(false);
+  };
+
   const getPriceDisplay = (plan) => {
     if (plan === 'free') {
       // Use currency symbol based on selected currency
       const freeDisplay = currency === 'USD' ? '$0' : currency === 'GBP' ? '£0' : '0€';
       return { monthly: freeDisplay, annual: freeDisplay, annualMonthly: freeDisplay };
+    }
+    
+    // On iOS native, prefer localized prices from StoreKit (RevenueCat offerings)
+    if (isIOS && iosOfferings?.[plan]?.product?.priceString) {
+      const s = iosOfferings[plan].product.priceString;
+      return { monthly: s, annual: s, annualMonthly: s };
     }
     
     // Fallback pricing data for each currency
@@ -396,7 +492,8 @@ export default function PricingPage() {
       </div>
       
       <div className="px-4 pt-6">
-        {/* Currency Toggle */}
+        {/* Currency Toggle — hidden on iOS (Apple handles regional pricing) */}
+        {!isIOS && (
         <div className="flex justify-center gap-2 mb-4">
           {['EUR', 'USD', 'GBP'].map(c => (
             <button
@@ -414,8 +511,10 @@ export default function PricingPage() {
             </button>
           ))}
         </div>
+        )}
         
-        {/* Billing Period Toggle */}
+        {/* Billing Period Toggle — hidden on iOS (only monthly IAPs exist in App Store Connect) */}
+        {!isIOS && (
         <div 
           className="flex justify-center mb-6 p-1 rounded-full mx-auto"
           style={{ 
@@ -468,6 +567,7 @@ export default function PricingPage() {
             </span>
           </button>
         </div>
+        )}
         
         {/* Plan Cards */}
         <div className="space-y-4">
@@ -525,7 +625,7 @@ export default function PricingPage() {
         </div>
         
         {/* Annual savings banner */}
-        {billingPeriod === 'annual' && (
+        {billingPeriod === 'annual' && !isIOS && (
           <div 
             className="mt-6 p-4 rounded-2xl text-center"
             style={{ backgroundColor: isDark ? 'rgba(52, 211, 153, 0.1)' : 'rgba(52, 211, 153, 0.15)' }}
@@ -536,6 +636,60 @@ export default function PricingPage() {
                locale === 'it' ? '✨ Con l\'annuale risparmi 2 mesi!' :
                '✨ With annual billing, you save 2 months!'}
             </p>
+          </div>
+        )}
+
+        {/* iOS: Restore Purchases (required by Apple Guideline 3.1.1) + legal notes */}
+        {isIOS && (
+          <div className="mt-6 space-y-3">
+            <button
+              onClick={handleRestorePurchases}
+              disabled={restoring}
+              data-testid="restore-purchases-btn"
+              className="w-full py-3 rounded-full font-medium transition-all"
+              style={{
+                backgroundColor: isDark ? '#2a2a3b' : '#e5e7eb',
+                color: isDark ? '#ffffff' : '#0E0B1E',
+                opacity: restoring ? 0.7 : 1,
+              }}
+            >
+              {restoring
+                ? '…'
+                : locale === 'fr' ? 'Restaurer mes achats'
+                : locale === 'de' ? 'Käufe wiederherstellen'
+                : locale === 'it' ? 'Ripristina acquisti'
+                : 'Restore purchases'}
+            </button>
+            <p
+              className="text-xs text-center px-2 leading-relaxed"
+              style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
+            >
+              {locale === 'fr'
+                ? "L'abonnement se renouvelle automatiquement chaque mois et peut être annulé à tout moment depuis Réglages → Apple ID → Abonnements."
+                : locale === 'de'
+                ? 'Das Abonnement verlängert sich monatlich automatisch und kann jederzeit über Einstellungen → Apple-ID → Abonnements gekündigt werden.'
+                : locale === 'it'
+                ? "L'abbonamento si rinnova automaticamente ogni mese e può essere annullato in qualsiasi momento da Impostazioni → ID Apple → Abbonamenti."
+                : 'Subscription auto-renews monthly. You can cancel anytime in Settings → Apple ID → Subscriptions.'}
+            </p>
+            <div className="flex justify-center gap-4 text-xs">
+              <a
+                href="https://trykolo.io/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#6C63FF' }}
+              >
+                {locale === 'fr' ? 'CGU' : locale === 'de' ? 'AGB' : locale === 'it' ? 'Termini' : 'Terms'}
+              </a>
+              <a
+                href="https://trykolo.io/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#6C63FF' }}
+              >
+                {locale === 'fr' ? 'Confidentialité' : locale === 'de' ? 'Datenschutz' : locale === 'it' ? 'Privacy' : 'Privacy'}
+              </a>
+            </div>
           </div>
         )}
       </div>

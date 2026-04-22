@@ -626,3 +626,81 @@ Fichiers touchés :
 - P2 : App Preview videos (30s) → +30% de conversion App Store
 - P2 : Universal Links (`apple-app-site-association`)
 - P3 : Refactoring server.py + AppShell.js
+
+---
+
+## Changelog - RevenueCat IAP Apple StoreKit (Feb 22, 2026)
+
+### App Store Guideline 2.1(b) — IAP natif Apple (DONE ✅)
+Remplacement du contournement Safari externe par **Apple StoreKit natif via RevenueCat** — solution 100% compliant App Store, plus professionnelle et user-friendly qu'un redirect web.
+
+**Pourquoi :** Apple avait rejeté Stripe-in-app (rejet 2.1b). Le détour Safari externe fonctionnait mais causait une friction utilisateur. RevenueCat + StoreKit = achat natif en 1 tap avec Touch ID/Face ID, reçu Apple, renouvellement automatique géré par iOS.
+
+**Architecture :**
+- **Frontend iOS natif** : `@revenuecat/purchases-capacitor@7.5.10` (compatible Capacitor 5)
+- **Web / Android** : Stripe Checkout (inchangé)
+- **Backend** : 2 webhooks coexistent — Stripe (`/api/webhook/stripe`) et RevenueCat (`/api/webhooks/revenuecat`)
+- **Source de vérité** : MongoDB `users.plan` — mis à jour par webhook depuis les 2 sources
+
+**Produits App Store Connect (subscription group "KOLO PRO") :**
+- `PRO` (1 month) → maps to `plan="pro"`
+- `PRO_plus` (1 month) → maps to `plan="pro_plus"`
+
+**Fichiers créés :**
+- `/app/frontend/src/services/revenueCat.js` — service IAP : `initRevenueCat`, `getOfferings`, `purchasePlan`, `restorePurchases`, `getCustomerInfo`, `logoutRevenueCat`
+
+**Fichiers modifiés :**
+- `/app/frontend/src/utils/iosCompliance.js` — réduit à la détection plateforme + `triggerUpgradeFlow(navigate)` helper ; suppression de `openWebCheckout` (Safari), shims rétro-compatibles vers `/pricing`
+- `/app/frontend/src/pages/PricingPage.js` :
+  - Init RevenueCat au montage si iOS + utilisateur connecté
+  - `handleSelectPlan` et `handlePayNow` : sur iOS, appellent `rcPurchasePlan()` → dialogue Apple natif au lieu de Safari
+  - Toggle devise (EUR/USD/GBP) masqué sur iOS (Apple gère ses propres prix)
+  - Toggle monthly/annual masqué sur iOS (seul le mensuel existe en App Store Connect pour l'instant)
+  - Prix localisés automatiquement via `offerings[plan].product.priceString`
+  - Bouton **"Restore purchases"** (obligatoire Apple 3.1.1) visible sur iOS
+  - Disclaimer légal iOS (auto-renouvellement, annulation via Réglages Apple)
+  - Liens CGU + Privacy visibles sur iOS
+- `/app/frontend/src/pages/AppShell.js` — bouton upgrade redirige simplement vers `/pricing` (qui gère IAP ou Stripe)
+- `/app/frontend/src/components/ROIDashboard.js`, `MarkAsSoldButton.js`, `InteractionTimeline.js` — `showSubscribeOnWebAlert` remplacé par `triggerUpgradeFlow()` → navigate `/pricing`
+
+**Backend (`/app/backend/server.py`) :**
+- Nouveau endpoint `POST /api/webhooks/revenuecat` avec :
+  - Vérification auth `Authorization: Bearer <REVENUECAT_WEBHOOK_AUTH>` (constant-time compare)
+  - Events gérés : `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `UNCANCELLATION`, `CANCELLATION`, `EXPIRATION`, `BILLING_ISSUE`
+  - Mapping `product_id` → `plan` (PRO → pro, PRO_plus → pro_plus)
+  - Recherche user par `user_id` ou alias `revenuecat_user_id`
+  - Mise à jour `users.plan`, `subscription_status`, `subscription_ends_at`, `platform=ios`
+  - Envoi email confirmation sur INITIAL_PURCHASE
+- Stripe webhook et flow inchangés (coexistence propre)
+
+**Variables d'environnement ajoutées :**
+- `backend/.env`: `REVENUECAT_WEBHOOK_AUTH=` (à remplir avec la string choisie dans RevenueCat Dashboard)
+- `frontend/.env`: `REACT_APP_REVENUECAT_IOS_KEY=` (à remplir avec la clé publique iOS `appl_...` de RevenueCat)
+
+**Tests backend (cURL) :** ✅
+- `INITIAL_PURCHASE(PRO)` → user passe à `plan=pro, status=active`
+- `INITIAL_PURCHASE(PRO_plus)` → `plan=pro_plus, status=active`
+- `EXPIRATION` → `plan=free, status=expired`
+- `TEST` / event inconnu → no-op `{status:"ok", action:"noop"}`
+- Payload vide → `{status:"ignored", reason:"missing_fields"}`
+
+### Actions utilisateur requises pour mise en service
+1. **RevenueCat Dashboard** (app.revenuecat.com) :
+   - Créer projet KOLO, ajouter app iOS (bundle `io.kolo.app`)
+   - Attacher produits `PRO` et `PRO_plus` + créer un Offering `default`
+   - Configurer l'App Store Connect In-App Purchase Key (.p8) dans RevenueCat
+   - Récupérer la clé iOS publique (`appl_...`) → `REACT_APP_REVENUECAT_IOS_KEY`
+   - Configurer webhook : URL `https://trykolo.io/api/webhooks/revenuecat`, Authorization header = string aléatoire → `REVENUECAT_WEBHOOK_AUTH`
+2. **App Store Connect** :
+   - Signer les "Paid Apps Agreement" (Agreements, Tax and Banking)
+   - Sur chaque produit PRO / PRO_plus : renseigner prix (Tier), "Cleared for Sale", metadata localization FR/EN/DE/IT, review screenshot
+3. **Codemagic / build iOS** :
+   - `yarn build:ios` (auto `npx cap sync ios`)
+   - Vérifier dans Xcode : capability **In-App Purchase** activée (bundle io.kolo.app)
+
+## Next Action Items
+1. User : créer compte RevenueCat + configurer App Store Connect IAP + fournir clé iOS + secret webhook
+2. Déployer backend (Emergent Deploy) avec `REVENUECAT_WEBHOOK_AUTH` renseigné
+3. Rebuild TestFlight (build number auto-incrément via codemagic)
+4. Test sandbox : compte Sandbox Tester → achat PRO dans l'app → vérifier webhook → plan actif
+5. Soumettre à App Store avec note reviewer : "In-app purchases now handled via native StoreKit (per Guideline 2.1b)"
