@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { Edit3 } from 'lucide-react';
@@ -10,19 +10,12 @@ const CURRENCY_SYMBOLS = {
   GBP: '£'
 };
 
-// Get user currency from localStorage
-const getUserCurrency = () => {
-  return localStorage.getItem('kolo_currency') || 'EUR';
-};
+const getUserCurrency = () => localStorage.getItem('kolo_currency') || 'EUR';
+const getCurrencySymbol = () => CURRENCY_SYMBOLS[getUserCurrency()] || '€';
 
-const getCurrencySymbol = () => {
-  return CURRENCY_SYMBOLS[getUserCurrency()] || '€';
-};
-
-// Configuration by project type - now with dynamic currency
+// Configuration per project type
 const getSliderConfig = () => {
   const symbol = getCurrencySymbol();
-  
   return {
     buyer: {
       min: 0,
@@ -32,23 +25,14 @@ const getSliderConfig = () => {
       formatValue: (val) => val >= 800 ? `800k+` : `${val}k${symbol}`,
       formatTick: (tick) => tick === 800 ? '800k+' : `${tick}k`,
       isRange: true,
-      label: {
-        fr: 'Budget',
-        en: 'Budget',
-        de: 'Budget',
-        it: 'Budget'
-      },
+      label: { fr: 'Budget', en: 'Budget', de: 'Budget', it: 'Budget' },
       undefinedLabel: {
-        fr: 'Budget à définir',
-        en: 'Budget to be defined',
-        de: 'Budget noch festzulegen',
-        it: 'Budget da definire'
+        fr: 'Budget à définir', en: 'Budget to be defined',
+        de: 'Budget noch festzulegen', it: 'Budget da definire'
       }
     },
     seller: {
-      min: 0,
-      max: 2000,
-      step: 25,
+      min: 0, max: 2000, step: 25,
       ticks: [0, 250, 500, 750, 1000, 2000],
       formatValue: (val) => {
         if (val === 0) return `0${symbol}`;
@@ -60,7 +44,7 @@ const getSliderConfig = () => {
         if (tick >= 1000) return `${tick/1000}M`;
         return `${tick}k`;
       },
-      isRange: false, // Single value, not range
+      isRange: false,
       label: {
         fr: 'Prix de vente souhaité TTC',
         en: 'Desired sale price (incl. fees)',
@@ -68,35 +52,96 @@ const getSliderConfig = () => {
         it: 'Prezzo di vendita desiderato (tutto incluso)'
       },
       undefinedLabel: {
-        fr: 'Prix à définir',
-        en: 'Price to be defined',
-        de: 'Preis noch festzulegen',
-        it: 'Prezzo da definire'
+        fr: 'Prix à définir', en: 'Price to be defined',
+        de: 'Preis noch festzulegen', it: 'Prezzo da definire'
       }
     },
     renter: {
-      min: 0,
-      max: 5000,
-      step: 100,
+      min: 0, max: 5000, step: 100,
       ticks: [0, 500, 1000, 2000, 3000, 5000],
       formatValue: (val) => `${val}${symbol}/${getUserCurrency() === 'EUR' ? 'mois' : 'mo'}`,
       formatTick: (tick) => tick >= 1000 ? `${tick/1000}k` : `${tick}`,
       isRange: true,
-      label: {
-        fr: 'Budget loyer',
-        en: 'Rent budget',
-        de: 'Mietbudget',
-        it: 'Budget affitto'
-      },
+      label: { fr: 'Budget loyer', en: 'Rent budget', de: 'Mietbudget', it: 'Budget affitto' },
       undefinedLabel: {
-        fr: 'Budget à définir',
-        en: 'Budget to be defined',
-        de: 'Budget noch festzulegen',
-        it: 'Budget da definire'
+        fr: 'Budget à définir', en: 'Budget to be defined',
+        de: 'Budget noch festzulegen', it: 'Budget da definire'
       }
     }
   };
 };
+
+// Inline CSS for the native <input type="range"> — must be global to style
+// the shadow-root pseudo-elements (-webkit-slider-thumb, -moz-range-thumb).
+const KOLO_RANGE_CSS = `
+.kolo-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  touch-action: pan-y;
+}
+.kolo-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+.kolo-range::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+.kolo-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #6C63FF;
+  box-shadow: 0 2px 8px rgba(108,99,255,0.35);
+  cursor: grab;
+  margin-top: -11px;
+  transition: transform 0.1s;
+}
+.kolo-range::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+  box-shadow: 0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px rgba(108,99,255,0.2);
+  cursor: grabbing;
+}
+.kolo-range::-moz-range-thumb {
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #6C63FF;
+  box-shadow: 0 2px 8px rgba(108,99,255,0.35);
+  cursor: grab;
+}
+.kolo-range:disabled { opacity: 0.3; cursor: not-allowed; }
+.kolo-range:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+`;
+
+function KoloRange({ min, max, step, value, onChange, disabled, zIndex = 1 }) {
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="kolo-range absolute top-1/2 left-0 -translate-y-1/2 w-full"
+      style={{ zIndex }}
+    />
+  );
+}
 
 export function BudgetSlider({
   projectType = 'buyer',
@@ -111,161 +156,64 @@ export function BudgetSlider({
   const { theme } = useTheme();
   const { locale } = useLocale();
   const isDark = theme === 'dark';
-  
-  // Get config dynamically to pick up currency changes
+
   const SLIDER_CONFIG = getSliderConfig();
   const config = SLIDER_CONFIG[projectType] || SLIDER_CONFIG.buyer;
-  
+
   const [localMin, setLocalMin] = useState(minValue || config.min);
-  const [localMax, setLocalMax] = useState(maxValue || config.max / 2);
-  const [localSingle, setLocalSingle] = useState(singleValue || config.max / 4);
-  const [dragging, setDragging] = useState(null);
+  const [localMax, setLocalMax] = useState(maxValue || Math.floor(config.max / 2));
+  const [localSingle, setLocalSingle] = useState(singleValue || Math.floor(config.max / 4));
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualInputValue, setManualInputValue] = useState('');
-  
-  const sliderRef = useRef(null);
-  const minThumbRef = useRef(null);
-  const maxThumbRef = useRef(null);
-  const singleThumbRef = useRef(null);
-  
-  // Refs to read current values inside stable event listeners without re-attaching them
-  const stateRef = useRef({ localMin, localMax, localSingle, config, disabled: false, budgetUndefined: false });
-  stateRef.current = { localMin, localMax, localSingle, config, disabled, budgetUndefined };
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const getValueFromPercentageRef = useRef(null);
-  
-  const getPercentage = (value) => {
-    return ((value - config.min) / (config.max - config.min)) * 100;
-  };
-  
-  const getValueFromPercentage = useCallback((percentage) => {
-    const rawValue = (percentage / 100) * (config.max - config.min) + config.min;
-    return Math.round(rawValue / config.step) * config.step;
-  }, [config.max, config.min, config.step]);
 
-  // Update local state when props change
+  // Sync from props
   useEffect(() => {
     if (config.isRange) {
       setLocalMin(minValue || config.min);
-      setLocalMax(maxValue || config.max / 2);
+      setLocalMax(maxValue || Math.floor(config.max / 2));
     } else {
-      setLocalSingle(singleValue || config.max / 4);
+      setLocalSingle(singleValue || Math.floor(config.max / 4));
     }
   }, [minValue, maxValue, singleValue, config]);
 
-  // Maintain ref for getValueFromPercentage
-  useEffect(() => {
-    getValueFromPercentageRef.current = getValueFromPercentage;
-  }, [getValueFromPercentage]);
+  const percent = (v) => ((v - config.min) / (config.max - config.min)) * 100;
+  const minPercent = percent(localMin);
+  const maxPercent = percent(localMax);
+  const singlePercent = percent(localSingle);
 
-  // ==========================================================================
-  // Pointer Events + setPointerCapture — la méthode MODERNE pour drag cross-platform
-  // iOS 13+ / Android / Desktop, tout est unifié.
-  //
-  // setPointerCapture(pointerId) : garantit que tous les événements
-  // pointermove/pointerup suivants vont à CET element, même si le doigt
-  // sort de sa zone. Ça élimine tous les bugs "slider coincé" sur iOS.
-  //
-  // touch-action: none sur le thumb : dit au navigateur "ne fais RIEN avec
-  // ce touch (pas de scroll, pas de zoom)". C'est la ceinture de sécurité.
-  // ==========================================================================
-  useEffect(() => {
-    const attachThumb = (ref, thumb) => {
-      const el = ref?.current;
-      if (!el) return () => {};
-
-      // Empêche iOS de prendre le touch pour scroller
-      el.style.touchAction = 'none';
-      el.style.userSelect = 'none';
-      el.style.webkitUserSelect = 'none';
-
-      const onPointerDown = (e) => {
-        const s = stateRef.current;
-        if (s.disabled || s.budgetUndefined) return;
-        try { el.setPointerCapture(e.pointerId); } catch (_) {}
-        e.preventDefault();
-        e.stopPropagation();
-        setDragging(thumb);
-      };
-
-      const onPointerMove = (e) => {
-        if (!el.hasPointerCapture?.(e.pointerId)) return;
-        if (!sliderRef.current) return;
-        e.preventDefault();
-        const s = stateRef.current;
-        const rect = sliderRef.current.getBoundingClientRect();
-        const clientX = e.clientX;
-        const percentage = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-        const getValue = getValueFromPercentageRef.current;
-        if (!getValue) return;
-        const value = getValue(percentage);
-
-        if (s.config.isRange) {
-          if (thumb === 'min') {
-            const newMin = Math.min(value, s.localMax - s.config.step);
-            setLocalMin(Math.max(s.config.min, newMin));
-          } else if (thumb === 'max') {
-            const newMax = Math.max(value, s.localMin + s.config.step);
-            setLocalMax(Math.min(s.config.max, newMax));
-          }
-        } else {
-          setLocalSingle(Math.max(s.config.min, Math.min(s.config.max, value)));
-        }
-      };
-
-      const onPointerUp = (e) => {
-        try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
-        setDragging(null);
-        const s = stateRef.current;
-        const fn = onChangeRef.current;
-        if (fn) {
-          if (s.config.isRange) {
-            fn({ min: s.localMin, max: s.localMax });
-          } else {
-            fn({ value: s.localSingle });
-          }
-        }
-      };
-
-      el.addEventListener('pointerdown', onPointerDown);
-      el.addEventListener('pointermove', onPointerMove);
-      el.addEventListener('pointerup', onPointerUp);
-      el.addEventListener('pointercancel', onPointerUp);
-
-      return () => {
-        el.removeEventListener('pointerdown', onPointerDown);
-        el.removeEventListener('pointermove', onPointerMove);
-        el.removeEventListener('pointerup', onPointerUp);
-        el.removeEventListener('pointercancel', onPointerUp);
-      };
-    };
-
-    const cleanups = [
-      attachThumb(minThumbRef, 'min'),
-      attachThumb(maxThumbRef, 'max'),
-      attachThumb(singleThumbRef, 'single'),
-    ];
-    return () => cleanups.forEach((fn) => fn && fn());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable — refs handle state updates
-
-  // Stub handlers kept for backward compat with inline onMouseDown on track (used for click-to-set)
-  const handleMouseDown = (thumb) => (e) => {
-    if (disabled || budgetUndefined) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setDragging(thumb);
+  const commit = (nextState) => {
+    if (!onChange) return;
+    if (config.isRange) {
+      onChange({ min: nextState.min ?? localMin, max: nextState.max ?? localMax });
+    } else {
+      onChange({ value: nextState.value ?? localSingle });
+    }
   };
-  
+
+  const handleMinChange = (val) => {
+    const safe = Math.min(val, localMax - config.step);
+    const bounded = Math.max(config.min, safe);
+    setLocalMin(bounded);
+    commit({ min: bounded, max: localMax });
+  };
+  const handleMaxChange = (val) => {
+    const safe = Math.max(val, localMin + config.step);
+    const bounded = Math.min(config.max, safe);
+    setLocalMax(bounded);
+    commit({ min: localMin, max: bounded });
+  };
+  const handleSingleChange = (val) => {
+    const bounded = Math.max(config.min, Math.min(config.max, val));
+    setLocalSingle(bounded);
+    commit({ value: bounded });
+  };
+
   const handleManualSubmit = () => {
     const value = parseInt(manualInputValue.replace(/[^0-9]/g, ''), 10);
     if (!isNaN(value) && value > 0) {
-      // Convert to k if needed
       const valueInK = value >= 10000 ? value / 1000 : value;
       if (config.isRange) {
-        // For range, set both min and max to same value (user can adjust)
-        const safeValue = Math.min(valueInK, config.max * 10); // Allow values beyond slider max
+        const safeValue = Math.min(valueInK, config.max * 10);
         onChange({ min: safeValue, max: safeValue, manualValue: value });
       } else {
         onChange({ value: Math.min(valueInK, config.max * 10), manualValue: value });
@@ -274,137 +222,106 @@ export function BudgetSlider({
     setShowManualInput(false);
     setManualInputValue('');
   };
-  
-  const minPercent = getPercentage(localMin);
-  const maxPercent = getPercentage(localMax);
-  const singlePercent = getPercentage(localSingle);
-  
+
+  const effDisabled = disabled || budgetUndefined;
+
   return (
     <div className="w-full">
+      <style>{KOLO_RANGE_CSS}</style>
+
       {/* Value display */}
-      <div 
+      <div
         className="text-center mb-4 font-medium"
-        style={{ 
-          color: budgetUndefined 
+        style={{
+          color: budgetUndefined
             ? (isDark ? '#6b7280' : '#9ca3af')
             : (isDark ? '#a78bfa' : '#6C63FF'),
           opacity: budgetUndefined ? 0.5 : 1
         }}
       >
-        {budgetUndefined 
+        {budgetUndefined
           ? config.undefinedLabel[locale] || config.undefinedLabel.en
-          : config.isRange 
+          : config.isRange
             ? `Min ${config.formatValue(localMin)} → Max ${config.formatValue(localMax)}`
             : config.formatValue(localSingle)
         }
       </div>
-      
-      {/* Slider track */}
-      <div 
-        ref={sliderRef}
-        className="relative h-1.5 rounded-full cursor-pointer"
-        style={{ 
-          backgroundColor: isDark ? '#2a2a3b' : '#ebebf0',
-          opacity: budgetUndefined || disabled ? 0.3 : 1
-        }}
+
+      {/* Track + thumbs container */}
+      <div
+        className="relative w-full"
+        style={{ height: '28px' }}
       >
+        {/* Background track (visual only) */}
+        <div
+          className="absolute top-1/2 left-0 right-0 -translate-y-1/2 rounded-full pointer-events-none"
+          style={{
+            height: '6px',
+            backgroundColor: isDark ? '#2a2a3b' : '#ebebf0',
+            opacity: budgetUndefined || disabled ? 0.3 : 1
+          }}
+        />
+
+        {/* Filled gradient (visual only) */}
+        {config.isRange ? (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+            style={{
+              height: '6px',
+              left: `${minPercent}%`,
+              width: `${Math.max(0, maxPercent - minPercent)}%`,
+              background: 'linear-gradient(90deg, #6C63FF, #9333EA)',
+              opacity: budgetUndefined || disabled ? 0.3 : 1
+            }}
+          />
+        ) : (
+          <div
+            className="absolute top-1/2 left-0 -translate-y-1/2 rounded-full pointer-events-none"
+            style={{
+              height: '6px',
+              width: `${singlePercent}%`,
+              background: 'linear-gradient(90deg, #6C63FF, #9333EA)',
+              opacity: budgetUndefined || disabled ? 0.3 : 1
+            }}
+          />
+        )}
+
+        {/* Native <input type=range> inputs — actual interaction */}
         {config.isRange ? (
           <>
-            {/* Filled track for range */}
-            <div 
-              className="absolute h-full rounded-full"
-              style={{
-                left: `${minPercent}%`,
-                width: `${maxPercent - minPercent}%`,
-                background: 'linear-gradient(90deg, #6C63FF, #9333EA)'
-              }}
+            <KoloRange
+              min={config.min} max={config.max} step={config.step}
+              value={localMin}
+              onChange={handleMinChange}
+              disabled={effDisabled}
+              zIndex={localMin > config.max - (config.max - config.min) / 4 ? 3 : 2}
             />
-            
-            {/* Min thumb */}
-            <div
-              ref={minThumbRef}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
-              style={{
-                left: `${minPercent}%`,
-                width: '28px',
-                height: '28px',
-                backgroundColor: '#ffffff',
-                borderRadius: '50%',
-                boxShadow: dragging === 'min' 
-                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
-                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
-                transform: `translate(-50%, -50%) ${dragging === 'min' ? 'scale(1.15)' : 'scale(1)'}`,
-                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
-                touchAction: 'none',
-                zIndex: dragging === 'min' ? 10 : 5
-              }}
-              onMouseDown={handleMouseDown('min')}
-            />
-            
-            {/* Max thumb */}
-            <div
-              ref={maxThumbRef}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
-              style={{
-                left: `${maxPercent}%`,
-                width: '28px',
-                height: '28px',
-                backgroundColor: '#ffffff',
-                borderRadius: '50%',
-                boxShadow: dragging === 'max' 
-                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
-                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
-                transform: `translate(-50%, -50%) ${dragging === 'max' ? 'scale(1.15)' : 'scale(1)'}`,
-                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
-                touchAction: 'none',
-                zIndex: dragging === 'max' ? 10 : 5
-              }}
-              onMouseDown={handleMouseDown('max')}
+            <KoloRange
+              min={config.min} max={config.max} step={config.step}
+              value={localMax}
+              onChange={handleMaxChange}
+              disabled={effDisabled}
+              zIndex={3}
             />
           </>
         ) : (
-          <>
-            {/* Filled track for single value */}
-            <div 
-              className="absolute h-full rounded-full"
-              style={{
-                left: 0,
-                width: `${singlePercent}%`,
-                background: 'linear-gradient(90deg, #6C63FF, #9333EA)'
-              }}
-            />
-            
-            {/* Single thumb */}
-            <div
-              ref={singleThumbRef}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
-              style={{
-                left: `${singlePercent}%`,
-                width: '28px',
-                height: '28px',
-                backgroundColor: '#ffffff',
-                borderRadius: '50%',
-                boxShadow: dragging === 'single' 
-                  ? '0 2px 12px rgba(108,99,255,0.5), 0 0 0 3px #6C63FF'
-                  : '0 2px 8px rgba(108,99,255,0.3), 0 0 0 2px #6C63FF',
-                transform: `translate(-50%, -50%) ${dragging === 'single' ? 'scale(1.15)' : 'scale(1)'}`,
-                transition: dragging ? 'none' : 'transform 0.1s, box-shadow 0.1s',
-                touchAction: 'none',
-                zIndex: 10
-              }}
-              onMouseDown={handleMouseDown('single')}
-            />
-          </>
+          <KoloRange
+            min={config.min} max={config.max} step={config.step}
+            value={localSingle}
+            onChange={handleSingleChange}
+            disabled={effDisabled}
+            zIndex={3}
+          />
         )}
       </div>
-      
+
       {/* Ticks */}
-      <div className="flex justify-between mt-2 px-1">
+      <div className="flex justify-between mt-3 px-1">
         {config.ticks.map((tick) => (
-          <span 
-            key={tick} 
+          <span
+            key={tick}
             className="text-xs"
-            style={{ 
+            style={{
               color: isDark ? '#6b7280' : '#9ca3af',
               opacity: budgetUndefined ? 0.3 : 0.7
             }}
@@ -413,32 +330,31 @@ export function BudgetSlider({
           </span>
         ))}
       </div>
-      
+
       {/* Actions row */}
       <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
-        {/* Budget undefined toggle */}
         {onBudgetUndefinedChange && (
           <button
             type="button"
             onClick={() => onBudgetUndefinedChange(!budgetUndefined)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all"
             style={{
-              backgroundColor: budgetUndefined 
+              backgroundColor: budgetUndefined
                 ? '#6C63FF'
                 : (isDark ? '#2a2a3b' : '#f2f2f7'),
-              color: budgetUndefined 
+              color: budgetUndefined
                 ? '#ffffff'
                 : (isDark ? '#a0a4ae' : '#6b7280')
             }}
           >
-            <div 
+            <div
               className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
               style={{
                 borderColor: budgetUndefined ? '#ffffff' : (isDark ? '#6b7280' : '#9ca3af')
               }}
             >
               {budgetUndefined && (
-                <div 
+                <div
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: '#ffffff' }}
                 />
@@ -447,8 +363,7 @@ export function BudgetSlider({
             {config.undefinedLabel[locale] || config.undefinedLabel.en}
           </button>
         )}
-        
-        {/* Manual input button */}
+
         {!budgetUndefined && (
           <button
             type="button"
@@ -461,33 +376,33 @@ export function BudgetSlider({
             }}
           >
             <Edit3 size={12} />
-            {locale === 'fr' ? 'Saisir manuellement' : 
+            {locale === 'fr' ? 'Saisir manuellement' :
              locale === 'de' ? 'Manuell eingeben' :
              locale === 'it' ? 'Inserisci manualmente' :
              'Enter manually'}
           </button>
         )}
       </div>
-      
+
       {/* Manual input modal */}
       {showManualInput && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => setShowManualInput(false)}
         >
-          <div 
+          <div
             className="rounded-2xl p-5 w-full max-w-xs"
-            style={{ 
+            style={{
               backgroundColor: isDark ? '#1a1a24' : '#ffffff',
               border: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            <h3 
+            <h3
               className="text-base font-semibold mb-3"
               style={{ color: isDark ? '#ffffff' : '#0E0B1E' }}
             >
-              {locale === 'fr' ? 'Saisir le montant' : 
+              {locale === 'fr' ? 'Saisir le montant' :
                locale === 'de' ? 'Betrag eingeben' :
                locale === 'it' ? 'Inserisci importo' :
                'Enter amount'}
@@ -495,6 +410,8 @@ export function BudgetSlider({
             <div className="relative mb-4">
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={manualInputValue}
                 onChange={(e) => setManualInputValue(e.target.value)}
                 placeholder={projectType === 'renter' ? '2500' : '500000'}
@@ -506,11 +423,13 @@ export function BudgetSlider({
                 }}
                 autoFocus
               />
-              <span 
+              <span
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
                 style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
               >
-                {projectType === 'renter' ? `${getCurrencySymbol()}/${locale === 'fr' ? 'mois' : locale === 'de' ? 'Monat' : locale === 'it' ? 'mese' : 'mo'}` : getCurrencySymbol()}
+                {projectType === 'renter'
+                  ? `${getCurrencySymbol()}/${locale === 'fr' ? 'mois' : locale === 'de' ? 'Monat' : locale === 'it' ? 'mese' : 'mo'}`
+                  : getCurrencySymbol()}
               </span>
             </div>
             <div className="flex gap-2">
