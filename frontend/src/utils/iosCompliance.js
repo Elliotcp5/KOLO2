@@ -1,12 +1,11 @@
 // iOS native platform helpers.
 //
-// Historically this file redirected iOS users to an external Safari checkout
-// to comply with Apple 2.1(b). Since we now use native StoreKit IAP via
-// RevenueCat (see /services/revenueCat.js), this file is reduced to platform
-// detection helpers + thin shims for legacy callers.
+// The app uses native Apple StoreKit 2 IAP for iOS subscriptions
+// (see /services/iapStore.js). This file is reduced to platform detection
+// helpers + thin shims for legacy callers that used to open Safari.
 //
 // Apple compliance status:
-//  - 2.1(b)  : ✅ Native StoreKit IAP via RevenueCat (PRO / PRO_plus)
+//  - 2.1(b)  : ✅ Native Apple StoreKit 2 IAP (PRO / PRO_Plus / yearly variants)
 //  - 3.1.1   : ✅ Restore Purchases exposed on PricingPage
 //  - 5.1.1(v): ✅ Account deletion (DELETE /api/auth/me)
 import { Capacitor } from '@capacitor/core';
@@ -30,7 +29,7 @@ export function isNative() {
 /**
  * Trigger the upgrade flow from any feature-gated entry point.
  * Works on all platforms — PricingPage itself decides:
- *   - iOS native → RevenueCat StoreKit purchase
+ *   - iOS native → Apple StoreKit purchase
  *   - Web / Android → Stripe Checkout
  *
  * Pass the react-router `navigate` function from the caller.
@@ -50,7 +49,6 @@ export function triggerUpgradeFlow(navigate) {
 /**
  * LEGACY SHIM — kept to avoid breaking older imports during the IAP rollout.
  * Callers should migrate to triggerUpgradeFlow(navigate).
- * This simply navigates to /pricing where the native IAP flow is offered.
  */
 export function showSubscribeOnWebAlert() {
   try {
@@ -59,8 +57,8 @@ export function showSubscribeOnWebAlert() {
 }
 
 /**
- * LEGACY SHIM — previously opened Safari. Now redirects to /pricing where
- * the native RevenueCat IAP is presented for iOS.
+ * LEGACY SHIM — previously opened Safari for the Stripe web checkout.
+ * Now redirects to /pricing where the native StoreKit IAP is presented on iOS.
  */
 export async function openWebCheckout() {
   try {

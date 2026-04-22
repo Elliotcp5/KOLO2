@@ -12,8 +12,8 @@ import { Capacitor } from '@capacitor/core';
 
 const API_URL = 'https://trykolo.io';
 
-// Product identifiers (must match App Store Connect + RevenueCat exactly — case sensitive)
-// These MUST match the Product IDs set in App Store Connect → In-App Purchases.
+// Product identifiers (must match App Store Connect EXACTLY — case sensitive).
+// These are the Product IDs declared in App Store Connect → In-App Purchases.
 export const PRODUCT_IDS = {
   pro_monthly: 'PRO',
   pro_plus_monthly: 'PRO_Plus',
