@@ -12,14 +12,32 @@ import { Capacitor } from '@capacitor/core';
 
 const API_URL = 'https://trykolo.io';
 
+// Product identifiers (must match App Store Connect + RevenueCat exactly — case sensitive)
+// These MUST match the Product IDs set in App Store Connect → In-App Purchases.
 export const PRODUCT_IDS = {
-  pro: 'PRO',
-  pro_plus: 'PRO_plus',
+  pro_monthly: 'PRO',
+  pro_plus_monthly: 'PRO_Plus',
+  pro_yearly: 'Pro_simple_yearly',
+  pro_plus_yearly: 'PROYearly',
 };
+
+// Backwards-compat aliases for callers that just know plan = 'pro' | 'pro_plus'
+// and a billing period. Use getProductId(plan, billing) below.
+export function getProductId(plan, billingPeriod = 'monthly') {
+  if (plan === 'pro') {
+    return billingPeriod === 'annual' ? PRODUCT_IDS.pro_yearly : PRODUCT_IDS.pro_monthly;
+  }
+  if (plan === 'pro_plus') {
+    return billingPeriod === 'annual' ? PRODUCT_IDS.pro_plus_yearly : PRODUCT_IDS.pro_plus_monthly;
+  }
+  return null;
+}
 
 export const PRODUCT_TO_PLAN = {
   PRO: 'pro',
-  PRO_plus: 'pro_plus',
+  PRO_Plus: 'pro_plus',
+  Pro_simple_yearly: 'pro',
+  PROYearly: 'pro_plus',
 };
 
 let _store = null;
@@ -95,15 +113,25 @@ export async function initIAP({ userId, token }) {
     _store = store;
     store.verbosity = LogLevel.WARNING;
 
-    // Register products
+    // Register products — all 4 subscriptions declared in App Store Connect
     store.register([
       {
-        id: PRODUCT_IDS.pro,
+        id: PRODUCT_IDS.pro_monthly,
         type: ProductType.PAID_SUBSCRIPTION,
         platform: Platform.APPLE_APPSTORE,
       },
       {
-        id: PRODUCT_IDS.pro_plus,
+        id: PRODUCT_IDS.pro_plus_monthly,
+        type: ProductType.PAID_SUBSCRIPTION,
+        platform: Platform.APPLE_APPSTORE,
+      },
+      {
+        id: PRODUCT_IDS.pro_yearly,
+        type: ProductType.PAID_SUBSCRIPTION,
+        platform: Platform.APPLE_APPSTORE,
+      },
+      {
+        id: PRODUCT_IDS.pro_plus_yearly,
         type: ProductType.PAID_SUBSCRIPTION,
         platform: Platform.APPLE_APPSTORE,
       },
@@ -153,29 +181,32 @@ export async function initIAP({ userId, token }) {
 }
 
 /**
- * Returns { pro: product|null, pro_plus: product|null } with localized
- * price strings (product.pricing.price) coming straight from StoreKit.
+ * Returns { pro_monthly, pro_plus_monthly, pro_yearly, pro_plus_yearly } with
+ * localized price strings (product.pricing.price) coming from StoreKit.
  */
 export function getProducts() {
   if (!_store || !_CdvPurchase) return null;
   const { Platform } = _CdvPurchase;
   return {
-    pro: _store.get(PRODUCT_IDS.pro, Platform.APPLE_APPSTORE) || null,
-    pro_plus: _store.get(PRODUCT_IDS.pro_plus, Platform.APPLE_APPSTORE) || null,
+    pro_monthly: _store.get(PRODUCT_IDS.pro_monthly, Platform.APPLE_APPSTORE) || null,
+    pro_plus_monthly: _store.get(PRODUCT_IDS.pro_plus_monthly, Platform.APPLE_APPSTORE) || null,
+    pro_yearly: _store.get(PRODUCT_IDS.pro_yearly, Platform.APPLE_APPSTORE) || null,
+    pro_plus_yearly: _store.get(PRODUCT_IDS.pro_plus_yearly, Platform.APPLE_APPSTORE) || null,
   };
 }
 
 /**
- * Launch Apple's StoreKit purchase UI for the given plan.
- * Returns { success, userCancelled?, error? }.
- * On success: backend verification happens via the 'approved' handler above.
+ * Launch Apple's StoreKit purchase UI for (plan, billingPeriod).
+ *   plan          : 'pro' | 'pro_plus'
+ *   billingPeriod : 'monthly' | 'annual'
+ * Returns { success, pending?, userCancelled?, error? }.
  */
-export async function purchasePlan(plan) {
+export async function purchasePlan(plan, billingPeriod = 'monthly') {
   if (!isIOSNative()) return { success: false, error: 'not_ios' };
   if (!_store || !_CdvPurchase) return { success: false, error: 'not_initialized' };
 
   const { Platform } = _CdvPurchase;
-  const productId = PRODUCT_IDS[plan];
+  const productId = getProductId(plan, billingPeriod);
   if (!productId) return { success: false, error: 'unknown_plan' };
 
   const product = _store.get(productId, Platform.APPLE_APPSTORE);
@@ -187,9 +218,6 @@ export async function purchasePlan(plan) {
     const offer = product.getOffer();
     if (!offer) return { success: false, error: 'no_offer' };
     await _store.order(offer);
-    // Resolution of success/failure arrives via the `.approved()` / `.error()`
-    // handlers registered in initIAP. Caller should also listen via
-    // onPurchaseVerified() for the final verified result.
     return { success: true, pending: true };
   } catch (e) {
     if (e?.code === _CdvPurchase.ErrorCode?.PAYMENT_CANCELLED) {

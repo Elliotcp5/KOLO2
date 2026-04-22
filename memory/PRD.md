@@ -648,8 +648,10 @@ Fichiers touchés :
 - **Stripe** : préservé pour web + Android, coexistence propre
 
 **Produits App Store Connect (subscription group "KOLO PRO") :**
-- `PRO` (1 month) → maps to `plan="pro"`
-- `PRO_plus` (1 month) → maps to `plan="pro_plus"`
+- `PRO` (1 month) → maps to `plan="pro", billing="monthly"`
+- `PRO_Plus` (1 month) → maps to `plan="pro_plus", billing="monthly"` ⚠️ P majuscule dans "Plus"
+- `Pro_simple_yearly` (1 year) → maps to `plan="pro", billing="annual"`
+- `PROYearly` (1 year) → maps to `plan="pro_plus", billing="annual"`
 
 **Fichiers créés :**
 - `/app/frontend/src/services/iapStore.js` — service IAP StoreKit : `initIAP`, `getProducts`, `purchasePlan`, `restorePurchases`, `onPurchaseVerified` (listener pour refresh le plan après confirmation backend)

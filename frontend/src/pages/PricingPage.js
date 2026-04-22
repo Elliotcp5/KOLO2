@@ -210,7 +210,7 @@ export default function PricingPage() {
         return;
       }
       setLoading(true);
-      const result = await iapPurchasePlan(plan);
+      const result = await iapPurchasePlan(plan, billingPeriod);
       setLoading(false);
       if (result.userCancelled) return; // silent
       if (!result.success) {
@@ -308,7 +308,7 @@ export default function PricingPage() {
         return;
       }
       setLoading(true);
-      const result = await iapPurchasePlan(plan);
+      const result = await iapPurchasePlan(plan, billingPeriod);
       setLoading(false);
       if (result.userCancelled) return;
       if (!result.success) {
@@ -382,10 +382,21 @@ export default function PricingPage() {
       return { monthly: freeDisplay, annual: freeDisplay, annualMonthly: freeDisplay };
     }
     
-    // On iOS native, prefer localized prices from StoreKit
-    if (isIOS && iosOfferings?.[plan]?.pricing?.price) {
-      const s = iosOfferings[plan].pricing.price;
-      return { monthly: s, annual: s, annualMonthly: s };
+    // On iOS native, prefer localized prices directly from StoreKit
+    if (isIOS && iosOfferings) {
+      const monthlyKey = plan === 'pro' ? 'pro_monthly' : 'pro_plus_monthly';
+      const yearlyKey = plan === 'pro' ? 'pro_yearly' : 'pro_plus_yearly';
+      const m = iosOfferings[monthlyKey]?.pricing?.price || null;
+      const y = iosOfferings[yearlyKey]?.pricing?.price || null;
+      // For "annualMonthly" we just show the yearly string — Apple localizes as
+      // e.g. "€99.99/year" already; we won't try to divide ourselves.
+      if (m || y) {
+        return {
+          monthly: m || '-',
+          annual: y || '-',
+          annualMonthly: y || '-',
+        };
+      }
     }
     
     // Fallback pricing data for each currency
@@ -504,8 +515,7 @@ export default function PricingPage() {
         </div>
         )}
         
-        {/* Billing Period Toggle — hidden on iOS (only monthly IAPs exist in App Store Connect) */}
-        {!isIOS && (
+        {/* Billing Period Toggle — visible on all platforms */}
         <div 
           className="flex justify-center mb-6 p-1 rounded-full mx-auto"
           style={{ 
@@ -558,7 +568,6 @@ export default function PricingPage() {
             </span>
           </button>
         </div>
-        )}
         
         {/* Plan Cards */}
         <div className="space-y-4">
@@ -616,7 +625,7 @@ export default function PricingPage() {
         </div>
         
         {/* Annual savings banner */}
-        {billingPeriod === 'annual' && !isIOS && (
+        {billingPeriod === 'annual' && (
           <div 
             className="mt-6 p-4 rounded-2xl text-center"
             style={{ backgroundColor: isDark ? 'rgba(52, 211, 153, 0.1)' : 'rgba(52, 211, 153, 0.15)' }}

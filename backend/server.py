@@ -1404,10 +1404,12 @@ APPLE_SHARED_SECRET = os.environ.get('APPLE_IAP_SHARED_SECRET') or _APPLE_SECRET
 # Bundle id expected in the Apple receipt (defense-in-depth)
 APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID') or _APPLE_BUNDLE_FALLBACK
 
-# Map Apple product_id → internal plan key (must match App Store Connect)
+# Map Apple product_id → internal plan key (must match App Store Connect EXACTLY — case sensitive)
 APPLE_PRODUCT_TO_PLAN = {
     'PRO': 'pro',
-    'PRO_plus': 'pro_plus',
+    'PRO_Plus': 'pro_plus',
+    'Pro_simple_yearly': 'pro',
+    'PROYearly': 'pro_plus',
 }
 
 # Apple verifyReceipt endpoints (production + sandbox fallback)
