@@ -1385,10 +1385,24 @@ async def handle_subscription_deleted(sub):
 # App-Specific Shared Secret from App Store Connect:
 #   App Store Connect → My Apps → KOLO → In-App Purchases → Manage →
 #   App-Specific Shared Secret.
-APPLE_SHARED_SECRET = os.environ.get('APPLE_IAP_SHARED_SECRET', '')
+#
+# Resolution order:
+#   1. Platform env var APPLE_IAP_SHARED_SECRET (preferred — rotatable without redeploy)
+#   2. apple_iap_config.py fallback (used when the hosting provider has no way
+#      to set custom env vars)
+try:
+    from apple_iap_config import (
+        APPLE_IAP_SHARED_SECRET_FALLBACK as _APPLE_SECRET_FALLBACK,
+        APPLE_BUNDLE_ID_FALLBACK as _APPLE_BUNDLE_FALLBACK,
+    )
+except ImportError:
+    _APPLE_SECRET_FALLBACK = ''
+    _APPLE_BUNDLE_FALLBACK = 'io.kolo.app'
+
+APPLE_SHARED_SECRET = os.environ.get('APPLE_IAP_SHARED_SECRET') or _APPLE_SECRET_FALLBACK
 
 # Bundle id expected in the Apple receipt (defense-in-depth)
-APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'io.kolo.app')
+APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID') or _APPLE_BUNDLE_FALLBACK
 
 # Map Apple product_id → internal plan key (must match App Store Connect)
 APPLE_PRODUCT_TO_PLAN = {

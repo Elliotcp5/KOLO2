@@ -678,9 +678,10 @@ Fichiers touchés :
 - Stripe webhook et flow inchangés (coexistence propre)
 
 **Variables d'environnement :**
-- `backend/.env` ajoutées :
-  - `APPLE_IAP_SHARED_SECRET=` (**à remplir** depuis App Store Connect → My Apps → KOLO → In-App Purchases → Manage → App-Specific Shared Secret)
+- `backend/.env` ajoutées (preview/dev) :
+  - `APPLE_IAP_SHARED_SECRET=c6a3d0674dc4424b8eb250437884b43c`
   - `APPLE_BUNDLE_ID=io.kolo.app`
+- **Fallback de production** : `/app/backend/apple_iap_config.py` contient les mêmes valeurs comme fallback, utilisé quand les env vars ne peuvent pas être définies sur le dashboard Emergent Deploy (Custom keys UI bloquée). L'env var prend toujours la priorité sur le fallback.
 
 **Tests backend (cURL) :** ✅
 - POST sans auth → `401 Not authenticated`
