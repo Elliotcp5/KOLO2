@@ -28,7 +28,7 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
     
-    if (!fullName.trim() || !phone.trim() || !email.trim() || !password) {
+    if (!fullName.trim() || !email.trim() || !password) {
       setError(t('fillAllFields'));
       return;
     }
@@ -48,7 +48,7 @@ const RegisterPage = () => {
         email: email.trim().toLowerCase(), 
         password: password,
         full_name: fullName.trim(),
-        phone: phone.trim(),
+        phone: phone.trim() || '',
         country_code: '+33'
       };
       
@@ -273,13 +273,20 @@ const RegisterPage = () => {
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--ink-mid)'
-            }}>{t('phoneLabel')}</label>
+            }}>
+              {t('phoneLabel')}{' '}
+              <span style={{ opacity: 0.6, fontWeight: 400 }}>
+                {locale === 'fr' ? '(optionnel)' :
+                 locale === 'de' ? '(optional)' :
+                 locale === 'it' ? '(facoltativo)' :
+                 '(optional)'}
+              </span>
+            </label>
             <input
               type="tel"
               placeholder="+33 6 12 34 56 78"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              required
               autoComplete="tel"
               style={{
                 width: '100%',
