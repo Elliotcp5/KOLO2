@@ -627,9 +627,10 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* iOS: Restore Purchases (required by Apple Guideline 3.1.1) + legal notes */}
-        {isIOS && (
-          <div className="mt-6 space-y-3">
+        {/* Auto-renewable subscription disclaimer + legal links — required by
+            Apple Guideline 3.1.2(c) on iOS, and best-practice on all platforms. */}
+        <div className="mt-6 space-y-3">
+          {isIOS && (
             <button
               onClick={handleRestorePurchases}
               disabled={restoring}
@@ -648,38 +649,55 @@ export default function PricingPage() {
                 : locale === 'it' ? 'Ripristina acquisti'
                 : 'Restore purchases'}
             </button>
-            <p
-              className="text-xs text-center px-2 leading-relaxed"
-              style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
-            >
-              {locale === 'fr'
-                ? "L'abonnement se renouvelle automatiquement chaque mois et peut être annulé à tout moment depuis Réglages → Apple ID → Abonnements."
-                : locale === 'de'
-                ? 'Das Abonnement verlängert sich monatlich automatisch und kann jederzeit über Einstellungen → Apple-ID → Abonnements gekündigt werden.'
-                : locale === 'it'
-                ? "L'abbonamento si rinnova automaticamente ogni mese e può essere annullato in qualsiasi momento da Impostazioni → ID Apple → Abbonamenti."
-                : 'Subscription auto-renews monthly. You can cancel anytime in Settings → Apple ID → Subscriptions.'}
+          )}
+
+          {/* Subscription details — Title + Length + Price + Auto-renew terms */}
+          <div
+            className="text-xs leading-relaxed px-2"
+            style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+          >
+            <p className="font-semibold mb-1" style={{ color: isDark ? '#d1d5db' : '#4b5563' }}>
+              {locale === 'fr' ? 'Abonnements auto-renouvelables :' :
+               locale === 'de' ? 'Automatisch verlängerbare Abonnements:' :
+               locale === 'it' ? 'Abbonamenti a rinnovo automatico:' :
+               'Auto-renewable subscriptions:'}
             </p>
-            <div className="flex justify-center gap-4 text-xs">
-              <a
-                href="https://trykolo.io/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#6C63FF' }}
-              >
-                {locale === 'fr' ? 'CGU' : locale === 'de' ? 'AGB' : locale === 'it' ? 'Termini' : 'Terms'}
-              </a>
-              <a
-                href="https://trykolo.io/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#6C63FF' }}
-              >
-                {locale === 'fr' ? 'Confidentialité' : locale === 'de' ? 'Datenschutz' : locale === 'it' ? 'Privacy' : 'Privacy'}
-              </a>
-            </div>
+            <p>
+              {locale === 'fr'
+                ? "KOLO PRO et KOLO PRO+ sont proposés en abonnement mensuel ou annuel. Le prix exact dans votre devise est affiché ci-dessus. Le paiement est débité au moment de la confirmation. L'abonnement se renouvelle automatiquement pour la même durée et au même tarif tant qu'il n'est pas annulé au moins 24 h avant la fin de la période en cours. La gestion et l'annulation se font dans Réglages → Apple ID → Abonnements (sur iOS) ou depuis votre compte sur trykolo.io (web)."
+                : locale === 'de'
+                ? 'KOLO PRO und KOLO PRO+ werden als monatliches oder jährliches Abonnement angeboten. Der genaue Preis in Ihrer Währung wird oben angezeigt. Die Zahlung erfolgt bei Bestätigung. Das Abonnement verlängert sich automatisch um denselben Zeitraum zum gleichen Preis, sofern es nicht mindestens 24 Stunden vor Ablauf der laufenden Periode gekündigt wird. Verwaltung und Kündigung erfolgen unter Einstellungen → Apple-ID → Abonnements (iOS) oder über Ihr Konto auf trykolo.io (Web).'
+                : locale === 'it'
+                ? "KOLO PRO e KOLO PRO+ sono offerti in abbonamento mensile o annuale. Il prezzo esatto nella tua valuta è mostrato sopra. Il pagamento viene addebitato al momento della conferma. L'abbonamento si rinnova automaticamente per la stessa durata e allo stesso prezzo se non viene annullato almeno 24 ore prima del termine del periodo in corso. La gestione e la cancellazione avvengono in Impostazioni → ID Apple → Abbonamenti (iOS) o dal tuo account su trykolo.io (web)."
+                : 'KOLO PRO and KOLO PRO+ are offered as monthly or yearly subscriptions. The exact price in your currency is shown above. Payment is charged at confirmation. The subscription auto-renews for the same period at the same price unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in Settings → Apple ID → Subscriptions (iOS) or from your account on trykolo.io (web).'}
+            </p>
           </div>
-        )}
+
+          <div className="flex justify-center gap-4 text-xs">
+            <button
+              type="button"
+              data-testid="terms-link"
+              onClick={() => openExternalUrl('https://trykolo.io/terms')}
+              style={{ color: '#6C63FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+            >
+              {locale === 'fr' ? "Conditions d'utilisation (EULA)" :
+               locale === 'de' ? 'Nutzungsbedingungen (EULA)' :
+               locale === 'it' ? "Termini d'uso (EULA)" :
+               'Terms of Use (EULA)'}
+            </button>
+            <button
+              type="button"
+              data-testid="privacy-link"
+              onClick={() => openExternalUrl('https://trykolo.io/privacy')}
+              style={{ color: '#6C63FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+            >
+              {locale === 'fr' ? 'Politique de confidentialité' :
+               locale === 'de' ? 'Datenschutzerklärung' :
+               locale === 'it' ? 'Informativa sulla privacy' :
+               'Privacy Policy'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
