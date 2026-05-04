@@ -47,73 +47,101 @@ export default function TermsPage() {
           Terms of Use (EULA)
         </h1>
         <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 28 }}>
-          Last updated: May 3, 2026
+          Last updated: March 31, 2026
         </p>
 
+        <h2 style={heading}>1. Company Information</h2>
+        <p>KOLO is operated by:</p>
+        <p style={{ marginTop: 4 }}>
+          <strong>KOLO.io LTD</strong><br />
+          124 City Road<br />
+          London, EC1V 2NX<br />
+          United Kingdom<br />
+          Email:{' '}
+          <a href="mailto:contact@trykolo.io" style={link}>contact@trykolo.io</a>
+        </p>
         <p>
-          These Terms of Use (“Terms”, “EULA”) constitute a legally binding agreement
-          between you (“User”, “you”) and KOLO (“KOLO”, “we”, “us”, “our”) governing
-          your access to and use of the KOLO mobile application and related services
-          (the “Service”). By creating an account or using the Service, you agree to
-          these Terms. If you do not agree, do not use the Service.
+          KOLO.io LTD is a company incorporated under the laws of England and Wales.
         </p>
 
-        <h2 style={heading}>1. Eligibility</h2>
+        <h2 style={heading}>2. Purpose of the Platform</h2>
         <p>
-          You must be at least 18 years old and legally capable of entering into
-          contracts under the laws of your country of residence to use the Service.
-          Business accounts may only be created by an authorized representative of
-          the entity.
+          KOLO is a mobile-first SaaS (Software as a Service) platform designed
+          to help real estate agents and other professionals optimize their
+          workflow through artificial intelligence.
+        </p>
+        <p>
+          The platform enables users to manage tasks, prospects, reminders, and
+          business-related data in a structured and efficient environment.
         </p>
 
-        <h2 style={heading}>2. Account &amp; Security</h2>
+        <h2 style={heading}>3. Access and Use</h2>
         <p>
-          You are responsible for maintaining the confidentiality of your credentials
-          and for all activity under your account. Notify us immediately at
-          support@trykolo.io if you suspect unauthorized access. We may suspend or
-          terminate your account in case of fraudulent or abusive behaviour.
+          Access to KOLO is restricted to users with an active paid subscription.
+        </p>
+        <p>Users agree to:</p>
+        <ul style={list}>
+          <li>Provide accurate and up-to-date information</li>
+          <li>Use the platform in compliance with applicable laws and regulations</li>
+          <li>Not misuse, disrupt, or attempt to gain unauthorized access to the system</li>
+        </ul>
+        <p>
+          KOLO reserves the right to suspend or terminate access in case of
+          violation of these terms.
         </p>
 
-        <h2 style={heading}>3. Acceptable Use</h2>
+        <h2 style={heading}>4. Data Ownership</h2>
         <p>
-          You agree not to: (i) use the Service for any unlawful purpose;
-          (ii) attempt to reverse-engineer, decompile or otherwise derive source
-          code; (iii) upload content that infringes third-party rights;
-          (iv) bypass billing, rate-limiting, or security mechanisms; or
-          (v) use the Service to send unsolicited marketing communications in
-          violation of applicable law (GDPR, CAN-SPAM, CASL, etc.).
+          All data entered into KOLO by users — including but not limited to:
+          Prospects, Tasks, Notes, Contacts, Business-related information —
+          remain the sole and exclusive property of the user.
         </p>
+        <p>KOLO does not:</p>
+        <ul style={list}>
+          <li>Sell user data</li>
+          <li>Exploit user data for commercial purposes</li>
+          <li>Share user data with third parties for marketing or resale</li>
+        </ul>
 
-        <h2 style={heading}>4. License Grant</h2>
+        <h2 style={heading}>5. Data Privacy and Security</h2>
         <p>
-          Subject to these Terms, KOLO grants you a limited, non-exclusive,
-          non-transferable, revocable license to install and use the Service on
-          devices you own or control, solely for your personal or internal
-          business use. All rights not expressly granted are reserved.
+          Data protection and privacy are core principles of KOLO.
         </p>
-
-        <h2 style={heading}>5. User Content</h2>
+        <ul style={list}>
+          <li>All data is hosted on secure servers located in France</li>
+          <li>Infrastructure is compliant with the General Data Protection Regulation (GDPR)</li>
+          <li>Data is stored on a sovereign, encrypted, and highly secured cloud environment</li>
+        </ul>
         <p>
-          You retain all rights in the prospect data, notes and other content you
-          submit to the Service (“User Content”). You grant KOLO a worldwide,
-          royalty-free license to host, process and display User Content solely to
-          operate and improve the Service. You represent that you have all rights
-          necessary to submit User Content, and that you comply with applicable
-          privacy laws (including GDPR) when collecting prospect data.
+          KOLO implements industry-standard security measures including data
+          encryption (in transit and at rest), secure authentication mechanisms,
+          and controlled access to infrastructure.
+        </p>
+        <p>
+          Despite best efforts, no system can guarantee absolute security. Users
+          acknowledge this inherent limitation.
         </p>
 
         <h2 style={heading}>6. Payment Processing</h2>
         <p>
-          Payments on the web are processed by Stripe. Payments inside the iOS app
-          are processed by Apple via StoreKit In-App Purchases. You are responsible
-          for keeping your payment methods up to date. Failed payments may result
-          in downgrade to the free tier.
+          All payments on KOLO are processed via Stripe, a third-party payment
+          provider.
+        </p>
+        <p>
+          KOLO does not store or have access to any banking details and does not
+          process payment information directly.
+        </p>
+        <p>
+          Users are encouraged to review Stripe's own legal terms and privacy
+          policies.
         </p>
 
         <h2 style={heading}>6b. Apple Store Subscription Terms (Auto-Renewable)</h2>
         <p>
-          KOLO offers the following auto-renewable subscription plans:
+          For purchases made through the iOS application, payments are processed
+          by Apple via StoreKit In-App Purchases (not by Stripe).
         </p>
+        <p>KOLO offers the following auto-renewable subscription plans:</p>
         <ul style={list}>
           <li>
             <strong>KOLO PRO</strong> — Monthly: £/$/€9.99/month — Annual:
@@ -125,23 +153,23 @@ export default function TermsPage() {
           </li>
         </ul>
         <p>
-          Subscriptions are billed in the local currency displayed at the time of
-          purchase. Payment is charged to your Apple ID account at confirmation of
-          purchase.
+          Subscriptions are billed in the local currency displayed at the time
+          of purchase. Payment is charged to your Apple ID account at
+          confirmation of purchase.
         </p>
         <p>
-          Subscriptions automatically renew for the same duration and at the same
-          price unless cancelled at least 24 hours before the end of the current
-          billing period.
+          Subscriptions automatically renew for the same duration and at the
+          same price unless cancelled at least 24 hours before the end of the
+          current billing period.
         </p>
         <p>
           Your subscription can be managed and cancelled at any time via
           Settings → Apple ID → Subscriptions on your iOS device.
         </p>
         <p>
-          A free 14-day trial is available for new subscribers on both PRO and PRO+
-          plans. If not cancelled before the trial ends, the subscription will
-          automatically convert to a paid plan at the applicable rate.
+          A free 14-day trial is available for new subscribers on both PRO and
+          PRO+ plans. If not cancelled before the trial ends, the subscription
+          will automatically convert to a paid plan at the applicable rate.
         </p>
         <p>
           No refunds are provided for unused portions of an active subscription
@@ -157,75 +185,72 @@ export default function TermsPage() {
 
         <h2 style={heading}>7. International Operations</h2>
         <p>
-          The Service is operated from the European Union. By using it, you consent
-          to the transfer and processing of your data in the EU, the United States
-          and any jurisdiction where our subprocessors operate, subject to
-          appropriate safeguards (including EU Standard Contractual Clauses).
+          KOLO operates globally, with a primary focus on professionals located
+          in Europe, United Kingdom, United States, and United Arab Emirates.
+        </p>
+        <p>
+          Users are responsible for ensuring their use of KOLO complies with
+          their local regulations.
         </p>
 
-        <h2 style={heading}>8. Intellectual Property</h2>
+        <h2 style={heading}>8. Liability</h2>
         <p>
-          The Service, including all software, AI models, designs, trademarks and
-          content we provide, is owned by KOLO or its licensors and is protected
-          by intellectual-property laws. You may not copy, modify, distribute,
-          sell or create derivative works without our prior written consent.
+          KOLO provides tools designed to assist users in managing their
+          business activities.
+        </p>
+        <p>
+          KOLO does not guarantee business results, act as a real estate
+          intermediary, or replace professional judgment.
+        </p>
+        <p>
+          KOLO shall not be held liable for business losses, data loss caused by
+          user actions, or service interruptions beyond reasonable control.
         </p>
 
-        <h2 style={heading}>9. Termination</h2>
+        <h2 style={heading}>9. Intellectual Property</h2>
         <p>
-          You may delete your account at any time via
-          Settings → Delete my account. We may suspend or terminate your access
-          with or without notice if you breach these Terms or applicable law.
-          On termination, User Content is deleted in accordance with our Privacy
-          Policy.
+          All elements of the KOLO platform, including software, design,
+          branding, and content are the exclusive property of KOLO.io LTD,
+          unless otherwise stated.
+        </p>
+        <p>
+          Any reproduction, distribution, or unauthorized use is strictly
+          prohibited.
         </p>
 
-        <h2 style={heading}>10. Disclaimer of Warranties</h2>
+        <h2 style={heading}>10. Support</h2>
+        <p>For any inquiries, support requests, or complaints:</p>
         <p>
-          The Service is provided “AS IS” and “AS AVAILABLE” without warranties of
-          any kind, express or implied, including merchantability, fitness for a
-          particular purpose, non-infringement, and uninterrupted availability. AI
-          suggestions are provided for guidance only and do not constitute
-          professional, legal or financial advice.
+          Email:{' '}
+          <a href="mailto:contact@trykolo.io" style={link}>contact@trykolo.io</a>
+        </p>
+        <p>
+          KOLO commits to responding as quickly as possible and within a
+          reasonable timeframe.
         </p>
 
-        <h2 style={heading}>11. Limitation of Liability</h2>
+        <h2 style={heading}>11. Modifications</h2>
         <p>
-          To the maximum extent permitted by law, KOLO's aggregate liability for
-          any claim arising out of or related to the Service shall not exceed the
-          amount you paid us in the 12 months preceding the claim. KOLO shall not
-          be liable for any indirect, incidental, special, consequential or
-          punitive damages.
+          KOLO reserves the right to update or modify these legal notices at any
+          time.
+        </p>
+        <p>
+          Users will be informed of significant changes where applicable.
+          Continued use of the platform constitutes acceptance of the updated
+          terms.
         </p>
 
-        <h2 style={heading}>12. Changes to the Terms</h2>
+        <h2 style={heading}>12. Governing Law</h2>
         <p>
-          We may update these Terms from time to time. Material changes will be
-          communicated via email or in-app notice at least 14 days before they
-          take effect. Continued use of the Service after the effective date
-          constitutes acceptance of the updated Terms.
+          These legal notices are governed by the laws of England and Wales.
         </p>
-
-        <h2 style={heading}>13. Governing Law &amp; Disputes</h2>
         <p>
-          These Terms are governed by the laws of France, without regard to
-          conflict-of-laws principles. Any dispute arising hereunder shall be
-          submitted to the exclusive jurisdiction of the competent courts of
-          Paris, France, except where mandatory consumer-protection laws grant
-          you a different forum.
-        </p>
-
-        <h2 style={heading}>14. Contact</h2>
-        <p>
-          For any question regarding these Terms, please contact us at{' '}
-          <a href="mailto:support@trykolo.io" style={link}>
-            support@trykolo.io
-          </a>
-          .
+          Any disputes shall fall under the jurisdiction of the competent courts
+          in London, United Kingdom.
         </p>
 
         <p style={{ marginTop: 40, fontSize: 13, color: '#9ca3af' }}>
-          © {new Date().getFullYear()} KOLO. All rights reserved.
+          © {new Date().getFullYear()} KOLO.io LTD. All rights reserved.
         </p>
       </div>
     </div>
