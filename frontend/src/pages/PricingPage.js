@@ -677,7 +677,7 @@ export default function PricingPage() {
             <button
               type="button"
               data-testid="terms-link"
-              onClick={() => openExternalUrl('https://trykolo.io/terms')}
+              onClick={() => navigate('/terms')}
               style={{ color: '#6C63FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
             >
               {locale === 'fr' ? "Conditions d'utilisation (EULA)" :
@@ -688,7 +688,7 @@ export default function PricingPage() {
             <button
               type="button"
               data-testid="privacy-link"
-              onClick={() => openExternalUrl('https://trykolo.io/privacy')}
+              onClick={() => navigate('/privacy')}
               style={{ color: '#6C63FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
             >
               {locale === 'fr' ? 'Politique de confidentialité' :

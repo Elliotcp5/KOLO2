@@ -419,10 +419,42 @@ const RegisterPage = () => {
           </button>
         </form>
 
+        {/* Legal — required by Apple 3.1.2(c): Terms (EULA) + Privacy accessible before sign-up */}
+        <p style={{
+          textAlign: 'center',
+          marginTop: '20px',
+          fontSize: '12px',
+          lineHeight: 1.5,
+          color: 'var(--ink-mid)',
+          opacity: 0.85,
+        }}>
+          {locale === 'fr' ? 'En créant votre compte, vous acceptez nos ' :
+           locale === 'de' ? 'Mit der Kontoerstellung akzeptieren Sie unsere ' :
+           locale === 'it' ? 'Creando il tuo account accetti i nostri ' :
+           'By creating your account, you agree to our '}
+          <Link to="/terms" data-testid="register-terms-link" style={{ color: 'var(--blue)', textDecoration: 'underline' }}>
+            {locale === 'fr' ? "Conditions d'utilisation (EULA)" :
+             locale === 'de' ? 'Nutzungsbedingungen (EULA)' :
+             locale === 'it' ? "Termini d'uso (EULA)" :
+             'Terms of Use (EULA)'}
+          </Link>
+          {' '}{locale === 'fr' ? 'et notre ' :
+                locale === 'de' ? 'und unsere ' :
+                locale === 'it' ? 'e la nostra ' :
+                'and '}
+          <Link to="/privacy" data-testid="register-privacy-link" style={{ color: 'var(--blue)', textDecoration: 'underline' }}>
+            {locale === 'fr' ? 'Politique de confidentialité' :
+             locale === 'de' ? 'Datenschutzerklärung' :
+             locale === 'it' ? 'Informativa sulla privacy' :
+             'Privacy Policy'}
+          </Link>
+          .
+        </p>
+
         {/* Footer */}
         <p style={{
           textAlign: 'center',
-          marginTop: '24px',
+          marginTop: '16px',
           fontSize: '14px',
           color: 'var(--ink-mid)'
         }}>
