@@ -13,6 +13,7 @@ import {
   restorePurchases as iapRestorePurchases,
   onPurchaseVerified,
   setIAPUser,
+  areProductsReady,
 } from '../services/iapStore';
 import { toast } from 'sonner';
 
@@ -139,6 +140,7 @@ export default function PricingPage() {
   const [isInTrial, setIsInTrial] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
   const [iosOfferings, setIosOfferings] = useState(null);
+  const [iosProductsReady, setIosProductsReady] = useState(false);
   const [restoring, setRestoring] = useState(false);
   
   const isDark = theme === 'dark';
@@ -177,6 +179,29 @@ export default function PricingPage() {
       fetchPricing('EUR');
     }
   }, [fetchPricing, fetchPlanData, isIOS]);
+
+  // iOS: poll product readiness so the buy button is enabled exactly when
+  // the App Store has answered with the products. This prevents the
+  // "try again" toast that Apple's reviewer hit on iPad iPadOS 26.5
+  // when tapping before products had loaded.
+  useEffect(() => {
+    if (!isIOS) return;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const ready = areProductsReady();
+      if (ready) {
+        setIosProductsReady(true);
+        // Refresh offerings (prices) once products are loaded
+        const products = getIAPProducts();
+        if (products) setIosOfferings(products);
+      } else {
+        setTimeout(tick, 400);
+      }
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, [isIOS]);
 
   // Listen for backend-verified purchases/renewals and refresh plan data
   useEffect(() => {
@@ -592,6 +617,8 @@ export default function PricingPage() {
             isDark={isDark}
             locale={locale}
             loading={loading}
+            disabled={isIOS && !iosProductsReady && currentPlan !== 'pro'}
+            iosLoading={isIOS && !iosProductsReady && currentPlan !== 'pro'}
             Icon={Zap}
           />
           
@@ -608,6 +635,8 @@ export default function PricingPage() {
             isDark={isDark}
             locale={locale}
             loading={loading}
+            disabled={isIOS && !iosProductsReady && currentPlan !== 'pro_plus'}
+            iosLoading={isIOS && !iosProductsReady && currentPlan !== 'pro_plus'}
             Icon={Crown}
           />
         </div>
@@ -716,6 +745,8 @@ function PlanCard({
   isDark,
   locale,
   loading,
+  disabled,
+  iosLoading,
   Icon
 }) {
   const displayPrice = billingPeriod === 'annual' ? price.annualMonthly : price.monthly;
@@ -808,7 +839,7 @@ function PlanCard({
       {/* CTA Button */}
       <button
         onClick={onSelect}
-        disabled={isCurrentPlan || loading}
+        disabled={isCurrentPlan || loading || disabled}
         className="w-full py-3 rounded-full font-semibold transition-all"
         style={{
           background: isCurrentPlan 
@@ -817,11 +848,29 @@ function PlanCard({
           color: isCurrentPlan 
             ? (isDark ? '#a0a4ae' : '#6b7280')
             : '#ffffff',
-          cursor: isCurrentPlan ? 'default' : 'pointer',
-          opacity: loading ? 0.7 : 1
+          cursor: (isCurrentPlan || disabled) ? 'default' : 'pointer',
+          opacity: (loading || disabled) ? 0.7 : 1
         }}
       >
-        {loading ? '...' : buttonText}
+        {iosLoading ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                border: '2px solid rgba(255,255,255,0.4)',
+                borderTopColor: '#ffffff',
+                borderRadius: '50%',
+                display: 'inline-block',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            {locale === 'fr' ? 'Chargement…' :
+             locale === 'de' ? 'Wird geladen…' :
+             locale === 'it' ? 'Caricamento…' :
+             'Loading…'}
+          </span>
+        ) : loading ? '...' : buttonText}
       </button>
     </div>
   );

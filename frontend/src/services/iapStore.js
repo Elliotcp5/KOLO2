@@ -207,12 +207,12 @@ export function getProducts() {
 }
 
 /**
- * Wait until the store is initialized and products are loaded, or timeout.
+ * Wait until the store is initialized AND at least one of our products is
+ * fully loaded (has pricing). On iPadOS the product fetch can take longer
+ * than the init resolution, so we wait for actual product readiness.
  */
-async function ensureReady(timeoutMs = 8000) {
-  if (_initialized && _store) return true;
-  if (!_initializing) {
-    // No init in-flight and we have credentials stored — kick one off
+async function ensureReady(timeoutMs = 15000) {
+  if (!_initializing && !_initialized) {
     if (_currentUserId && _currentToken) {
       initIAP({ userId: _currentUserId, token: _currentToken });
     } else {
@@ -220,12 +220,38 @@ async function ensureReady(timeoutMs = 8000) {
     }
   }
   const start = Date.now();
+  const { Platform } = _CdvPurchase || {};
   while (Date.now() - start < timeoutMs) {
-    if (_initialized && _store) return true;
+    if (_initialized && _store && Platform) {
+      // Check that at least one product has loaded its pricing — this is the
+      // actual signal that the App Store has answered with the products.
+      const ids = Object.values(PRODUCT_IDS);
+      for (const id of ids) {
+        const p = _store.get(id, Platform.APPLE_APPSTORE);
+        if (p && (p.canPurchase || p.pricing?.price)) {
+          return true;
+        }
+      }
+    }
     // eslint-disable-next-line no-await-in-loop
     await new Promise((r) => setTimeout(r, 200));
   }
   return _initialized && _store;
+}
+
+/**
+ * Synchronous check used by the UI to enable/disable the purchase buttons.
+ * Returns true once StoreKit has answered with at least one of our products.
+ */
+export function areProductsReady() {
+  if (!_initialized || !_store || !_CdvPurchase) return false;
+  const { Platform } = _CdvPurchase;
+  const ids = Object.values(PRODUCT_IDS);
+  for (const id of ids) {
+    const p = _store.get(id, Platform.APPLE_APPSTORE);
+    if (p && (p.canPurchase || p.pricing?.price)) return true;
+  }
+  return false;
 }
 
 /**
