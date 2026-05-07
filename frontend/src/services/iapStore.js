@@ -5,19 +5,19 @@
 // which contacts Apple's verifyReceipt endpoint, confirms the receipt, and
 // updates MongoDB (users.plan / subscription_status).
 //
+// Defensive design: every async step has a hard timeout so the UI can never
+// hang indefinitely, even if the App Store or our backend is unresponsive.
+//
 // Products (mirror App Store Connect subscription group "KOLO PRO"):
 //   - PRO               (monthly) → plan "pro"
 //   - PRO_Plus          (monthly) → plan "pro_plus"
 //   - Pro_simple_yearly (annual)  → plan "pro"
 //   - PROYearly         (annual)  → plan "pro_plus"
 import { Capacitor } from '@capacitor/core';
-// Static import — bundled at build-time so it is guaranteed to be available
-// on first access. (Dynamic import() is not reliable inside WKWebView.)
 import 'cordova-plugin-purchase';
 
 const API_URL = 'https://trykolo.io';
 
-// Product identifiers (must match App Store Connect EXACTLY — case sensitive).
 export const PRODUCT_IDS = {
   pro_monthly: 'PRO',
   pro_plus_monthly: 'PRO_Plus',
@@ -45,13 +45,23 @@ export const PRODUCT_TO_PLAN = {
 let _store = null;
 let _CdvPurchase = null;
 let _initialized = false;
-let _initializing = null; // in-flight init promise, for de-dupe
+let _initializing = null;
 let _currentUserId = null;
 let _currentToken = null;
 const _verifiedListeners = new Set();
 
 function log(...args) {
   try { console.log('[IAP]', ...args); } catch (_) {}
+}
+
+// Hard timeout helper — every async network call must use this.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout:${label || 'unknown'}`)), ms)
+    ),
+  ]);
 }
 
 export function isIOSNative() {
@@ -74,20 +84,27 @@ export function onPurchaseVerified(listener) {
 }
 
 /**
- * Send the Apple receipt to our backend for server-side verification.
+ * Send the Apple receipt to our backend with a hard 12s timeout.
+ * Even if the backend is down, we never block the user indefinitely.
  */
 async function verifyReceiptWithBackend({ receipt, productId }) {
-  if (!_currentToken || !receipt) return { success: false, error: 'missing_auth_or_receipt' };
+  if (!_currentToken || !receipt) {
+    return { success: false, error: 'missing_auth_or_receipt' };
+  }
   try {
     log('verifying receipt with backend for product', productId);
-    const res = await fetch(`${API_URL}/api/iap/verify-apple-receipt`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${_currentToken}`,
-      },
-      body: JSON.stringify({ receipt, product_id: productId || null }),
-    });
+    const res = await withTimeout(
+      fetch(`${API_URL}/api/iap/verify-apple-receipt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${_currentToken}`,
+        },
+        body: JSON.stringify({ receipt, product_id: productId || null }),
+      }),
+      12000,
+      'verify-receipt'
+    );
     const data = await res.json();
     if (!res.ok) {
       log('backend verify failed', res.status, data);
@@ -96,15 +113,11 @@ async function verifyReceiptWithBackend({ receipt, productId }) {
     log('backend verify ok', data);
     return { success: true, ...data };
   } catch (e) {
-    log('backend verify network error', e);
+    log('backend verify error', e?.message || e);
     return { success: false, error: e?.message || 'network_error' };
   }
 }
 
-/**
- * Update the auth context. Safe to call before or after init.
- * If init is pending and we now have credentials, kicks it off.
- */
 export function setIAPUser({ userId, token }) {
   if (userId) _currentUserId = String(userId);
   if (token) _currentToken = token;
@@ -112,31 +125,27 @@ export function setIAPUser({ userId, token }) {
 
 /**
  * Initialize cordova-plugin-purchase + register our subscription products.
- * Idempotent & de-duplicated — safe to call from multiple places.
+ * Idempotent. Hard 25s timeout so we never hang on store.initialize().
  */
 export async function initIAP({ userId, token } = {}) {
   if (!isIOSNative()) return { ok: false, reason: 'not_ios' };
 
   setIAPUser({ userId, token });
 
-  // Reuse an in-flight init
   if (_initializing) return _initializing;
   if (_initialized && _store) return { ok: true };
 
   _initializing = (async () => {
     try {
-      // cordova-plugin-purchase exposes a global CdvPurchase once the bundle
-      // is loaded. Static import above guarantees availability at this point.
       _CdvPurchase = window.CdvPurchase;
       if (!_CdvPurchase || !_CdvPurchase.store) {
-        log('CdvPurchase global not available — plugin may not be synced to iOS project');
+        log('CdvPurchase global not available — plugin may not be synced to iOS');
         return { ok: false, reason: 'plugin_not_available' };
       }
       const { store, ProductType, Platform, LogLevel } = _CdvPurchase;
       _store = store;
-      store.verbosity = LogLevel.DEBUG;
+      store.verbosity = LogLevel.WARNING;
 
-      // Register all 4 products
       store.register([
         { id: PRODUCT_IDS.pro_monthly, type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
         { id: PRODUCT_IDS.pro_plus_monthly, type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
@@ -144,46 +153,71 @@ export async function initIAP({ userId, token } = {}) {
         { id: PRODUCT_IDS.pro_plus_yearly, type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
       ]);
 
-      // Receipt verification flow
+      // Receipt verification flow — fire and forget, but with verification timeouts.
       store
         .when()
         .approved(async (transaction) => {
           try {
+            // Use the parent receipt's appStoreReceipt (full base64 data) — the
+            // only reliable source. transactionId alone is NOT a valid receipt.
             const receipt =
               transaction.parentReceipt?.nativeData?.appStoreReceipt ||
               transaction.nativeData?.appStoreReceipt ||
-              transaction.transactionId;
+              null;
             const productId =
               transaction.products?.[0]?.id ||
-              transaction.products?.[0] ||
+              transaction.products?.[0]?.productId ||
               null;
-            log('transaction approved', productId);
-            const verify = await verifyReceiptWithBackend({ receipt, productId });
-            if (verify.success) {
+            log('transaction approved', productId, 'has-receipt:', !!receipt);
+
+            if (!receipt) {
+              // Without a receipt we can't verify — but we MUST finish the
+              // transaction or StoreKit will retry forever.
+              log('no receipt available — finishing tx anyway');
               transaction.finish();
-              emitVerified({ plan: verify.plan, status: verify.status, productId });
-            } else {
-              log('verify rejected, not finishing transaction (will retry on next app open)');
+              emitVerified({ plan: PRODUCT_TO_PLAN[productId] || null, status: 'unknown', productId });
+              return;
             }
+
+            const verify = await verifyReceiptWithBackend({ receipt, productId });
+            // ALWAYS finish the transaction so StoreKit doesn't loop. Backend
+            // verification can also be re-tried via Restore Purchases.
+            transaction.finish();
+            emitVerified({
+              plan: verify.success ? verify.plan : (PRODUCT_TO_PLAN[productId] || null),
+              status: verify.success ? verify.status : 'pending_verification',
+              productId,
+            });
           } catch (e) {
             log('approved handler error', e);
+            try { transaction.finish(); } catch (_) {}
           }
         })
-        .verified((receipt) => receipt.finish())
+        .verified((receipt) => {
+          try { receipt.finish(); } catch (_) {}
+        })
         .finished((_t) => { log('transaction finished'); });
 
       store.error((err) => {
         log('store error', err?.code, err?.message);
       });
 
-      await store.initialize([_CdvPurchase.Platform.APPLE_APPSTORE]);
+      // Hard timeout on store.initialize — Apple's reviewer device can be slow.
+      await withTimeout(
+        store.initialize([_CdvPurchase.Platform.APPLE_APPSTORE]),
+        25000,
+        'store-initialize'
+      );
       try { store.applicationUsername = _currentUserId || ''; } catch (_) {}
       _initialized = true;
       log('IAP initialized successfully');
       return { ok: true };
     } catch (e) {
-      log('init failed', e);
-      return { ok: false, reason: 'init_error', error: String(e) };
+      log('init failed', e?.message || e);
+      // Mark as initialized anyway — we may still try to order on click,
+      // and the plugin handles partial init better than no init at all.
+      _initialized = true;
+      return { ok: false, reason: 'init_error', error: String(e?.message || e) };
     } finally {
       _initializing = null;
     }
@@ -192,9 +226,6 @@ export async function initIAP({ userId, token } = {}) {
   return _initializing;
 }
 
-/**
- * Fetches current products from the store. Returns null until initialized.
- */
 export function getProducts() {
   if (!_store || !_CdvPurchase) return null;
   const { Platform } = _CdvPurchase;
@@ -206,48 +237,10 @@ export function getProducts() {
   };
 }
 
-/**
- * Wait until the store is initialized AND at least one of our products is
- * fully loaded (has pricing). On iPadOS the product fetch can take longer
- * than the init resolution, so we wait for actual product readiness.
- */
-async function ensureReady(timeoutMs = 15000) {
-  if (!_initializing && !_initialized) {
-    if (_currentUserId && _currentToken) {
-      initIAP({ userId: _currentUserId, token: _currentToken });
-    } else {
-      return false;
-    }
-  }
-  const start = Date.now();
-  const { Platform } = _CdvPurchase || {};
-  while (Date.now() - start < timeoutMs) {
-    if (_initialized && _store && Platform) {
-      // Check that at least one product has loaded its pricing — this is the
-      // actual signal that the App Store has answered with the products.
-      const ids = Object.values(PRODUCT_IDS);
-      for (const id of ids) {
-        const p = _store.get(id, Platform.APPLE_APPSTORE);
-        if (p && (p.canPurchase || p.pricing?.price)) {
-          return true;
-        }
-      }
-    }
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  return _initialized && _store;
-}
-
-/**
- * Synchronous check used by the UI to enable/disable the purchase buttons.
- * Returns true once StoreKit has answered with at least one of our products.
- */
 export function areProductsReady() {
   if (!_initialized || !_store || !_CdvPurchase) return false;
   const { Platform } = _CdvPurchase;
-  const ids = Object.values(PRODUCT_IDS);
-  for (const id of ids) {
+  for (const id of Object.values(PRODUCT_IDS)) {
     const p = _store.get(id, Platform.APPLE_APPSTORE);
     if (p && (p.canPurchase || p.pricing?.price)) return true;
   }
@@ -255,60 +248,76 @@ export function areProductsReady() {
 }
 
 /**
+ * Wait until at least one product has loaded its pricing — that's the real
+ * signal that the App Store has answered.
+ */
+async function ensureReady(timeoutMs = 8000) {
+  if (!_initialized && !_initializing && _currentUserId && _currentToken) {
+    initIAP({ userId: _currentUserId, token: _currentToken });
+  }
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (areProductsReady()) return true;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return areProductsReady();
+}
+
+/**
  * Purchase a (plan, billingPeriod) combo via Apple StoreKit.
  *
- * Resilient implementation: if products are not yet loaded when the user
- * taps, we wait up to 12 s for the App Store response and force a refresh
- * via store.update() in case the initial fetch silently failed (which can
- * happen on Apple's reviewer device when StoreKit takes an unusually long
- * time to answer).
+ * Hard-timed at every step — never hangs:
+ *   - init wait     : 8 s
+ *   - store update  : 5 s (if products not loaded)
+ *   - store.order   : 60 s (Apple dialog itself)
  */
 export async function purchasePlan(plan, billingPeriod = 'monthly') {
   if (!isIOSNative()) return { success: false, error: 'not_ios' };
 
-  // Kick off init if it wasn't done yet (defensive)
   if (!_initialized && !_initializing) {
     if (_currentUserId && _currentToken) {
       initIAP({ userId: _currentUserId, token: _currentToken });
     }
   }
 
-  const ready = await ensureReady(12000);
-  if (!ready) {
-    // Last-ditch refresh attempt
+  const ready = await ensureReady(8000);
+  if (!ready && _store && typeof _store.update === 'function') {
     try {
-      if (_store && typeof _store.update === 'function') {
-        await _store.update();
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-    } catch (_) {}
+      await withTimeout(_store.update(), 5000, 'store-update');
+      await new Promise((r) => setTimeout(r, 800));
+    } catch (e) {
+      log('store.update failed', e?.message || e);
+    }
   }
 
-  if (!_store || !_CdvPurchase) return { success: false, error: 'not_initialized' };
+  if (!_store || !_CdvPurchase) {
+    return { success: false, error: 'not_initialized' };
+  }
 
   const { Platform } = _CdvPurchase;
   const productId = getProductId(plan, billingPeriod);
   if (!productId) return { success: false, error: 'unknown_plan' };
 
   const product = _store.get(productId, Platform.APPLE_APPSTORE);
-  if (!product) {
-    log('product not in store — App Store may be unreachable', productId);
-    return { success: false, error: 'product_not_found' };
-  }
-  if (!product.canPurchase) {
-    log('product not purchasable', productId, 'state=', product.state);
-    return { success: false, error: 'product_unavailable' };
-  }
+  if (!product) return { success: false, error: 'product_not_found' };
+  if (!product.canPurchase) return { success: false, error: 'product_unavailable' };
 
   try {
     const offer = product.getOffer();
     if (!offer) return { success: false, error: 'no_offer' };
     log('placing order for', productId);
-    await _store.order(offer);
+    // Apple's purchase dialog can be open up to ~2 min. We cap at 60 s for
+    // safety so the UI can't hang forever. Cancellation is reported via the
+    // PAYMENT_CANCELLED error code.
+    await withTimeout(_store.order(offer), 60000, 'store-order');
     return { success: true, pending: true };
   } catch (e) {
     if (e?.code === _CdvPurchase?.ErrorCode?.PAYMENT_CANCELLED) {
       return { success: false, userCancelled: true };
+    }
+    if (String(e?.message || '').startsWith('timeout:')) {
+      return { success: false, error: 'apple_timeout' };
     }
     return { success: false, error: e?.message || String(e) };
   }
@@ -316,35 +325,22 @@ export async function purchasePlan(plan, billingPeriod = 'monthly') {
 
 export async function restorePurchases() {
   if (!isIOSNative()) return { success: false, error: 'not_ios' };
-  const ready = await ensureReady();
-  if (!ready || !_store) return { success: false, error: 'not_initialized' };
+  await ensureReady(5000);
+  if (!_store) return { success: false, error: 'not_initialized' };
   try {
-    await _store.restorePurchases();
+    await withTimeout(_store.restorePurchases(), 30000, 'store-restore');
     return { success: true };
   } catch (e) {
     return { success: false, error: e?.message || String(e) };
   }
 }
 
-/**
- * Silent receipt refresh — asks the store to re-validate the current App Store
- * receipt against our backend, without showing any UI to the user.
- *
- * Should be called at app launch so the MongoDB `users.plan` field stays in
- * sync with Apple's latest subscription state (e.g. after a plan change or
- * expiration that happened while the app was closed).
- *
- * Implementation: the store persists the local receipt and fires `.approved()`
- * for the most recent active transaction on init; re-calling restorePurchases
- * is the official Apple-recommended way to re-sync. We do it silently —
- * the existing `.approved()` handler already verifies against our backend.
- */
 export async function silentRefreshReceipt() {
   if (!isIOSNative()) return { success: false, error: 'not_ios' };
-  const ready = await ensureReady();
-  if (!ready || !_store) return { success: false, error: 'not_initialized' };
+  // Don't block — fire and forget with short timeout
+  if (!_store) return { success: false, error: 'not_initialized' };
   try {
-    await _store.restorePurchases();
+    await withTimeout(_store.restorePurchases(), 8000, 'silent-refresh');
     return { success: true };
   } catch (e) {
     return { success: false, error: e?.message || String(e) };

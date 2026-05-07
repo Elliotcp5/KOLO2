@@ -140,7 +140,6 @@ export default function PricingPage() {
   const [isInTrial, setIsInTrial] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
   const [iosOfferings, setIosOfferings] = useState(null);
-  const [iosProductsReady, setIosProductsReady] = useState(false);
   const [restoring, setRestoring] = useState(false);
   
   const isDark = theme === 'dark';
@@ -163,13 +162,26 @@ export default function PricingPage() {
             fetchPricing('EUR');
           }
           // Initialize StoreKit on iOS native using the authenticated user id.
-          // (Also initialized in AppShell at app open — this is a safety net.)
           if (isIOS && data.user_id) {
             setIAPUser({ userId: data.user_id, token });
             initIAP({ userId: data.user_id, token }).then(res => {
               if (res?.ok) {
                 setIosOfferings(getIAPProducts());
               }
+              // Auto-resume pending plan from before sign-up (iOS native flow)
+              try {
+                const pending = sessionStorage.getItem('kolo_pending_plan');
+                const pendingBilling = sessionStorage.getItem('kolo_pending_billing');
+                if (pending) {
+                  sessionStorage.removeItem('kolo_pending_plan');
+                  sessionStorage.removeItem('kolo_pending_billing');
+                  if (pendingBilling) setBillingPeriod(pendingBilling);
+                  // Wait a tick so the store is queried fresh
+                  setTimeout(() => {
+                    handleSelectPlan(pending);
+                  }, 800);
+                }
+              } catch (_) {}
             });
           }
         }
@@ -178,21 +190,22 @@ export default function PricingPage() {
       // Not logged in, use default EUR
       fetchPricing('EUR');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchPricing, fetchPlanData, isIOS]);
 
-  // iOS: poll product readiness so the buy button is enabled exactly when
-  // the App Store has answered with the products. This prevents the
-  // "try again" toast that Apple's reviewer hit on iPad iPadOS 26.5
-  // when tapping before products had loaded.
+  // iOS: poll product readiness so we display fresh prices in StoreKit's
+  // local currency as soon as the App Store responds. We do NOT gate the
+  // buttons on this — the buttons stay tappable always (Apple Reviewer
+  // previously reported a locked button as "loaded indefinitely").
   useEffect(() => {
     if (!isIOS) return;
     let cancelled = false;
+    let attempts = 0;
     const tick = () => {
-      if (cancelled) return;
+      if (cancelled || attempts > 30) return; // stop after ~12s
+      attempts += 1;
       const ready = areProductsReady();
       if (ready) {
-        setIosProductsReady(true);
-        // Refresh offerings (prices) once products are loaded
         const products = getIAPProducts();
         if (products) setIosOfferings(products);
       } else {
@@ -280,21 +293,16 @@ export default function PricingPage() {
     if (isIOS && plan !== 'free') {
       const token = localStorage.getItem('kolo_token');
       if (!token) {
-        navigate('/register');
+        // Remember the desired plan so we can resume after signup
+        try {
+          sessionStorage.setItem('kolo_pending_plan', plan);
+          sessionStorage.setItem('kolo_pending_billing', billingPeriod);
+        } catch (_) {}
+        navigate('/register?next=/pricing');
         return;
       }
-      // Show loading UI immediately so the user gets feedback even on slow
-      // App Store responses (the previous design kept the button locked,
-      // which Apple Reviewer reported as "loaded indefinitely").
       setLoading(true);
-      const connectingToastId = toast.loading(
-        locale === 'fr' ? 'Connexion à l\'App Store…' :
-        locale === 'de' ? 'Verbindung zum App Store…' :
-        locale === 'it' ? 'Connessione all\'App Store…' :
-        'Connecting to the App Store…'
-      );
       const result = await iapPurchasePlan(plan, billingPeriod);
-      toast.dismiss(connectingToastId);
       setLoading(false);
       if (result.userCancelled) return; // silent
       if (!result.success) {

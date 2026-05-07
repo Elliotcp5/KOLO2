@@ -88,8 +88,18 @@ const RegisterPage = () => {
         } else {
           toast.success(t('accountCreatedWelcome'));
         }
-        
-        window.location.href = '/app';
+
+        // Honor ?next=... for flows that started from /pricing on iOS native,
+        // so the user lands back on Pricing where the pending plan auto-resumes.
+        let redirectTarget = '/app';
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const next = params.get('next');
+          if (next && next.startsWith('/') && !next.startsWith('//')) {
+            redirectTarget = next;
+          }
+        } catch (_) {}
+        window.location.href = redirectTarget;
       } else {
         if (data.detail && data.detail.includes('existe')) {
           setError(t('accountExists'));
