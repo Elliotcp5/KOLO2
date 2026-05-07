@@ -212,7 +212,7 @@ export const WelcomePROOnboarding = ({ plan, onClose }) => {
       >
         {/* Hero visual */}
         {index === 0 ? (
-          // Slide 1 : Logo KOLO officiel avec halo gradient
+          // Slide 1 : Logo KOLO en League Spartan + dot gradient
           <div
             key="logo-hero"
             style={{
@@ -231,16 +231,32 @@ export const WelcomePROOnboarding = ({ plan, onClose }) => {
                 filter: 'blur(32px)',
               }}
             />
-            <img
-              src={KOLO_LOGO}
-              alt="KOLO"
+            <div
               style={{
                 position: 'relative',
-                height: 64,
-                width: 'auto',
-                filter: isDark ? 'brightness(0) invert(1)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontFamily: "'League Spartan', system-ui, sans-serif",
+                fontSize: 64,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
+                color: isDark ? '#ffffff' : '#0E0B1E',
               }}
-            />
+            >
+              KOLO
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: BRAND_GRADIENT,
+                  display: 'inline-block',
+                  marginBottom: 12,
+                }}
+              />
+            </div>
           </div>
         ) : (
           // Slides 2-4 : Icône dans un "chip" gradient KOLO

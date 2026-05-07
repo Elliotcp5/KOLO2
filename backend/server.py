@@ -2079,40 +2079,35 @@ async def get_pricing(request: Request, currency: Optional[str] = None):
         }
     }
 
-@api_router.post("/plans/sync")
-async def sync_user_plan(http_request: Request):
+async def sync_subscription_from_stripe(user_id: str, email: str) -> dict:
     """
-    Sync user's subscription status from Stripe.
-    Called after payment to ensure plan is updated.
+    Reusable helper that pulls the latest subscription state from Stripe and
+    writes it to MongoDB. Returns the resulting plan / status so the caller
+    can react. Safe to call at any time — idempotent.
+
+    Used by:
+      - POST /api/plans/sync   (called after Stripe checkout success)
+      - POST /api/auth/login   (catches up users whose webhook silently failed)
     """
     import stripe
     stripe.api_key = STRIPE_API_KEY
-    
-    user = await get_user_from_session(http_request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    email = user.email
-    
-    # First check if there's a pending payment success record
+        return {"synced": False, "reason": "user_not_found"}
+
+    # 1. Pending payment_success record (newest wins)
     payment_success = await db.payment_success.find_one(
         {"email": email, "used": False},
         {"_id": 0},
         sort=[("created_at", -1)]
     )
-    
     if payment_success:
-        # Apply the payment success directly
         plan = payment_success.get("plan", "pro")
         status = payment_success.get("status", "active")
         trial_ends_at = payment_success.get("trial_ends_at")
-        
         await db.users.update_one(
-            {"user_id": user.user_id},
+            {"user_id": user_id},
             {"$set": {
                 "plan": plan,
                 "subscription_status": status,
@@ -2120,50 +2115,42 @@ async def sync_user_plan(http_request: Request):
                 "stripe_customer_id": payment_success.get("customer_id"),
                 "trial_ends_at": trial_ends_at,
                 "trial_plan": plan if status == "trialing" else None,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
         )
-        
-        # Mark payment success as used
         await db.payment_success.update_one(
             {"token": payment_success.get("token")},
-            {"$set": {"used": True}}
+            {"$set": {"used": True}},
         )
-        
-        return {
-            "synced": True,
-            "source": "payment_success_record",
-            "plan": plan,
-            "subscription_status": status
-        }
-    
-    # Otherwise, search in Stripe
+        return {"synced": True, "source": "payment_success_record", "plan": plan, "subscription_status": status}
+
+    # 2. Live Stripe lookup
     stripe_customer_id = user_doc.get("stripe_customer_id")
-    
     if not stripe_customer_id:
-        # Try to find by email
-        customers = stripe.Customer.list(email=email, limit=1)
+        try:
+            customers = stripe.Customer.list(email=email, limit=1)
+        except Exception as e:
+            logger.error(f"Stripe Customer.list failed for {email}: {e}")
+            return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
         if not customers.data:
             return {"synced": False, "reason": "no_stripe_customer", "plan": user_doc.get("plan", "free")}
         stripe_customer_id = customers.data[0].id
-    
-    # Get subscriptions
+
     try:
         subscriptions = stripe.Subscription.list(customer=stripe_customer_id, status="all", limit=5)
     except Exception as e:
-        logger.error(f"Stripe error fetching subscriptions: {e}")
+        logger.error(f"Stripe Subscription.list failed for {email}: {e}")
         return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
-    
+
     active_sub = None
     for sub in subscriptions.data:
         if sub.status in ["active", "trialing"]:
             active_sub = sub
             break
-    
+
     if not active_sub:
         return {"synced": True, "reason": "no_active_subscription", "plan": user_doc.get("plan", "free")}
-    
-    # Determine plan from price
+
     plan = "free"
     if active_sub.items and active_sub.items.data:
         price = active_sub.items.data[0].price
@@ -2172,12 +2159,11 @@ async def sync_user_plan(http_request: Request):
             plan = "pro_plus"
         elif amount >= 500:
             plan = "pro"
-    
+
     trial_end = datetime.fromtimestamp(active_sub.trial_end, tz=timezone.utc) if active_sub.trial_end else None
-    
-    # Update user
+
     await db.users.update_one(
-        {"user_id": user.user_id},
+        {"user_id": user_id},
         {"$set": {
             "stripe_customer_id": stripe_customer_id,
             "subscription_id": active_sub.id,
@@ -2185,17 +2171,29 @@ async def sync_user_plan(http_request: Request):
             "plan": plan,
             "trial_plan": plan if active_sub.status == "trialing" else None,
             "trial_ends_at": trial_end.isoformat() if trial_end else None,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
     )
-    
+
     return {
         "synced": True,
         "source": "stripe",
         "plan": plan,
         "subscription_status": active_sub.status,
-        "trial_ends_at": trial_end.isoformat() if trial_end else None
+        "trial_ends_at": trial_end.isoformat() if trial_end else None,
     }
+
+
+@api_router.post("/plans/sync")
+async def sync_user_plan(http_request: Request):
+    """
+    Sync user's subscription status from Stripe.
+    Called after payment to ensure plan is updated.
+    """
+    user = await get_user_from_session(http_request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await sync_subscription_from_stripe(user.user_id, user.email)
 
 
 
@@ -3451,6 +3449,25 @@ async def login_with_password(request: Request, login_data: LoginRequest, respon
                 {"user_id": user["user_id"]},
                 {"$set": {"subscription_status": "expired"}}
             )
+
+    # Self-heal: if the user is currently NOT on an active subscription locally
+    # (status is none/free/expired/canceled), reach out to Stripe to see if a
+    # webhook silently failed. Common case: payment succeeded on the client but
+    # our webhook endpoint never processed the event (network blip, prod env
+    # var missing, etc.). This guarantees the user lands on the app with the
+    # correct plan immediately after re-login.
+    if subscription_status not in ("active", "trialing"):
+        try:
+            sync_result = await sync_subscription_from_stripe(user["user_id"], email)
+            if sync_result.get("synced") and sync_result.get("subscription_status") in ("active", "trialing"):
+                subscription_status = sync_result["subscription_status"]
+                trial_ends_at = sync_result.get("trial_ends_at")
+                logger.info(
+                    f"Login self-heal: recovered subscription for {email} "
+                    f"(plan={sync_result.get('plan')}, status={subscription_status})"
+                )
+        except Exception as e:
+            logger.warning(f"Login self-heal sync failed for {email}: {e}")
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
