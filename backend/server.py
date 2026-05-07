@@ -1274,8 +1274,9 @@ async def stripe_webhook(request: Request):
                 
                 # Determine plan from price
                 plan = "free"
-                if sub.items and sub.items.data:
-                    price = sub.items.data[0].price
+                sub_items = sub["items"]
+                if sub_items and sub_items.data:
+                    price = sub_items.data[0].price
                     amount = price.unit_amount if price else 0
                     if amount >= 2000:
                         plan = "pro_plus"
@@ -1349,8 +1350,9 @@ async def handle_subscription_update(sub):
     
     # Determine plan from subscription price
     plan = "free"
-    if sub.items and sub.items.data:
-        price = sub.items.data[0].price
+    sub_items = sub["items"]
+    if sub_items and sub_items.data:
+        price = sub_items.data[0].price
         amount = price.unit_amount if price else 0
         # PRO+ is more expensive than PRO
         if amount >= 2000:  # $20+ or equivalent
@@ -1648,8 +1650,9 @@ async def admin_sync_subscription(request: Request):
     
     # Determine plan from price
     plan = "free"
-    if active_sub.items and active_sub.items.data:
-        price = active_sub.items.data[0].price
+    sub_items = active_sub["items"]
+    if sub_items and sub_items.data:
+        price = sub_items.data[0].price
         amount = price.unit_amount if price else 0
         if amount >= 2000:
             plan = "pro_plus"
@@ -1780,8 +1783,9 @@ async def debug_sync_status(email: str, admin_key: str):
                 price_amount = None
                 price_id = None
                 price_currency = None
-                if s.items and s.items.data:
-                    p = s.items.data[0].price
+                s_items = s["items"]
+                if s_items and s_items.data:
+                    p = s_items.data[0].price
                     if p:
                         price_amount = p.unit_amount
                         price_id = p.id
@@ -2350,8 +2354,9 @@ async def sync_subscription_from_stripe(user_id: str, email: str) -> dict:
         return {"synced": True, "reason": "no_active_subscription", "plan": user_doc.get("plan", "free")}
 
     plan = "free"
-    if active_sub.items and active_sub.items.data:
-        price = active_sub.items.data[0].price
+    sub_items = active_sub["items"]
+    if sub_items and sub_items.data:
+        price = sub_items.data[0].price
         amount = price.unit_amount if price else 0
         if amount >= 2000:
             plan = "pro_plus"
