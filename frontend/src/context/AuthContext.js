@@ -181,13 +181,15 @@ export const AuthCallback = () => {
 
 // Protected Route wrapper
 export const ProtectedRoute = ({ children }) => {
-  const { user, loading, isAuthenticated, hasActiveSubscription } = useAuth();
+  const { user, loading, isAuthenticated, hasActiveSubscription, checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [syncing, setSyncing] = useState(false);
+  const [syncTried, setSyncTried] = useState(false);
+  const [recoveredFromStripe, setRecoveredFromStripe] = useState(false);
 
-  // Detect Stripe success redirect (?upgrade=success) — give the webhook a few
-  // seconds to update MongoDB before bouncing the user back to /subscribe.
-  // AppShell will call /api/plans/sync to force-update the user's plan.
+  // Detect Stripe success redirect — give the webhook a few seconds to
+  // propagate before considering the user as "free".
   const isPostPaymentRedirect = (() => {
     try {
       const params = new URLSearchParams(location.search);
@@ -200,17 +202,73 @@ export const ProtectedRoute = ({ children }) => {
     }
   })();
 
+  // Defensive sync against Stripe BEFORE redirecting to /subscribe. This is
+  // the last line of defense for users whose local subscription status is
+  // stale (webhook missed, page reloaded too quickly, etc.).
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        navigate('/login', { replace: true });
-      } else if (!hasActiveSubscription && !isPostPaymentRedirect) {
-        navigate('/subscribe', { replace: true });
-      }
+    if (loading) return;
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true });
+      return;
     }
-  }, [loading, isAuthenticated, hasActiveSubscription, isPostPaymentRedirect, navigate]);
+    if (hasActiveSubscription) return; // all good
+    if (isPostPaymentRedirect) return; // grace window
 
-  if (loading) {
+    // No active subscription locally → try recovering from Stripe ONCE.
+    if (syncTried) {
+      // Already tried, not recovered → safe to redirect now
+      navigate('/subscribe', { replace: true });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setSyncing(true);
+      try {
+        const token = localStorage.getItem('kolo_token');
+        if (token) {
+          const res = await fetch(
+            (process.env.REACT_APP_BACKEND_URL || '') + '/api/plans/sync',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (
+              data?.subscription_status === 'active' ||
+              data?.subscription_status === 'trialing' ||
+              (data?.synced && data?.plan && data.plan !== 'free')
+            ) {
+              if (!cancelled) {
+                // Refresh the auth context so hasActiveSubscription becomes true
+                try { await checkAuth(); } catch (_) {}
+                setRecoveredFromStripe(true);
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      if (!cancelled) {
+        setSyncing(false);
+        setSyncTried(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [
+    loading,
+    isAuthenticated,
+    hasActiveSubscription,
+    isPostPaymentRedirect,
+    syncTried,
+    navigate,
+    checkAuth,
+  ]);
+
+  if (loading || syncing) {
     return (
       <div className="mobile-frame">
         <div className="page-container no-nav" style={{ justifyContent: 'center', alignItems: 'center' }}>
@@ -221,9 +279,9 @@ export const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) return null;
-  // After payment, let AppShell render and run /api/plans/sync, even if the
-  // local hasActiveSubscription flag is still stale from before the purchase.
-  if (!hasActiveSubscription && !isPostPaymentRedirect) return null;
+  if (!hasActiveSubscription && !isPostPaymentRedirect && !recoveredFromStripe) {
+    return null;
+  }
 
   return children;
 };

@@ -754,8 +754,8 @@ async def get_current_user(request: Request):
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
 
     # Self-heal: if the local subscription state is not active/trialing,
-    # try to recover it from Stripe — but cap to once every 60s per user
-    # to avoid hammering the Stripe API on every page load.
+    # try to recover it from Stripe. We throttle to once every 30s per user
+    # to avoid hammering the Stripe API on rapid page loads.
     if user_doc and user_doc.get("subscription_status") not in ("active", "trialing"):
         last_check = user_doc.get("stripe_last_check_at")
         should_check = True
@@ -764,7 +764,7 @@ async def get_current_user(request: Request):
                 last_dt = datetime.fromisoformat(last_check.replace('Z', '+00:00'))
                 if last_dt.tzinfo is None:
                     last_dt = last_dt.replace(tzinfo=timezone.utc)
-                should_check = (datetime.now(timezone.utc) - last_dt).total_seconds() > 60
+                should_check = (datetime.now(timezone.utc) - last_dt).total_seconds() > 30
             except Exception:
                 should_check = True
         if should_check:
