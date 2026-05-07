@@ -1685,6 +1685,151 @@ async def admin_sync_subscription(request: Request):
     }
 
 
+@api_router.get("/debug/sync-status")
+async def debug_sync_status(email: str, admin_key: str):
+    """
+    Comprehensive diagnostic endpoint that explains EXACTLY why a user's
+    subscription sync is failing. Returns:
+      - user document state in Mongo
+      - pending payment_success records for this email
+      - Stripe API key mode (test vs live)
+      - All Stripe customers matching stored customer_id OR email
+      - All subscriptions for those customers
+      - What sync_subscription_from_stripe would return right now
+    Protected by ADMIN_SECRET. Use it to debug stuck-on-pricing bugs.
+    """
+    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+
+    email_norm = (email or "").lower().strip()
+    report = {
+        "email_queried": email_norm,
+        "stripe_api_key_present": bool(STRIPE_API_KEY),
+        "stripe_api_key_mode": (
+            "live" if STRIPE_API_KEY.startswith("sk_live_")
+            else "test" if STRIPE_API_KEY.startswith("sk_test_")
+            else "unknown"
+        ),
+        "stripe_webhook_secret_present": bool(os.environ.get("STRIPE_WEBHOOK_SECRET")),
+    }
+
+    # 1. User document
+    user_doc = await db.users.find_one({"email": email_norm}, {"_id": 0, "password_hash": 0})
+    report["user_in_db"] = user_doc if user_doc else None
+    if not user_doc:
+        report["conclusion"] = "USER_NOT_FOUND_IN_DB"
+        return report
+
+    # 2. payment_success records
+    pay_records = await db.payment_success.find(
+        {"email": email_norm},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(length=10)
+    report["payment_success_records"] = pay_records
+    report["payment_success_count"] = len(pay_records)
+    report["payment_success_unused_count"] = sum(1 for r in pay_records if not r.get("used"))
+
+    # 3. Stripe customers matching stored cid OR email
+    customers_found = []
+    candidate_cids = []
+
+    stored_cid = user_doc.get("stripe_customer_id")
+    if stored_cid:
+        try:
+            c = stripe.Customer.retrieve(stored_cid)
+            customers_found.append({
+                "id": c.id,
+                "email": c.email,
+                "source": "stored_in_user_doc",
+                "deleted": getattr(c, "deleted", False),
+            })
+            candidate_cids.append(c.id)
+        except Exception as e:
+            customers_found.append({
+                "id": stored_cid,
+                "source": "stored_in_user_doc",
+                "error": str(e),
+            })
+
+    try:
+        cust_list = stripe.Customer.list(email=email_norm, limit=20)
+        for c in cust_list.data:
+            if c.id not in candidate_cids:
+                customers_found.append({
+                    "id": c.id,
+                    "email": c.email,
+                    "source": "matched_by_email",
+                    "created": c.created,
+                })
+                candidate_cids.append(c.id)
+    except Exception as e:
+        report["stripe_customer_list_error"] = str(e)
+
+    report["stripe_customers"] = customers_found
+    report["stripe_customer_count"] = len(customers_found)
+
+    # 4. All subscriptions across candidate customers
+    all_subs = []
+    for cid in candidate_cids:
+        try:
+            subs = stripe.Subscription.list(customer=cid, status="all", limit=10)
+            for s in subs.data:
+                price_amount = None
+                price_id = None
+                price_currency = None
+                if s.items and s.items.data:
+                    p = s.items.data[0].price
+                    if p:
+                        price_amount = p.unit_amount
+                        price_id = p.id
+                        price_currency = p.currency
+                all_subs.append({
+                    "customer_id": cid,
+                    "subscription_id": s.id,
+                    "status": s.status,
+                    "price_amount": price_amount,
+                    "price_currency": price_currency,
+                    "price_id": price_id,
+                    "trial_end": s.trial_end,
+                    "current_period_end": s.current_period_end,
+                    "cancel_at_period_end": s.cancel_at_period_end,
+                    "created": s.created,
+                })
+        except Exception as e:
+            all_subs.append({"customer_id": cid, "error": str(e)})
+
+    report["stripe_subscriptions"] = all_subs
+    report["stripe_active_or_trialing_count"] = sum(
+        1 for s in all_subs if s.get("status") in ("active", "trialing")
+    )
+
+    # 5. Run the actual sync function and report what it returns (read-only check)
+    try:
+        sync_preview = await sync_subscription_from_stripe(
+            user_doc["user_id"], email_norm
+        )
+        report["sync_function_result"] = sync_preview
+    except Exception as e:
+        report["sync_function_error"] = str(e)
+
+    # 6. Re-read user doc post-sync to confirm DB state
+    user_after = await db.users.find_one({"email": email_norm}, {"_id": 0, "password_hash": 0})
+    report["user_in_db_after_sync"] = user_after
+
+    # 7. Conclusion
+    if report["stripe_active_or_trialing_count"] == 0 and not report["payment_success_unused_count"]:
+        report["conclusion"] = "NO_ACTIVE_SUBSCRIPTION_FOUND_IN_STRIPE_OR_PAYMENT_RECORDS"
+    elif user_after and user_after.get("subscription_status") in ("active", "trialing"):
+        report["conclusion"] = "SYNC_SUCCESS_USER_NOW_HAS_ACTIVE_SUBSCRIPTION"
+    else:
+        report["conclusion"] = "SYNC_FAILED_DESPITE_STRIPE_HAVING_ACTIVE_SUB"
+
+    return report
+
+
 @api_router.post("/payments/validate-token")
 async def validate_payment_token(token: str):
     token_doc = await db.payment_success.find_one(
