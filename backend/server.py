@@ -752,6 +752,40 @@ async def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     # Get full user doc for plan info
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+
+    # Self-heal: if the local subscription state is not active/trialing,
+    # try to recover it from Stripe — but cap to once every 60s per user
+    # to avoid hammering the Stripe API on every page load.
+    if user_doc and user_doc.get("subscription_status") not in ("active", "trialing"):
+        last_check = user_doc.get("stripe_last_check_at")
+        should_check = True
+        if last_check:
+            try:
+                last_dt = datetime.fromisoformat(last_check.replace('Z', '+00:00'))
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.replace(tzinfo=timezone.utc)
+                should_check = (datetime.now(timezone.utc) - last_dt).total_seconds() > 60
+            except Exception:
+                should_check = True
+        if should_check:
+            try:
+                sync_result = await sync_subscription_from_stripe(user.user_id, user.email)
+                # Always stamp last_check to throttle subsequent calls
+                await db.users.update_one(
+                    {"user_id": user.user_id},
+                    {"$set": {"stripe_last_check_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                if sync_result.get("synced") and sync_result.get("subscription_status") in ("active", "trialing"):
+                    # Re-read the updated doc + user
+                    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+                    user = User(**user_doc) if user_doc else user
+                    logger.info(
+                        f"/auth/me self-heal: recovered subscription for {user.email} "
+                        f"(plan={sync_result.get('plan')}, status={sync_result.get('subscription_status')})"
+                    )
+            except Exception as e:
+                logger.warning(f"/auth/me self-heal failed for {user.email}: {e}")
+
     effective_plan = get_user_effective_plan(user_doc) if user_doc else "free"
     features = PLAN_FEATURES.get(effective_plan, PLAN_FEATURES["free"])
     
@@ -773,13 +807,16 @@ async def get_current_user(request: Request):
                 "days_remaining": max(0, (trial_end - datetime.now(timezone.utc)).days) if isinstance(trial_end, datetime) else 0
             }
     
+    # Use the freshest subscription_status from the DB (post-self-heal)
+    fresh_status = user_doc.get("subscription_status") if user_doc else user.subscription_status
+
     return {
         "user_id": user.user_id,
         "email": user.email,
         "name": user.name,
         "phone": getattr(user, 'phone', None),
         "picture": user.picture,
-        "subscription_status": user.subscription_status,
+        "subscription_status": fresh_status,
         "theme_preference": getattr(user, 'theme_preference', 'light'),
         "didacticiel_completed": getattr(user, 'didacticiel_completed', False),
         "tooltips_seen": getattr(user, 'tooltips_seen', []),
@@ -2124,28 +2161,44 @@ async def sync_subscription_from_stripe(user_id: str, email: str) -> dict:
         )
         return {"synced": True, "source": "payment_success_record", "plan": plan, "subscription_status": status}
 
-    # 2. Live Stripe lookup
-    stripe_customer_id = user_doc.get("stripe_customer_id")
-    if not stripe_customer_id:
-        try:
-            customers = stripe.Customer.list(email=email, limit=1)
-        except Exception as e:
-            logger.error(f"Stripe Customer.list failed for {email}: {e}")
-            return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
-        if not customers.data:
-            return {"synced": False, "reason": "no_stripe_customer", "plan": user_doc.get("plan", "free")}
-        stripe_customer_id = customers.data[0].id
+    # 2. Live Stripe lookup — gather every Stripe customer matching either the
+    #    stored stripe_customer_id OR the email. Stripe Checkout sometimes
+    #    creates a fresh customer instead of reusing the existing one, so we
+    #    must search both to recover any active subscription.
+    candidate_customer_ids = []
+
+    stored_cid = user_doc.get("stripe_customer_id")
+    if stored_cid:
+        candidate_customer_ids.append(stored_cid)
 
     try:
-        subscriptions = stripe.Subscription.list(customer=stripe_customer_id, status="all", limit=5)
+        customers = stripe.Customer.list(email=email, limit=20)
+        for c in customers.data:
+            if c.id and c.id not in candidate_customer_ids:
+                candidate_customer_ids.append(c.id)
     except Exception as e:
-        logger.error(f"Stripe Subscription.list failed for {email}: {e}")
-        return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
+        logger.error(f"Stripe Customer.list failed for {email}: {e}")
+        if not candidate_customer_ids:
+            return {"synced": False, "reason": "stripe_error", "plan": user_doc.get("plan", "free")}
 
+    if not candidate_customer_ids:
+        return {"synced": False, "reason": "no_stripe_customer", "plan": user_doc.get("plan", "free")}
+
+    # Walk all candidate customers, pick the first active/trialing subscription
     active_sub = None
-    for sub in subscriptions.data:
-        if sub.status in ["active", "trialing"]:
-            active_sub = sub
+    matched_customer_id = None
+    for cid in candidate_customer_ids:
+        try:
+            subs = stripe.Subscription.list(customer=cid, status="all", limit=10)
+        except Exception as e:
+            logger.warning(f"Stripe Subscription.list failed for {cid}: {e}")
+            continue
+        for sub in subs.data:
+            if sub.status in ("active", "trialing"):
+                active_sub = sub
+                matched_customer_id = cid
+                break
+        if active_sub:
             break
 
     if not active_sub:
@@ -2165,7 +2218,7 @@ async def sync_subscription_from_stripe(user_id: str, email: str) -> dict:
     await db.users.update_one(
         {"user_id": user_id},
         {"$set": {
-            "stripe_customer_id": stripe_customer_id,
+            "stripe_customer_id": matched_customer_id,
             "subscription_id": active_sub.id,
             "subscription_status": active_sub.status,
             "plan": plan,
