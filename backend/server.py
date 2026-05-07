@@ -1224,6 +1224,26 @@ async def get_payment_status(session_id: str, http_request: Request):
         "payment_token": payment_token
     }
 
+def _stripe_sub_current_period_end(sub):
+    """
+    Stripe API v2025+ moved `current_period_end` from the Subscription object
+    to each Subscription Item. Reading `sub.current_period_end` directly raises
+    AttributeError on newer SDKs. This helper falls back across both layouts.
+    """
+    try:
+        items = sub["items"]
+        if items and items.data:
+            v = items.data[0].get("current_period_end") if hasattr(items.data[0], "get") else getattr(items.data[0], "current_period_end", None)
+            if v:
+                return v
+    except Exception:
+        pass
+    try:
+        return sub["current_period_end"]
+    except Exception:
+        return None
+
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     body = await request.body()
@@ -1345,7 +1365,8 @@ async def handle_subscription_update(sub):
     subscription_id = sub.id
     status = sub.status
     trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
-    current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+    cpe_ts = _stripe_sub_current_period_end(sub)
+    current_period_end = datetime.fromtimestamp(cpe_ts, tz=timezone.utc) if cpe_ts else None
     cancel_at_period_end = sub.cancel_at_period_end
     
     # Determine plan from subscription price
@@ -1660,7 +1681,8 @@ async def admin_sync_subscription(request: Request):
             plan = "pro"
     
     trial_end = datetime.fromtimestamp(active_sub.trial_end, tz=timezone.utc) if active_sub.trial_end else None
-    current_period_end = datetime.fromtimestamp(active_sub.current_period_end, tz=timezone.utc) if active_sub.current_period_end else None
+    cpe_ts = _stripe_sub_current_period_end(active_sub)
+    current_period_end = datetime.fromtimestamp(cpe_ts, tz=timezone.utc) if cpe_ts else None
     
     # Update user
     update_result = await db.users.update_one(
@@ -1798,7 +1820,7 @@ async def debug_sync_status(email: str, admin_key: str):
                     "price_currency": price_currency,
                     "price_id": price_id,
                     "trial_end": s.trial_end,
-                    "current_period_end": s.current_period_end,
+                    "current_period_end": _stripe_sub_current_period_end(s),
                     "cancel_at_period_end": s.cancel_at_period_end,
                     "created": s.created,
                 })
@@ -1938,7 +1960,8 @@ async def get_subscription_status(http_request: Request):
             # Update local status
             status = sub.status  # trialing, active, canceled, past_due, etc.
             trial_end = datetime.fromtimestamp(sub.trial_end, tz=timezone.utc) if sub.trial_end else None
-            current_period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc) if sub.current_period_end else None
+            cpe_ts = _stripe_sub_current_period_end(sub)
+            current_period_end = datetime.fromtimestamp(cpe_ts, tz=timezone.utc) if cpe_ts else None
             cancel_at_period_end = sub.cancel_at_period_end
             
             await db.users.update_one(
