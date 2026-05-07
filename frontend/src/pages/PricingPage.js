@@ -248,16 +248,16 @@ export default function PricingPage() {
         it: 'Hai già un abbonamento attivo per questo piano. Gestiscilo da Impostazioni → ID Apple → Abbonamenti.',
       },
       product_not_found: {
-        fr: 'Produit indisponible pour le moment. Réessayez dans quelques instants.',
-        en: 'Product unavailable right now. Please try again shortly.',
-        de: 'Produkt derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.',
-        it: 'Prodotto non disponibile al momento. Riprova tra poco.',
+        fr: 'Connexion à l\'App Store en cours. Réessayez dans quelques secondes.',
+        en: 'Connecting to the App Store. Please try again in a few seconds.',
+        de: 'Verbindung zum App Store wird hergestellt. Bitte in wenigen Sekunden erneut versuchen.',
+        it: 'Connessione all\'App Store in corso. Riprova tra qualche secondo.',
       },
       not_initialized: {
-        fr: 'Service de paiement non prêt. Patientez quelques secondes et réessayez.',
-        en: 'Payment service not ready. Please wait a few seconds and try again.',
-        de: 'Zahlungsdienst nicht bereit. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
-        it: 'Servizio di pagamento non pronto. Attendi qualche secondo e riprova.',
+        fr: 'L\'App Store est encore en cours de chargement. Réessayez dans quelques secondes.',
+        en: 'The App Store is still loading. Please try again in a few seconds.',
+        de: 'Der App Store wird noch geladen. Bitte in wenigen Sekunden erneut versuchen.',
+        it: 'L\'App Store sta ancora caricando. Riprova tra qualche secondo.',
       },
       no_offer: {
         fr: 'Aucune offre disponible pour ce plan. Veuillez réessayer plus tard.',
@@ -283,12 +283,22 @@ export default function PricingPage() {
         navigate('/register');
         return;
       }
+      // Show loading UI immediately so the user gets feedback even on slow
+      // App Store responses (the previous design kept the button locked,
+      // which Apple Reviewer reported as "loaded indefinitely").
       setLoading(true);
+      const connectingToastId = toast.loading(
+        locale === 'fr' ? 'Connexion à l\'App Store…' :
+        locale === 'de' ? 'Verbindung zum App Store…' :
+        locale === 'it' ? 'Connessione all\'App Store…' :
+        'Connecting to the App Store…'
+      );
       const result = await iapPurchasePlan(plan, billingPeriod);
+      toast.dismiss(connectingToastId);
       setLoading(false);
       if (result.userCancelled) return; // silent
       if (!result.success) {
-        toast.error(iapErrorMessage(result.error), { duration: 7000 });
+        toast.error(iapErrorMessage(result.error), { duration: 8000 });
       }
       // Success path is handled by onPurchaseVerified listener above
       return;
@@ -617,8 +627,6 @@ export default function PricingPage() {
             isDark={isDark}
             locale={locale}
             loading={loading}
-            disabled={isIOS && !iosProductsReady && currentPlan !== 'pro'}
-            iosLoading={isIOS && !iosProductsReady && currentPlan !== 'pro'}
             Icon={Zap}
           />
           
@@ -635,8 +643,6 @@ export default function PricingPage() {
             isDark={isDark}
             locale={locale}
             loading={loading}
-            disabled={isIOS && !iosProductsReady && currentPlan !== 'pro_plus'}
-            iosLoading={isIOS && !iosProductsReady && currentPlan !== 'pro_plus'}
             Icon={Crown}
           />
         </div>
@@ -745,8 +751,6 @@ function PlanCard({
   isDark,
   locale,
   loading,
-  disabled,
-  iosLoading,
   Icon
 }) {
   const displayPrice = billingPeriod === 'annual' ? price.annualMonthly : price.monthly;
@@ -839,7 +843,7 @@ function PlanCard({
       {/* CTA Button */}
       <button
         onClick={onSelect}
-        disabled={isCurrentPlan || loading || disabled}
+        disabled={isCurrentPlan || loading}
         className="w-full py-3 rounded-full font-semibold transition-all"
         style={{
           background: isCurrentPlan 
@@ -848,29 +852,11 @@ function PlanCard({
           color: isCurrentPlan 
             ? (isDark ? '#a0a4ae' : '#6b7280')
             : '#ffffff',
-          cursor: (isCurrentPlan || disabled) ? 'default' : 'pointer',
-          opacity: (loading || disabled) ? 0.7 : 1
+          cursor: isCurrentPlan ? 'default' : 'pointer',
+          opacity: loading ? 0.7 : 1
         }}
       >
-        {iosLoading ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                border: '2px solid rgba(255,255,255,0.4)',
-                borderTopColor: '#ffffff',
-                borderRadius: '50%',
-                display: 'inline-block',
-                animation: 'spin 0.8s linear infinite',
-              }}
-            />
-            {locale === 'fr' ? 'Chargement…' :
-             locale === 'de' ? 'Wird geladen…' :
-             locale === 'it' ? 'Caricamento…' :
-             'Loading…'}
-          </span>
-        ) : loading ? '...' : buttonText}
+        {loading ? '...' : buttonText}
       </button>
     </div>
   );

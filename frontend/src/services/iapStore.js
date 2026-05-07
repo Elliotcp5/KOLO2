@@ -256,12 +256,35 @@ export function areProductsReady() {
 
 /**
  * Purchase a (plan, billingPeriod) combo via Apple StoreKit.
+ *
+ * Resilient implementation: if products are not yet loaded when the user
+ * taps, we wait up to 12 s for the App Store response and force a refresh
+ * via store.update() in case the initial fetch silently failed (which can
+ * happen on Apple's reviewer device when StoreKit takes an unusually long
+ * time to answer).
  */
 export async function purchasePlan(plan, billingPeriod = 'monthly') {
   if (!isIOSNative()) return { success: false, error: 'not_ios' };
 
-  const ready = await ensureReady();
-  if (!ready) return { success: false, error: 'not_initialized' };
+  // Kick off init if it wasn't done yet (defensive)
+  if (!_initialized && !_initializing) {
+    if (_currentUserId && _currentToken) {
+      initIAP({ userId: _currentUserId, token: _currentToken });
+    }
+  }
+
+  const ready = await ensureReady(12000);
+  if (!ready) {
+    // Last-ditch refresh attempt
+    try {
+      if (_store && typeof _store.update === 'function') {
+        await _store.update();
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    } catch (_) {}
+  }
+
+  if (!_store || !_CdvPurchase) return { success: false, error: 'not_initialized' };
 
   const { Platform } = _CdvPurchase;
   const productId = getProductId(plan, billingPeriod);
@@ -269,7 +292,7 @@ export async function purchasePlan(plan, billingPeriod = 'monthly') {
 
   const product = _store.get(productId, Platform.APPLE_APPSTORE);
   if (!product) {
-    log('product not in store — check App Store Connect readiness', productId);
+    log('product not in store — App Store may be unreachable', productId);
     return { success: false, error: 'product_not_found' };
   }
   if (!product.canPurchase) {
