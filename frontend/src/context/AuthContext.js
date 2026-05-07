@@ -185,15 +185,30 @@ export const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Detect Stripe success redirect (?upgrade=success) — give the webhook a few
+  // seconds to update MongoDB before bouncing the user back to /subscribe.
+  // AppShell will call /api/plans/sync to force-update the user's plan.
+  const isPostPaymentRedirect = (() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      return (
+        params.get('upgrade') === 'success' ||
+        params.get('trial_started') === 'true'
+      );
+    } catch (_) {
+      return false;
+    }
+  })();
+
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
         navigate('/login', { replace: true });
-      } else if (!hasActiveSubscription) {
+      } else if (!hasActiveSubscription && !isPostPaymentRedirect) {
         navigate('/subscribe', { replace: true });
       }
     }
-  }, [loading, isAuthenticated, hasActiveSubscription, navigate]);
+  }, [loading, isAuthenticated, hasActiveSubscription, isPostPaymentRedirect, navigate]);
 
   if (loading) {
     return (
@@ -205,9 +220,10 @@ export const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated || !hasActiveSubscription) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
+  // After payment, let AppShell render and run /api/plans/sync, even if the
+  // local hasActiveSubscription flag is still stale from before the purchase.
+  if (!hasActiveSubscription && !isPostPaymentRedirect) return null;
 
   return children;
 };

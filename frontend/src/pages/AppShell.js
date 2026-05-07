@@ -4301,7 +4301,7 @@ const CurrencySelector = ({ c, locale }) => {
 const SettingsTab = ({ onClose }) => {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
-  const { user, logout } = useAuth();
+  const { user, logout, checkAuth } = useAuth();
   const { theme, changeTheme } = useTheme();
   const { c } = useThemeColors();
   const { planData } = usePlan();
@@ -6755,37 +6755,50 @@ const AppShell = () => {
         
         if (upgradeSuccess === 'success' && token) {
           const urlPlan = urlParams.get('plan');
-          // Sync subscription status after payment
+          // Sync subscription status after payment — retry a few times since
+          // the Stripe webhook may take 1-3 seconds to update MongoDB.
+          let activePlan = null;
           try {
-            const syncResponse = await fetch(`${API_URL}/api/plans/sync`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+            for (let attempt = 0; attempt < 4; attempt++) {
+              const syncResponse = await fetch(`${API_URL}/api/plans/sync`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (syncResponse.ok) {
+                const syncData = await syncResponse.json();
+                if (syncData.synced && syncData.plan && syncData.plan !== 'free') {
+                  activePlan = syncData.plan;
+                  break;
+                }
               }
-            });
-            
-            let activePlan = null;
-            if (syncResponse.ok) {
-              const syncData = await syncResponse.json();
-              if (syncData.synced && syncData.plan && syncData.plan !== 'free') {
-                activePlan = syncData.plan;
+              // Wait 1.5s before retrying — webhook latency
+              if (attempt < 3) {
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise(r => setTimeout(r, 1500));
               }
             }
-            // Fallback: use plan from URL param (si le webhook n'a pas encore mis à jour la DB)
+
+            // Fallback: trust the URL param if sync still hasn't caught up
             if (!activePlan && (urlPlan === 'pro' || urlPlan === 'pro_plus')) {
               activePlan = urlPlan;
             }
             if (activePlan) {
               setWelcomeProPlan(activePlan);
+              // Refresh the auth context so hasActiveSubscription becomes true
+              // for any subsequent render / navigation.
+              try { await checkAuth(); } catch (_) {}
             }
-            
+
             // Clean URL
             window.history.replaceState({}, document.title, '/app');
           } catch (syncError) {
             console.error('Failed to sync subscription:', syncError);
             if (urlPlan === 'pro' || urlPlan === 'pro_plus') {
               setWelcomeProPlan(urlPlan);
+              try { await checkAuth(); } catch (_) {}
             }
           }
         }
