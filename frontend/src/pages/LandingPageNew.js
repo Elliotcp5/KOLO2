@@ -1,8 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { useLocale } from '../context/LocaleContext';
 import '../styles/landing.css';
+
+// Maps our internal locale to Apple's storefront + badge language codes.
+const APP_STORE_LOCALE_MAP = {
+  fr: { storefront: 'fr', badge: 'fr-fr', alt: "Télécharger dans l'App Store" },
+  en: { storefront: 'us', badge: 'en-us', alt: 'Download on the App Store' },
+  de: { storefront: 'de', badge: 'de-de', alt: 'Laden im App Store' },
+  it: { storefront: 'it', badge: 'it-it', alt: 'Scarica su App Store' },
+};
+
+const APP_STORE_APP_ID = '6761818371';
+
+// Localized "or" caption shown above the badge.
+const APP_STORE_CAPTION = {
+  fr: 'Ou téléchargez l\'app iOS',
+  en: 'Or download the iOS app',
+  de: 'Oder lade die iOS-App herunter',
+  it: 'O scarica l\'app per iOS',
+};
+
+const AppStoreBadge = ({ locale, variant = 'default' }) => {
+  // Never show this badge inside the native iOS app — they're already there.
+  if (Capacitor.isNativePlatform && Capacitor.isNativePlatform()) return null;
+
+  const loc = APP_STORE_LOCALE_MAP[locale] || APP_STORE_LOCALE_MAP.en;
+  const href = `https://apps.apple.com/${loc.storefront}/app/kolo-ai-real-estate/id${APP_STORE_APP_ID}`;
+  const badgeSrc = `https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/${loc.badge}`;
+
+  const wrapStyle = variant === 'centered'
+    ? { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginTop: '24px' }
+    : { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '20px' };
+
+  return (
+    <div style={wrapStyle} data-testid="app-store-badge-wrap">
+      <span style={{
+        fontSize: '13px',
+        color: 'var(--ink-mid, #6b7280)',
+        letterSpacing: '0.02em',
+        opacity: 0.85,
+      }}>
+        {APP_STORE_CAPTION[locale] || APP_STORE_CAPTION.en}
+      </span>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={loc.alt}
+        data-testid="app-store-download-btn"
+        style={{
+          display: 'inline-block',
+          transition: 'transform 0.18s ease, filter 0.18s ease',
+          willChange: 'transform',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px) scale(1.03)';
+          e.currentTarget.style.filter = 'drop-shadow(0 8px 18px rgba(0,0,0,0.18))';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          e.currentTarget.style.filter = 'none';
+        }}
+      >
+        <img
+          src={badgeSrc}
+          alt={loc.alt}
+          height={variant === 'centered' ? 56 : 48}
+          style={{
+            height: variant === 'centered' ? '56px' : '48px',
+            width: 'auto',
+            display: 'block',
+            borderRadius: '8px',
+          }}
+        />
+      </a>
+    </div>
+  );
+};
 
 const LANGUAGES = [
   { code: 'fr', label: 'FR' },
@@ -336,6 +413,8 @@ const LandingPage = () => {
                'Or subscribe directly →'}
             </span>
           </p>
+
+          <AppStoreBadge locale={locale} variant="default" />
 
           {/* Phone Mockups - Symmetrical */}
           <div className="hero-phones">
@@ -743,6 +822,7 @@ const LandingPage = () => {
               {t('finalCtaBtn')} <ArrowRight size={18} />
             </button>
             <p className="cta-micro">{t('finalCtaMicro')}</p>
+            <AppStoreBadge locale={locale} variant="centered" />
           </div>
         </div>
       </section>
