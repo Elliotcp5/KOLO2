@@ -89,16 +89,17 @@ html {
     background-color: transparent !important;
   }
 
-  /* Inner scrollable area: contenu centered with sidebar offset. The sidebar
-     (240px on the left) takes its own space; we shift content over and
-     give it a comfortable max-width. */
+  /* Inner scrollable area: TRUE full-screen content on desktop. The sidebar
+     takes 240px on the left; everything to the right is filled with content. */
   .mobile-frame .scroll-content {
     overflow-y: visible !important;
     -webkit-overflow-scrolling: auto !important;
     flex: 0 1 auto !important;
-    max-width: 1100px !important;
-    margin: 0 auto 0 auto !important;
-    padding-left: calc(240px + 48px) !important;
+    max-width: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    margin-left: 240px !important;
+    padding-left: 48px !important;
     padding-right: 48px !important;
     padding-top: 40px !important;
   }
