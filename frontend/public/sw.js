@@ -1,6 +1,6 @@
 // KOLO Service Worker for Push Notifications
-// Version 2 - with explicit no-cache for API calls
-const CACHE_VERSION = 'kolo-v2';
+// Version 3 - bump to invalidate old caches and force fresh HTML/assets
+const CACHE_VERSION = 'kolo-v3';
 
 // Install event - force update
 self.addEventListener('install', (event) => {
