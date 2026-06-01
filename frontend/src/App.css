@@ -57,6 +57,52 @@ html {
   }
 }
 
+/* ===== Desktop (≥1024px): present the mobile-app as a centered, polished
+   showcase rather than a tiny phone floating in empty dark space. Also
+   restore native document scrolling so the mouse wheel works everywhere. */
+@media (min-width: 1024px) {
+  /* Decorative background around the centered app frame */
+  html, body {
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.12) 0%, transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    /* CRITICAL: let the document scroll naturally on desktop instead of
+       trapping scroll inside the inner .scroll-content container */
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+
+  .mobile-frame {
+    max-width: 430px;
+    margin: 32px auto;
+    min-height: calc(100vh - 64px);
+    border-radius: 28px;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    box-shadow:
+      0 32px 80px rgba(15, 23, 42, 0.18),
+      0 12px 24px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  /* Let the OUTER document scroll. The inner pane no longer traps wheel
+     events, so users can scroll using the mouse wheel anywhere on screen. */
+  .mobile-frame .scroll-content {
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: auto !important;
+    flex: 0 1 auto !important;
+  }
+
+  /* Bottom nav: keep it pinned to the viewport bottom but matched to the
+     mobile-frame width so it sits visually attached to the centered app. */
+  .bottom-nav {
+    border-radius: 0 0 28px 28px;
+  }
+}
+
 /* Native iOS / Android (Capacitor) : l'app doit prendre TOUT l'écran,
    pas de cadre flottant, pas d'ombre, pas de max-width, SCROLL VERTICAL OK. */
 html.capacitor-native body,
