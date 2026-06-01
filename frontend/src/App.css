@@ -57,15 +57,16 @@ html {
   }
 }
 
-/* ===== Desktop (≥1024px): present the mobile-app as a centered, polished
-   showcase rather than a tiny phone floating in empty dark space. Also
-   restore native document scrolling so the mouse wheel works everywhere. */
+/* ===== Desktop (≥1024px): TRUE full-screen layout for the connected app.
+   The mobile-frame stretches edge-to-edge, the bottom-nav becomes a wider
+   top-style toolbar, content gets a comfortable max-width and centered
+   padding. Mobile (<1024px) behaviour is fully preserved. */
 @media (min-width: 1024px) {
-  /* Decorative background around the centered app frame */
+  /* Subtle decorative background so the app feels intentional, not bare */
   html, body {
     background:
-      radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 55%),
-      radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% -10%, rgba(99, 102, 241, 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 110%, rgba(168, 85, 247, 0.10) 0%, transparent 50%),
       var(--bg);
     background-attachment: fixed;
     /* CRITICAL: let the document scroll naturally on desktop instead of
@@ -75,31 +76,77 @@ html {
     min-height: 100vh;
   }
 
+  /* Frame fills the whole viewport: full-screen feel like a real SaaS app */
   .mobile-frame {
-    max-width: 430px;
-    margin: 32px auto;
-    min-height: calc(100vh - 64px);
-    border-radius: 28px;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    box-shadow:
-      0 32px 80px rgba(15, 23, 42, 0.18),
-      0 12px 24px rgba(15, 23, 42, 0.08);
-    overflow: hidden;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    min-height: 100vh !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    background-color: transparent !important;
   }
 
-  /* Let the OUTER document scroll. The inner pane no longer traps wheel
-     events, so users can scroll using the mouse wheel anywhere on screen. */
+  /* Inner scrollable area: comfortable centered column (a la Linear / Notion)
+     so cards don't stretch to absurd widths on 27" monitors. Top padding leaves
+     room for the repositioned bottom-nav (now a top bar). */
   .mobile-frame .scroll-content {
     overflow-y: visible !important;
     -webkit-overflow-scrolling: auto !important;
     flex: 0 1 auto !important;
+    max-width: 960px !important;
+    margin: 0 auto !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    padding-top: 96px !important; /* room for the desktop top-nav */
   }
 
-  /* Bottom nav: keep it pinned to the viewport bottom but matched to the
-     mobile-frame width so it sits visually attached to the centered app. */
-  .bottom-nav {
-    border-radius: 0 0 28px 28px;
+  /* The page-container shouldn't lock to 100vh on desktop — let the document
+     grow with the content so the document scrolls instead of an inner box. */
+  .mobile-frame .page-container {
+    min-height: auto !important;
+  }
+
+  /* Convert the mobile bottom-nav into a desktop TOP toolbar:
+     full width, sits at the top, looks like a real SaaS app header. */
+  .kolo-bottom-nav {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 12px 48px !important;
+    justify-content: center !important;
+    gap: 48px !important;
+    border-top: none !important;
+    border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  /* Each nav button gets a max width and natural row layout on desktop */
+  .kolo-bottom-nav > button {
+    flex: 0 0 auto !important;
+    max-width: 120px !important;
+  }
+
+  /* Onboarding flow on desktop: also center it */
+  .mobile-frame > .onboarding-flow {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+}
+
+/* ===== Tablet / medium desktop (≥768px and <1024px) — keep current mobile-frame
+   experience but with a polished centered presentation. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .mobile-frame {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
   }
 }
 

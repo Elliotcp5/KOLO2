@@ -6582,7 +6582,7 @@ const BottomNav = ({ activeTab, setActiveTab, onAddProspect }) => {
         </defs>
       </svg>
       
-      <nav style={{
+      <nav className="kolo-bottom-nav" style={{
         position: 'fixed',
         bottom: 0,
         left: '50%',
