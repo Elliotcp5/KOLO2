@@ -89,18 +89,18 @@ html {
     background-color: transparent !important;
   }
 
-  /* Inner scrollable area: comfortable centered column (a la Linear / Notion)
-     so cards don't stretch to absurd widths on 27" monitors. Top padding leaves
-     room for the repositioned bottom-nav (now a top bar). */
+  /* Inner scrollable area: contenu centered with sidebar offset. The sidebar
+     (240px on the left) takes its own space; we shift content over and
+     give it a comfortable max-width. */
   .mobile-frame .scroll-content {
     overflow-y: visible !important;
     -webkit-overflow-scrolling: auto !important;
     flex: 0 1 auto !important;
-    max-width: 960px !important;
-    margin: 0 auto !important;
-    padding-left: 32px !important;
-    padding-right: 32px !important;
-    padding-top: 96px !important; /* room for the desktop top-nav */
+    max-width: 1100px !important;
+    margin: 0 auto 0 auto !important;
+    padding-left: calc(240px + 48px) !important;
+    padding-right: 48px !important;
+    padding-top: 40px !important;
   }
 
   /* The page-container shouldn't lock to 100vh on desktop — let the document
@@ -109,29 +109,84 @@ html {
     min-height: auto !important;
   }
 
-  /* Convert the mobile bottom-nav into a desktop TOP toolbar:
-     full width, sits at the top, looks like a real SaaS app header. */
+  /* Transform the mobile bottom-nav into a LEFT SIDEBAR on desktop
+     (Notion / Linear / Slack style). Logo KOLO is added at the top via
+     a pseudo-element so it feels like a real desktop app. */
   .kolo-bottom-nav {
     position: fixed !important;
     top: 0 !important;
-    bottom: auto !important;
+    bottom: 0 !important;
     left: 0 !important;
-    right: 0 !important;
+    right: auto !important;
     transform: none !important;
-    width: 100% !important;
+    width: 240px !important;
     max-width: none !important;
-    padding: 12px 48px !important;
-    justify-content: center !important;
-    gap: 48px !important;
+    height: 100vh !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 28px 16px !important;
     border-top: none !important;
-    border-bottom: 1px solid rgba(0,0,0,0.06) !important;
-    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 1px 0 12px rgba(15, 23, 42, 0.04) !important;
+    z-index: 50 !important;
   }
 
-  /* Each nav button gets a max width and natural row layout on desktop */
+  /* KOLO logo at the top of the sidebar */
+  .kolo-bottom-nav::before {
+    content: 'KOLO';
+    display: block;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    color: var(--ink, #0E0B1E);
+    padding: 4px 16px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 16px;
+  }
+
+  /* Sidebar nav buttons: horizontal layout (icon + label), full width */
   .kolo-bottom-nav > button {
     flex: 0 0 auto !important;
-    max-width: 120px !important;
+    max-width: none !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    transition: background-color 0.15s ease !important;
+  }
+
+  .kolo-bottom-nav > button:hover {
+    background-color: rgba(99, 102, 241, 0.08) !important;
+  }
+
+  /* Bigger icons + bigger labels for the sidebar (mobile uses 22px / 10px) */
+  .kolo-bottom-nav > button > svg {
+    width: 22px !important;
+    height: 22px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .kolo-bottom-nav > button > span {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+  }
+
+  /* The central "+" FAB button: keep it round but as a sidebar item.
+     Heuristic: it's the one button that has both width and height set
+     (64px on mobile). We force it back to a flex row, full-width pill. */
+  .kolo-bottom-nav > button[style*="border-radius: 50%"],
+  .kolo-bottom-nav > button[style*="borderRadius: 50%"] {
+    width: 100% !important;
+    height: 48px !important;
+    border-radius: 12px !important;
+    margin-top: 8px !important;
   }
 
   /* Onboarding flow on desktop: also center it */
