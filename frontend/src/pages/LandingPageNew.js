@@ -296,7 +296,7 @@ const LandingPage = () => {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* HERO — radically simplified, leedflow style */}
       <section className="hero">
         <div className="container">
           <h1>
@@ -305,74 +305,26 @@ const LandingPage = () => {
           <p className="hero-sub">
             {t('heroSubtitle')}
           </p>
-          <form className="hero-form" onSubmit={handleCTA}>
-            <input 
-              type="email" 
-              placeholder={t('emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button type="submit" className="hero-btn-main">
+          <div className="hero-cta-row">
+            <button
+              className="hero-btn-main"
+              onClick={() => navigate('/register')}
+              data-testid="hero-cta-btn"
+            >
               {t('tryForFree')} <ArrowRight size={18} />
             </button>
-          </form>
-          <p className="hero-micro">
-            <span>✓ {t('oneMonthFree')}</span>
-            <span>✓ {t('noCreditCard')}</span>
-            <span>✓ {t('cancelAnytime')}</span>
-          </p>
-          <p className="hero-skip-trial">
-            <span 
-              onClick={() => navigate('/pricing')}
-              style={{ 
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                opacity: 0.7
-              }}
-            >
-              {locale === 'fr' ? 'Ou passer directement à l\'abonnement →' :
-               locale === 'de' ? 'Oder direkt zum Abo →' :
-               locale === 'it' ? 'O passa direttamente all\'abbonamento →' :
-               'Or subscribe directly →'}
+            <span className="hero-micro-inline">
+              {t('noCreditCard')}
             </span>
-          </p>
-
+          </div>
           <AppStoreBadge locale={locale} variant="default" />
         </div>
       </section>
 
-      {/* PRODUCT SHOWCASE — phone mockups, isolated from hero for breathing room */}
+      {/* PRODUCT SHOWCASE — single centered phone */}
       <section className="phone-showcase">
         <div className="container">
           <div className="hero-phones">
-            {/* Left Phone - Calendar/Relances */}
-            <div className="phone-side left">
-              <div className="sp-header-dark">
-                <div className="sp-h">🗓 {t('aiFollowups')}</div>
-              </div>
-              <div className="sp-body">
-                <div className="sp-stat">
-                  <span className="sp-stat-label">14h00 — {t('callAction')}</span>
-                  <span className="sp-stat-val red">Marie L.</span>
-                </div>
-                <div className="sp-stat">
-                  <span className="sp-stat-label">16h30 — SMS</span>
-                  <span className="sp-stat-val orange">Thomas M.</span>
-                </div>
-                <div className="sp-stat">
-                  <span className="sp-stat-label">{t('tomorrow')} — Email</span>
-                  <span className="sp-stat-val green">Sophie C.</span>
-                </div>
-              </div>
-              <div className="sp-bar-wrap">
-                <div className="sp-bar-label">{t('dealsClosedThisMonth')}</div>
-                <div className="sp-bar">
-                  <div className="sp-bar-fill" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Phone */}
             <div className="phone-main">
               <div className="phone-header">
                 <div className="phone-notch"></div>
@@ -412,75 +364,11 @@ const LandingPage = () => {
                 </div>
               </div>
             </div>
-
-            {/* Right Phone - Prospect Details (same style as left) */}
-            <div className="phone-side right">
-              <div className="sp-header-grad">
-                <div className="sp-profile">
-                  <div className="sp-avatar">ML</div>
-                  <div>
-                    <div className="sp-name">Marie Leblanc</div>
-                    <div className="sp-location">📍 Paris 15e</div>
-                  </div>
-                  <span className="sp-badge-white">{t('active')}</span>
-                </div>
-              </div>
-              <div className="sp-content">
-                <div className="sp-card-mini">
-                  <div className="sp-card-label">{t('project')}</div>
-                  <div className="sp-card-text">T2 atypique · 60–75m²</div>
-                  <div className="sp-card-text muted">Budget : 350 000 €</div>
-                </div>
-                <div className="sp-stats-mini">
-                  <div className="sp-stat-item">
-                    <div className="sp-stat-num">3</div>
-                    <div className="sp-stat-label-sm">{t('visits')}</div>
-                  </div>
-                  <div className="sp-stat-item">
-                    <div className="sp-stat-num">18j</div>
-                    <div className="sp-stat-label-sm">{t('tracking')}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* PROBLEM SECTION */}
-      <section className="section">
-        <div className="container">
-          <div className="centered reveal">
-            <div className="section-tag">{t('theProblem')}</div>
-            <h2 className="section-title">
-              {t('problemTitle1')} {t('problemTitle2')}
-            </h2>
-            <p className="section-body">
-              {t('problemDesc')}
-            </p>
-          </div>
-          <div className="cards-grid">
-            <div className="card reveal-scale stagger-1">
-              <div className="card-title">{t('problemCard1Title')}</div>
-              <p className="card-body">
-                {t('problemCard1Desc')}
-              </p>
-            </div>
-            <div className="card reveal-scale stagger-2">
-              <div className="card-title">{t('problemCard2Title')}</div>
-              <p className="card-body">
-                {t('problemCard2Desc')}
-              </p>
-            </div>
-            <div className="card reveal-scale stagger-3">
-              <div className="card-title">{t('problemCard3Title')}</div>
-              <p className="card-body">
-                {t('problemCard3Desc')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* PROBLEM SECTION REMOVED — leedflow-style: less is more */}
 
       {/* FEATURES SECTION */}
       <section className="section section-alt" id="features">
@@ -551,56 +439,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Feature 2 */}
-          <div className="feature-block reverse">
-            <div className="reveal-right">
-              <div className="feature-tag">{t('feature2TagMobile')}</div>
-              <h3 className="feature-title">
-                {t('feature2TitleSwipe1')}<br/>{t('feature2TitleSwipe2')}
-              </h3>
-              <p className="feature-body">{t('feature2DescSwipe')}</p>
-              <ul className="feature-points">
-                <li>{t('feature2Point1Swipe')}</li>
-                <li>{t('feature2Point2Swipe')}</li>
-                <li>{t('feature2Point3Swipe')}</li>
-              </ul>
-            </div>
-            <div className="feature-visual reveal-left">
-              <div className="mockup-swipe">
-                <div className="swipe-header">{t('mockYourDay')}</div>
-                <div className="swipe-card-active">
-                  <div className="swipe-card-top">
-                    <div className="swipe-av">ML</div>
-                    <div>
-                      <div className="swipe-name">Marie Leblanc</div>
-                      <div className="swipe-meta">{t('mockVisit')}</div>
-                    </div>
-                    <span className="swipe-badge">🔥 {t('mockNow')}</span>
-                  </div>
-                  <div className="swipe-action">
-                    Swipe → · {t('mockVisitDone')} ✓
-                  </div>
-                </div>
-                <div className="swipe-done-list">
-                  <div className="swipe-done">
-                    <span>✅</span>
-                    <span>{t('mockCallThomas')} <span className="muted">{t('mockDoneAt11')}</span></span>
-                  </div>
-                  <div className="swipe-done">
-                    <span>✅</span>
-                    <span>SMS Sophie C. <span className="muted">{t('mockDoneAt9')}</span></span>
-                  </div>
-                </div>
-                <div className="swipe-tip">
-                  <span>👆</span>
-                  <div>
-                    <div className="swipe-tip-title">{t('mockOneGesture')}</div>
-                    <div className="swipe-tip-text">{t('mockSwipeToValidate')}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Feature 2 REMOVED — only one feature block, leedflow-style */}
         </div>
       </section>
 
