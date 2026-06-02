@@ -47,7 +47,7 @@ const TEXT = {
     formSubmitting: 'Envoi…',
     formSuccess: 'Merci. Votre demande a bien été reçue, notre équipe revient vers vous sous 48 h.',
     formError: 'Une erreur est survenue. Réessayez ou écrivez-nous à contact@trykolo.io',
-    sizes: ['1 – 10', '11 – 50', '51 – 100', '101 – 500', '500+'],
+    sizes: ['0 à 50 agents', '50 à 100 agents', '100 à 500 agents', '500 à 5 000 agents', '5 000 à 10 000 agents', '10 000+ agents'],
     legal: 'Vos données ne sont jamais cédées à des tiers.',
   },
   en: {
@@ -91,7 +91,7 @@ const TEXT = {
     formSubmitting: 'Sending…',
     formSuccess: 'Thank you. Your request has been received, our team will come back to you within 48 hours.',
     formError: 'Something went wrong. Try again or email us at contact@trykolo.io',
-    sizes: ['1 – 10', '11 – 50', '51 – 100', '101 – 500', '500+'],
+    sizes: ['0 to 50 agents', '50 to 100 agents', '100 to 500 agents', '500 to 5,000 agents', '5,000 to 10,000 agents', '10,000+ agents'],
     legal: 'Your data is never shared with third parties.',
   },
 };
@@ -219,11 +219,13 @@ const BusinessPage = () => {
               <div className="biz-form-row">
                 <label><span>{t.formCompany}</span>
                   <input name="company" value={form.company} onChange={onChange} required data-testid="biz-form-company" /></label>
-                <label><span>{t.formSize}</span>
-                  <select name="size" value={form.size} onChange={onChange} required data-testid="biz-form-size">
+                <div className="biz-form-field">
+                  <label htmlFor="biz-size-select">{t.formSize}</label>
+                  <select id="biz-size-select" name="size" value={form.size} onChange={onChange} required data-testid="biz-form-size">
                     <option value="">{t.formSizePh}</option>
                     {t.sizes.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select></label>
+                  </select>
+                </div>
               </div>
               <label className="biz-form-full"><span>{t.formMessage}</span>
                 <textarea name="message" rows={3} value={form.message} onChange={onChange} placeholder={t.formMessagePh} data-testid="biz-form-message" /></label>

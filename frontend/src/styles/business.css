@@ -261,6 +261,22 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Standalone field wrapper (used when label can't wrap the input, e.g. <select>
+   so its native dropdown click isn't swallowed by the parent <label>) */
+.biz-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.biz-form-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--biz-ink-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
 .biz-form-full { width: 100%; }
 .biz-form input,
 .biz-form select,
