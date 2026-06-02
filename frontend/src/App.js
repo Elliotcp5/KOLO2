@@ -26,6 +26,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import PricingPage from "./pages/PricingPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import BusinessPage from "./pages/BusinessPage";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -107,6 +108,8 @@ const AppRouter = () => {
       <Route path="/eula" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/privacy-policy" element={<PrivacyPage />} />
+      <Route path="/business" element={<BusinessPage />} />
+      <Route path="/entreprise" element={<BusinessPage />} />
 
       {/* Protected routes */}
       <Route 

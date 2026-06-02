@@ -1856,6 +1856,77 @@ async def debug_sync_status(email: str, admin_key: str):
     return report
 
 
+
+class EnterpriseDemoRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    company: str
+    size: str
+    message: Optional[str] = ""
+    locale: Optional[str] = "fr"
+
+
+@api_router.post("/enterprise/demo-request")
+async def submit_enterprise_demo_request(payload: EnterpriseDemoRequest, request: Request):
+    """
+    Public endpoint: capture a demo request from a real estate network. Stored
+    in `enterprise_leads` collection for the sales team to follow up manually.
+    """
+    # Lightweight validation
+    email = (payload.email or "").strip().lower()
+    if not email or not validate_email_format(email):
+        raise HTTPException(status_code=400, detail="Invalid email")
+
+    if not payload.first_name.strip() or not payload.last_name.strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not payload.company.strip():
+        raise HTTPException(status_code=400, detail="Company is required")
+    if not payload.size:
+        raise HTTPException(status_code=400, detail="Size is required")
+
+    lead = {
+        "lead_id": f"ent_{uuid.uuid4().hex[:16]}",
+        "first_name": payload.first_name.strip(),
+        "last_name": payload.last_name.strip(),
+        "email": email,
+        "phone": payload.phone.strip(),
+        "company": payload.company.strip(),
+        "size": payload.size,
+        "message": (payload.message or "").strip(),
+        "locale": payload.locale or "fr",
+        "source_ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent", "")[:300],
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.enterprise_leads.insert_one(lead)
+    logger.info(
+        f"Enterprise demo request received: {payload.company} ({email}, {payload.size})"
+    )
+    # Don't echo back internal fields
+    return {"ok": True, "lead_id": lead["lead_id"]}
+
+
+@api_router.get("/admin/enterprise-leads")
+async def list_enterprise_leads(admin_key: str, status: Optional[str] = None, limit: int = 200):
+    """
+    Admin-only: list all enterprise demo requests, newest first. Filter by
+    status (new / contacted / converted / rejected) via the optional query param.
+    """
+    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    query = {}
+    if status:
+        query["status"] = status
+    cursor = db.enterprise_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
+    leads = await cursor.to_list(length=limit)
+    return {"count": len(leads), "leads": leads}
+
+
+
 @api_router.post("/payments/validate-token")
 async def validate_payment_token(token: str):
     token_doc = await db.payment_success.find_one(

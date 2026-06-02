@@ -363,6 +363,17 @@ const LandingPage = () => {
           <button className="nav-pricing" onClick={() => navigate('/pricing')}>
             {t('pricingLink')}
           </button>
+          <button
+            className="nav-pricing"
+            onClick={() => navigate('/business')}
+            data-testid="nav-business-link"
+            style={{ marginLeft: 0 }}
+          >
+            {locale === 'fr' ? 'Entreprises' :
+             locale === 'de' ? 'Unternehmen' :
+             locale === 'it' ? 'Aziende' :
+             'Business'}
+          </button>
           <button className="nav-login" onClick={() => navigate('/login')}>
             {t('loginButton')}
           </button>
