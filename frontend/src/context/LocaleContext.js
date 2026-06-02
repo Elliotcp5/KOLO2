@@ -19,16 +19,40 @@ const EU_COUNTRIES = [
   'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
 ];
 
-// Language mapping by country
+// Language mapping by country (exhaustive, falls back to 'en')
 const COUNTRY_LANGUAGES = {
-  'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr', // French-speaking
-  'IT': 'it', 'SM': 'it', // Italian
-  'DE': 'de', 'AT': 'de', 'LI': 'de', // German-speaking
-  'CH': 'de', // Swiss (German default, could be fr/it too)
-  'ES': 'en', 'MX': 'en', 'AR': 'en', // Spanish - fallback to English
-  'PT': 'en', 'BR': 'en', // Portuguese - fallback to English
-  'GB': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', // English
+  // French-speaking
+  'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr',
+  // Italian
+  'IT': 'it', 'SM': 'it', 'VA': 'it',
+  // German-speaking
+  'DE': 'de', 'AT': 'de', 'LI': 'de', 'CH': 'de',
+  // English
+  'GB': 'en', 'IE': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
 };
+
+// Currency + symbol mapping by country
+const COUNTRY_CURRENCY = {
+  'GB': { currency: 'GBP', symbol: '£' },
+  'CH': { currency: 'EUR', symbol: '€' }, // Swiss → EUR for simplicity (KOLO bills in EUR)
+  'US': { currency: 'USD', symbol: '$' },
+  'CA': { currency: 'USD', symbol: '$' },
+  'AU': { currency: 'USD', symbol: '$' },
+};
+// All EU countries get EUR/€ — handled in the resolver below.
+
+function resolveCountryToLocale(countryCode) {
+  if (!countryCode) return 'en';
+  return COUNTRY_LANGUAGES[countryCode.toUpperCase()] || 'en';
+}
+
+function resolveCountryToCurrency(countryCode) {
+  if (!countryCode) return { currency: 'USD', symbol: '$' };
+  const cc = countryCode.toUpperCase();
+  if (COUNTRY_CURRENCY[cc]) return COUNTRY_CURRENCY[cc];
+  if (EU_COUNTRIES.includes(cc)) return { currency: 'EUR', symbol: '€' };
+  return { currency: 'USD', symbol: '$' };
+}
 
 export const LocaleProvider = ({ children }) => {
   const [locale, setLocale] = useState('en');
@@ -38,103 +62,100 @@ export const LocaleProvider = ({ children }) => {
   const [symbol, setSymbol] = useState('$');
 
   useEffect(() => {
-    // Check URL for locale override (for testing)
+    // ===== LOCALE / CURRENCY AUTO-DETECTION =====
+    // Priority order:
+    //   1. URL override (?locale=...&country=...)  -> testing only
+    //   2. User manual choice (localStorage flag)  -> always respected
+    //   3. Backend /api/geo (uses Cloudflare CF-IPCountry in prod)
+    //   4. Public ipapi.co fallback                -> works in preview / non-CF
+    //   5. Browser navigator.language             -> last resort
+    //   6. Default: English + USD
     const urlParams = new URLSearchParams(window.location.search);
     const localeOverride = urlParams.get('locale');
     const countryOverride = urlParams.get('country');
-    
-    // PRIORITY 1: Check if user manually changed language (this ALWAYS wins)
-    const userChangedLang = localStorage.getItem('kolo_locale_manual');
+
+    const userChangedLang = localStorage.getItem('kolo_locale_manual') === 'true';
+    const userChangedCurrency = localStorage.getItem('kolo_currency_manual') === 'true';
     const savedLocale = localStorage.getItem('kolo_locale');
-    
-    // Detect browser locale for fallback
+    const savedCurrency = localStorage.getItem('kolo_currency');
+
+    // Browser baseline
     const browserLocale = navigator.language || navigator.userLanguage || 'en-US';
     const browserLang = browserLocale.split('-')[0].toLowerCase();
-    const regionFromLocale = countryOverride || browserLocale.split('-')[1]?.toUpperCase();
-    
-    // Priority order: URL override > manual saved locale > browser detection
-    let detectedLang;
-    if (localeOverride) {
-      // URL override for testing
-      detectedLang = localeOverride;
-    } else if (userChangedLang && savedLocale) {
-      // User manually changed language - ALWAYS respect this
-      detectedLang = savedLocale;
-    } else {
-      // Browser detection
-      detectedLang = browserLang;
-    }
-    
-    // Fallback for unsupported languages
-    if (!['en', 'fr', 'de', 'it'].includes(detectedLang)) {
-      // Check if country suggests a language
-      detectedLang = COUNTRY_LANGUAGES[regionFromLocale] || 'en';
-    }
-    
-    // Final supported locale
-    const supportedLocale = ['en', 'fr', 'de', 'it'].includes(detectedLang) ? detectedLang : 'en';
+    const browserRegion = browserLocale.split('-')[1]?.toUpperCase();
+
+    // ----- Apply initial best guess from browser (synchronous) -----
+    const guessedRegion = countryOverride || browserRegion;
+    const guessedLang =
+      localeOverride ||
+      (userChangedLang && savedLocale) ||
+      (guessedRegion ? resolveCountryToLocale(guessedRegion) : null) ||
+      browserLang;
+    const supportedLocale = ['en', 'fr', 'de', 'it'].includes(guessedLang) ? guessedLang : 'en';
     setLocale(supportedLocale);
-    // Only save if not manually set (to not override user choice)
-    if (!userChangedLang) {
-      localStorage.setItem('kolo_locale', supportedLocale);
-    }
+    if (!userChangedLang) localStorage.setItem('kolo_locale', supportedLocale);
 
-    // Set country/currency based on region
-    if (regionFromLocale) {
-      setCountry(regionFromLocale);
-      
-      if (regionFromLocale === 'GB') {
-        setCurrency('GBP');
-        setSymbol('£');
-      } else if (regionFromLocale === 'CH') {
-        // Switzerland - keep EUR for simplicity (9.99€)
-        setCurrency('EUR');
-        setSymbol('€');
-      } else if (EU_COUNTRIES.includes(regionFromLocale)) {
-        setCurrency('EUR');
-        setSymbol('€');
-      } else if (regionFromLocale === 'US' || regionFromLocale === 'CA') {
-        setCurrency('USD');
-        setSymbol('$');
+    if (guessedRegion) {
+      setCountry(guessedRegion);
+      if (!userChangedCurrency) {
+        const cur = resolveCountryToCurrency(guessedRegion);
+        setCurrency(cur.currency);
+        setSymbol(cur.symbol);
       }
-    } else if (browserLang === 'fr') {
-      // If browser is French but no region, assume France
-      setCountry('FR');
-      setCurrency('EUR');
-      setSymbol('€');
+    } else if (!userChangedCurrency && savedCurrency) {
+      setCurrency(savedCurrency);
     }
 
-    // Fetch geo info from backend (will override if available)
-    // BUT NOT the locale if user manually changed it
-    const fetchGeo = async () => {
-      try {
-        const apiUrl = 'https://trykolo.io';
-        
-        const response = await fetch(`${apiUrl}/api/geo?locale=${browserLocale}&country=${regionFromLocale || ''}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.country) {
-            setCountry(data.country);
-            setCurrency(data.currency);
-            setAmount(data.amount);
-            setSymbol(data.symbol);
-            
-            // Update locale based on detected country ONLY if user didn't manually change it
-            if (!userChangedLang) {
-              const countryLang = COUNTRY_LANGUAGES[data.country];
-              if (countryLang && ['en', 'fr', 'de', 'it'].includes(countryLang)) {
-                setLocale(countryLang);
-                localStorage.setItem('kolo_locale', countryLang);
-              }
-            }
-          }
+    // ----- Async geo refinement: backend first, then public IP fallback -----
+    const applyGeo = (countryCode) => {
+      if (!countryCode) return;
+      const cc = countryCode.toUpperCase();
+      setCountry(cc);
+
+      if (!userChangedLang) {
+        const lang = resolveCountryToLocale(cc);
+        if (['en', 'fr', 'de', 'it'].includes(lang)) {
+          setLocale(lang);
+          localStorage.setItem('kolo_locale', lang);
         }
-      } catch (e) {
-        // Silent fail - use browser detection
+      }
+      if (!userChangedCurrency) {
+        const cur = resolveCountryToCurrency(cc);
+        setCurrency(cur.currency);
+        setSymbol(cur.symbol);
+        localStorage.setItem('kolo_currency', cur.currency);
       }
     };
 
-    fetchGeo();
+    const fetchGeo = async () => {
+      // 1. Try our own backend (uses Cloudflare header in prod)
+      try {
+        const apiUrl = 'https://trykolo.io';
+        const response = await fetch(
+          `${apiUrl}/api/geo?locale=${browserLocale}&country=${browserRegion || ''}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.amount) setAmount(data.amount);
+          // Only trust the country if it's not the fallback 'US' from missing header
+          if (data.country && data.country !== 'US') {
+            applyGeo(data.country);
+            return;
+          }
+        }
+      } catch (_) { /* silent */ }
+
+      // 2. Public IP geo fallback (free, no key, 1000/day)
+      try {
+        const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+        if (r.ok) {
+          const d = await r.json();
+          if (d && d.country_code) applyGeo(d.country_code);
+        }
+      } catch (_) { /* silent — keep browser guess */ }
+    };
+
+    if (!localeOverride && !countryOverride) fetchGeo();
   }, []);
 
   // Get translation
@@ -148,6 +169,17 @@ export const LocaleProvider = ({ children }) => {
       setLocale(newLocale);
       localStorage.setItem('kolo_locale', newLocale);
       localStorage.setItem('kolo_locale_manual', 'true'); // Mark as manually changed
+    }
+  };
+
+  // Change currency manually (sticks across sessions, overrides geo detection)
+  const changeCurrency = (newCurrency) => {
+    const symbols = { EUR: '€', GBP: '£', USD: '$', CHF: 'CHF' };
+    if (symbols[newCurrency]) {
+      setCurrency(newCurrency);
+      setSymbol(symbols[newCurrency]);
+      localStorage.setItem('kolo_currency', newCurrency);
+      localStorage.setItem('kolo_currency_manual', 'true');
     }
   };
 
@@ -187,8 +219,10 @@ export const LocaleProvider = ({ children }) => {
     locale,
     setLocale,
     changeLanguage,
+    changeCurrency,
     country,
     currency,
+    setCurrency,
     amount,
     symbol,
     t,

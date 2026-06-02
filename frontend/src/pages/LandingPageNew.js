@@ -186,7 +186,7 @@ const LANDING_TEXTS = {
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { locale, changeLanguage, t } = useLocale();
+  const { locale, changeLanguage, t, currency, symbol, changeCurrency } = useLocale();
   const lt = LANDING_TEXTS[locale] || LANDING_TEXTS.en;
   const [scrolled, setScrolled] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -194,7 +194,6 @@ const LandingPage = () => {
   const [showToast, setShowToast] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
-  const [currency, setCurrency] = useState('EUR');
   const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
 
   useEffect(() => {
@@ -816,7 +815,7 @@ const LandingPage = () => {
                     {CURRENCIES.map(curr => (
                       <button
                         key={curr.code}
-                        onClick={() => { setCurrency(curr.code); setShowCurrencyMenu(false); }}
+                        onClick={() => { changeCurrency(curr.code); setShowCurrencyMenu(false); }}
                         style={{
                           display: 'block', width: '100%', padding: '8px 12px',
                           background: currency === curr.code ? 'rgba(108, 99, 255, 0.2)' : 'transparent',

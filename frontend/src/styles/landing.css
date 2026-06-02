@@ -238,7 +238,7 @@
 
 /* ===== HERO ===== */
 .hero {
-  padding: calc(120px + env(safe-area-inset-top, 0)) 0 40px;
+  padding: calc(96px + env(safe-area-inset-top, 0)) 0 32px;
   text-align: center;
   background: var(--bg);
 }
@@ -523,7 +523,7 @@
 
 /* ===== PHONE MOCKUPS ===== */
 .phone-showcase {
-  padding: 0 0 40px;
+  padding: 0 0 24px;
   background: var(--bg);
 }
 
@@ -1102,7 +1102,7 @@
 
 /* ===== SECTIONS ===== */
 .section {
-  padding: 96px 0;
+  padding: 80px 0;
 }
 
 .section-alt {
@@ -1111,7 +1111,7 @@
 
 .centered {
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .section-tag {
