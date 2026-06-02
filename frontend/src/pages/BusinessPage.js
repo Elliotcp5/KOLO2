@@ -131,7 +131,7 @@ const BusinessPage = () => {
           <ArrowLeft size={16} strokeWidth={2} />
           <span>{t.navBack}</span>
         </button>
-        <a href="/" className="biz-nav-logo">KOLO<span className="biz-logo-dot"></span></a>
+        <a href="/" className="biz-nav-logo"><span className="biz-logo-dot"></span>KOLO</a>
         <a href="#contact" className="biz-nav-cta" data-testid="biz-nav-contact">
           {t.navContact}
         </a>

@@ -63,11 +63,12 @@
   gap: 3px;
 }
 .biz-logo-dot {
-  width: 6px; height: 6px;
+  width: 9px; height: 9px;
   border-radius: 50%;
   background: var(--biz-grad);
-  align-self: flex-end;
-  margin-bottom: 0.18em;
+  align-self: center;
+  margin: 0 8px 0 0;
+  flex-shrink: 0;
 }
 
 .biz-nav-cta {

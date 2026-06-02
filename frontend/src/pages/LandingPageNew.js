@@ -269,7 +269,7 @@ const LandingPage = () => {
       {/* NAVBAR - Minimaliste */}
       <nav className={`landing-nav ${scrolled ? 'scrolled' : ''}`}>
         <a href="/" className="nav-logo">
-          KOLO<span className="logo-dot"></span>
+          <span className="logo-dot"></span>KOLO
         </a>
         
         <div className="nav-actions">
@@ -338,8 +338,12 @@ const LandingPage = () => {
           </p>
 
           <AppStoreBadge locale={locale} variant="default" />
+        </div>
+      </section>
 
-          {/* Phone Mockups - Symmetrical */}
+      {/* PRODUCT SHOWCASE — phone mockups, isolated from hero for breathing room */}
+      <section className="phone-showcase">
+        <div className="container">
           <div className="hero-phones">
             {/* Left Phone - Calendar/Relances */}
             <div className="phone-side left">
@@ -443,35 +447,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* SOCIAL PROOF */}
-      <section className="social-strip">
-        <div className="strip-label">{t('socialProof')}</div>
-        <div className="marquee-track">
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "J'ai closé 2 ventes en plus ce mois-ci" — Julie R., Paris 15e
-          </span>
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "Mon Excel prend la poussière depuis 3 mois" — Marc T., Lyon
-          </span>
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "L'IA me dit exactement quand rappeler, c'est magique" — Amira K., Bordeaux
-          </span>
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "Je pensais pas qu'un outil à 10€ ferait ça" — Pierre M., Nantes
-          </span>
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "Setup en 4 minutes, premier deal assisté le lendemain" — Lucie B., Toulouse
-          </span>
-          {/* Duplicate for seamless loop */}
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "J'ai closé 2 ventes en plus ce mois-ci" — Julie R., Paris 15e
-          </span>
-          <span className="marquee-item">
-            <span className="marquee-stars">★★★★★</span> "Mon Excel prend la poussière depuis 3 mois" — Marc T., Lyon
-          </span>
-        </div>
-      </section>
-
       {/* PROBLEM SECTION */}
       <section className="section">
         <div className="container">
@@ -486,21 +461,18 @@ const LandingPage = () => {
           </div>
           <div className="cards-grid">
             <div className="card reveal-scale stagger-1">
-              <span className="card-icon">📱</span>
               <div className="card-title">{t('problemCard1Title')}</div>
               <p className="card-body">
                 {t('problemCard1Desc')}
               </p>
             </div>
             <div className="card reveal-scale stagger-2">
-              <span className="card-icon">📊</span>
               <div className="card-title">{t('problemCard2Title')}</div>
               <p className="card-body">
                 {t('problemCard2Desc')}
               </p>
             </div>
             <div className="card reveal-scale stagger-3">
-              <span className="card-icon">🧠</span>
               <div className="card-title">{t('problemCard3Title')}</div>
               <p className="card-body">
                 {t('problemCard3Desc')}
@@ -523,7 +495,7 @@ const LandingPage = () => {
           {/* Feature 1 */}
           <div className="feature-block">
             <div className="reveal-left">
-              <div className="feature-tag">✦ {t('feature1Tag')}</div>
+              <div className="feature-tag">{t('feature1Tag')}</div>
               <h3 className="feature-title">
                 {t('feature1Title')}
               </h3>
@@ -582,7 +554,7 @@ const LandingPage = () => {
           {/* Feature 2 */}
           <div className="feature-block reverse">
             <div className="reveal-right">
-              <div className="feature-tag">📱 {t('feature2TagMobile')}</div>
+              <div className="feature-tag">{t('feature2TagMobile')}</div>
               <h3 className="feature-title">
                 {t('feature2TitleSwipe1')}<br/>{t('feature2TitleSwipe2')}
               </h3>

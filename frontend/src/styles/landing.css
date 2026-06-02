@@ -929,7 +929,7 @@
 
 /* ===== SECTIONS ===== */
 .section {
-  padding: 100px 0;
+  padding: 140px 0;
 }
 
 .section-alt {
@@ -938,64 +938,68 @@
 
 .centered {
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 72px;
 }
 
 .section-tag {
   display: inline-block;
-  background: var(--bg);
-  color: var(--blue);
-  padding: 6px 14px;
-  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft, #6b7280);
+  padding: 0;
+  border-radius: 0;
   font-family: var(--font-heading);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 16px;
+  letter-spacing: 0.16em;
+  margin-bottom: 24px;
+  opacity: 0.7;
 }
 
 .section-alt .section-tag {
-  background: rgba(255, 255, 255, 0.8);
+  background: transparent;
 }
 
 .section-title {
   font-family: var(--font-heading);
-  font-size: 42px;
+  font-size: 52px;
   font-weight: 800;
   color: var(--ink);
-  line-height: 1.15;
-  margin-bottom: 16px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin-bottom: 24px;
 }
 
 .section-body {
-  font-size: 17px;
+  font-size: 18px;
   color: var(--ink-mid);
-  line-height: 1.6;
+  line-height: 1.55;
   max-width: 600px;
   margin: 0 auto;
 }
 
-/* ===== CARDS GRID ===== */
+/* ===== CARDS GRID — flatter, leedflow-like ===== */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 48px;
+  gap: 32px;
+  margin-top: 72px;
 }
 
 .card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 28px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  padding: 32px 0 0;
+  box-shadow: none;
+  transition: opacity 0.2s;
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-4px);
+  box-shadow: none;
+  transform: none;
+  opacity: 0.8;
 }
 
 .card-icon {
@@ -1006,7 +1010,7 @@
 
 .card-title {
   font-family: var(--font-heading);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--ink);
   margin-bottom: 12px;
