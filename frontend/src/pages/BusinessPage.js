@@ -10,20 +10,25 @@ const TEXT = {
     navBack: 'Retour',
     navContact: 'Nous contacter',
     eyebrow: 'KOLO pour les réseaux',
-    heroTitle: 'KOLO pour votre réseau immobilier.',
-    heroSub: 'Un assistant quotidien, modulaire et sécurisé. Pensé pour les grands réseaux.',
+    heroTitleStart: "L'assistant IA quotidien",
+    heroTitleGrad: 'pour votre réseau immobilier.',
+    heroSub: 'Modulaire, sécurisé, à votre image. Pensé pour les grands réseaux d\'agents.',
     heroCTA: 'Demander une offre',
 
-    sec1Title: 'Modulaire.\nÀ votre image.',
+    sec1TitleStart: 'Modulaire.',
+    sec1TitleGrad: 'À votre image.',
     sec1Body: 'Activez uniquement ce dont vos agents ont besoin. KOLO devient votre outil interne, à votre nom, à vos couleurs.',
 
-    sec2Title: 'Une vision réseau,\nsans compromis sur la confidentialité.',
+    sec2TitleStart: 'Une vision réseau,',
+    sec2TitleGrad: 'sans compromis sur la confidentialité.',
     sec2Body: 'Vos administrateurs voient l\'ensemble. Vos agents ne voient que leurs prospects. Les extractions sont sécurisées et tracées.',
 
-    sec3Title: 'Vos données restent\nen France.',
+    sec3TitleStart: 'Vos données restent',
+    sec3TitleGrad: 'en France.',
     sec3Body: 'Cloud souverain européen. Chiffrement de bout en bout. Conformité RGPD intégrale.',
 
-    ctaTitle: 'Parlons de votre réseau.',
+    ctaTitleStart: 'Parlons de',
+    ctaTitleGrad: 'votre réseau.',
     ctaSub: 'On revient vers vous sous 48 h avec une proposition adaptée.',
     formFirstName: 'Prénom',
     formLastName: 'Nom',
@@ -45,20 +50,25 @@ const TEXT = {
     navBack: 'Back',
     navContact: 'Contact us',
     eyebrow: 'KOLO for networks',
-    heroTitle: 'KOLO for your real estate network.',
-    heroSub: 'A daily assistant, modular and secure. Designed for large networks.',
+    heroTitleStart: 'The daily AI assistant',
+    heroTitleGrad: 'for your real estate network.',
+    heroSub: 'Modular, secure, in your image. Designed for large agent networks.',
     heroCTA: 'Request an offer',
 
-    sec1Title: 'Modular.\nIn your image.',
+    sec1TitleStart: 'Modular.',
+    sec1TitleGrad: 'In your image.',
     sec1Body: 'Enable only what your agents need. KOLO becomes your internal tool — your name, your colors.',
 
-    sec2Title: 'A network-wide view,\nwithout compromising privacy.',
+    sec2TitleStart: 'A network-wide view,',
+    sec2TitleGrad: 'without compromising privacy.',
     sec2Body: 'Your administrators see the whole picture. Your agents only see their own prospects. Exports are secure and audited.',
 
-    sec3Title: 'Your data stays\nin France.',
+    sec3TitleStart: 'Your data stays',
+    sec3TitleGrad: 'in France.',
     sec3Body: 'Sovereign European cloud. End-to-end encryption. Full GDPR compliance.',
 
-    ctaTitle: 'Let\'s talk about your network.',
+    ctaTitleStart: 'Let\'s talk about',
+    ctaTitleGrad: 'your network.',
     ctaSub: 'We\'ll come back to you within 48 hours with a tailored proposal.',
     formFirstName: 'First name',
     formLastName: 'Last name',
@@ -107,9 +117,12 @@ const BusinessPage = () => {
     }
   };
 
-  const renderTitle = (str) => str.split('\n').map((line, i) => (
-    <React.Fragment key={i}>{line}{i < str.split('\n').length - 1 && <br />}</React.Fragment>
-  ));
+  // Reusable two-line title: dark first line + gradient second line (signature KOLO style)
+  const TwoLineTitle = ({ start, grad }) => (
+    <h2 className="biz-big-title">
+      {start}<br/><span className="biz-grad">{grad}</span>
+    </h2>
+  );
 
   return (
     <div className="biz-page">
@@ -124,11 +137,13 @@ const BusinessPage = () => {
         </a>
       </nav>
 
-      {/* HERO — radically simplified */}
+      {/* HERO */}
       <section className="biz-hero">
         <div className="biz-container">
           <div className="biz-eyebrow">{t.eyebrow}</div>
-          <h1 className="biz-hero-title">{t.heroTitle}</h1>
+          <h1 className="biz-hero-title">
+            {t.heroTitleStart}<br/><span className="biz-grad">{t.heroTitleGrad}</span>
+          </h1>
           <p className="biz-hero-sub">{t.heroSub}</p>
           <a href="#contact" className="biz-btn-primary" data-testid="biz-hero-cta">
             {t.heroCTA} <ArrowRight size={18} />
@@ -139,15 +154,15 @@ const BusinessPage = () => {
       {/* SECTION 1 — Modular */}
       <section className="biz-section">
         <div className="biz-container biz-section-inner">
-          <h2 className="biz-big-title">{renderTitle(t.sec1Title)}</h2>
+          <TwoLineTitle start={t.sec1TitleStart} grad={t.sec1TitleGrad} />
           <p className="biz-big-body">{t.sec1Body}</p>
         </div>
       </section>
 
-      {/* SECTION 2 — Network view + privacy */}
+      {/* SECTION 2 — Network view + privacy (dark, gradient highlight is bright) */}
       <section className="biz-section biz-section-dark">
         <div className="biz-container biz-section-inner">
-          <h2 className="biz-big-title">{renderTitle(t.sec2Title)}</h2>
+          <TwoLineTitle start={t.sec2TitleStart} grad={t.sec2TitleGrad} />
           <p className="biz-big-body">{t.sec2Body}</p>
         </div>
       </section>
@@ -155,7 +170,7 @@ const BusinessPage = () => {
       {/* SECTION 3 — Security */}
       <section className="biz-section">
         <div className="biz-container biz-section-inner">
-          <h2 className="biz-big-title">{renderTitle(t.sec3Title)}</h2>
+          <TwoLineTitle start={t.sec3TitleStart} grad={t.sec3TitleGrad} />
           <p className="biz-big-body">{t.sec3Body}</p>
         </div>
       </section>
@@ -163,7 +178,7 @@ const BusinessPage = () => {
       {/* CONTACT */}
       <section className="biz-contact" id="contact">
         <div className="biz-container">
-          <h2 className="biz-big-title">{t.ctaTitle}</h2>
+          <TwoLineTitle start={t.ctaTitleStart} grad={t.ctaTitleGrad} />
           <p className="biz-big-body biz-contact-sub">{t.ctaSub}</p>
 
           {status === 'success' ? (

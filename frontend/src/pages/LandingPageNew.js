@@ -273,93 +273,6 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
-          {/* Currency selector - discreet */}
-          <div className="currency-selector" style={{ position: 'relative' }}>
-            <button 
-              className="currency-btn"
-              onClick={() => { setShowCurrencyMenu(!showCurrencyMenu); setShowLangMenu(false); }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#6b7280',
-                fontSize: '12px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.2s'
-              }}
-            >
-              {CURRENCIES.find(c => c.code === currency)?.symbol || '€'}
-              <ChevronDown size={12} />
-            </button>
-            {showCurrencyMenu && (
-              <div className="currency-menu" style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '4px',
-                background: '#1a1a24',
-                borderRadius: '8px',
-                padding: '4px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                zIndex: 100,
-                minWidth: '70px'
-              }}>
-                {CURRENCIES.map(curr => (
-                  <button
-                    key={curr.code}
-                    onClick={() => { setCurrency(curr.code); setShowCurrencyMenu(false); }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      background: currency === curr.code ? 'rgba(108, 99, 255, 0.2)' : 'transparent',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: currency === curr.code ? '#6C63FF' : '#a0a4ae',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    {curr.symbol} {curr.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Language selector */}
-          <div className="lang-selector">
-            <button 
-              className="lang-btn"
-              onClick={() => { setShowLangMenu(!showLangMenu); setShowCurrencyMenu(false); }}
-            >
-              <span className="lang-full">{currentLang.label}</span>
-              <span className="lang-short">{locale.toUpperCase()}</span>
-              <ChevronDown size={14} />
-            </button>
-            {showLangMenu && (
-              <div className="lang-menu">
-                {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.code}
-                    className={`lang-option ${lang.code === locale ? 'active' : ''}`}
-                    onClick={() => { changeLanguage(lang.code); setShowLangMenu(false); }}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
           <button className="nav-pricing" onClick={() => navigate('/pricing')}>
             {t('pricingLink')}
           </button>
@@ -367,7 +280,6 @@ const LandingPage = () => {
             className="nav-pricing"
             onClick={() => navigate('/business')}
             data-testid="nav-business-link"
-            style={{ marginLeft: 0 }}
           >
             {locale === 'fr' ? 'Entreprises' :
              locale === 'de' ? 'Unternehmen' :
@@ -846,12 +758,82 @@ const LandingPage = () => {
               KOLO<span className="logo-dot"></span>
             </a>
             <p className="footer-copy">© 2026 KOLO. {t('footerRights')}</p>
-            <button 
-              onClick={() => setShowLegalModal(true)}
-              className="legal-notice-btn"
-            >
-              {lt.legalNotice}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* Language selector — moved here from the nav for a cleaner top */}
+              <div className="lang-selector" style={{ position: 'relative' }}>
+                <button
+                  className="lang-btn"
+                  onClick={() => { setShowLangMenu(!showLangMenu); setShowCurrencyMenu(false); }}
+                  data-testid="footer-lang-btn"
+                >
+                  <span className="lang-full">{currentLang.label}</span>
+                  <span className="lang-short">{locale.toUpperCase()}</span>
+                  <ChevronDown size={14} />
+                </button>
+                {showLangMenu && (
+                  <div className="lang-menu" style={{ bottom: '100%', top: 'auto', marginBottom: '6px' }}>
+                    {LANGUAGES.map(lang => (
+                      <button
+                        key={lang.code}
+                        className={`lang-option ${lang.code === locale ? 'active' : ''}`}
+                        onClick={() => { changeLanguage(lang.code); setShowLangMenu(false); }}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Currency selector — moved here from the nav */}
+              <div className="currency-selector" style={{ position: 'relative' }}>
+                <button
+                  className="currency-btn"
+                  onClick={() => { setShowCurrencyMenu(!showCurrencyMenu); setShowLangMenu(false); }}
+                  data-testid="footer-currency-btn"
+                  style={{
+                    background: 'none', border: 'none',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontSize: '13px', fontWeight: '500',
+                    cursor: 'pointer', padding: '4px 8px',
+                    borderRadius: '6px', display: 'flex',
+                    alignItems: 'center', gap: '4px',
+                  }}
+                >
+                  {CURRENCIES.find(c => c.code === currency)?.symbol || '€'}
+                  <ChevronDown size={12} />
+                </button>
+                {showCurrencyMenu && (
+                  <div className="currency-menu" style={{
+                    position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px',
+                    background: '#1a1a24', borderRadius: '8px', padding: '4px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)', zIndex: 100, minWidth: '90px',
+                  }}>
+                    {CURRENCIES.map(curr => (
+                      <button
+                        key={curr.code}
+                        onClick={() => { setCurrency(curr.code); setShowCurrencyMenu(false); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '8px 12px',
+                          background: currency === curr.code ? 'rgba(108, 99, 255, 0.2)' : 'transparent',
+                          border: 'none', borderRadius: '6px',
+                          color: currency === curr.code ? '#6C63FF' : '#a0a4ae',
+                          fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {curr.symbol} {curr.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowLegalModal(true)}
+                className="legal-notice-btn"
+              >
+                {lt.legalNotice}
+              </button>
+            </div>
           </div>
         </div>
       </footer>

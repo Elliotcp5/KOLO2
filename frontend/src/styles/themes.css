@@ -274,7 +274,8 @@ textarea::placeholder {
   height: 6px;
   border-radius: 50%;
   background: var(--grad);
-  margin-bottom: 8px;
+  align-self: flex-end;
+  margin-bottom: 0.18em;
 }
 
 .profile-btn {
