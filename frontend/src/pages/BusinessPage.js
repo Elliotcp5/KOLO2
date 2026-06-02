@@ -12,20 +12,24 @@ const TEXT = {
     eyebrow: 'KOLO pour les réseaux',
     heroTitleStart: "L'assistant IA quotidien",
     heroTitleGrad: 'pour votre réseau immobilier.',
-    heroSub: 'Modulaire, sécurisé, à votre image. Pensé pour les grands réseaux d\'agents.',
+    heroSub: "Plus de ventes pour vos agents. La solution la plus simple et la plus compétitive du marché.",
     heroCTA: 'Demander une offre',
 
-    sec1TitleStart: 'Modulaire.',
-    sec1TitleGrad: 'À votre image.',
-    sec1Body: 'Activez uniquement ce dont vos agents ont besoin. KOLO devient votre outil interne, à votre nom, à vos couleurs.',
+    sec1TitleStart: 'Plus de ventes.',
+    sec1TitleGrad: 'Mécaniquement.',
+    sec1Body: "Chaque agent suit le bon prospect, au bon moment, avec le bon message. Un agent qui n'oublie plus une relance signe en moyenne 2 à 3 ventes de plus par mois. Multipliez par tous vos agents.",
 
-    sec2TitleStart: 'Une vision réseau,',
-    sec2TitleGrad: 'sans compromis sur la confidentialité.',
-    sec2Body: 'Vos administrateurs voient l\'ensemble. Vos agents ne voient que leurs prospects. Les extractions sont sécurisées et tracées.',
+    sec2TitleStart: 'Le réseau qu\'ils',
+    sec2TitleGrad: 'veulent rejoindre.',
+    sec2Body: "Offrez à vos agents un outil moderne, mobile, qui leur simplifie vraiment la vie. Un argument différenciant pour attirer les meilleurs profils et fidéliser ceux qui font tourner votre réseau.",
 
-    sec3TitleStart: 'Vos données restent',
-    sec3TitleGrad: 'en France.',
-    sec3Body: 'Cloud souverain européen. Chiffrement de bout en bout. Conformité RGPD intégrale.',
+    sec3TitleStart: 'L\'offre la plus compétitive',
+    sec3TitleGrad: 'et la plus rapide à déployer.',
+    sec3Body: "Tarif unique négocié pour votre réseau, sans engagement long, sans coût caché. Déploiement en quelques jours, formation des agents en 15 minutes. Vous activez quand vous voulez.",
+
+    sec4TitleStart: 'Sécurisé,',
+    sec4TitleGrad: 'souverain, RGPD.',
+    sec4Body: "Cloud souverain européen, chiffrement de bout en bout, conformité RGPD intégrale. Vos données restent en France. DPO disponible.",
 
     ctaTitleStart: 'Parlons de',
     ctaTitleGrad: 'votre réseau.',
@@ -52,20 +56,24 @@ const TEXT = {
     eyebrow: 'KOLO for networks',
     heroTitleStart: 'The daily AI assistant',
     heroTitleGrad: 'for your real estate network.',
-    heroSub: 'Modular, secure, in your image. Designed for large agent networks.',
+    heroSub: "More sales for your agents. The simplest and most competitive solution on the market.",
     heroCTA: 'Request an offer',
 
-    sec1TitleStart: 'Modular.',
-    sec1TitleGrad: 'In your image.',
-    sec1Body: 'Enable only what your agents need. KOLO becomes your internal tool — your name, your colors.',
+    sec1TitleStart: 'More sales.',
+    sec1TitleGrad: 'Mechanically.',
+    sec1Body: "Each agent follows the right prospect, at the right moment, with the right message. An agent who never forgets a follow-up closes on average 2-3 more deals per month. Multiply that by all your agents.",
 
-    sec2TitleStart: 'A network-wide view,',
-    sec2TitleGrad: 'without compromising privacy.',
-    sec2Body: 'Your administrators see the whole picture. Your agents only see their own prospects. Exports are secure and audited.',
+    sec2TitleStart: 'The network they',
+    sec2TitleGrad: 'want to join.',
+    sec2Body: "Give your agents a modern, mobile tool that actually makes their life easier. A real differentiator to attract top talent and retain those who drive your network.",
 
-    sec3TitleStart: 'Your data stays',
-    sec3TitleGrad: 'in France.',
-    sec3Body: 'Sovereign European cloud. End-to-end encryption. Full GDPR compliance.',
+    sec3TitleStart: 'The most competitive offer',
+    sec3TitleGrad: 'and the fastest to deploy.',
+    sec3Body: "Single negotiated rate for your network, no long-term commitment, no hidden costs. Deployed in a few days, agents trained in 15 minutes. Activate whenever you want.",
+
+    sec4TitleStart: 'Secure,',
+    sec4TitleGrad: 'sovereign, GDPR.',
+    sec4Body: "Sovereign European cloud, end-to-end encryption, full GDPR compliance. Your data stays in France. DPO available.",
 
     ctaTitleStart: 'Let\'s talk about',
     ctaTitleGrad: 'your network.',
@@ -167,11 +175,19 @@ const BusinessPage = () => {
         </div>
       </section>
 
-      {/* SECTION 3 — Security */}
+      {/* SECTION 3 — Competitive pricing + easy onboarding */}
       <section className="biz-section">
         <div className="biz-container biz-section-inner">
           <TwoLineTitle start={t.sec3TitleStart} grad={t.sec3TitleGrad} />
           <p className="biz-big-body">{t.sec3Body}</p>
+        </div>
+      </section>
+
+      {/* SECTION 4 — Security (condensed) */}
+      <section className="biz-section biz-section-dark">
+        <div className="biz-container biz-section-inner">
+          <TwoLineTitle start={t.sec4TitleStart} grad={t.sec4TitleGrad} />
+          <p className="biz-big-body">{t.sec4Body}</p>
         </div>
       </section>
 
