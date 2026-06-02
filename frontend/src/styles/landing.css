@@ -300,6 +300,155 @@
   font-weight: 400;
 }
 
+/* ===== SANS / AVEC COMPARISON (leedflow-style) ===== */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 980px;
+  margin: 56px auto 0;
+}
+.compare-col {
+  border-radius: 24px;
+  padding: 36px 32px;
+  position: relative;
+}
+.compare-bad {
+  background: #FBF6F4;
+  border: 1px solid rgba(217, 90, 76, 0.10);
+}
+.compare-good {
+  background: linear-gradient(160deg, rgba(0, 74, 173, 0.06) 0%, rgba(203, 108, 230, 0.06) 100%);
+  border: 1px solid rgba(91, 91, 214, 0.18);
+}
+.compare-label {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  color: #B85447;
+  background: rgba(217, 90, 76, 0.08);
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 24px;
+}
+.compare-label-good {
+  color: var(--blue);
+  background: rgba(91, 91, 214, 0.10);
+}
+.compare-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.compare-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.compare-bad li svg { color: #D95A4C; flex-shrink: 0; margin-top: 2px; }
+.compare-good li svg { color: #16a34a; flex-shrink: 0; margin-top: 2px; }
+
+/* ===== STEPS GRID (leedflow-style 3-step "How it works") ===== */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  margin-top: 48px;
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.step {
+  text-align: left;
+}
+.step-num {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+  margin-bottom: 16px;
+  letter-spacing: 0.04em;
+}
+.step-title {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.step-body {
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-mid);
+}
+
+/* ===== TEAM CALLOUT (B2B link below pricing, leedflow-style) ===== */
+.team-callout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  max-width: 980px;
+  margin: 64px auto 0;
+  padding: 28px 36px;
+  background: linear-gradient(135deg, rgba(0, 74, 173, 0.04) 0%, rgba(203, 108, 230, 0.04) 100%);
+  border: 1px solid rgba(91, 91, 214, 0.14);
+  border-radius: 20px;
+  flex-wrap: wrap;
+}
+.team-callout-eyebrow {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.team-callout-body {
+  font-size: 17px;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.team-callout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: none;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+.team-callout-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(14, 11, 30, 0.18);
+}
+
+@media (max-width: 768px) {
+  .compare-grid { grid-template-columns: 1fr; gap: 16px; }
+  .compare-col { padding: 28px 24px; }
+  .steps-grid { grid-template-columns: 1fr; gap: 32px; }
+  .team-callout { flex-direction: column; align-items: flex-start; padding: 24px; gap: 20px; }
+}
+
 .hero-form {
   display: flex;
   gap: 12px;

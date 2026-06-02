@@ -370,6 +370,171 @@ const LandingPage = () => {
 
       {/* PROBLEM SECTION REMOVED — leedflow-style: less is more */}
 
+      {/* SANS / AVEC — comparison block (leedflow-style) */}
+      <section className="section">
+        <div className="container">
+          <div className="centered reveal">
+            <div className="section-tag">
+              {locale === 'fr' ? 'Pourquoi KOLO ?' :
+               locale === 'de' ? 'Warum KOLO?' :
+               locale === 'it' ? 'Perché KOLO?' :
+               'Why KOLO?'}
+            </div>
+            <h2 className="section-title">
+              {locale === 'fr' ? 'Combien de ventes avez-vous perdues sans le savoir ?' :
+               locale === 'de' ? 'Wie viele Verkäufe haben Sie verloren, ohne es zu wissen?' :
+               locale === 'it' ? 'Quante vendite hai perso senza saperlo?' :
+               'How many deals have you lost without knowing it?'}
+            </h2>
+          </div>
+
+          <div className="compare-grid">
+            <div className="compare-col compare-bad">
+              <div className="compare-label">
+                {locale === 'fr' ? 'Sans KOLO…' :
+                 locale === 'de' ? 'Ohne KOLO…' :
+                 locale === 'it' ? 'Senza KOLO…' :
+                 'Without KOLO…'}
+              </div>
+              <ul className="compare-list">
+                <li><X size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Des notes prises à la va-vite qu\'on ne relit jamais.' :
+                   locale === 'de' ? 'Schnell hingeworfene Notizen, die nie wieder gelesen werden.' :
+                   locale === 'it' ? 'Note prese di corsa che non si rileggono mai.' :
+                   'Hasty notes that you never read again.'}
+                </span></li>
+                <li><X size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Des clients qui attendent un rappel qui ne vient pas.' :
+                   locale === 'de' ? 'Kunden, die auf einen Rückruf warten, der nie kommt.' :
+                   locale === 'it' ? 'Clienti che aspettano una richiamata che non arriva.' :
+                   'Clients waiting for a call back that never comes.'}
+                </span></li>
+                <li><X size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Des relances oubliées.' :
+                   locale === 'de' ? 'Vergessene Nachfassaktionen.' :
+                   locale === 'it' ? 'Follow-up dimenticati.' :
+                   'Forgotten follow-ups.'}
+                </span></li>
+                <li><X size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Des milliers d\'euros de chiffre d\'affaires perdus.' :
+                   locale === 'de' ? 'Tausende Euro an verlorenen Umsätzen.' :
+                   locale === 'it' ? 'Migliaia di euro di fatturato persi.' :
+                   'Thousands of euros in lost revenue.'}
+                </span></li>
+              </ul>
+            </div>
+
+            <div className="compare-col compare-good">
+              <div className="compare-label compare-label-good">
+                {locale === 'fr' ? 'Avec KOLO' :
+                 locale === 'de' ? 'Mit KOLO' :
+                 locale === 'it' ? 'Con KOLO' :
+                 'With KOLO'}
+              </div>
+              <ul className="compare-list">
+                <li><Check size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Chaque prospect est suivi et résumé automatiquement.' :
+                   locale === 'de' ? 'Jeder Interessent wird automatisch verfolgt und zusammengefasst.' :
+                   locale === 'it' ? 'Ogni potenziale cliente è seguito e riassunto automaticamente.' :
+                   'Every prospect is tracked and summarized automatically.'}
+                </span></li>
+                <li><Check size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Vos relances ajoutées à votre agenda.' :
+                   locale === 'de' ? 'Ihre Erinnerungen werden Ihrem Kalender hinzugefügt.' :
+                   locale === 'it' ? 'I tuoi follow-up aggiunti al tuo calendario.' :
+                   'Your follow-ups added to your calendar.'}
+                </span></li>
+                <li><Check size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Plus aucun oubli.' :
+                   locale === 'de' ? 'Keine Versäumnisse mehr.' :
+                   locale === 'it' ? 'Niente più dimenticanze.' :
+                   'No more forgotten leads.'}
+                </span></li>
+                <li><Check size={18} strokeWidth={2.4} /><span>
+                  {locale === 'fr' ? 'Plus aucune opportunité qui vous file entre les doigts.' :
+                   locale === 'de' ? 'Keine Chance entgleitet Ihnen mehr.' :
+                   locale === 'it' ? 'Nessuna opportunità ti sfugge più di mano.' :
+                   'No more opportunities slipping through your fingers.'}
+                </span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="centered" style={{ marginTop: '48px', marginBottom: 0 }}>
+            <button className="hero-btn-main" onClick={() => navigate('/register')} data-testid="why-cta-btn">
+              {t('tryForFree')} <ArrowRight size={18} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS — 3 steps (leedflow-style) */}
+      <section className="section section-alt">
+        <div className="container">
+          <div className="centered reveal">
+            <div className="section-tag">
+              {locale === 'fr' ? 'Comment ça marche ?' :
+               locale === 'de' ? 'Wie funktioniert es?' :
+               locale === 'it' ? 'Come funziona?' :
+               'How it works'}
+            </div>
+            <h2 className="section-title">
+              {locale === 'fr' ? 'Activez KOLO dès maintenant.' :
+               locale === 'de' ? 'Aktivieren Sie KOLO jetzt.' :
+               locale === 'it' ? 'Attiva KOLO subito.' :
+               'Activate KOLO right now.'}
+            </h2>
+          </div>
+          <div className="steps-grid">
+            <div className="step">
+              <div className="step-num">01.</div>
+              <div className="step-title">
+                {locale === 'fr' ? 'Créez votre compte' :
+                 locale === 'de' ? 'Erstellen Sie Ihr Konto' :
+                 locale === 'it' ? 'Crea il tuo account' :
+                 'Create your account'}
+              </div>
+              <div className="step-body">
+                {locale === 'fr' ? 'Inscription en 2 minutes. 14 jours d\'essai gratuits, sans carte.' :
+                 locale === 'de' ? 'Anmeldung in 2 Minuten. 14 Tage kostenlose Testversion, ohne Kreditkarte.' :
+                 locale === 'it' ? 'Registrazione in 2 minuti. 14 giorni di prova gratuita, senza carta.' :
+                 'Sign up in 2 minutes. 14-day free trial, no credit card.'}
+              </div>
+            </div>
+            <div className="step">
+              <div className="step-num">02.</div>
+              <div className="step-title">
+                {locale === 'fr' ? 'Ajoutez vos prospects' :
+                 locale === 'de' ? 'Fügen Sie Ihre Interessenten hinzu' :
+                 locale === 'it' ? 'Aggiungi i tuoi potenziali clienti' :
+                 'Add your prospects'}
+              </div>
+              <div className="step-body">
+                {locale === 'fr' ? 'Quelques infos par client. KOLO comprend leur situation et leur projet.' :
+                 locale === 'de' ? 'Ein paar Infos pro Kunde. KOLO versteht ihre Situation und ihr Projekt.' :
+                 locale === 'it' ? 'Poche informazioni per cliente. KOLO comprende la loro situazione e il loro progetto.' :
+                 'A few details per client. KOLO understands their situation and their project.'}
+              </div>
+            </div>
+            <div className="step">
+              <div className="step-num">03.</div>
+              <div className="step-title">
+                {locale === 'fr' ? 'KOLO s\'occupe du reste' :
+                 locale === 'de' ? 'KOLO kümmert sich um den Rest' :
+                 locale === 'it' ? 'KOLO si occupa del resto' :
+                 'KOLO handles the rest'}
+              </div>
+              <div className="step-body">
+                {locale === 'fr' ? 'Relances suggérées, messages prêts, priorités du jour. Comme un assistant qui ne dort jamais.' :
+                 locale === 'de' ? 'Vorgeschlagene Erinnerungen, fertige Nachrichten, tägliche Prioritäten. Wie ein Assistent, der nie schläft.' :
+                 locale === 'it' ? 'Follow-up suggeriti, messaggi pronti, priorità del giorno. Come un assistente che non dorme mai.' :
+                 'Suggested follow-ups, ready-made messages, daily priorities. Like an assistant who never sleeps.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURES SECTION */}
       <section className="section section-alt" id="features">
         <div className="container">
@@ -516,6 +681,35 @@ const LandingPage = () => {
           <p className="pricing-note reveal" style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
             {t('pricingMicro')}
           </p>
+
+          {/* Team callout — Leedflow-style, links to /business */}
+          <div className="team-callout reveal">
+            <div className="team-callout-text">
+              <div className="team-callout-eyebrow">
+                {locale === 'fr' ? 'Vous gérez un réseau ?' :
+                 locale === 'de' ? 'Sie verwalten ein Netzwerk?' :
+                 locale === 'it' ? 'Gestisci una rete?' :
+                 'Managing a network?'}
+              </div>
+              <p className="team-callout-body">
+                {locale === 'fr' ? 'Pilotez la performance de vos équipes avec KOLO pour les réseaux.' :
+                 locale === 'de' ? 'Verwalten Sie die Leistung Ihrer Teams mit KOLO für Netzwerke.' :
+                 locale === 'it' ? 'Gestisci le performance dei tuoi team con KOLO per le reti.' :
+                 'Drive your teams\' performance with KOLO for networks.'}
+              </p>
+            </div>
+            <button
+              className="team-callout-btn"
+              onClick={() => navigate('/business')}
+              data-testid="pricing-team-callout-btn"
+            >
+              {locale === 'fr' ? 'Demander une offre' :
+               locale === 'de' ? 'Angebot anfordern' :
+               locale === 'it' ? 'Richiedi un\'offerta' :
+               'Request an offer'}
+              <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </section>
 

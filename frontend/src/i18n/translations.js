@@ -9,9 +9,9 @@ const translations = {
     
     // Landing Hero
     heroEyebrow: "AI · Mobile · From €9.99/month",
-    heroTitle1: "Follow every client.",
-    heroTitle2: "Close more deals.",
-    heroSubtitle: "KOLO replaces your notes and Excel spreadsheets. AI tracks your prospects, schedules follow-ups, and tells you what to do next.",
+    heroTitle1: "Never lose a client",
+    heroTitle2: "to a forgotten follow-up.",
+    heroSubtitle: "KOLO tracks all your prospects, schedules your follow-ups and tells you who to call, when and why. Automatically.",
     emailPlaceholder: "your@email.com",
     oneMonthFree: "14-day free trial",
     noCreditCard: "No credit card",
@@ -394,9 +394,9 @@ const translations = {
     
     // Landing Hero
     heroEyebrow: "IA · Mobile · À partir de 9,99€/mois",
-    heroTitle1: "Suivez chaque client.",
-    heroTitle2: "Signez plus de deals.",
-    heroSubtitle: "KOLO remplace vos notes et vos tableurs Excel. L'IA suit vos prospects, planifie vos relances, et vous dit quoi faire ensuite.",
+    heroTitle1: "Ne perdez plus aucun client",
+    heroTitle2: "à cause d'un oubli.",
+    heroSubtitle: "KOLO suit tous vos prospects, planifie vos relances et vous dit qui rappeler, quand et pourquoi. Automatiquement.",
     emailPlaceholder: "votre@email.com",
     oneMonthFree: "14 jours d'essai gratuit",
     noCreditCard: "Sans carte bancaire",
@@ -779,9 +779,9 @@ const translations = {
     
     // Landing Hero
     heroEyebrow: "KI · Mobil · Ab 9,99€/Monat",
-    heroTitle1: "Verfolgen Sie jeden Kunden.",
-    heroTitle2: "Schließen Sie mehr Deals.",
-    heroSubtitle: "KOLO ersetzt Ihre Notizen und Excel-Tabellen. KI verfolgt Ihre Interessenten, plant Nachfassaktionen und sagt Ihnen, was als Nächstes zu tun ist.",
+    heroTitle1: "Verlieren Sie keinen Kunden mehr",
+    heroTitle2: "wegen einer vergessenen Nachverfolgung.",
+    heroSubtitle: "KOLO verfolgt alle Ihre Interessenten, plant Ihre Nachfassaktionen und sagt Ihnen, wen Sie wann und warum anrufen sollen. Automatisch.",
     emailPlaceholder: "ihre@email.com",
     oneMonthFree: "14 Tage gratis testen",
     noCreditCard: "Keine Kreditkarte",
@@ -1164,9 +1164,9 @@ const translations = {
     
     // Landing Hero
     heroEyebrow: "IA · Mobile · A partire da €9,99/mese",
-    heroTitle1: "Segui ogni cliente.",
-    heroTitle2: "Chiudi più affari.",
-    heroSubtitle: "KOLO sostituisce i tuoi appunti e i fogli Excel. L'IA traccia i tuoi potenziali clienti, pianifica i follow-up e ti dice cosa fare dopo.",
+    heroTitle1: "Non perdere più nessun cliente",
+    heroTitle2: "per un follow-up dimenticato.",
+    heroSubtitle: "KOLO traccia tutti i tuoi potenziali clienti, pianifica i tuoi follow-up e ti dice chi richiamare, quando e perché. Automaticamente.",
     emailPlaceholder: "tua@email.com",
     oneMonthFree: "14 giorni di prova gratis",
     noCreditCard: "Nessuna carta di credito",
