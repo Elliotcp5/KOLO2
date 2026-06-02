@@ -276,7 +276,7 @@ const LandingPage = () => {
             {t('pricingLink')}
           </button>
           <button
-            className="nav-pricing"
+            className="nav-pricing nav-business"
             onClick={() => navigate('/business')}
             data-testid="nav-business-link"
           >

@@ -2262,6 +2262,14 @@
   .nav-pricing {
     display: none;
   }
+
+  /* Keep "Entreprises" visible on mobile — it's the entry point to /business */
+  .nav-business {
+    display: inline-flex !important;
+    padding: 5px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
   
   .price-amount {
     font-size: 42px;
