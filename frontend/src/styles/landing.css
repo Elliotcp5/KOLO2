@@ -2159,9 +2159,7 @@
   }
   
   .nav-cta {
-    padding: 6px 10px;
-    font-size: 10px;
-    white-space: nowrap;
+    display: none !important;
   }
   
   .nav-cta .cta-full {
