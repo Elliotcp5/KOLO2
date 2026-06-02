@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { useLocale } from '../context/LocaleContext';
 import '../styles/business.css';
@@ -106,10 +106,33 @@ const BusinessPage = () => {
   });
   const [status, setStatus] = useState('idle');
 
+  // Custom dropdown state (replaces broken native <select>)
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const sizeRef = useRef(null);
+
+  useEffect(() => {
+    if (!sizeOpen) return;
+    const onDocClick = (e) => {
+      if (sizeRef.current && !sizeRef.current.contains(e.target)) setSizeOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setSizeOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [sizeOpen]);
+
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (!form.size) {
+      setStatus('error');
+      setSizeOpen(true);
+      return;
+    }
     setStatus('submitting');
     try {
       const res = await fetch(`${API_URL}/api/enterprise/demo-request`, {
@@ -219,12 +242,40 @@ const BusinessPage = () => {
               <div className="biz-form-row">
                 <label><span>{t.formCompany}</span>
                   <input name="company" value={form.company} onChange={onChange} required data-testid="biz-form-company" /></label>
-                <div className="biz-form-field">
-                  <label htmlFor="biz-size-select">{t.formSize}</label>
-                  <select id="biz-size-select" name="size" value={form.size} onChange={onChange} required data-testid="biz-form-size">
-                    <option value="">{t.formSizePh}</option>
-                    {t.sizes.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                <div className="biz-form-field" ref={sizeRef}>
+                  <label htmlFor="biz-size-trigger">{t.formSize}</label>
+                  <button
+                    type="button"
+                    id="biz-size-trigger"
+                    className={`biz-select-trigger ${sizeOpen ? 'open' : ''} ${form.size ? 'has-value' : ''}`}
+                    onClick={() => setSizeOpen(o => !o)}
+                    aria-haspopup="listbox"
+                    aria-expanded={sizeOpen}
+                    data-testid="biz-form-size"
+                  >
+                    <span>{form.size || t.formSizePh}</span>
+                    <ChevronDown size={18} strokeWidth={2} />
+                  </button>
+                  {sizeOpen && (
+                    <ul className="biz-select-menu" role="listbox" data-testid="biz-form-size-menu">
+                      {t.sizes.map(s => (
+                        <li
+                          key={s}
+                          role="option"
+                          aria-selected={form.size === s}
+                          className={form.size === s ? 'selected' : ''}
+                          onClick={() => {
+                            setForm({ ...form, size: s });
+                            setSizeOpen(false);
+                          }}
+                          data-testid={`biz-form-size-opt-${s}`}
+                        >
+                          {s}
+                          {form.size === s && <Check size={16} strokeWidth={2.4} />}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
               <label className="biz-form-full"><span>{t.formMessage}</span>

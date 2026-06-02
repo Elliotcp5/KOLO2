@@ -268,6 +268,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
 }
 .biz-form-field label {
   font-size: 12px;
@@ -276,6 +277,86 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+/* Custom dropdown trigger button (replaces native <select>) */
+.biz-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--biz-ink-soft);
+  background: #fff;
+  border: 1px solid var(--biz-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+.biz-select-trigger.has-value {
+  color: var(--biz-ink);
+}
+.biz-select-trigger:hover {
+  border-color: var(--biz-ink-soft);
+}
+.biz-select-trigger:focus,
+.biz-select-trigger.open {
+  border-color: var(--biz-ink);
+}
+.biz-select-trigger svg {
+  color: var(--biz-ink-mid);
+  transition: transform 0.18s;
+  flex-shrink: 0;
+}
+.biz-select-trigger.open svg {
+  transform: rotate(180deg);
+}
+
+/* Dropdown menu */
+.biz-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--biz-line);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(14, 11, 30, 0.12);
+  z-index: 100;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.biz-select-menu li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--biz-ink);
+  cursor: pointer;
+  border-radius: 8px;
+  user-select: none;
+  transition: background-color 0.12s;
+}
+.biz-select-menu li:hover {
+  background: rgba(91, 91, 214, 0.06);
+}
+.biz-select-menu li.selected {
+  background: rgba(91, 91, 214, 0.10);
+  color: var(--biz-accent);
+  font-weight: 600;
+}
+.biz-select-menu li.selected svg {
+  color: var(--biz-accent);
 }
 .biz-form-full { width: 100%; }
 .biz-form input,
