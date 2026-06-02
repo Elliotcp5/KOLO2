@@ -266,13 +266,13 @@
 
 .hero h1 {
   font-family: var(--font-heading);
-  font-size: 64px;
+  font-size: 60px;
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--ink);
   margin-bottom: 24px;
-  max-width: 880px;
+  max-width: 1040px;
   margin-left: auto;
   margin-right: auto;
 }
