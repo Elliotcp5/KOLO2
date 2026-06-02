@@ -1209,8 +1209,9 @@ button.payment-method-card {
   transform: translateY(0);
 }
 
-/* Section Title */
-.section-title {
+/* Section Title - in-app only (scoped to mobile-frame so it doesn't
+   clobber the landing's .section-title which is large and lowercase) */
+.mobile-frame .section-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);

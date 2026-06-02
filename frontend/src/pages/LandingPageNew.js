@@ -453,7 +453,7 @@ const LandingPage = () => {
           <div className="centered reveal">
             <div className="section-tag">{t('theProblem')}</div>
             <h2 className="section-title">
-              {t('problemTitle1')}<br/><span className="grad-text">{t('problemTitle2')}</span>
+              {t('problemTitle1')} {t('problemTitle2')}
             </h2>
             <p className="section-body">
               {t('problemDesc')}
@@ -488,7 +488,7 @@ const LandingPage = () => {
           <div className="centered reveal">
             <div className="section-tag">{t('theSolution')}</div>
             <h2 className="section-title">
-              {t('solutionTitle1')} <span className="grad-text">{t('solutionTitle2')}</span>
+              {t('solutionTitle1')} {t('solutionTitle2')}
             </h2>
           </div>
 
@@ -610,7 +610,7 @@ const LandingPage = () => {
           <div className="centered reveal">
             <div className="section-tag">{t('pricingTag')}</div>
             <h2 className="section-title">
-              {t('pricingTitle1Line')} <span className="grad-text">{t('pricingTitle2Line')}</span>
+              {t('pricingTitle1Line')} {t('pricingTitle2Line')}
             </h2>
             <p className="section-body">{t('pricingSubtitle')}</p>
           </div>
@@ -709,7 +709,7 @@ const LandingPage = () => {
       <section className="cta-final">
         <div className="container">
           <h2 className="cta-title reveal">
-            {t('finalCtaTitle1')}<br/><span className="grad-text">{t('finalCtaTitle2')}</span>
+            {t('finalCtaTitle1')} <span className="grad-text">{t('finalCtaTitle2')}</span>
           </h2>
           <p className="cta-sub reveal">{t('finalCtaSub')}</p>
           <div className="reveal">
