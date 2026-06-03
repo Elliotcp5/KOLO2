@@ -82,35 +82,39 @@
   flex-direction: column;
 }
 
-/* Dynamic Island */
+/* Dynamic Island — now positioned inside the status bar flex */
 .kolo-iphone-island {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 30px;
+  width: 90px;
+  height: 28px;
   background: #000;
   border-radius: 22px;
-  z-index: 10;
+  flex-shrink: 0;
 }
 
-/* Status bar */
+/* Status bar — flex with island centered */
 .kolo-iphone-statusbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 28px 10px;
+  padding: 8px 22px 6px;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  position: relative;
+  z-index: 5;
+}
+.kolo-iphone-time {
   font-size: 13px;
   font-weight: 700;
   color: #0B0B0F;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  min-width: 50px;
 }
 .kolo-iphone-statusbar-right {
   display: flex;
   align-items: center;
   gap: 5px;
   color: #0B0B0F;
+  min-width: 50px;
+  justify-content: flex-end;
 }
 
 /* App content */
@@ -192,12 +196,6 @@
 }
 .kolo-iphone-stat-active .kolo-iphone-stat-num,
 .kolo-iphone-stat-active .kolo-iphone-stat-label { color: #fff; }
-.kolo-iphone-stat-num {
-  font-size: 18px;
-  font-weight: 800;
-  color: #0B0B0F;
-  letter-spacing: -0.02em;
-}
 .kolo-iphone-stat-label {
   font-size: 9px;
   color: #6B7280;
@@ -386,6 +384,66 @@
 @keyframes kolo-iphone-fadein {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animated demo cursor */
+.kolo-iphone-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+  transition: left 800ms cubic-bezier(0.22, 1, 0.36, 1), top 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kolo-iphone-cursor-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.5);
+  animation: kolo-cursor-ripple 1s ease-out 600ms;
+  pointer-events: none;
+}
+@keyframes kolo-cursor-ripple {
+  0%   { transform: scale(0); opacity: 0.6; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* Toast notification (live update inside the app) */
+.kolo-iphone-toast {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0B0B0F;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: kolo-toast-pop 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  z-index: 40;
+}
+.kolo-iphone-toast svg { color: #10B981; }
+@keyframes kolo-toast-pop {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.9); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* Number pulse when stats change */
+.kolo-iphone-stat-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0B0B0F;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Hide chips on small screens */
