@@ -1,63 +1,76 @@
 # KOLO – Product Requirements (PRD)
 
 ## Vision
-SaaS pour agents immobiliers avec CRM + IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue (fr/en/de/it). Pivot B2B en cours (offre marque blanche pour réseaux d'agences).
+SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue (fr/en/de/it). Pivot B2B / marque blanche pour réseaux d'agences.
 
 ## Architecture
 - Frontend: React + Capacitor (iOS native)
 - Backend: FastAPI monolithique (`/app/backend/server.py`) + MongoDB
 - Paiements: Stripe (web) + Apple StoreKit 2 (iOS)
-- Production: https://trykolo.io
-- Preview: https://responsive-kolo.preview.emergentagent.com
+- Production: https://trykolo.io · Preview: https://responsive-kolo.preview.emergentagent.com
 
-## Auth providers (Phase 1 — Juin 2026)
-- Email + mot de passe (existant)
-- Google Sign-In via Emergent OAuth (NEW) — bouton sur /login et /register
-- Apple Sign-In Web : placeholder (bouton désactivé "Bientôt disponible") — placeholders d'env en place dans `backend/.env` (`APPLE_SIGNIN_CLIENT_ID`, `_TEAM_ID`, `_KEY_ID`, `_PRIVATE_KEY`, `_ENABLED=false`)
+## Auth providers
+- Email + password (existant)
+- Google Sign-In (Emergent OAuth) — sur `/login` et `/register`
+- Apple Sign-In Web — bouton placeholder "Bientôt disponible"
 
-## Super Admin (Phase 1 — Juin 2026)
-- Allowlist hardcoded dans `server.py → KOLO_SUPER_ADMIN_EMAILS` (actuellement `elliot.cohenpressard@trykolo.io`)
-- Route React `/kolo-admin` protégée par `<SuperAdminRoute>`
-- Endpoints API session-authentifiés:
-  - `GET /api/admin/check` → `{is_super_admin, authenticated, email}`
-  - `GET /api/admin/stats` → KPIs (users, leads, prospects, signups 7j)
-  - `GET /api/admin/leads?status=...` → liste des demandes B2B
-  - `PATCH /api/admin/leads/{lead_id}` → update status / notes admin
-  - `GET /api/admin/users?q=&status=` → liste paginée des comptes
-- UI : sidebar gauche style Linear (Vue d'ensemble / Leads B2B / Utilisateurs), tableau utilisateurs avec recherche, détail lead avec changement de statut.
-- AuthCallback redirige automatiquement les super admins vers `/kolo-admin` après connexion Google.
+## Espaces / Routes
+- `/` — Landing avec animation premium (mesh gradient 28s)
+- `/business` — Lead capture B2B
+- `/login`, `/register` — Auth (Google + Email + Apple soon)
+- `/app/**` — App standard (CRM agent)
+- `/kolo-admin` — **Super Admin KOLO** (allowlist email → KPIs globaux, leads B2B, gestion users)
+- `/org` — **Espace Organisation** (marque blanche multi-tenant, vue d'ensemble / équipe / KPIs / dataroom)
+- `/org/join/:token` — Acceptation d'invitation
+- `/integrations` — Branchement Twilio, WhatsApp, Google Calendar, Whisper (Outlook + Apple Calendar "soon")
 
-## Mai 2026 (rappel)
-- ✅ App publiée sur l'App Store iOS (ID `6761818371`)
-- ✅ Bug critique Stripe SDK 14.x corrigé (sub.items → sub["items"], helper period_end)
-- ✅ Self-heal Stripe ajouté dans `/api/auth/login` et `/api/auth/me`
-- ✅ Bouton "Télécharger sur l'App Store" sur landing page (fr/en/de/it)
+## Phase 1 — Super Admin + Multi-Auth (DONE — Juin 2026, 100% tested)
+- Allowlist `KOLO_SUPER_ADMIN_EMAILS` hard-coded server.py
+- 5 endpoints `/api/admin/check|stats|leads|users` + champ `is_super_admin` dans /auth/me
+- Apple Sign-In placeholders dans backend/.env
 
-## Juin 2026 (en cours / fait)
-- ✅ Refonte Landing minimaliste type Leedflow
-- ✅ Page `/business` (B2B) + collection `enterprise_leads`
-- ✅ Détection géo + auto-locale (Cloudflare + ipapi.co fallback)
-- ✅ **Phase 1 cahier des charges B2B** (testée 100% — backend 18/18, frontend 9/9) :
-  - Espace Super Admin KOLO (`/kolo-admin`)
-  - Google Sign-In (Emergent Auth) sur Login + Register
-  - Apple Sign-In Web (placeholder désactivé)
-  - Refacto `config/api.js` : preview utilise `REACT_APP_BACKEND_URL`, iOS native garde `trykolo.io`
-- 🟠 Phase 2 (À venir) : Marque blanche multi-tenant (modèles `organizations`, rôles `org_admin`/`org_agent`, scoping data, theming logo+couleur 20% modulable, dashboard manager avec KPIs et Dataroom).
-- 🟡 Phase 3 (À venir) : Intégrations complexes — sync agendas Google/Outlook/Apple, appels Twilio + transcription Whisper, WhatsApp Business bidirectionnel (clés API à fournir par utilisateur, placeholders en attendant).
-- 🟢 Phase 4 (À venir) : Animation fond premium sur Landing + refacto `server.py` modulaire.
+## Phase 2 — Marque Blanche multi-tenant (DONE — Juin 2026, 100% tested backend 24/24)
+- Collection `organizations` : {org_id, name, slug, primary_color, logo_url, owner_user_id, plan}
+- Users ont `org_id` + `org_role` ("org_admin" ou "org_agent")
+- Endpoints `/api/orgs/*`:
+  - POST /orgs (create + creator devient org_admin)
+  - GET /orgs/me, PATCH /orgs/{id}, GET /orgs/{id}/members
+  - POST /orgs/{id}/invite, POST /orgs/accept-invite/{token}, DELETE /orgs/{id}/members/{user_id}
+  - GET /orgs/{id}/kpis (par agent), POST /orgs/{id}/prospects/reassign
+  - POST/GET/DELETE /orgs/{id}/dataroom (URL-based)
+- Super Admin bypass : `is_super_admin_email()` court-circuite la check org_member
+- Frontend `/org` : sidebar Linear-like (5 onglets), modal création, edit theming live, table membres, table KPIs avec breakdown agent
 
-## Backlog technique
-- Modulariser `server.py` (5400+ lignes) en routers FastAPI dédiés (admin, payments, IAP, auth, geo).
-- Décomposer `AppShell.js`.
-- Fix warning console mineur sur table Users du Admin Dashboard.
-- Supprimer endpoint `/api/debug/sync-status` (post-stabilisation Stripe).
-- LoginPage et RegisterPage : remplacer hardcoded `https://trykolo.io` par `API_URL` pour que email/password fonctionne aussi en preview.
+## Phase 3 — Intégrations (DONE — Juin 2026, 100% tested code + 400 graceful path)
+- **Twilio Voice** — click-to-call + recording webhook → stocké dans `call_logs`
+- **OpenAI Whisper** (Emergent LLM key) — transcrit l'mp3 de Twilio (français + autres)
+- **WhatsApp Business** — send + receive (webhook handshake + signature Meta `X-Hub-Signature-256` vérifiée si `WHATSAPP_APP_SECRET` configuré)
+- **Google Calendar** — OAuth2 complet (auth-url → callback → refresh tokens stockés en DB), list + create events
+- **Outlook + Apple Calendar** — placeholders UI "Bientôt disponible"
+- `GET /api/integrations/status` — retourne {configured, missing} par service → l'UI sait quoi afficher
+- Tous les endpoints renvoient 400 explicite si la clé manque (jamais 500)
+
+## Phase 4 — Polish (DONE)
+- ✅ Animation premium subtile sur Landing : 3 radial-gradients mauve/rose/bleu, blur 40px, animation 28s `kolo-mesh-drift`, respect `prefers-reduced-motion`
+- 🟢 Refacto `server.py` (~6200 lignes) — reporté (P2 backlog, risque de régression élevé)
+
+## Mai 2026 (rappel — DONE)
+- App iOS App Store (`6761818371`), Stripe SDK 14.x fix, App Store badge sur Landing fr/en/de/it.
+
+## P2 Backlog technique
+- Modulariser `server.py` en routers (auth, orgs, integrations, payments, admin)
+- Optimiser `/api/orgs/{id}/kpis` (actuellement N+1 queries → $facet aggregation)
+- Implémenter Outlook (MS Graph) + Apple Calendar (CalDAV)
+- Notification email/Resend après invite acceptée
+- Fix wrapping `<tr>` dans tables admin (hydration warning cosmétique)
+- LoginPage/RegisterPage : passer de `https://trykolo.io` hardcodé à `API_URL` (preview ne marche qu'avec Google login)
+- Email à l'invité quand invite générée (actuellement on génère seulement un lien)
 
 ## Comptes test
 Voir `/app/memory/test_credentials.md`.
 
 ## Documents associés
-- `/app/auth_testing.md` — Playbook tests auth Google/Email + super admin
-- `/app/memory/test_credentials.md` — Credentials
+- `/app/auth_testing.md` — Playbook tests auth + seed mongosh
 - `/app/memory/CHANGELOG.md` — Historique daté
-- `/app/test_reports/iteration_26.json` — Rapport Phase 1
+- `/app/test_reports/iteration_26.json` — Phase 1 (18/18 + 9/9)
+- `/app/test_reports/iteration_27.json` — Phase 2+3+4 (24/24 + 85%)
