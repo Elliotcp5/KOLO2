@@ -539,6 +539,136 @@
 /* ==========================================================================
    Respect reduced motion
    ========================================================================== */
+
+/* ==========================================================================
+   GLASSMORPHISM MODAL (used by ProspectCommsPanel + edit prospect)
+   ========================================================================== */
+.kolo-glass-backdrop {
+  background: rgba(11, 11, 15, 0.45) !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.kolo-glass-modal {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.86) 100%) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  position: relative;
+  overflow: hidden;
+  animation: kolo-modal-pop 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kolo-glass-modal::before {
+  content: "";
+  position: absolute;
+  inset: -20% -20% auto auto;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+.kolo-glass-modal > * { position: relative; z-index: 1; }
+@keyframes kolo-modal-pop {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ==========================================================================
+   PROVIDER SWITCH (Google / Outlook) — sliding pill
+   ========================================================================== */
+.kolo-provider-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.kolo-provider-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7280;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 220ms ease;
+}
+.kolo-provider-tab.is-active { color: #0B0B0F; }
+.kolo-provider-tab .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.kolo-provider-slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+.kolo-provider-slider[data-pos="outlook"] {
+  transform: translateX(calc(100% + 0px));
+}
+
+/* ==========================================================================
+   ANIMATED TABS — used by today/all toggle in TodayTab
+   ========================================================================== */
+.kolo-tabs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 14px;
+}
+.kolo-tab {
+  position: relative;
+  z-index: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6B7280;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: color 220ms ease;
+}
+.kolo-tab.is-active { color: #FFFFFF; }
+.kolo-tab-slider {
+  position: absolute;
+  top: 4px;
+  height: calc(100% - 8px);
+  background: linear-gradient(135deg, #004AAD 0%, #CB6CE6 100%);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px -6px rgba(139, 92, 246, 0.35);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 0;
+}
+
+/* ==========================================================================
+   Respect reduced motion
+   ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   .kolo-hero-mesh::before,
   .kolo-hero-mesh::after,

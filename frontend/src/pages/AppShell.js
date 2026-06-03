@@ -1056,48 +1056,35 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
         )}
       </div>
 
-      {/* Tabs - Today / All Tasks + Add Button */}
+      {/* Tabs - Today / All Tasks + Add Button — sliding pill */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
-        <button
-          onClick={() => setViewMode('today')}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            borderRadius: '999px',
-            border: 'none',
-            background: viewMode === 'today' 
-              ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
-              : c('surface'),
-            color: viewMode === 'today' ? 'white' : c('muted'),
-            fontSize: '13px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: viewMode !== 'today' ? `inset 0 0 0 1px ${c('border')}` : 'none'
-          }}
-          data-testid="segment-today"
-        >
-          {labels.today}
-        </button>
-        <button
-          onClick={() => setViewMode('all')}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            borderRadius: '999px',
-            border: 'none',
-            background: viewMode === 'all' 
-              ? 'linear-gradient(90deg, #004AAD 0%, #CB6CE6 100%)'
-              : c('surface'),
-            color: viewMode === 'all' ? 'white' : c('muted'),
-            fontSize: '13px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: viewMode !== 'all' ? `inset 0 0 0 1px ${c('border')}` : 'none'
-          }}
-          data-testid="segment-all-tasks"
-        >
-          {labels.allMyTasks}
-        </button>
+        <div className="kolo-tabs" style={{ flex: 1, display: 'flex' }} data-testid="today-segment-tabs">
+          <button
+            onClick={() => setViewMode('today')}
+            className={`kolo-tab ${viewMode === 'today' ? 'is-active' : ''}`}
+            style={{ flex: 1 }}
+            data-testid="segment-today"
+          >
+            {labels.today}
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            className={`kolo-tab ${viewMode === 'all' ? 'is-active' : ''}`}
+            style={{ flex: 1 }}
+            data-testid="segment-all-tasks"
+          >
+            {labels.allMyTasks}
+          </button>
+          <span
+            className="kolo-tab-slider"
+            aria-hidden="true"
+            style={{
+              left: '4px',
+              width: 'calc(50% - 4px)',
+              transform: viewMode === 'all' ? 'translateX(calc(100% + 0px))' : 'translateX(0)',
+            }}
+          />
+        </div>
         {/* Add Task Button */}
         <button
           onClick={() => setShowAddTaskModal(true)}
@@ -1111,8 +1098,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 6px 14px -6px rgba(14, 11, 30, 0.4)',
+            transition: 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
           data-testid="add-task-button"
         >
           <Plus size={20} strokeWidth={2.5} />
@@ -3121,33 +3112,30 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal — glassmorphism */}
       {showEditModal && (
-        <div style={{
+        <div className="kolo-glass-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10000,
           padding: '16px'
         }} onClick={() => setShowEditModal(false)}>
-          <div style={{
-            background: c('bg'),
-            borderRadius: '20px',
+          <div className="kolo-glass-modal" style={{
+            borderRadius: '22px',
             padding: '24px',
             width: '100%',
-            maxWidth: '400px',
+            maxWidth: '420px',
             maxHeight: '90vh',
             overflowY: 'auto',
-            border: `1px solid ${c('border')}`
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', color: c('text') }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '700', color: c('text') }}>
                 {locale === 'fr' ? 'Modifier le prospect' : 'Edit prospect'}
               </h2>
               <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', color: c('muted'), cursor: 'pointer' }}>
