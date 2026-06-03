@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import SocialAuthButtons from '../components/SocialAuthButtons';
+import { API_URL } from '../config/api';
 import '../styles/landing.css';
 
 const LoginPage = () => {
@@ -23,7 +24,7 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
-    const API_BASE = 'https://trykolo.io';
+    const API_BASE = API_URL;
     
     // Use XMLHttpRequest to avoid fetch interception issues
     const xhr = new XMLHttpRequest();

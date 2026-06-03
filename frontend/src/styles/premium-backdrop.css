@@ -1,0 +1,224 @@
+/* ==========================================================================
+   KOLO — Premium animated backdrop for Landing page
+   Inspired by Linear / Vercel / Stripe. GPU-only animations.
+   ========================================================================== */
+
+.kolo-premium-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  --spot-x: 50%;
+  --spot-y: 30%;
+}
+
+/* Subtle dot grid */
+.kolo-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(11, 11, 15, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: 0 0;
+  opacity: 0.6;
+  mask-image: radial-gradient(ellipse at 50% 35%, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 35%, #000 0%, transparent 75%);
+}
+
+/* Floating orbs (4 of them with different colors + slow drift) */
+.kolo-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.kolo-orb-1 {
+  width: 560px; height: 560px;
+  background: radial-gradient(circle at 30% 30%, #A78BFA, transparent 70%);
+  top: -120px; left: -80px;
+  animation: kolo-orb-drift-1 32s ease-in-out infinite alternate;
+  opacity: 0.5;
+}
+.kolo-orb-2 {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle at 50% 50%, #F472B6, transparent 70%);
+  top: 6%; right: -120px;
+  animation: kolo-orb-drift-2 38s ease-in-out infinite alternate;
+  opacity: 0.4;
+}
+.kolo-orb-3 {
+  width: 440px; height: 440px;
+  background: radial-gradient(circle at 50% 50%, #60A5FA, transparent 70%);
+  bottom: 4%; left: 6%;
+  animation: kolo-orb-drift-3 42s ease-in-out infinite alternate;
+  opacity: 0.32;
+}
+.kolo-orb-4 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle at 50% 50%, #FBCFE8, transparent 70%);
+  bottom: -80px; right: 14%;
+  animation: kolo-orb-drift-4 28s ease-in-out infinite alternate;
+  opacity: 0.42;
+}
+
+@keyframes kolo-orb-drift-1 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(80px, 60px, 0) scale(1.08); }
+  100% { transform: translate3d(40px, 140px, 0) scale(0.95); }
+}
+@keyframes kolo-orb-drift-2 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-90px, 80px, 0) scale(1.1); }
+  100% { transform: translate3d(-50px, 180px, 0) scale(0.92); }
+}
+@keyframes kolo-orb-drift-3 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(120px, -60px, 0) scale(1.05); }
+  100% { transform: translate3d(180px, -120px, 0) scale(0.9); }
+}
+@keyframes kolo-orb-drift-4 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-80px, -100px, 0) scale(1.12); }
+  100% { transform: translate3d(-160px, -40px, 0) scale(0.95); }
+}
+
+/* Cursor spotlight (desktop only) */
+.kolo-spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    600px circle at var(--spot-x) var(--spot-y),
+    rgba(139, 92, 246, 0.08),
+    transparent 50%
+  );
+  transition: background-position 220ms ease-out;
+  mix-blend-mode: multiply;
+}
+
+/* Dark mode tuning */
+@media (prefers-color-scheme: dark) {
+  .kolo-bg-grid {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  }
+  .kolo-orb { opacity: 0.35; mix-blend-mode: screen; }
+  .kolo-spotlight {
+    background: radial-gradient(600px circle at var(--spot-x) var(--spot-y), rgba(192, 132, 252, 0.12), transparent 50%);
+    mix-blend-mode: screen;
+  }
+}
+
+/* Reduce motion + mobile */
+@media (prefers-reduced-motion: reduce) {
+  .kolo-orb, .kolo-spotlight, .kolo-bg-grid { animation: none !important; }
+}
+@media (max-width: 768px) {
+  .kolo-orb-3, .kolo-orb-4, .kolo-spotlight { display: none; }
+  .kolo-orb-1, .kolo-orb-2 { opacity: 0.32; filter: blur(50px); }
+}
+
+/* ==========================================================================
+   Hero text reveal — staggered entrance
+   ========================================================================== */
+.hero h1 {
+  animation: kolo-hero-rise 880ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-sub {
+  animation: kolo-hero-rise 880ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+.hero-cta-row {
+  animation: kolo-hero-rise 880ms cubic-bezier(0.22, 1, 0.36, 1) 240ms both;
+}
+[data-testid="app-store-badge-wrap"] {
+  animation: kolo-hero-rise 880ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
+}
+
+@keyframes kolo-hero-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero h1, .hero-sub, .hero-cta-row, [data-testid="app-store-badge-wrap"] { animation: none; }
+}
+
+/* Pill badge — subtle "Nouveau" indicator over the hero (optional, used in JSX) */
+.kolo-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: kolo-hero-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.kolo-hero-pill .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  animation: kolo-pulse 2.2s ease-out infinite;
+}
+@keyframes kolo-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Boost the gradient text shimmer */
+.grad-text {
+  background: linear-gradient(120deg, #6D28D9 0%, #EC4899 35%, #6D28D9 65%, #EC4899 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: kolo-grad-shimmer 6s linear infinite;
+}
+@keyframes kolo-grad-shimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* CTA button micro-interactions */
+.hero-btn-main {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease, filter 200ms ease;
+  will-change: transform;
+  position: relative;
+  overflow: hidden;
+}
+.hero-btn-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.25), transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.hero-btn-main:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -8px rgba(109, 40, 217, 0.35);
+}
+.hero-btn-main:hover::after { transform: translateX(100%); }
+.hero-btn-main:active { transform: translateY(0) scale(0.98); }
+
+/* Phone showcase — gentle float */
+.phone-main {
+  animation: kolo-phone-float 5.5s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes kolo-phone-float {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone-main { animation: none; }
+}

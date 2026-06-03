@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import SocialAuthButtons from '../components/SocialAuthButtons';
+import { API_URL } from '../config/api';
 import '../styles/landing.css';
 
 const RegisterPage = () => {
@@ -42,7 +43,7 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      const API_BASE = 'https://trykolo.io';
+      const API_BASE = API_URL;
       
       // Build registration payload - include plan if selected from landing page
       const registerPayload = { 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp, X, Sparkles } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLocale } from '../context/LocaleContext';
+import PremiumBackdrop from '../components/PremiumBackdrop';
 import '../styles/landing.css';
+import '../styles/premium-backdrop.css';
 
 // Maps our internal locale to Apple's storefront + badge language codes.
 const APP_STORE_LOCALE_MAP = {
@@ -255,6 +257,9 @@ const LandingPage = () => {
 
   return (
     <div className="landing-page">
+      {/* Premium animated backdrop (orbs + dot grid + spotlight) */}
+      <PremiumBackdrop />
+
       {/* SVG Gradient Definition */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
@@ -298,6 +303,10 @@ const LandingPage = () => {
       {/* HERO — radically simplified, leedflow style */}
       <section className="hero">
         <div className="container">
+          <div className="kolo-hero-pill" data-testid="hero-pill">
+            <span className="dot"></span>
+            <span>{locale === 'fr' ? 'Nouveau · Espace Réseau pour agences' : locale === 'de' ? 'Neu · Netzwerkbereich für Agenturen' : locale === 'it' ? 'Nuovo · Spazio Network per agenzie' : 'New · Network space for agencies'}</span>
+          </div>
           <h1>
             {t('heroTitle1')}<br/><span className="grad-text">{t('heroTitle2')}</span>
           </h1>
