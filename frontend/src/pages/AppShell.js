@@ -17,6 +17,7 @@ import { InteractionTimeline } from '../components/InteractionTimeline';
 import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import ProspectCommsPanel from '../components/ProspectCommsPanel';
 import { ProspectScoreRing, ScoreLabel } from '../components/ProspectScoreRing';
+import VoiceDictateButton from '../components/VoiceDictateButton';
 import '../styles/prospect-comms.css';
 import '../styles/app-premium.css';
 import { API_URL } from '../config/api';
@@ -3091,7 +3092,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
         </button>
       </div>
 
-      <div className="kolo-prospect-header" data-testid="prospect-detail-header">
+      <div className="kolo-prospect-header" data-testid="prospect-detail-header" style={{ position: 'relative' }}>
         <ProspectScoreRing
           score={prospectData.score}
           size={68}
@@ -3110,6 +3111,68 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             )}
           </div>
         </div>
+        {/* Floating score picker — opens on ring click */}
+        {showScoreMenu && (
+          <div
+            data-testid="score-menu-popover"
+            style={{
+              position: 'absolute',
+              top: 80,
+              left: 0,
+              background: c('bg'),
+              border: `1px solid ${c('border')}`,
+              borderRadius: '12px',
+              boxShadow: '0 12px 32px -8px rgba(0,0,0,0.25)',
+              minWidth: '160px',
+              overflow: 'hidden',
+              zIndex: 100,
+              animation: 'kolo-modal-pop 200ms ease',
+            }}
+            onMouseLeave={() => setShowScoreMenu(false)}
+          >
+            {[
+              { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#EF4444' },
+              { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B' },
+              { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#3B82F6' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => { updateScore(option.value); setShowScoreMenu(false); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  width: '100%',
+                  padding: '11px 14px',
+                  background: prospectData.score === option.value ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: option.color,
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  transition: 'background 160ms ease',
+                }}
+                onMouseEnter={(e) => { if (prospectData.score !== option.value) e.currentTarget.style.background = 'rgba(139, 92, 246, 0.04)'; }}
+                onMouseLeave={(e) => { if (prospectData.score !== option.value) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  background: option.color,
+                  boxShadow: `0 0 6px ${option.color}`,
+                }} />
+                {option.label}
+                {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto', opacity: 0.7 }} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Primary actions — Appeler / WhatsApp / Agenda (top, immediately accessible) */}
+      <div style={{ margin: '14px 0 20px' }}>
+        <ProspectCommsPanel prospect={prospectData} />
       </div>
 
       {/* Edit Modal — glassmorphism */}
@@ -3246,25 +3309,33 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: c('muted') }}>
                   Notes
                 </label>
-                <textarea
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  data-testid="edit-notes"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: c('surface'),
-                    border: `1px solid ${c('border')}`,
-                    borderRadius: '10px',
-                    fontSize: '15px',
-                    color: c('text'),
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    resize: 'none',
-                    fontFamily: 'inherit'
-                  }}
-                />
+                <div className="kolo-textarea-with-dictate">
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    data-testid="edit-notes"
+                    style={{
+                      width: '100%',
+                      padding: '12px 50px 12px 16px',
+                      background: c('surface'),
+                      border: `1px solid ${c('border')}`,
+                      borderRadius: '10px',
+                      fontSize: '15px',
+                      color: c('text'),
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      resize: 'none',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  <VoiceDictateButton
+                    value={editForm.notes}
+                    onChange={(v) => setEditForm(prev => ({ ...prev, notes: v }))}
+                    locale={locale}
+                    testId="dictate-edit-notes"
+                  />
+                </div>
               </div>
               
               <button
@@ -3416,93 +3487,6 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           <a href={`mailto:${prospectData.email}`} style={{ color: c('text'), textDecoration: 'none' }}>
             {prospectData.email}
           </a>
-        </div>
-      </div>
-      
-      {/* Score section - discrete inline display */}
-      <div style={{ marginBottom: '16px', padding: '12px 16px', background: c('cardBg'), border: `1px solid ${c('border')}`, borderRadius: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: c('muted'), fontWeight: '500' }}>
-            {locale === 'fr' ? 'Température' : 'Temperature'}
-          </span>
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowScoreMenu(!showScoreMenu)}
-              disabled={updatingScore}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 12px',
-                background: 'transparent',
-                border: `1px solid ${c('border')}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                color: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : c('muted'),
-                fontSize: '13px',
-                fontWeight: '500'
-              }}
-            >
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : prospectData.score === 'froid' ? '#EF4444' : c('muted')
-              }} />
-              {prospectData.score === 'chaud' ? (locale === 'fr' ? 'Chaud' : 'Hot') : 
-               prospectData.score === 'tiede' ? (locale === 'fr' ? 'Tiède' : 'Warm') : 
-               prospectData.score === 'froid' ? (locale === 'fr' ? 'Froid' : 'Cold') : '—'}
-            </button>
-            
-            {showScoreMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '4px',
-                background: c('bg'),
-                border: `1px solid ${c('border')}`,
-                borderRadius: '10px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                minWidth: '120px',
-                overflow: 'hidden',
-                zIndex: 100
-              }}>
-                {[
-                  { value: 'chaud', label: locale === 'fr' ? 'Chaud' : 'Hot', color: '#22C55E' },
-                  { value: 'tiede', label: locale === 'fr' ? 'Tiède' : 'Warm', color: '#F59E0B' },
-                  { value: 'froid', label: locale === 'fr' ? 'Froid' : 'Cold', color: '#EF4444' }
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => { updateScore(option.value); setShowScoreMenu(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '10px 14px',
-                      background: prospectData.score === option.value ? 'rgba(0, 74, 173, 0.1)' : 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: option.color,
-                      fontSize: '13px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    <span style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: option.color
-                    }} />
-                    {option.label}
-                    {prospectData.score === option.value && <Check size={14} style={{ marginLeft: 'auto', opacity: 0.7 }} />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
       
@@ -4160,9 +4144,6 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           })()}
         </div>
       </div>
-
-      {/* Communications (calls + WhatsApp) */}
-      <ProspectCommsPanel prospect={prospectData} />
 
       {/* Notes */}
       {prospectData.notes && (

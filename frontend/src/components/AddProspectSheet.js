@@ -5,6 +5,8 @@ import { usePlan } from '../context/PlanContext';
 import { X, User, Phone, Mail, ChevronRight, Home, Tag, Key, Clock, Flame, Calendar, Sparkles, Users, Edit3 } from 'lucide-react';
 import { BudgetSlider } from './BudgetSlider';
 import { PaywallBottomSheet } from './PaywallBottomSheet';
+import VoiceDictateButton from './VoiceDictateButton';
+import '../styles/app-premium.css';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { Contacts } from '@capacitor-community/contacts';
@@ -757,18 +759,27 @@ export function AddProspectSheet({
                 </div>
               )}
               
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={getDetailsPlaceholder()}
-                rows={3}
-                className="w-full px-4 py-3 bg-transparent outline-none resize-none"
-                style={{ 
-                  backgroundColor: isDark ? '#2a2a3b' : '#f7f7fa',
-                  color: isDark ? '#ffffff' : '#0E0B1E',
-                  borderRadius: getAIHeader() ? '0 0 12px 12px' : '12px'
-                }}
-              />
+              <div className="kolo-textarea-with-dictate" style={{ position: 'relative' }}>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={getDetailsPlaceholder()}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-transparent outline-none resize-none"
+                  style={{ 
+                    backgroundColor: isDark ? '#2a2a3b' : '#f7f7fa',
+                    color: isDark ? '#ffffff' : '#0E0B1E',
+                    borderRadius: getAIHeader() ? '0 0 12px 12px' : '12px',
+                    paddingRight: '50px'
+                  }}
+                />
+                <VoiceDictateButton
+                  value={notes}
+                  onChange={setNotes}
+                  locale={locale}
+                  testId="dictate-prospect-notes"
+                />
+              </div>
             </div>
             
             {/* Submit button */}

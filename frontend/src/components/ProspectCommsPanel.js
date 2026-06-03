@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import VoiceDictateButton from './VoiceDictateButton';
 
 const auth = () => { const t = localStorage.getItem('kolo_token'); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
@@ -111,7 +112,10 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
           </div>
           <label>
             <span>Notes</span>
-            <textarea data-testid="postcall-notes" rows={4} placeholder="Ce qui a été dit, prochaine étape…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <div className="kolo-textarea-with-dictate">
+              <textarea data-testid="postcall-notes" rows={4} placeholder="Ce qui a été dit, prochaine étape…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <VoiceDictateButton value={notes} onChange={setNotes} locale="fr" testId="dictate-postcall-notes" />
+            </div>
           </label>
           <div className="kolo-comm-actions">
             <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">Annuler</button>
@@ -204,7 +208,10 @@ const WhatsAppQuickModal = ({ prospect, onClose, onSent }) => {
         <form onSubmit={send} className="kolo-comm-form">
           <label>
             <span>Message</span>
-            <textarea data-testid="wa-quick-body" rows={5} required value={body} onChange={(e) => setBody(e.target.value)} />
+            <div className="kolo-textarea-with-dictate">
+              <textarea data-testid="wa-quick-body" rows={5} required value={body} onChange={(e) => setBody(e.target.value)} />
+              <VoiceDictateButton value={body} onChange={setBody} locale="fr" testId="dictate-wa-body" />
+            </div>
           </label>
           <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 0 }}>
             WhatsApp s'ouvrira avec le message pré-rempli. Tu cliques sur "Envoyer" depuis ton WhatsApp.
@@ -348,7 +355,10 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
           </div>
           <label>
             <span>Description (optionnel)</span>
-            <textarea data-testid="cal-event-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Adresse du RDV, points à aborder…" />
+            <div className="kolo-textarea-with-dictate">
+              <textarea data-testid="cal-event-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Adresse du RDV, points à aborder…" />
+              <VoiceDictateButton value={description} onChange={setDescription} locale="fr" testId="dictate-cal-desc" />
+            </div>
           </label>
           <div className="kolo-comm-actions">
             <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">Annuler</button>
