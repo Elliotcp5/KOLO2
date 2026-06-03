@@ -6,9 +6,11 @@
 
 ## Super Admin KOLO (accès `/kolo-admin` + bypass org membership)
 - **Email**: elliot.cohenpressard@trykolo.io
-- **Méthode privilégiée**: Continuer avec Google (bouton dans /login)
-- **Mot de passe de secours**: `Psychologue75007%!`
-- **Allowlist**: hard-coded dans `server.py` (`KOLO_SUPER_ADMIN_EMAILS`)
+- **Mot de passe**: `Psychologue75007%!`
+- **Provider**: email/password (le compte n'est pas Google)
+- **Méthodes de connexion** : Email/password sur `/login` OU Google Sign-In (si tu actives le même email avec Google plus tard)
+- **Allowlist super admin**: hard-coded dans `server.py` (`KOLO_SUPER_ADMIN_EMAILS`)
+- **Plan**: pro_plus (active subscription)
 
 ## Apple Sign-In (Web)
 - Statut: **placeholders** dans `backend/.env` (bouton désactivé "Bientôt disponible")
