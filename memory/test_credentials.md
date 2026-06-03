@@ -24,6 +24,17 @@
 - **OpenAI Whisper**: `EMERGENT_LLM_KEY=sk-emergent-27dA4CbFe23205352D` (Emergent Universal Key — DÉJÀ ACTIVÉE)
 - **Apple Calendar**: bouton "Bientôt disponible" (CalDAV à implémenter)
 
+## ⚠️ Production — variables à ajouter
+**Pour que la connexion super admin fonctionne en production** :
+- Ajouter dans les env vars de production : `SUPER_ADMIN_SEED_PASSWORD=Psychologue75007%!`
+- Au prochain redémarrage du backend, le seed idempotent (re)crée/réinitialise le compte `elliot.cohenpressard@trykolo.io` avec ce mot de passe et le flag `is_super_admin: true`, plan `pro_plus`.
+- Le seed s'exécute à chaque startup → sécurise l'accès même après reset DB.
+
+**Pour activer Google Calendar et Outlook en prod** : ajouter aussi
+- `GOOGLE_CAL_CLIENT_ID`, `GOOGLE_CAL_CLIENT_SECRET`
+- `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common`
+- `FRONTEND_URL=https://trykolo.io`
+
 ## Environnement
 - Backend (preview Emergent): https://responsive-kolo.preview.emergentagent.com
 - Backend (production): https://trykolo.io

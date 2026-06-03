@@ -16,7 +16,9 @@ import { ROIDashboard } from '../components/ROIDashboard';
 import { InteractionTimeline } from '../components/InteractionTimeline';
 import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
 import ProspectCommsPanel from '../components/ProspectCommsPanel';
+import { ProspectScoreRing, ScoreLabel } from '../components/ProspectScoreRing';
 import '../styles/prospect-comms.css';
+import '../styles/app-premium.css';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 import { openExternalUrl } from '../utils/externalUrl';
@@ -1008,50 +1010,51 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
         </div>
       </div>
 
-      {/* Page Title */}
-      <h1 style={{ 
-        fontSize: '32px', 
-        fontWeight: '800', 
-        color: c('text'),
-        fontFamily: 'var(--font-heading)',
-        marginBottom: '4px'
-      }}>
-        {viewMode === 'today' ? labels.today : labels.tasks}
-      </h1>
-
-      {/* Date */}
-      <p style={{ 
-        textTransform: 'capitalize', 
-        fontSize: '14px', 
-        color: c('muted'), 
-        marginBottom: '12px'
-      }}>
-        {formatDate(new Date())}
-      </p>
-
-      {/* Alert Badge - Overdue Tasks */}
-      {stats.totalToday - stats.completedToday > 0 && (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.2)',
-          borderRadius: '999px',
-          padding: '8px 16px',
-          marginBottom: '20px',
-          color: '#EF4444',
-          fontSize: '13px',
-          fontWeight: '600'
+      {/* Premium Hero — title + date + overdue badge */}
+      <div className="kolo-hero-mesh" data-testid="today-hero-mesh" style={{ marginBottom: '20px' }}>
+        <h1 style={{ 
+          fontSize: '30px', 
+          fontWeight: '800', 
+          color: c('text'),
+          fontFamily: 'var(--font-heading)',
+          marginBottom: '4px',
+          letterSpacing: '-0.01em',
+          lineHeight: 1.1,
         }}>
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          {stats.totalToday - stats.completedToday} {labels.overdueTasks}
-        </div>
-      )}
+          {viewMode === 'today' ? labels.today : labels.tasks}
+        </h1>
+
+        <p style={{ 
+          textTransform: 'capitalize', 
+          fontSize: '13px', 
+          color: c('muted'), 
+          marginBottom: stats.totalToday - stats.completedToday > 0 ? '12px' : '0'
+        }}>
+          {formatDate(new Date())}
+        </p>
+
+        {stats.totalToday - stats.completedToday > 0 && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: '999px',
+            padding: '7px 14px',
+            color: '#EF4444',
+            fontSize: '13px',
+            fontWeight: '600'
+          }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {stats.totalToday - stats.completedToday} {labels.overdueTasks}
+          </div>
+        )}
+      </div>
 
       {/* Tabs - Today / All Tasks + Add Button */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
@@ -3062,8 +3065,8 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
   return (
     <div style={{ padding: '24px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+      {/* Header — premium with animated score ring */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
         <button 
           onClick={onBack}
           style={{ 
@@ -3071,25 +3074,14 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             border: 'none', 
             color: c('text'), 
             cursor: 'pointer',
-            padding: '8px'
+            padding: '8px',
+            marginLeft: '-8px'
           }}
           data-testid="back-button"
         >
-          <X size={24} strokeWidth={1.5} />
+          <X size={22} strokeWidth={1.8} />
         </button>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: c('text') }}>{prospectData.full_name}</h1>
-          {/* Discrete score dot in header */}
-          {prospectData.score && (
-            <span style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              background: prospectData.score === 'chaud' ? '#22C55E' : prospectData.score === 'tiede' ? '#F59E0B' : '#EF4444',
-              flexShrink: 0
-            }} title={prospectData.score} />
-          )}
-        </div>
+        <div style={{ flex: 1 }} />
         <button 
           onClick={() => setShowEditModal(true)}
           style={{ 
@@ -3097,15 +3089,36 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             border: `1px solid ${c('border')}`, 
             color: c('text'), 
             cursor: 'pointer',
-            padding: '8px 16px',
-            borderRadius: '10px',
-            fontSize: '14px',
-            fontWeight: '500'
+            padding: '7px 14px',
+            borderRadius: '999px',
+            fontSize: '13px',
+            fontWeight: '600'
           }}
           data-testid="edit-prospect-button"
         >
           {locale === 'fr' ? 'Modifier' : 'Edit'}
         </button>
+      </div>
+
+      <div className="kolo-prospect-header" data-testid="prospect-detail-header">
+        <ProspectScoreRing
+          score={prospectData.score}
+          size={68}
+          onClick={() => setShowScoreMenu((v) => !v)}
+        />
+        <div className="kolo-prospect-header-body">
+          <h1 className="kolo-prospect-name" data-testid="prospect-name">
+            {prospectData.full_name}
+          </h1>
+          <div className="kolo-prospect-sub">
+            <ScoreLabel score={prospectData.score} locale={locale} />
+            {prospectData.phone && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Phone size={11} strokeWidth={2.2} /> {prospectData.phone}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Edit Modal */}

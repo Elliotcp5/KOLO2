@@ -1,0 +1,553 @@
+/* ==========================================================================
+   KOLO — Premium "wow" layer for in-app screens
+   Strategy: sober lists/forms, premium hero & empty states
+   Apply selectively via class names — never universal selectors
+   ========================================================================== */
+
+/* ---- Gradient mesh hero background ---- */
+.kolo-hero-mesh {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 22px 20px 24px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(203, 108, 230, 0.16), transparent 55%),
+    radial-gradient(120% 100% at 0% 100%, rgba(0, 74, 173, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 10px 30px -16px rgba(0, 74, 173, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+.kolo-hero-mesh::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto auto;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(203, 108, 230, 0.22), transparent 70%);
+  filter: blur(40px);
+  z-index: -1;
+  animation: kolo-mesh-drift-a 14s ease-in-out infinite alternate;
+}
+.kolo-hero-mesh::after {
+  content: "";
+  position: absolute;
+  inset: auto auto -30% -10%;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 74, 173, 0.18), transparent 70%);
+  filter: blur(38px);
+  z-index: -1;
+  animation: kolo-mesh-drift-b 18s ease-in-out infinite alternate;
+}
+@keyframes kolo-mesh-drift-a {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, 20px) scale(1.1); }
+}
+@keyframes kolo-mesh-drift-b {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, -20px) scale(1.08); }
+}
+
+/* Dark mode variant */
+.kolo-dark .kolo-hero-mesh {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(203, 108, 230, 0.22), transparent 55%),
+    radial-gradient(120% 100% at 0% 100%, rgba(0, 74, 173, 0.20), transparent 60%),
+    linear-gradient(180deg, rgba(20, 17, 40, 0.92) 0%, rgba(15, 13, 26, 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---- KPI cards with hover glow ---- */
+.kolo-kpi-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease, border-color 240ms ease;
+  cursor: default;
+}
+.kolo-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 14px 28px -16px rgba(139, 92, 246, 0.32);
+}
+.kolo-kpi-card-active {
+  background: linear-gradient(135deg, rgba(0, 74, 173, 0.10), rgba(203, 108, 230, 0.12));
+  border-color: rgba(139, 92, 246, 0.22);
+}
+
+/* ---- Stagger reveal — apply to children of [data-stagger] ---- */
+[data-stagger] > * {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: kolo-stagger-in 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+[data-stagger] > *:nth-child(1) { animation-delay: 40ms; }
+[data-stagger] > *:nth-child(2) { animation-delay: 110ms; }
+[data-stagger] > *:nth-child(3) { animation-delay: 180ms; }
+[data-stagger] > *:nth-child(4) { animation-delay: 250ms; }
+[data-stagger] > *:nth-child(5) { animation-delay: 320ms; }
+[data-stagger] > *:nth-child(6) { animation-delay: 390ms; }
+[data-stagger] > *:nth-child(n+7) { animation-delay: 460ms; }
+@keyframes kolo-stagger-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- AI suggestion pulse ---- */
+.kolo-ai-pulse {
+  position: relative;
+}
+.kolo-ai-pulse::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(0, 74, 173, 0.35), rgba(203, 108, 230, 0.35), rgba(0, 74, 173, 0.35));
+  background-size: 200% 100%;
+  z-index: -1;
+  opacity: 0.7;
+  animation: kolo-ai-shimmer 4.5s linear infinite;
+  filter: blur(6px);
+}
+@keyframes kolo-ai-shimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* ==========================================================================
+   PROSPECT SCORE RING — chaud/tiède/froid premium indicator
+   ========================================================================== */
+.kolo-score-ring {
+  --size: 68px;
+  --stroke: 5px;
+  --color: #6B7280;
+  --pct: 0;
+  width: var(--size);
+  height: var(--size);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.kolo-score-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.kolo-score-ring .track {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.06);
+  stroke-width: var(--stroke);
+}
+.kolo-score-ring .progress {
+  fill: none;
+  stroke: var(--color);
+  stroke-width: var(--stroke);
+  stroke-linecap: round;
+  stroke-dasharray: var(--circ);
+  stroke-dashoffset: calc(var(--circ) - (var(--circ) * var(--pct) / 100));
+  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1), stroke 240ms ease;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color) 50%, transparent));
+}
+.kolo-score-ring .center {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.kolo-score-ring .center-icon {
+  display: grid;
+  place-items: center;
+  width: calc(var(--size) - 24px);
+  height: calc(var(--size) - 24px);
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  color: var(--color);
+}
+.kolo-score-ring .halo {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color) 22%, transparent), transparent 70%);
+  z-index: -1;
+  filter: blur(8px);
+  animation: kolo-halo-pulse 2.8s ease-in-out infinite;
+}
+@keyframes kolo-halo-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.08); }
+}
+
+/* score variants */
+.kolo-score-ring[data-score="chaud"] { --color: #EF4444; --pct: 92; }
+.kolo-score-ring[data-score="tiede"] { --color: #F59E0B; --pct: 58; }
+.kolo-score-ring[data-score="froid"] { --color: #3B82F6; --pct: 24; }
+.kolo-score-ring[data-score="none"]  { --color: #9CA3AF; --pct: 0; }
+.kolo-score-ring[data-score="none"] .halo { display: none; }
+
+.kolo-score-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--score-color, #6B7280) 12%, white);
+  color: var(--score-color, #6B7280);
+}
+.kolo-score-label::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--score-color, #6B7280);
+  box-shadow: 0 0 8px var(--score-color, #6B7280);
+}
+
+/* ==========================================================================
+   COMMUNICATION TIMELINE — unified appels/WhatsApp/notes feed
+   ========================================================================== */
+.kolo-comm-timeline {
+  position: relative;
+  padding: 8px 0 12px 0;
+}
+.kolo-comm-timeline::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(0, 74, 173, 0.2), rgba(203, 108, 230, 0.2), transparent);
+  border-radius: 1px;
+}
+.kolo-comm-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  align-items: flex-start;
+}
+.kolo-comm-bullet {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 2px solid white;
+  box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  color: white;
+}
+.kolo-comm-bullet[data-kind="call"]     { background: linear-gradient(135deg, #22C55E, #15803D); }
+.kolo-comm-bullet[data-kind="whatsapp"] { background: linear-gradient(135deg, #25D366, #1FA855); }
+.kolo-comm-bullet[data-kind="sms"]      { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.kolo-comm-bullet[data-kind="note"]     { background: linear-gradient(135deg, #8B5CF6, #6D28D9); }
+.kolo-comm-bullet[data-kind="email"]    { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.kolo-comm-bullet[data-kind="meeting"]  { background: linear-gradient(135deg, #EC4899, #BE185D); }
+
+.kolo-comm-body {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.04);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.kolo-comm-body:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -6px rgba(139, 92, 246, 0.18);
+}
+.kolo-comm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.kolo-comm-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0B0B0F;
+  line-height: 1.25;
+}
+.kolo-comm-time {
+  font-size: 11px;
+  color: #9CA3AF;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.kolo-comm-text {
+  font-size: 13px;
+  color: #4B5563;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.kolo-comm-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B7280;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   COMMUNICATION ACTION BAR — sticky bottom row with call/WA/note
+   ========================================================================== */
+.kolo-comm-actionbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.12);
+}
+.kolo-comm-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: none;
+  background: white;
+  color: #0B0B0F;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.kolo-comm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.18);
+}
+.kolo-comm-btn:active { transform: translateY(0) scale(0.97); }
+.kolo-comm-btn[data-kind="call"]     { color: #15803D; }
+.kolo-comm-btn[data-kind="whatsapp"] { color: #1FA855; }
+.kolo-comm-btn[data-kind="note"]     { color: #6D28D9; }
+.kolo-comm-btn .icon {
+  width: 30px; height: 30px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  color: white;
+}
+.kolo-comm-btn[data-kind="call"] .icon     { background: linear-gradient(135deg, #22C55E, #15803D); }
+.kolo-comm-btn[data-kind="whatsapp"] .icon { background: linear-gradient(135deg, #25D366, #1FA855); }
+.kolo-comm-btn[data-kind="note"] .icon     { background: linear-gradient(135deg, #8B5CF6, #6D28D9); }
+
+/* Premium prospect header */
+.kolo-prospect-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 4px 18px 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.kolo-prospect-header-body { flex: 1; min-width: 0; }
+.kolo-prospect-name {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0B0B0F;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  margin: 0 0 4px;
+}
+.kolo-prospect-sub {
+  font-size: 12px;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   EMPTY STATES — premium illustrations
+   ========================================================================== */
+.kolo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px 32px;
+  text-align: center;
+}
+.kolo-empty-art {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(0, 74, 173, 0.10), rgba(203, 108, 230, 0.12));
+  margin-bottom: 16px;
+  color: #6D28D9;
+  animation: kolo-empty-float 4s ease-in-out infinite alternate;
+}
+.kolo-empty-art::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18), transparent 70%);
+  z-index: -1;
+  filter: blur(10px);
+  animation: kolo-empty-pulse 3.2s ease-in-out infinite;
+}
+@keyframes kolo-empty-float {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+@keyframes kolo-empty-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.9;  transform: scale(1.1); }
+}
+.kolo-empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0B0B0F;
+  margin: 0 0 6px;
+}
+.kolo-empty-text {
+  font-size: 13px;
+  color: #6B7280;
+  max-width: 280px;
+  line-height: 1.55;
+}
+
+/* ==========================================================================
+   ORG SPACE PREMIUM HEADER
+   ========================================================================== */
+.kolo-org-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 28px 24px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(203, 108, 230, 0.20), transparent 55%),
+    radial-gradient(120% 100% at 0% 100%, rgba(0, 74, 173, 0.18), transparent 60%),
+    linear-gradient(180deg, #FFFFFF 0%, #FAFAFB 100%);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+.kolo-org-hero::after {
+  content: "";
+  position: absolute;
+  inset: -40% -20% auto auto;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.20), transparent 70%);
+  filter: blur(50px);
+  z-index: 0;
+  animation: kolo-mesh-drift-a 18s ease-in-out infinite alternate;
+}
+.kolo-org-hero > * { position: relative; z-index: 1; }
+.kolo-org-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.kolo-org-logo {
+  width: 64px; height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 800;
+  font-size: 26px;
+  background: linear-gradient(135deg, var(--org-color, #8B5CF6), color-mix(in srgb, var(--org-color, #8B5CF6) 60%, #000));
+  box-shadow:
+    0 12px 24px -8px color-mix(in srgb, var(--org-color, #8B5CF6) 50%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+.kolo-org-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #0B0B0F;
+  margin: 0 0 4px;
+}
+.kolo-org-tag {
+  font-size: 12px;
+  color: #6B7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.10);
+  color: #6D28D9;
+  font-weight: 600;
+}
+
+/* Member grid */
+.kolo-member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.kolo-member-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(139, 92, 246, 0.22);
+  box-shadow: 0 8px 16px -8px rgba(139, 92, 246, 0.22);
+}
+.kolo-member-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Respect reduced motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .kolo-hero-mesh::before,
+  .kolo-hero-mesh::after,
+  .kolo-org-hero::after,
+  .kolo-empty-art,
+  .kolo-empty-art::before,
+  .kolo-score-ring .halo,
+  [data-stagger] > * {
+    animation: none !important;
+  }
+  [data-stagger] > * { opacity: 1; transform: none; }
+}

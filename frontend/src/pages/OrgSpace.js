@@ -10,6 +10,7 @@ import { API_URL } from '../config/api';
 import { toast } from 'sonner';
 import '../styles/admin.css';
 import '../styles/org.css';
+import '../styles/app-premium.css';
 
 const authHeaders = () => {
   const t = localStorage.getItem('kolo_token');
@@ -91,20 +92,35 @@ const CreateOrgModal = ({ onCreated, onClose }) => {
 // =========================================================================
 // Tabs
 // =========================================================================
-const OrgOverview = ({ org, onEdit }) => (
+const OrgOverview = ({ org, onEdit }) => {
+  const initials = (org.name || 'KO').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return (
   <div>
-    <div className="admin-section-header">
-      <div>
-        <h1>{org.name}</h1>
-        <p className="admin-section-sub">{org.slug} · Plan {org.plan}</p>
+    {/* Premium hero — branded gradient with logo/initials and animated mesh */}
+    <div className="kolo-org-hero" data-testid="org-overview-hero" style={{ '--org-color': org.primary_color || '#8B5CF6' }}>
+      <div className="kolo-org-hero-row">
+        {org.logo_url ? (
+          <img src={org.logo_url} alt={org.name} style={{ width: 64, height: 64, borderRadius: 18, objectFit: 'cover', flexShrink: 0, boxShadow: '0 10px 24px -10px rgba(0,0,0,0.18)' }} />
+        ) : (
+          <div className="kolo-org-logo">{initials}</div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className="kolo-org-name">{org.name}</h1>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="kolo-org-tag">Plan {org.plan}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-soft, #9CA3AF)' }}>·</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-mid, #6B7280)', fontFamily: 'monospace' }}>{org.slug}</span>
+          </div>
+        </div>
+        <button data-testid="org-edit-btn" onClick={onEdit} className="admin-icon-btn" style={{ flexShrink: 0 }}><span>Modifier</span></button>
       </div>
-      <button data-testid="org-edit-btn" onClick={onEdit} className="admin-icon-btn"><span>Modifier</span></button>
     </div>
-    <div className="admin-stat-grid">
+
+    <div className="admin-stat-grid" data-stagger>
       <div className="admin-stat-card">
         <div className="admin-stat-label">Couleur primaire</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 8, background: org.primary_color, border: '1px solid var(--border)' }} />
+          <span style={{ width: 36, height: 36, borderRadius: 8, background: org.primary_color, border: '1px solid var(--border)', boxShadow: `0 6px 14px -6px ${org.primary_color}` }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{org.primary_color}</span>
         </div>
       </div>
@@ -122,7 +138,8 @@ const OrgOverview = ({ org, onEdit }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const EditOrgModal = ({ org, onSaved, onClose }) => {
   const [name, setName] = useState(org.name);
