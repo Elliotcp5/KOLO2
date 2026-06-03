@@ -106,6 +106,7 @@ const AppRouter = () => {
       <Route path="/create-account" element={<CreateAccountPage />} />
       <Route path="/faq" element={<FAQPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ForgotPasswordPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/terms-of-use" element={<TermsPage />} />

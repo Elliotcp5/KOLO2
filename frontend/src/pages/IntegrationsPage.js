@@ -294,6 +294,78 @@ const GoogleCalendarCard = ({ status }) => {
 };
 
 // ===========================================================================
+// Outlook Calendar card
+// ===========================================================================
+const OutlookCalendarCard = ({ status }) => {
+  const [connecting, setConnecting] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (status?.configured) {
+      (async () => {
+        try {
+          const r = await fetch(`${API_URL}/api/integrations/outlook-calendar/events?max_results=5`, { headers: auth() });
+          if (r.ok) {
+            const d = await r.json();
+            setEvents(d.events || []); setConnected(true);
+          }
+        } catch (_) {}
+      })();
+    }
+  }, [status?.configured]);
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const r = await fetch(`${API_URL}/api/integrations/outlook-calendar/auth-url`, { headers: auth() });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail);
+      window.location.href = d.authorization_url;
+    } catch (e) { toast.error(e.message); setConnecting(false); }
+  };
+
+  const disconnect = async () => {
+    try { await fetch(`${API_URL}/api/integrations/outlook-calendar/disconnect`, { method: 'POST', headers: auth() }); setConnected(false); setEvents([]); toast.success('Déconnecté'); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  return (
+    <Card
+      icon={Calendar}
+      title="Outlook Calendar"
+      description="Microsoft 365 / Outlook : crée un événement depuis KOLO, vois tes prochains rendez-vous Outlook."
+      badge={<StatusPill ok={status?.configured && connected} custom={!status?.configured ? <><X size={12} /> Non configuré côté serveur</> : null} />}
+      color="#0078D4"
+    >
+      {!status?.configured ? (
+        <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>
+          Manque <code>MS_CLIENT_ID</code> et <code>MS_CLIENT_SECRET</code> dans <code>.env</code>.
+          <br /><a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0078D4' }}>Voir Azure portal</a>
+        </div>
+      ) : connected ? (
+        <>
+          <button data-testid="outlook-disconnect-btn" onClick={disconnect} className="admin-btn" style={{ width: '100%' }}>Déconnecter</button>
+          {events.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-mid)', marginBottom: 8 }}>{events.length} prochains événements</div>
+              {events.slice(0, 3).map((ev) => (
+                <a key={ev.id} href={ev.webLink} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 8, fontSize: 13, color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.subject || '(sans objet)'}</span>
+                  <ExternalLink size={12} />
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <button data-testid="outlook-connect-btn" onClick={connect} disabled={connecting} className="org-btn-primary" style={{ background: '#0078D4' }}><Calendar size={14} /> {connecting ? 'Redirection…' : 'Connecter mon Outlook'}</button>
+      )}
+    </Card>
+  );
+};
+
+// ===========================================================================
 // Recent activity widget
 // ===========================================================================
 const RecentActivity = () => {
@@ -355,6 +427,7 @@ const IntegrationsPage = () => {
     if (authLoading) return;
     if (!isAuthenticated) { navigate('/login'); return; }
     if (searchParams.get('gcal') === 'connected') toast.success('Google Calendar connecté ✅');
+    if (searchParams.get('outlook') === 'connected') toast.success('Outlook Calendar connecté ✅');
     (async () => {
       try {
         const r = await fetch(`${API_URL}/api/integrations/status`, { headers: auth() });
@@ -378,7 +451,7 @@ const IntegrationsPage = () => {
           <NativeWhatsAppCard />
           <WhisperCard configured={statuses?.whisper?.configured} />
           <GoogleCalendarCard status={statuses?.google_calendar} />
-          <Card icon={Calendar} title="Outlook Calendar" description="Synchronisation Microsoft 365." badge={<StatusPill soon />} color="#0078D4" />
+          <OutlookCalendarCard status={statuses?.outlook_calendar} />
           <Card icon={Calendar} title="Apple Calendar" description="Synchronisation iCloud via CalDAV." badge={<StatusPill soon />} color="#000000" />
         </div>
 

@@ -115,7 +115,13 @@
 }
 @media (max-width: 768px) {
   .kolo-orb-3, .kolo-orb-4, .kolo-spotlight { display: none; }
-  .kolo-orb-1, .kolo-orb-2 { opacity: 0.32; filter: blur(50px); }
+  /* Less pink dominance on mobile — boost purple, soften pink */
+  .kolo-orb-1 { opacity: 0.38; filter: blur(50px); }
+  .kolo-orb-2 {
+    opacity: 0.18;
+    filter: blur(60px);
+    background: radial-gradient(circle at 50% 50%, #C4B5FD, transparent 70%);
+  }
 }
 
 /* ==========================================================================

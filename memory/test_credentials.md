@@ -19,9 +19,10 @@
 ## Phase 3 — Intégrations (placeholders dans backend/.env)
 - **Twilio Voice**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 - **WhatsApp Business**: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN=kolo_wa_verify_2026` (déjà fixée), `WHATSAPP_APP_SECRET` (sécurité signature webhook)
-- **Google Calendar**: `GOOGLE_CAL_CLIENT_ID`, `GOOGLE_CAL_CLIENT_SECRET`
+- **Google Calendar**: ✅ ACTIVÉ — `GOOGLE_CAL_CLIENT_ID` et `GOOGLE_CAL_CLIENT_SECRET` configurés. Redirect URI : `https://trykolo.io/api/integrations/google-calendar/callback` (à ajouter dans Google Cloud Console)
+- **Outlook (Microsoft Graph)**: ✅ ACTIVÉ — `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common`. Redirect URI : `https://trykolo.io/api/integrations/outlook-calendar/callback` (à ajouter dans Azure App Registration)
 - **OpenAI Whisper**: `EMERGENT_LLM_KEY=sk-emergent-27dA4CbFe23205352D` (Emergent Universal Key — DÉJÀ ACTIVÉE)
-- **Outlook + Apple Calendar**: bouton "Bientôt disponible" (pas d'env nécessaire)
+- **Apple Calendar**: bouton "Bientôt disponible" (CalDAV à implémenter)
 
 ## Environnement
 - Backend (preview Emergent): https://responsive-kolo.preview.emergentagent.com

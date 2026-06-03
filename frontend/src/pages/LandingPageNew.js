@@ -307,7 +307,7 @@ const LandingPage = () => {
             <span>{locale === 'fr' ? 'Nouveau · Espace Réseau pour agences' : locale === 'de' ? 'Neu · Netzwerkbereich für Agenturen' : locale === 'it' ? 'Nuovo · Spazio Network per agenzie' : 'New · Network space for agencies'}</span>
           </div>
           <h1>
-            {t('heroTitle1')}<br/><span className="grad-text">{t('heroTitle2')}</span>
+            {t('heroTitle1')} <br/><span className="grad-text">{t('heroTitle2')}</span>
           </h1>
           <p className="hero-sub">
             {t('heroSubtitle')}

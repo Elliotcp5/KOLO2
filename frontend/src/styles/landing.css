@@ -2220,11 +2220,26 @@ body {
   }
   
   .hero h1 {
-    font-size: 32px;
+    font-size: 30px;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    word-break: keep-all;
+    hyphens: none;
+    overflow-wrap: break-word;
+    max-width: 100%;
   }
   
+  /* Hide the hard-coded <br/> on mobile — let it wrap naturally with balance */
+  .hero h1 br { display: none; }
+  
+  .hero h1 .grad-text { display: inline; }
+  
   .hero-sub {
-    font-size: 16px;
+    font-size: 15px;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
   }
   
   .hero-form {
@@ -2275,9 +2290,10 @@ body {
     gap: 16px;
   }
   
+  /* Keep natural order on mobile: FREE → PRO → ULTRA */
   .pricing-card.pricing-pro {
     transform: none;
-    order: -1;
+    order: 0;
   }
   
   .pricing-card.pricing-pro:hover {

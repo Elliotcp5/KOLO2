@@ -3578,7 +3578,7 @@ async def forgot_password(request: ForgotPasswordRequest, http_request: Request)
         parsed = urlparse(referer)
         base_url = f"{parsed.scheme}://{parsed.netloc}"
     else:
-        base_url = "https://app.trykolo.io"
+        base_url = os.environ.get('FRONTEND_URL', 'https://trykolo.io')
     
     # Send password reset email
     user_name = user_doc.get("name", "").split(" ")[0] or "Utilisateur"
@@ -5770,7 +5770,7 @@ async def integrations_status(request: Request):
         "twilio_whatsapp_advanced": {"configured": wa_ok, "missing": [k for k in ["TWILIO_WHATSAPP_FROM"] if not os.environ.get(k, "").strip()], "note": "Optionnel — pour réception webhook. Sinon, mode natif."},
         # Calendar OAuth integrations
         "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"]),
-        "outlook_calendar": {"configured": False, "missing": ["MS_GRAPH_CLIENT_ID"], "note": "Bientôt disponible"},
+        "outlook_calendar": _integration_status(["MS_CLIENT_ID", "MS_CLIENT_SECRET"]),
         "apple_calendar": {"configured": False, "missing": ["APPLE_CALDAV"], "note": "Bientôt disponible"},
     }
 
@@ -6220,7 +6220,7 @@ async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
     cid = os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
     if not cid:
         raise HTTPException(status_code=400, detail="GOOGLE_CAL_CLIENT_ID missing — ajoute tes credentials dans .env")
-    base_url = str(request.base_url).rstrip("/")
+    base_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
     redirect_uri = f"{base_url}/api/integrations/google-calendar/callback"
     state = secrets.token_urlsafe(16)
     await db.google_cal_states.insert_one({
@@ -6253,7 +6253,7 @@ async def gcal_callback(request: Request, code: str, state: str):
     if not state_doc:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
-    base_url = str(request.base_url).rstrip("/")
+    base_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
     redirect_uri = f"{base_url}/api/integrations/google-calendar/callback"
     try:
         async with httpx.AsyncClient(timeout=15) as hc:
@@ -6369,6 +6369,238 @@ async def gcal_create_event(payload: GCalEventCreate, request: Request):
 async def gcal_disconnect(request: Request):
     user = await require_auth(request)
     await db.users.update_one({"user_id": user.user_id}, {"$unset": {"google_calendar_tokens": "", "google_calendar_connected_at": ""}})
+    return {"ok": True}
+
+
+# ---------- MICROSOFT OUTLOOK CALENDAR (Graph API) ---------- #
+
+MS_AUTHORITY = "https://login.microsoftonline.com"
+MS_SCOPES = "openid profile offline_access User.Read Calendars.ReadWrite"
+
+
+def _ms_base_url(request: Request) -> str:
+    """Backend base URL used for OAuth callback. Prefers FRONTEND_URL env (canonical public URL)."""
+    return os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+
+
+@api_router.get("/integrations/outlook-calendar/auth-url")
+async def outlook_auth_url(request: Request, redirect_to: Optional[str] = None):
+    user = await require_auth(request)
+    cid = os.environ.get("MS_CLIENT_ID", "").strip()
+    if not cid:
+        raise HTTPException(status_code=400, detail="MS_CLIENT_ID missing — ajoute tes credentials Microsoft dans .env")
+    tenant = os.environ.get("MS_TENANT", "common").strip() or "common"
+    redirect_uri = f"{_ms_base_url(request)}/api/integrations/outlook-calendar/callback"
+    state = secrets.token_urlsafe(16)
+    await db.outlook_states.insert_one({
+        "state": state,
+        "user_id": user.user_id,
+        "redirect_to": redirect_to or "/integrations",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    from urllib.parse import urlencode
+    params = {
+        "client_id": cid,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "response_mode": "query",
+        "scope": MS_SCOPES,
+        "state": state,
+        "prompt": "select_account",
+    }
+    return {"authorization_url": f"{MS_AUTHORITY}/{tenant}/oauth2/v2.0/authorize?{urlencode(params)}"}
+
+
+@api_router.get("/integrations/outlook-calendar/callback")
+async def outlook_callback(request: Request, code: str, state: str):
+    cid = os.environ.get("MS_CLIENT_ID", "").strip()
+    cs = os.environ.get("MS_CLIENT_SECRET", "").strip()
+    tenant = os.environ.get("MS_TENANT", "common").strip() or "common"
+    if not (cid and cs):
+        raise HTTPException(status_code=400, detail="Microsoft credentials missing")
+
+    state_doc = await db.outlook_states.find_one({"state": state}, {"_id": 0})
+    if not state_doc:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+    redirect_uri = f"{_ms_base_url(request)}/api/integrations/outlook-calendar/callback"
+    try:
+        async with httpx.AsyncClient(timeout=15) as hc:
+            tr = await hc.post(
+                f"{MS_AUTHORITY}/{tenant}/oauth2/v2.0/token",
+                data={
+                    "client_id": cid,
+                    "client_secret": cs,
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                    "scope": MS_SCOPES,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        tokens = tr.json()
+        if "access_token" not in tokens:
+            logger.error(f"Outlook OAuth error: {tokens}")
+            raise HTTPException(status_code=400, detail={"ms_error": tokens})
+
+        # Compute expiry
+        expires_in = int(tokens.get("expires_in", 3600))
+        tokens["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)).isoformat()
+
+        await db.users.update_one(
+            {"user_id": state_doc["user_id"]},
+            {"$set": {
+                "outlook_tokens": tokens,
+                "outlook_connected_at": datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+        await db.outlook_states.delete_one({"state": state})
+
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/integrations?outlook=connected")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Outlook callback error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+async def _ensure_outlook_access_token(user_id: str) -> str:
+    """Return a valid access token, refreshing it if necessary."""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    tokens = user_doc.get("outlook_tokens") or {}
+    if not tokens:
+        raise HTTPException(status_code=400, detail="Outlook non connecté")
+
+    access_token = tokens.get("access_token")
+    expires_at_str = tokens.get("expires_at")
+    refresh_token = tokens.get("refresh_token")
+
+    # Parse expiry
+    expired = True
+    if expires_at_str:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            expired = datetime.now(timezone.utc) >= expires_at
+        except Exception:
+            expired = True
+
+    if access_token and not expired:
+        return access_token
+
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Session Outlook expirée, reconnectez-vous")
+
+    cid = os.environ.get("MS_CLIENT_ID", "").strip()
+    cs = os.environ.get("MS_CLIENT_SECRET", "").strip()
+    tenant = os.environ.get("MS_TENANT", "common").strip() or "common"
+
+    async with httpx.AsyncClient(timeout=15) as hc:
+        rr = await hc.post(
+            f"{MS_AUTHORITY}/{tenant}/oauth2/v2.0/token",
+            data={
+                "client_id": cid,
+                "client_secret": cs,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "scope": MS_SCOPES,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    new_tokens = rr.json()
+    if "access_token" not in new_tokens:
+        logger.error(f"Outlook refresh failed: {new_tokens}")
+        raise HTTPException(status_code=401, detail="Impossible de rafraîchir le token Outlook")
+
+    # Keep old refresh token if not rotated
+    new_tokens["refresh_token"] = new_tokens.get("refresh_token", refresh_token)
+    expires_in = int(new_tokens.get("expires_in", 3600))
+    new_tokens["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)).isoformat()
+
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"outlook_tokens": new_tokens}}
+    )
+    return new_tokens["access_token"]
+
+
+@api_router.get("/integrations/outlook-calendar/events")
+async def outlook_list_events(request: Request, max_results: int = 20):
+    user = await require_auth(request)
+    token = await _ensure_outlook_access_token(user.user_id)
+    try:
+        async with httpx.AsyncClient(timeout=15) as hc:
+            r = await hc.get(
+                f"https://graph.microsoft.com/v1.0/me/events?$top={max_results}&$orderby=start/dateTime",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Graph error: {r.text[:200]}")
+        data = r.json()
+        events = data.get("value", [])
+        clean = []
+        for ev in events:
+            clean.append({
+                "id": ev.get("id"),
+                "subject": ev.get("subject"),
+                "start": ev.get("start"),
+                "end": ev.get("end"),
+                "webLink": ev.get("webLink"),
+            })
+        return {"count": len(clean), "events": clean}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Outlook list events: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+class OutlookEventCreate(BaseModel):
+    subject: str
+    start_iso: str
+    end_iso: str
+    timezone: str = "UTC"
+    body: Optional[str] = None
+    prospect_id: Optional[str] = None
+
+
+@api_router.post("/integrations/outlook-calendar/events")
+async def outlook_create_event(payload: OutlookEventCreate, request: Request):
+    user = await require_auth(request)
+    token = await _ensure_outlook_access_token(user.user_id)
+    event_body = {
+        "subject": payload.subject,
+        "body": {"contentType": "HTML", "content": payload.body or ""},
+        "start": {"dateTime": payload.start_iso, "timeZone": payload.timezone},
+        "end": {"dateTime": payload.end_iso, "timeZone": payload.timezone},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as hc:
+            r = await hc.post(
+                "https://graph.microsoft.com/v1.0/me/events",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json=event_body,
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=502, detail=f"Graph error: {r.text[:200]}")
+        ev = r.json()
+        return {"ok": True, "event": {"id": ev.get("id"), "web_link": ev.get("webLink")}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Outlook create event: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@api_router.post("/integrations/outlook-calendar/disconnect")
+async def outlook_disconnect(request: Request):
+    user = await require_auth(request)
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$unset": {"outlook_tokens": "", "outlook_connected_at": ""}}
+    )
     return {"ok": True}
 
 

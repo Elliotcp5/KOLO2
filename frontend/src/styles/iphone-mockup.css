@@ -648,10 +648,26 @@
   .kolo-iphone-chip { display: none; }
 }
 @media (max-width: 480px) {
-  .kolo-stage { min-height: 620px; padding: 30px 16px 60px; }
-  .kolo-iphone { width: 260px; height: 540px; border-radius: 44px; padding: 10px; }
-  .kolo-iphone-screen { border-radius: 34px; }
+  .kolo-stage { min-height: 640px; padding: 30px 16px 60px; }
+  .kolo-iphone { width: 270px; height: 560px; border-radius: 46px; padding: 10px; }
+  .kolo-iphone-screen { border-radius: 36px; }
   .kolo-iphone-island { width: 80px; height: 24px; }
+  /* Slightly punchier float + soft glow on mobile so the phone never feels static */
+  .kolo-iphone {
+    animation: phone-float-mobile 4.5s ease-in-out infinite alternate;
+    box-shadow:
+      0 0 0 2.5px #2a2a2c,
+      0 0 0 5px #161618,
+      0 30px 60px -16px rgba(0, 0, 0, 0.45),
+      0 20px 40px -10px rgba(139, 92, 246, 0.35),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  }
+  .kolo-stage-aura .kolo-stage-blob-1,
+  .kolo-stage-aura .kolo-stage-blob-2 { opacity: 0.55; }
+}
+@keyframes phone-float-mobile {
+  0%   { transform: translateY(0) rotate(-0.3deg); }
+  100% { transform: translateY(-10px) rotate(0.3deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
