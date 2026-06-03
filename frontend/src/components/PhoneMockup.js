@@ -209,8 +209,17 @@ const PhoneMockup = () => {
               <div className="kolo-iphone-tab-dot" />
               <span>Aujourd'hui</span>
             </div>
+            <button
+              type="button"
+              className="kolo-iphone-tab-add"
+              aria-label="Ajouter un prospect"
+              onClick={(e) => { e.stopPropagation(); setToast('Nouveau prospect'); setTimeout(() => setToast(null), 1800); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M7 2.5V11.5M2.5 7H11.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+            </button>
             <div className="kolo-iphone-tab"><span>Prospects</span></div>
-            <div className="kolo-iphone-tab"><span>Réseau</span></div>
           </div>
 
           <div className="kolo-iphone-home" />
