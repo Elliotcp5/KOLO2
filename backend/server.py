@@ -5664,9 +5664,25 @@ def _integration_status(env_keys: list, optional: list = None) -> dict:
 @api_router.get("/integrations/status")
 async def integrations_status(request: Request):
     await require_auth(request)
+    twilio_voice_keys = ["TWILIO_ACCOUNT_SID", "TWILIO_FROM_NUMBER"]
+    twilio_auth_ok = bool(
+        os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+        and (
+            (os.environ.get("TWILIO_API_KEY_SID", "").strip() and os.environ.get("TWILIO_API_KEY_SECRET", "").strip())
+            or os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+        )
+    )
+    voice_ok = twilio_auth_ok and bool(os.environ.get("TWILIO_FROM_NUMBER", "").strip())
+    wa_ok = twilio_auth_ok and bool(os.environ.get("TWILIO_WHATSAPP_FROM", "").strip())
+    voice_missing = []
+    if not twilio_auth_ok: voice_missing.append("TWILIO_ACCOUNT_SID + API_KEY/SECRET ou AUTH_TOKEN")
+    if not os.environ.get("TWILIO_FROM_NUMBER", "").strip(): voice_missing.append("TWILIO_FROM_NUMBER")
+    wa_missing = []
+    if not twilio_auth_ok: wa_missing.append("TWILIO_ACCOUNT_SID + API_KEY/SECRET ou AUTH_TOKEN")
+    if not os.environ.get("TWILIO_WHATSAPP_FROM", "").strip(): wa_missing.append("TWILIO_WHATSAPP_FROM")
     return {
-        "twilio": _integration_status(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"]),
-        "whatsapp": _integration_status(["WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN"]),
+        "twilio": {"configured": voice_ok, "missing": voice_missing},
+        "whatsapp": {"configured": wa_ok, "missing": wa_missing, "via": "twilio"},
         "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"]),
         "outlook_calendar": {"configured": False, "missing": ["MS_GRAPH_CLIENT_ID"], "note": "Bientôt disponible"},
         "apple_calendar": {"configured": False, "missing": ["APPLE_CALDAV"], "note": "Bientôt disponible"},
@@ -5681,25 +5697,36 @@ class TwilioCallRequest(BaseModel):
     prospect_id: Optional[str] = None
 
 
+def _twilio_client():
+    """Return an authenticated Twilio client using API Key SID + Secret (preferred)
+    or Account SID + Auth Token (fallback). Returns None if no credentials."""
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+    api_key = os.environ.get("TWILIO_API_KEY_SID", "").strip()
+    api_secret = os.environ.get("TWILIO_API_KEY_SECRET", "").strip()
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+    if not account_sid:
+        return None
+    from twilio.rest import Client
+    if api_key and api_secret:
+        return Client(api_key, api_secret, account_sid)
+    if auth_token:
+        return Client(account_sid, auth_token)
+    return None
+
+
 @api_router.post("/integrations/twilio/call")
 async def twilio_initiate_call(payload: TwilioCallRequest, request: Request):
-    """Initiate a click-to-call. Requires TWILIO_* env vars."""
+    """Initiate a click-to-call via Twilio Voice."""
     user = await require_auth(request)
-    sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-    token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
     from_number = os.environ.get("TWILIO_FROM_NUMBER", "").strip()
-    if not (sid and token and from_number):
-        raise HTTPException(status_code=400, detail="Twilio non configuré — ajoute TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER dans .env")
+    client = _twilio_client()
+    if not (client and from_number):
+        raise HTTPException(status_code=400, detail="Twilio non configuré — vérifie TWILIO_ACCOUNT_SID + (API_KEY/SECRET ou AUTH_TOKEN) + TWILIO_FROM_NUMBER")
 
     try:
-        from twilio.rest import Client
-        client = Client(sid, token)
-        # Build the recording webhook URL (Twilio will POST when recording is ready)
         base_url = str(request.base_url).rstrip("/")
         recording_callback = f"{base_url}/api/integrations/twilio/recording-webhook?call_initiator={user.user_id}"
-        # TwiML: read a greeting, dial the prospect, record the call
         twiml = f'<Response><Say language="fr-FR">Connexion en cours via KOLO.</Say><Dial record="record-from-answer" recordingStatusCallback="{recording_callback}">{payload.to}</Dial></Response>'
-        # Inline twiml — use Twilio's TwiML URL escape via twiml param requires URL, so use TwiML Bins or just use the "twiml" arg on calls.create:
         call = client.calls.create(to=payload.to, from_=from_number, twiml=twiml, record=True)
         log = {
             "call_id": f"call_{uuid.uuid4().hex[:14]}",
@@ -5815,32 +5842,28 @@ class WhatsAppSendPayload(BaseModel):
 
 @api_router.post("/integrations/whatsapp/send")
 async def whatsapp_send(payload: WhatsAppSendPayload, request: Request):
+    """Send a WhatsApp message via Twilio (Sandbox or approved Business Sender)."""
     user = await require_auth(request)
-    phone_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
-    token = os.environ.get("WHATSAPP_ACCESS_TOKEN", "").strip()
-    if not (phone_id and token):
-        raise HTTPException(status_code=400, detail="WhatsApp non configuré — ajoute WHATSAPP_PHONE_NUMBER_ID et WHATSAPP_ACCESS_TOKEN dans .env")
+    wa_from = os.environ.get("TWILIO_WHATSAPP_FROM", "").strip()
+    client = _twilio_client()
+    if not (client and wa_from):
+        raise HTTPException(status_code=400, detail="WhatsApp via Twilio non configuré — ajoute TWILIO_WHATSAPP_FROM (ex: 'whatsapp:+14155238886' pour le sandbox)")
 
     try:
-        async with httpx.AsyncClient(timeout=10) as hc:
-            r = await hc.post(
-                f"https://graph.facebook.com/v21.0/{phone_id}/messages",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                json={"messaging_product": "whatsapp", "to": payload.to, "type": "text", "text": {"body": payload.body}},
-            )
-        data = r.json()
-        if r.status_code >= 400:
-            raise HTTPException(status_code=502, detail={"meta_error": data})
-        wa_msg_id = (data.get("messages") or [{}])[0].get("id")
+        # Twilio expects 'whatsapp:+...' prefix on both from and to
+        to_number = payload.to if payload.to.startswith("whatsapp:") else f"whatsapp:{payload.to}"
+        from_number = wa_from if wa_from.startswith("whatsapp:") else f"whatsapp:{wa_from}"
+        msg = client.messages.create(body=payload.body, from_=from_number, to=to_number)
         log = {
-            "wa_message_id": wa_msg_id,
+            "wa_message_id": msg.sid,
             "direction": "outbound",
             "user_id": user.user_id,
             "prospect_id": payload.prospect_id,
             "to": payload.to,
-            "from": phone_id,
+            "from": wa_from,
             "body": payload.body,
-            "status": "sent",
+            "status": getattr(msg, "status", "queued"),
+            "provider": "twilio",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.whatsapp_messages.insert_one(log)
@@ -5849,8 +5872,40 @@ async def whatsapp_send(payload: WhatsAppSendPayload, request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"WhatsApp send error: {e}")
-        raise HTTPException(status_code=500, detail=str(e)[:200])
+        logger.error(f"WhatsApp Twilio send error: {e}")
+        raise HTTPException(status_code=500, detail=f"Twilio WhatsApp error: {str(e)[:200]}")
+
+
+@api_router.post("/integrations/whatsapp/twilio-webhook")
+async def whatsapp_twilio_webhook(request: Request):
+    """Inbound WhatsApp messages from Twilio (webhook set on the WhatsApp number)."""
+    form = await request.form()
+    body = form.get("Body", "")
+    from_ = form.get("From", "")  # whatsapp:+14155551234
+    to_ = form.get("To", "")
+    msg_sid = form.get("MessageSid")
+
+    doc = {
+        "wa_message_id": msg_sid,
+        "direction": "inbound",
+        "from": from_.replace("whatsapp:", ""),
+        "to": to_.replace("whatsapp:", ""),
+        "body": body,
+        "type": "text",
+        "provider": "twilio",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.whatsapp_messages.insert_one(doc)
+    # Best-effort: link to a prospect by last 9 digits of phone
+    if from_:
+        last9 = from_.replace("whatsapp:", "")[-9:]
+        await db.prospects.update_one(
+            {"phone": {"$regex": last9}},
+            {"$push": {"whatsapp_threads": msg_sid}}
+        )
+    # Twilio expects an XML 200 OK
+    from fastapi.responses import Response as FResp
+    return FResp(content="<Response/>", media_type="application/xml")
 
 
 @api_router.get("/integrations/whatsapp/webhook")
