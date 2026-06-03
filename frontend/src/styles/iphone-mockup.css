@@ -1,76 +1,149 @@
 /* ==========================================================================
-   KOLO — Realistic iPhone Mockup
-   True proportions (iPhone 14/15), Dynamic Island, side buttons, status bar.
+   KOLO — Phone Stage (animated backdrop) + interactive iPhone mockup
    ========================================================================== */
 
-.kolo-iphone-stage {
+/* === Stage with animated gradient blobs === */
+.kolo-stage {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  perspective: 1500px;
+  padding: 60px 20px 80px;
+  perspective: 1800px;
+  min-height: 760px;
 }
 
+.kolo-stage-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.kolo-stage-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.kolo-stage-blob-1 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, #C084FC, transparent 70%);
+  top: 8%; left: 12%;
+  animation: stage-drift-1 14s ease-in-out infinite alternate;
+}
+.kolo-stage-blob-2 {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, #F472B6, transparent 70%);
+  bottom: 12%; right: 14%;
+  animation: stage-drift-2 18s ease-in-out infinite alternate;
+}
+.kolo-stage-blob-3 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, #60A5FA, transparent 70%);
+  top: 30%; right: 5%;
+  animation: stage-drift-3 16s ease-in-out infinite alternate;
+  opacity: 0.4;
+}
+@keyframes stage-drift-1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 80px) scale(1.15); }
+}
+@keyframes stage-drift-2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-70px, -60px) scale(1.1); }
+}
+@keyframes stage-drift-3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-40px, 90px) scale(0.9); }
+}
+
+.kolo-stage-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(11, 11, 15, 0.45);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+}
+.kolo-stage-hint svg { color: #8B5CF6; }
+
+@media (max-width: 768px) { .kolo-stage-hint { display: none; } }
+
+/* === iPhone === */
 .kolo-iphone {
   position: relative;
   width: 320px;
-  height: 680px;
+  height: 660px;
   background: linear-gradient(165deg, #1c1c1e 0%, #0a0a0a 100%);
   border-radius: 54px;
   padding: 12px;
   box-shadow:
     0 0 0 2.5px #2a2a2c,
     0 0 0 5px #161618,
-    0 40px 80px -20px rgba(0, 0, 0, 0.45),
+    0 40px 80px -20px rgba(0, 0, 0, 0.5),
     0 24px 48px -12px rgba(139, 92, 246, 0.25),
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
-  animation: kolo-phone-float-pro 6s ease-in-out infinite alternate;
-  will-change: transform;
+  z-index: 1;
   transform-style: preserve-3d;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms ease;
+  animation: phone-float 6s ease-in-out infinite alternate;
+}
+.kolo-iphone.is-hover {
+  box-shadow:
+    0 0 0 2.5px #2a2a2c,
+    0 0 0 5px #161618,
+    0 50px 100px -20px rgba(0, 0, 0, 0.55),
+    0 30px 60px -12px rgba(139, 92, 246, 0.35),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+@keyframes phone-float {
+  0%   { translate: 0 0; }
+  100% { translate: 0 -10px; }
 }
 
-@keyframes kolo-phone-float-pro {
-  0%   { transform: translateY(0) rotateY(-2deg) rotateX(2deg); }
-  100% { transform: translateY(-14px) rotateY(2deg) rotateX(-1deg); }
+/* Phone reflection on the ground */
+.kolo-iphone-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -36px;
+  width: 220px;
+  height: 24px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3), transparent 70%);
+  filter: blur(8px);
+  transform: translateX(-50%);
+  z-index: 0;
+  animation: shadow-pulse 6s ease-in-out infinite alternate;
+}
+@keyframes shadow-pulse {
+  0%   { width: 220px; opacity: 0.35; }
+  100% { width: 180px; opacity: 0.25; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kolo-iphone { animation: none; }
-}
-
-/* Side buttons */
 .kolo-iphone-btn {
   position: absolute;
   background: linear-gradient(90deg, #2a2a2c, #404042, #2a2a2c);
   border-radius: 2px;
 }
-.kolo-iphone-btn-power {
-  right: -3px;
-  top: 180px;
-  width: 4px;
-  height: 90px;
-}
-.kolo-iphone-btn-vol-up {
-  left: -3px;
-  top: 165px;
-  width: 4px;
-  height: 60px;
-}
-.kolo-iphone-btn-vol-down {
-  left: -3px;
-  top: 235px;
-  width: 4px;
-  height: 60px;
-}
-.kolo-iphone-btn-mute {
-  left: -3px;
-  top: 110px;
-  width: 4px;
-  height: 30px;
-}
+.kolo-iphone-btn-power   { right: -3px; top: 180px; width: 4px; height: 90px; }
+.kolo-iphone-btn-vol-up  { left: -3px; top: 165px; width: 4px; height: 60px; }
+.kolo-iphone-btn-vol-down{ left: -3px; top: 235px; width: 4px; height: 60px; }
+.kolo-iphone-btn-mute    { left: -3px; top: 110px; width: 4px; height: 30px; }
 
-/* Screen */
 .kolo-iphone-screen {
   width: 100%;
   height: 100%;
@@ -82,22 +155,12 @@
   flex-direction: column;
 }
 
-/* Dynamic Island — now positioned inside the status bar flex */
-.kolo-iphone-island {
-  width: 90px;
-  height: 28px;
-  background: #000;
-  border-radius: 22px;
-  flex-shrink: 0;
-}
-
-/* Status bar — flex with island centered */
+/* Status bar: 3-column flex with Dynamic Island centered */
 .kolo-iphone-statusbar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 8px 22px 6px;
-  gap: 8px;
+  padding: 10px 22px 6px;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   position: relative;
   z-index: 5;
@@ -106,46 +169,54 @@
   font-size: 13px;
   font-weight: 700;
   color: #0B0B0F;
-  min-width: 50px;
+  justify-self: start;
+}
+.kolo-iphone-island {
+  width: 90px;
+  height: 28px;
+  background: #000;
+  border-radius: 22px;
+  justify-self: center;
 }
 .kolo-iphone-statusbar-right {
   display: flex;
   align-items: center;
   gap: 5px;
   color: #0B0B0F;
-  min-width: 50px;
-  justify-content: flex-end;
+  justify-self: end;
 }
 
-/* App content */
 .kolo-iphone-content {
   flex: 1;
   overflow: hidden;
-  padding: 20px 18px 0;
+  padding: 16px 18px 8px;
   font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .kolo-iphone-app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 .kolo-iphone-logo {
   font-weight: 800;
-  font-size: 16px;
+  font-size: 15px;
   color: #0B0B0F;
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: inline-flex;
+  align-items: baseline;
 }
 .kolo-iphone-logo-dot {
+  display: inline-block;
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: #CB6CE6;
-  margin-bottom: 7px;
-  margin-left: 1px;
+  margin-left: 2px;
+  align-self: flex-end;
+  margin-bottom: 1px;
 }
 .kolo-iphone-avatar {
   width: 26px;
@@ -161,34 +232,31 @@
 }
 
 .kolo-iphone-title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   color: #0B0B0F;
   letter-spacing: -0.02em;
-  animation: kolo-iphone-fadein 600ms ease both;
-  animation-delay: 100ms;
+  animation: kolo-iphone-fadein 600ms ease both 100ms;
 }
 .kolo-iphone-subtitle {
   font-size: 11px;
   color: #6B7280;
-  margin-bottom: 14px;
-  animation: kolo-iphone-fadein 600ms ease both;
-  animation-delay: 180ms;
+  margin-bottom: 12px;
+  animation: kolo-iphone-fadein 600ms ease both 180ms;
 }
 
-/* Stats */
+/* Stats grid */
 .kolo-iphone-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  margin-bottom: 12px;
-  animation: kolo-iphone-fadein 600ms ease both;
-  animation-delay: 260ms;
+  margin-bottom: 10px;
+  animation: kolo-iphone-fadein 600ms ease both 260ms;
 }
 .kolo-iphone-stat {
   background: #F3F4F6;
   border-radius: 10px;
-  padding: 8px 6px;
+  padding: 8px 4px;
   text-align: center;
 }
 .kolo-iphone-stat-active {
@@ -196,19 +264,26 @@
 }
 .kolo-iphone-stat-active .kolo-iphone-stat-num,
 .kolo-iphone-stat-active .kolo-iphone-stat-label { color: #fff; }
+.kolo-iphone-stat-num {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0B0B0F;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
 .kolo-iphone-stat-label {
   font-size: 9px;
   color: #6B7280;
   font-weight: 500;
 }
 
-/* AI Suggestion (re-mount animated when index changes) */
+/* AI Card */
 .kolo-iphone-ai-card {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(236, 72, 153, 0.06));
   border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: 12px;
   padding: 10px 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   animation: kolo-iphone-ai-pop 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes kolo-iphone-ai-pop {
@@ -219,7 +294,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 .kolo-iphone-ai-icon {
   width: 18px;
@@ -254,25 +329,92 @@
 .kolo-iphone-ai-text {
   font-size: 10px;
   color: #4B5563;
-  line-height: 1.35;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.kolo-iphone-ai-actions {
+  display: flex;
+  gap: 4px;
+}
+.kolo-iphone-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 120ms ease;
+}
+.kolo-iphone-ai-btn:hover { opacity: 0.9; transform: scale(1.03); }
+.kolo-iphone-ai-btn:active { transform: scale(0.97); }
+.kolo-iphone-ai-btn.ghost {
+  background: rgba(0, 0, 0, 0.05);
+  color: #4B5563;
 }
 
-/* Task rows */
+/* Tasks (interactive) */
 .kolo-iphone-task {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 10px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   animation: kolo-iphone-fadein 500ms ease both;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
 .kolo-iphone-task:nth-of-type(2) { animation-delay: 340ms; }
 .kolo-iphone-task:nth-of-type(3) { animation-delay: 420ms; }
 .kolo-iphone-task:nth-of-type(4) { animation-delay: 500ms; }
+
+.kolo-iphone-task:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+.kolo-iphone-task.is-expanded {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+}
+
+.kolo-iphone-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.kolo-iphone-task-check-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10B981;
+  transition: all 160ms ease;
+  padding: 0;
+}
+.kolo-iphone-task-check-btn:hover {
+  border-color: #10B981;
+  background: rgba(16, 185, 129, 0.06);
+}
+.kolo-iphone-task-done .kolo-iphone-task-check-btn {
+  background: #10B981;
+  border-color: #10B981;
+  color: #fff;
+}
 
 .kolo-iphone-task-icon {
   width: 22px;
@@ -283,8 +425,8 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.kolo-iphone-task-call { background: #DCFCE7; color: #10B981; }
-.kolo-iphone-task-msg { background: #E0E7FF; color: #6366F1; }
+.kolo-iphone-task-call  { background: #DCFCE7; color: #10B981; }
+.kolo-iphone-task-msg   { background: #E0E7FF; color: #6366F1; }
 .kolo-iphone-task-check { background: rgba(16, 185, 129, 0.1); color: #10B981; }
 
 .kolo-iphone-task-body { flex: 1; min-width: 0; }
@@ -292,6 +434,7 @@
   font-size: 11px;
   font-weight: 600;
   color: #0B0B0F;
+  transition: color 200ms ease, text-decoration 200ms ease;
 }
 .kolo-iphone-task-sub {
   font-size: 9px;
@@ -302,12 +445,44 @@
   text-decoration: line-through;
   color: #9CA3AF;
 }
+.kolo-iphone-task-done { opacity: 0.85; }
+
+.kolo-iphone-task-tag {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kolo-iphone-task-detail {
+  padding: 0 10px 10px 39px;
+  animation: kolo-iphone-fadein 280ms ease;
+}
+.kolo-iphone-task-detail-label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8B5CF6;
+  margin-bottom: 3px;
+}
+.kolo-iphone-task-detail-text {
+  font-size: 10px;
+  color: #4B5563;
+  line-height: 1.4;
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
 
 /* Bottom nav */
 .kolo-iphone-bottomnav {
-  display: flex;
-  justify-content: space-around;
-  padding: 8px 16px 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 8px 12px 22px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
@@ -319,7 +494,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .kolo-iphone-tab-active { color: #8B5CF6; font-weight: 700; }
 .kolo-iphone-tab-dot {
@@ -329,7 +504,6 @@
   background: #8B5CF6;
 }
 
-/* Home indicator */
 .kolo-iphone-home {
   position: absolute;
   bottom: 8px;
@@ -342,78 +516,10 @@
   opacity: 0.85;
 }
 
-/* Floating chips around the phone (premium "feature highlights") */
-.kolo-iphone-chip {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #0B0B0F;
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
-  animation: kolo-chip-float 4.5s ease-in-out infinite alternate;
-}
-.kolo-iphone-chip svg { color: #8B5CF6; }
-.kolo-iphone-chip-1 {
-  top: 8%;
-  left: -30%;
-  animation-delay: 0s;
-}
-.kolo-iphone-chip-2 {
-  top: 42%;
-  right: -32%;
-  animation-delay: 1.5s;
-}
-.kolo-iphone-chip-3 {
-  bottom: 12%;
-  left: -22%;
-  animation-delay: 3s;
-}
-@keyframes kolo-chip-float {
-  0%   { transform: translateY(0); }
-  100% { transform: translateY(-10px); }
-}
-
-@keyframes kolo-iphone-fadein {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Animated demo cursor */
-.kolo-iphone-cursor {
-  position: absolute;
-  pointer-events: none;
-  z-index: 50;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
-  transition: left 800ms cubic-bezier(0.22, 1, 0.36, 1), top 800ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.kolo-iphone-cursor-ripple {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(139, 92, 246, 0.5);
-  animation: kolo-cursor-ripple 1s ease-out 600ms;
-  pointer-events: none;
-}
-@keyframes kolo-cursor-ripple {
-  0%   { transform: scale(0); opacity: 0.6; }
-  100% { transform: scale(4); opacity: 0; }
-}
-
-/* Toast notification (live update inside the app) */
+/* Toast */
 .kolo-iphone-toast {
   position: absolute;
-  bottom: 90px;
+  bottom: 88px;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
@@ -436,22 +542,51 @@
   100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
-/* Number pulse when stats change */
-.kolo-iphone-stat-num {
-  font-size: 18px;
-  font-weight: 800;
+/* Floating chips around the phone */
+.kolo-iphone-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
   color: #0B0B0F;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
+  animation: kolo-chip-float 4.5s ease-in-out infinite alternate;
+  z-index: 2;
+}
+.kolo-iphone-chip svg { color: #8B5CF6; }
+.kolo-iphone-chip-1 { top: 10%; left: 8%; animation-delay: 0s; }
+.kolo-iphone-chip-2 { top: 38%; right: 8%; animation-delay: 1.5s; }
+.kolo-iphone-chip-3 { bottom: 18%; left: 6%; animation-delay: 3s; }
+@keyframes kolo-chip-float {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
 }
 
-/* Hide chips on small screens */
+@keyframes kolo-iphone-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 900px) {
   .kolo-iphone-chip { display: none; }
 }
 @media (max-width: 480px) {
-  .kolo-iphone { width: 260px; height: 552px; border-radius: 44px; padding: 10px; }
+  .kolo-stage { min-height: 620px; padding: 30px 16px 60px; }
+  .kolo-iphone { width: 260px; height: 540px; border-radius: 44px; padding: 10px; }
   .kolo-iphone-screen { border-radius: 34px; }
-  .kolo-iphone-island { width: 80px; height: 24px; top: 8px; }
+  .kolo-iphone-island { width: 80px; height: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kolo-iphone, .kolo-stage-blob, .kolo-iphone-chip, .kolo-iphone-shadow {
+    animation: none !important;
+  }
 }
