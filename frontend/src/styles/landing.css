@@ -10,7 +10,14 @@
 }
 
 /* Make sure the body provides the base color */
-body { background: var(--bg, #fafafa); }
+body {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, #FCE7F3 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 30%, #EDE9FE 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 0% 60%, #DBEAFE 0%, transparent 55%),
+    #FAFAFB;
+  background-attachment: fixed;
+}
 
 /* ===== Premium animated background (subtle gradient mesh) ===== */
 /* Disabled — replaced by <PremiumBackdrop /> component (orbs + dot grid + spotlight) */
@@ -254,7 +261,7 @@ body { background: var(--bg, #fafafa); }
 .hero {
   padding: calc(96px + env(safe-area-inset-top, 0)) 0 32px;
   text-align: center;
-  background: var(--bg);
+  background: transparent;
 }
 
 .hero-eyebrow {
@@ -1117,10 +1124,16 @@ body { background: var(--bg, #fafafa); }
 /* ===== SECTIONS ===== */
 .section {
   padding: 80px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .section-alt {
-  background: var(--bg-alt);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .centered {

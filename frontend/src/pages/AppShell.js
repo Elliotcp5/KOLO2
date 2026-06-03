@@ -439,6 +439,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const { t, formatDate, locale } = useLocale();
   const { c, isDark } = useThemeColors();
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const labels = UI_LABELS[locale] || UI_LABELS.en;
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -920,6 +921,58 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             marginBottom: '10px'
           }}></span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Org Space (visible for everyone — they can create one) */}
+          <button
+            onClick={() => navigate('/org')}
+            data-testid="header-org-btn"
+            title={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'transparent',
+              border: `1px solid ${c('border')}`,
+              borderRadius: '999px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: c('text'),
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            <Briefcase size={13} strokeWidth={2} />
+            <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>
+              {locale === 'fr' ? 'Réseau' : 'Network'}
+            </span>
+          </button>
+          {/* Super Admin badge — only visible to allowlisted users */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => navigate('/kolo-admin')}
+              data-testid="header-admin-btn"
+              title="Espace KOLO Super Admin"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: 'linear-gradient(135deg, #EC4899, #8B5CF6)',
+                border: 'none',
+                borderRadius: '999px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#fff',
+                fontFamily: 'var(--font-body)',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.25)',
+              }}
+            >
+              <Crown size={13} strokeWidth={2.5} />
+              <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>Admin</span>
+            </button>
+          )}
         <button 
           style={{ 
             display: 'flex', 
@@ -952,6 +1005,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           </div>
           <span style={{ color: c('text'), fontSize: '14px', fontWeight: '500' }}>{labels.myProfile}</span>
         </button>
+        </div>
       </div>
 
       {/* Page Title */}
