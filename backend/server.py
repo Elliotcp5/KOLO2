@@ -103,6 +103,20 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ==================== SUPER ADMIN ====================
+# Hard-coded allowlist of emails granted the KOLO Super Admin role.
+# These users can access /kolo-admin and all /api/admin/* endpoints with
+# session authentication (no shared key required).
+KOLO_SUPER_ADMIN_EMAILS = {
+    "elliot.cohenpressard@trykolo.io",
+}
+
+def is_super_admin_email(email: Optional[str]) -> bool:
+    """True if the given email is in the super admin allowlist."""
+    if not email:
+        return False
+    return email.lower().strip() in KOLO_SUPER_ADMIN_EMAILS
+
 # Configure logging with immediate flush
 logging.basicConfig(
     level=logging.DEBUG,
@@ -830,7 +844,8 @@ async def get_current_user(request: Request):
             "ai_suggestions": ai_limit
         },
         "trial": trial_info,
-        "currency": user_doc.get("currency", "EUR") if user_doc else "EUR"
+        "currency": user_doc.get("currency", "EUR") if user_doc else "EUR",
+        "is_super_admin": is_super_admin_email(user.email)
     }
 
 @api_router.put("/auth/preferences")
@@ -1924,6 +1939,167 @@ async def list_enterprise_leads(admin_key: str, status: Optional[str] = None, li
     cursor = db.enterprise_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
     leads = await cursor.to_list(length=limit)
     return {"count": len(leads), "leads": leads}
+
+
+# ==================== KOLO SUPER ADMIN ENDPOINTS ====================
+# Session-authenticated admin space (/kolo-admin). The current user's email
+# must be in KOLO_SUPER_ADMIN_EMAILS. Used by the AdminDashboard React page.
+
+async def require_super_admin(request: Request) -> User:
+    """Authorize: requires a logged-in user whose email is in the allowlist."""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Forbidden — super admin only")
+    return user
+
+
+@api_router.get("/admin/check")
+async def admin_check(request: Request):
+    """Lightweight endpoint a frontend can call to confirm super admin status."""
+    user = await get_user_from_session(request)
+    if not user:
+        return {"is_super_admin": False, "authenticated": False}
+    return {
+        "is_super_admin": is_super_admin_email(user.email),
+        "authenticated": True,
+        "email": user.email,
+    }
+
+
+@api_router.get("/admin/stats")
+async def admin_stats(request: Request):
+    """KPI dashboard for the super admin."""
+    await require_super_admin(request)
+
+    total_users = await db.users.count_documents({})
+    active_subs = await db.users.count_documents({"subscription_status": "active"})
+    trialing = await db.users.count_documents({"subscription_status": "trialing"})
+    canceled = await db.users.count_documents({"subscription_status": "canceled"})
+    google_users = await db.users.count_documents({"auth_provider": "google"})
+    email_users = await db.users.count_documents({"auth_provider": "email"})
+
+    total_leads = await db.enterprise_leads.count_documents({})
+    new_leads = await db.enterprise_leads.count_documents({"status": "new"})
+    contacted_leads = await db.enterprise_leads.count_documents({"status": "contacted"})
+    converted_leads = await db.enterprise_leads.count_documents({"status": "converted"})
+    rejected_leads = await db.enterprise_leads.count_documents({"status": "rejected"})
+
+    total_prospects = await db.prospects.count_documents({}) if "prospects" in (await db.list_collection_names()) else 0
+
+    # Recent signups (last 7 days)
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent_signups = await db.users.count_documents({"created_at": {"$gte": seven_days_ago}})
+
+    return {
+        "users": {
+            "total": total_users,
+            "active": active_subs,
+            "trialing": trialing,
+            "canceled": canceled,
+            "google": google_users,
+            "email": email_users,
+            "recent_signups_7d": recent_signups,
+        },
+        "leads": {
+            "total": total_leads,
+            "new": new_leads,
+            "contacted": contacted_leads,
+            "converted": converted_leads,
+            "rejected": rejected_leads,
+        },
+        "prospects_total": total_prospects,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@api_router.get("/admin/leads")
+async def admin_list_leads(request: Request, status: Optional[str] = None, limit: int = 200):
+    """List enterprise demo requests for the super admin (session-authenticated)."""
+    await require_super_admin(request)
+    query = {}
+    if status and status != "all":
+        query["status"] = status
+    cursor = db.enterprise_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
+    leads = await cursor.to_list(length=limit)
+    return {"count": len(leads), "leads": leads}
+
+
+class AdminLeadUpdate(BaseModel):
+    status: Optional[str] = None  # new / contacted / converted / rejected
+    notes: Optional[str] = None
+
+
+@api_router.patch("/admin/leads/{lead_id}")
+async def admin_update_lead(lead_id: str, payload: AdminLeadUpdate, request: Request):
+    """Update a lead's status / internal notes."""
+    admin_user = await require_super_admin(request)
+
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if payload.status:
+        allowed = {"new", "contacted", "converted", "rejected"}
+        if payload.status not in allowed:
+            raise HTTPException(status_code=400, detail=f"status must be one of {allowed}")
+        update_doc["status"] = payload.status
+        update_doc["status_changed_by"] = admin_user.email
+    if payload.notes is not None:
+        update_doc["admin_notes"] = payload.notes
+
+    result = await db.enterprise_leads.update_one({"lead_id": lead_id}, {"$set": update_doc})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    lead = await db.enterprise_leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    return {"ok": True, "lead": lead}
+
+
+@api_router.get("/admin/users")
+async def admin_list_users(
+    request: Request,
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    """Paginated user list with optional search (email/name) and status filter."""
+    await require_super_admin(request)
+
+    query = {}
+    if status and status != "all":
+        query["subscription_status"] = status
+    if q:
+        q_clean = q.strip()
+        if q_clean:
+            query["$or"] = [
+                {"email": {"$regex": q_clean, "$options": "i"}},
+                {"name": {"$regex": q_clean, "$options": "i"}},
+            ]
+
+    total = await db.users.count_documents(query)
+    projection = {
+        "_id": 0,
+        "user_id": 1,
+        "email": 1,
+        "name": 1,
+        "auth_provider": 1,
+        "subscription_status": 1,
+        "plan": 1,
+        "trial_ends_at": 1,
+        "subscription_ends_at": 1,
+        "created_at": 1,
+        "country": 1,
+        "currency": 1,
+        "phone": 1,
+    }
+    cursor = (
+        db.users.find(query, projection)
+        .sort("created_at", -1)
+        .skip(max(0, offset))
+        .limit(min(500, max(1, limit)))
+    )
+    users = await cursor.to_list(length=limit)
+    return {"total": total, "limit": limit, "offset": offset, "users": users}
 
 
 

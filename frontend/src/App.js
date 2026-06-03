@@ -6,7 +6,7 @@ import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { LocaleProvider } from "./context/LocaleContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
-import { AuthProvider, AuthCallback, ProtectedRoute } from "./context/AuthContext";
+import { AuthProvider, AuthCallback, ProtectedRoute, SuperAdminRoute } from "./context/AuthContext";
 import { PlanProvider } from "./context/PlanContext";
 import { trackPageView } from "./utils/analytics";
 import { useCapacitorDeepLinks } from "./hooks/useCapacitorDeepLinks";
@@ -27,6 +27,7 @@ import PricingPage from "./pages/PricingPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import BusinessPage from "./pages/BusinessPage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -143,6 +144,16 @@ const AppRouter = () => {
             <NewProspectPage />
           </ProtectedRoute>
         } 
+      />
+
+      {/* KOLO Super Admin space — email allowlist */}
+      <Route
+        path="/kolo-admin"
+        element={
+          <SuperAdminRoute>
+            <AdminDashboard />
+          </SuperAdminRoute>
+        }
       />
 
       {/* Catch-all redirect */}

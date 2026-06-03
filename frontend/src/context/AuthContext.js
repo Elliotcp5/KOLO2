@@ -28,21 +28,23 @@ export const AuthProvider = ({ children }) => {
 
   // Check auth on mount
   useEffect(() => {
+    // CRITICAL: If returning from OAuth callback (#session_id=...), skip the /me check.
+    // AuthCallback will exchange the session_id and establish the session first.
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    if (typeof window !== 'undefined' && window.location.hash?.includes('session_id=')) {
+      setLoading(false);
+      return;
+    }
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     const token = localStorage.getItem('kolo_token');
-    if (!token) {
-      setUser(null);
-      setIsAuthenticated(false);
-      setLoading(false);
-      return;
-    }
-    
+    // Always try /auth/me first — it works with cookie OR Bearer
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       
       if (response.ok) {
@@ -50,12 +52,12 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
-        localStorage.removeItem('kolo_token');
+        if (token) localStorage.removeItem('kolo_token');
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (e) {
-      localStorage.removeItem('kolo_token');
+      if (token) localStorage.removeItem('kolo_token');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -74,15 +76,40 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
+  // Exchange an Emergent OAuth session_id for a server session + user data.
+  // Called from <AuthCallback /> after Google redirects to `/#session_id=...`.
+  const processOAuthSession = async (sessionId) => {
+    const response = await fetch(`${API_URL}/api/auth/session`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+    if (!response.ok) {
+      throw new Error('OAuth session exchange failed');
+    }
+    const userData = await response.json();
+    setUser(userData);
+    setIsAuthenticated(true);
+    // Immediately fetch the full /auth/me payload so we have plan/super admin info
+    try {
+      const meResp = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+      if (meResp.ok) {
+        const fullUser = await meResp.json();
+        setUser(fullUser);
+      }
+    } catch (_) {}
+    return userData;
+  };
+
   const logout = async () => {
     const token = localStorage.getItem('kolo_token');
     try {
-      if (token) {
-        await fetch(`${API_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      }
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
     } catch (e) {
       // Silent fail
     } finally {
@@ -117,10 +144,12 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated,
+    isSuperAdmin: user?.is_super_admin === true,
     hasActiveSubscription: user?.subscription_status === 'active' || user?.subscription_status === 'trialing',
     login,
     logout,
     checkAuth,
+    processOAuthSession,
     createAccountAfterPayment,
   };
 
@@ -133,8 +162,7 @@ export const AuthProvider = ({ children }) => {
 
 // Auth Callback Component - handles OAuth redirect
 export const AuthCallback = () => {
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { processOAuthSession } = useAuth();
   const location = useLocation();
   const hasProcessed = useRef(false);
 
@@ -151,9 +179,15 @@ export const AuthCallback = () => {
         const sessionId = sessionIdMatch[1];
         
         try {
-          const userData = await login(sessionId);
+          const userData = await processOAuthSession(sessionId);
           
-          // Check subscription status
+          // Super admin → go straight to admin dashboard
+          if (userData.is_super_admin) {
+            window.location.href = '/kolo-admin';
+            return;
+          }
+
+          // Otherwise check subscription status
           if (userData.subscription_status === 'active' || userData.subscription_status === 'trialing') {
             window.location.href = '/app';
           } else {
@@ -283,6 +317,69 @@ export const ProtectedRoute = ({ children }) => {
     return null;
   }
 
+  return children;
+};
+
+// Super Admin Route wrapper — only KOLO super admins can access /kolo-admin.
+// Falls back to a server check via /api/admin/check to avoid leaking the
+// frontend allowlist.
+export const SuperAdminRoute = ({ children }) => {
+  const navigate = useNavigate();
+  const { loading, isAuthenticated, user } = useAuth();
+  const [verifying, setVerifying] = useState(true);
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    // Quick local check first (avoids a roundtrip when /auth/me already told us)
+    if (user?.is_super_admin === true) {
+      setAllowed(true);
+      setVerifying(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem('kolo_token');
+        const resp = await fetch(`${API_URL}/api/admin/check`, {
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (!cancelled) {
+            if (data.is_super_admin) {
+              setAllowed(true);
+            } else {
+              navigate('/app', { replace: true });
+            }
+          }
+        } else if (!cancelled) {
+          navigate('/login', { replace: true });
+        }
+      } catch (_) {
+        if (!cancelled) navigate('/login', { replace: true });
+      } finally {
+        if (!cancelled) setVerifying(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, isAuthenticated, user, navigate]);
+
+  if (loading || verifying) {
+    return (
+      <div className="mobile-frame">
+        <div className="page-container no-nav" style={{ justifyContent: 'center', alignItems: 'center' }}>
+          <div className="spinner"></div>
+        </div>
+      </div>
+    );
+  }
+  if (!allowed) return null;
   return children;
 };
 

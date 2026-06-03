@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import SocialAuthButtons from '../components/SocialAuthButtons';
 import '../styles/landing.css';
 
 const RegisterPage = () => {
@@ -427,6 +428,8 @@ const RegisterPage = () => {
               t('startForFree')
             )}
           </button>
+
+          <SocialAuthButtons dividerLabel="ou continuer avec" />
         </form>
 
         {/* Legal — required by Apple 3.1.2(c): Terms (EULA) + Privacy accessible before sign-up */}

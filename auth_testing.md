@@ -1,96 +1,65 @@
-# Auth-Gated App Testing Playbook
+# KOLO — Auth Testing Playbook (Emergent Google Auth + Custom Email/Password)
 
-## Step 1: Create Test User & Session
+Canonical playbook for validating the multi-provider login flow.
 
-```bash
-mongosh --eval "
-use('test_database');
-var userId = 'test-user-' + Date.now();
-var sessionToken = 'test_session_' + Date.now();
+## Endpoints
+- Backend base: $REACT_APP_BACKEND_URL (preview) or https://trykolo.io (prod)
+- `POST /api/auth/session`  → exchanges Emergent `session_id` for a server session + cookie
+- `GET  /api/auth/me`       → current user (cookie OR `Authorization: Bearer <token>`)
+- `POST /api/auth/login`    → email + password
+- `POST /api/auth/register` → email + password + name + phone (creates 7-day trial)
+- `POST /api/auth/logout`   → invalidates session
+- `GET  /api/admin/check`   → `{is_super_admin: bool}` for the current session
+- `GET  /api/admin/stats`   → KPIs (super admin only)
+- `GET  /api/admin/leads`   → enterprise demo requests (super admin only)
+- `PATCH /api/admin/leads/{id}` → update status (super admin only)
+- `GET  /api/admin/users`   → user list (super admin only)
+
+## Super Admin allowlist
+Hard-coded server-side in `server.py → KOLO_SUPER_ADMIN_EMAILS`.
+Today: `elliot.cohenpressard@trykolo.io` (Google login OR email/password).
+
+## Step 1 — Seed a test admin session in Mongo
+```
+mongosh "$MONGO_URL" --eval "
+const db = db.getSiblingDB(process.env.DB_NAME || 'test_database');
+const userId = 'test-admin-' + Date.now();
+const sessionToken = 'test_session_' + Date.now();
 db.users.insertOne({
   user_id: userId,
-  email: 'test.user.' + Date.now() + '@example.com',
-  name: 'Test User',
-  picture: 'https://via.placeholder.com/150',
+  email: 'elliot.cohenpressard@trykolo.io',
+  name: 'Elliot',
+  auth_provider: 'google',
   subscription_status: 'active',
-  created_at: new Date()
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
 });
 db.user_sessions.insertOne({
   user_id: userId,
   session_token: sessionToken,
-  expires_at: new Date(Date.now() + 7*24*60*60*1000),
-  created_at: new Date()
+  expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString(),
+  created_at: new Date().toISOString()
 });
-print('Session token: ' + sessionToken);
-print('User ID: ' + userId);
-"
+print(sessionToken);"
 ```
 
-## Step 2: Test Backend API
-
-```bash
-# Test auth endpoint
-curl -X GET "https://your-app.com/api/auth/me" \
-  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
-
-# Test protected endpoints
-curl -X GET "https://your-app.com/api/prospects" \
-  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
-
-curl -X POST "https://your-app.com/api/prospects" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
-  -d '{"full_name": "Test Prospect", "phone": "+33123456789", "email": "prospect@test.com", "source": "manual", "status": "new"}'
+## Step 2 — Validate API
 ```
-
-## Step 3: Browser Testing
-
-```javascript
-// Set cookie and navigate
-await page.context.add_cookies([{
-    "name": "session_token",
-    "value": "YOUR_SESSION_TOKEN",
-    "domain": "your-app.com",
-    "path": "/",
-    "httpOnly": true,
-    "secure": true,
-    "sameSite": "None"
-}]);
-await page.goto("https://your-app.com/app");
+curl -H "Authorization: Bearer $SESSION_TOKEN" "$REACT_APP_BACKEND_URL/api/auth/me"
+curl -H "Authorization: Bearer $SESSION_TOKEN" "$REACT_APP_BACKEND_URL/api/admin/check"
+curl -H "Authorization: Bearer $SESSION_TOKEN" "$REACT_APP_BACKEND_URL/api/admin/stats"
 ```
+Expect: `is_super_admin: true` and a stats payload.
 
-## Quick Debug
+## Step 3 — Browser flow
+- `/login` shows: email field, Google button (works), Apple button (disabled, tooltip).
+- Google button → `https://auth.emergentagent.com/?redirect=<encoded origin>/`.
+- After callback `#session_id=...`, `<AuthCallback>` exchanges token and lands in `/app`.
+- Super admin sees "Espace Admin" entry AND can open `/kolo-admin`.
+- Non-admin opening `/kolo-admin` redirects to `/app`.
 
-```bash
-# Check data format
-mongosh --eval "
-use('test_database');
-db.users.find().limit(2).pretty();
-db.user_sessions.find().limit(2).pretty();
-"
-
-# Clean test data
-mongosh --eval "
-use('test_database');
-db.users.deleteMany({email: /test\.user\./});
-db.user_sessions.deleteMany({session_token: /test_session/});
-"
-```
-
-## Checklist
-- [ ] User document has user_id field (custom UUID, MongoDB's _id is separate)
-- [ ] Session user_id matches user's user_id exactly
-- [ ] All queries use `{"_id": 0}` projection to exclude MongoDB's _id
-- [ ] Backend queries use user_id (not _id or id)
-- [ ] API returns user data with user_id field (not 401/404)
-- [ ] Browser loads dashboard (not login page)
-
-## Success Indicators
-✅ /api/auth/me returns user data
-✅ Dashboard loads without redirect
-✅ CRUD operations work
-
-## Failure Indicators
-❌ "User not found" errors
-❌ 401 Unauthorized responses
-❌ Redirect to login page
+## Rules
+- Do NOT hardcode redirect URL — always use `window.location.origin`.
+- Backend reads `session_token` cookie first then `Authorization` header.
+- Mongo: `{"_id": 0}` projection everywhere.
+- Use timezone-aware datetimes.

@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import SocialAuthButtons from '../components/SocialAuthButtons';
 import '../styles/landing.css';
 
 const LoginPage = () => {
@@ -296,6 +297,8 @@ const LoginPage = () => {
               t('signIn')
             )}
           </button>
+
+          <SocialAuthButtons dividerLabel="ou continuer avec" />
         </form>
 
         {/* Footer */}
