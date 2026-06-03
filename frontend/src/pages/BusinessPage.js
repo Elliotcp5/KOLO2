@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { useLocale } from '../context/LocaleContext';
+import PremiumBackdrop from '../components/PremiumBackdrop';
+import '../styles/landing.css';
+import '../styles/premium-backdrop.css';
 import '../styles/business.css';
 
 const TEXT = {
@@ -156,7 +159,8 @@ const BusinessPage = () => {
   );
 
   return (
-    <div className="biz-page">
+    <div className="biz-page landing-page">
+      <PremiumBackdrop />
       <nav className="biz-nav">
         <button onClick={() => navigate('/')} className="biz-nav-back" data-testid="biz-nav-back">
           <ArrowLeft size={16} strokeWidth={2} />

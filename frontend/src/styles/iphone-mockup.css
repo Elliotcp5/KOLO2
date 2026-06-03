@@ -547,27 +547,66 @@
   position: absolute;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 12px;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 12px 18px 12px 12px;
+  border-radius: 18px;
+  font-size: 13px;
   font-weight: 600;
   color: #0B0B0F;
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 12px 30px -10px rgba(0, 0, 0, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   animation: kolo-chip-float 4.5s ease-in-out infinite alternate;
   z-index: 2;
+  letter-spacing: -0.01em;
 }
-.kolo-iphone-chip svg { color: #8B5CF6; }
-.kolo-iphone-chip-1 { top: 10%; left: 8%; animation-delay: 0s; }
-.kolo-iphone-chip-2 { top: 38%; right: 8%; animation-delay: 1.5s; }
-.kolo-iphone-chip-3 { bottom: 18%; left: 6%; animation-delay: 3s; }
+.kolo-iphone-chip::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--chip-from, #C084FC), var(--chip-to, #EC4899));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kolo-iphone-chip svg {
+  color: #fff;
+  position: absolute;
+  left: 21px;
+  width: 14px;
+  height: 14px;
+  z-index: 1;
+}
+.kolo-iphone-chip-1 {
+  top: 8%; left: 6%;
+  animation-delay: 0s;
+  --chip-from: #A78BFA; --chip-to: #EC4899;
+}
+.kolo-iphone-chip-2 {
+  top: 38%; right: 6%;
+  animation-delay: 1.5s;
+  --chip-from: #10B981; --chip-to: #06B6D4;
+}
+.kolo-iphone-chip-3 {
+  bottom: 18%; left: 4%;
+  animation-delay: 3s;
+  --chip-from: #F59E0B; --chip-to: #EF4444;
+}
+.kolo-iphone-chip-trust {
+  top: 18%; right: 6%;
+  animation-delay: 2.2s;
+  --chip-from: #6366F1; --chip-to: #8B5CF6;
+}
 @keyframes kolo-chip-float {
-  0%   { transform: translateY(0); }
-  100% { transform: translateY(-10px); }
+  0%   { transform: translateY(0) rotate(-1deg); }
+  100% { transform: translateY(-12px) rotate(1deg); }
 }
 
 @keyframes kolo-iphone-fadein {

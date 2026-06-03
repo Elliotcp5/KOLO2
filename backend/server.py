@@ -1920,6 +1920,89 @@ async def submit_enterprise_demo_request(payload: EnterpriseDemoRequest, request
     logger.info(
         f"Enterprise demo request received: {payload.company} ({email}, {payload.size})"
     )
+
+    # === Notify the sales team via Resend ===
+    try:
+        import resend as _resend
+        resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
+        sender_email = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev").strip()
+        notify_to = [
+            "elliot.cohenpressard@trykolo.io",
+            "hello@trykolo.io",
+        ]
+        if resend_api_key:
+            _resend.api_key = resend_api_key
+            html = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #0B0B0F;">
+              <div style="background: linear-gradient(135deg, #8B5CF6, #EC4899); padding: 28px; border-radius: 16px; color: #fff;">
+                <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">KOLO · Nouveau lead B2B</div>
+                <h1 style="margin: 8px 0 0; font-size: 22px; font-weight: 800;">{lead['company']}</h1>
+                <div style="opacity: 0.85; margin-top: 4px; font-size: 14px;">{lead['size']} · {payload.locale or 'fr'}</div>
+              </div>
+              <div style="background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px; padding: 22px; margin-top: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                  <tr><td style="padding: 8px 0; color: #6B7280; width: 130px;">Nom</td><td style="padding: 8px 0; font-weight: 600;">{lead['first_name']} {lead['last_name']}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280;">Email</td><td style="padding: 8px 0;"><a href="mailto:{lead['email']}" style="color: #8B5CF6; text-decoration: none;">{lead['email']}</a></td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280;">Téléphone</td><td style="padding: 8px 0;">{lead.get('phone') or '—'}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280;">Entreprise</td><td style="padding: 8px 0; font-weight: 600;">{lead['company']}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280;">Taille</td><td style="padding: 8px 0;">{lead['size']}</td></tr>
+                </table>
+                {f'<div style="margin-top: 18px; padding: 14px; background: rgba(139, 92, 246, 0.06); border-radius: 10px;"><div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B7280; margin-bottom: 6px;">Message</div><div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">{lead["message"]}</div></div>' if lead.get('message') else ''}
+                <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06); font-size: 12px; color: #9CA3AF;">
+                  Lead ID : <code>{lead['lead_id']}</code><br/>
+                  IP : {lead.get('source_ip') or '—'}<br/>
+                  Reçu : {lead['created_at']}
+                </div>
+              </div>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="https://trykolo.io/kolo-admin" style="display: inline-block; background: #0B0B0F; color: #fff; padding: 12px 24px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 14px;">Voir dans l'admin →</a>
+              </div>
+              <p style="margin-top: 24px; text-align: center; color: #9CA3AF; font-size: 12px;">KOLO · Notification automatique des leads B2B</p>
+            </div>
+            """
+            _resend.Emails.send({
+                "from": f"KOLO Leads <{sender_email}>",
+                "to": notify_to,
+                "reply_to": [lead["email"]],
+                "subject": f"[KOLO] Nouvelle demande B2B — {lead['company']} ({lead['size']})",
+                "html": html,
+            })
+            logger.info(f"Sales notification sent for lead {lead['lead_id']}")
+
+            # Auto-acknowledge to the lead
+            ack_html = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #0B0B0F;">
+              <div style="text-align: center; padding: 28px 20px;">
+                <div style="font-weight: 800; font-size: 28px; letter-spacing: -0.02em;">KOLO<span style="color: #CB6CE6;">.</span></div>
+              </div>
+              <div style="background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px; padding: 28px;">
+                <h1 style="margin: 0 0 16px; font-size: 22px;">Merci {lead['first_name']} 👋</h1>
+                <p style="font-size: 15px; line-height: 1.6; color: #4B5563;">
+                  Nous avons bien reçu votre demande pour <strong>{lead['company']}</strong>.
+                  Notre équipe revient vers vous sous <strong>24h</strong> pour échanger sur vos besoins.
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; color: #4B5563;">
+                  En attendant, n'hésitez pas à découvrir KOLO :
+                </p>
+                <div style="text-align: center; margin-top: 20px;">
+                  <a href="https://trykolo.io" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6, #EC4899); color: #fff; padding: 12px 24px; border-radius: 999px; text-decoration: none; font-weight: 600;">Découvrir KOLO →</a>
+                </div>
+              </div>
+              <p style="margin-top: 24px; text-align: center; color: #9CA3AF; font-size: 12px;">KOLO · L'agent immobilier augmenté</p>
+            </div>
+            """
+            _resend.Emails.send({
+                "from": f"KOLO <{sender_email}>",
+                "to": [lead["email"]],
+                "subject": "Bien reçu — l'équipe KOLO revient vers vous",
+                "html": ack_html,
+            })
+        else:
+            logger.warning("Resend API key missing — enterprise lead notification skipped")
+    except Exception as _email_err:
+        # Never fail the form submission if email sending fails
+        logger.error(f"Failed to send enterprise lead notification: {_email_err}")
+
     # Don't echo back internal fields
     return {"ok": True, "lead_id": lead["lead_id"]}
 
