@@ -6667,6 +6667,46 @@ async def startup_event():
     logger.info("Starting KOLO API...")
     logger.info(f"Database: {os.environ.get('DB_NAME', 'unknown')}")
     
+    # === Idempotent super admin seed ===
+    # Ensures elliot.cohenpressard@trykolo.io exists with the configured password
+    # in every environment (preview + production). The password comes from env so
+    # it can be rotated without code changes.
+    try:
+        seed_email = "elliot.cohenpressard@trykolo.io"
+        seed_pwd = os.environ.get("SUPER_ADMIN_SEED_PASSWORD", "").strip()
+        if seed_pwd:
+            pwd_hash = hash_password(seed_pwd)
+            existing = await db.users.find_one({"email": seed_email}, {"_id": 0})
+            if existing:
+                # Refresh password and ensure super admin flag set
+                await db.users.update_one(
+                    {"email": seed_email},
+                    {"$set": {
+                        "password_hash": pwd_hash,
+                        "is_super_admin": True,
+                        "plan": "pro_plus",
+                        "subscription_status": "active",
+                    }}
+                )
+                logger.info(f"Super admin {seed_email} refreshed (password reset, plan=pro_plus)")
+            else:
+                await db.users.insert_one({
+                    "user_id": str(uuid.uuid4()),
+                    "email": seed_email,
+                    "name": "Elliot Cohen-Pressard",
+                    "password_hash": pwd_hash,
+                    "is_super_admin": True,
+                    "plan": "pro_plus",
+                    "subscription_status": "active",
+                    "locale": "fr",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                logger.info(f"Super admin {seed_email} created (first run)")
+        else:
+            logger.info("SUPER_ADMIN_SEED_PASSWORD not set — skipping seed")
+    except Exception as e:
+        logger.error(f"Super admin seed failed: {e}")
+    
     # Start scheduler in a background thread
     scheduler_thread = threading.Thread(target=start_background_scheduler, daemon=True)
     scheduler_thread.start()
