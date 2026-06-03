@@ -1,7 +1,7 @@
 # KOLO – Product Requirements (PRD)
 
 ## Vision
-SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue. Pivot B2B / marque blanche pour réseaux d'agences. **Modèle "native first" : chaque agent utilise son propre téléphone et son propre WhatsApp — KOLO ne s'interpose jamais.**
+SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue. Pivot B2B / marque blanche. **Modèle "native first" : chaque agent utilise son propre numéro et son propre WhatsApp.**
 
 ## Architecture
 - Frontend: React + Capacitor (iOS native)
@@ -11,60 +11,60 @@ SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 
 
 ## Auth providers
 - Email + password
-- Google Sign-In (Emergent OAuth) — sur `/login` et `/register`
-- Apple Sign-In Web — bouton placeholder "Bientôt disponible" (guide dans `/app/memory/guide_apple_signin.md`)
+- Google Sign-In (Emergent OAuth) ✅
+- Apple Sign-In Web : bouton placeholder (reporté à la demande de l'utilisateur)
 
 ## Espaces / Routes
-- `/` — Landing avec animation premium (mesh gradient subtil 28s)
-- `/business` — Lead capture B2B
-- `/login`, `/register` — Auth multi-providers
-- `/app/**` — CRM agent standard
-- `/kolo-admin` — **Super Admin KOLO** (allowlist email)
-- `/org` — **Espace Organisation** (marque blanche multi-tenant)
-- `/org/join/:token` — Acceptation d'invitation
-- `/integrations` — Branchements natifs + Whisper + Google Calendar
+- `/` Landing animée · `/business` lead B2B · `/login` `/register`
+- `/app/**` CRM agent · **fiche prospect : Appeler + WhatsApp + Historique + Voir l'appel**
+- `/kolo-admin` Super Admin KOLO
+- `/org` Espace Organisation (marque blanche) · `/org/join/:token` accept invite
+- `/integrations` Branchements (Google Calendar + Whisper + Outlook/Apple à venir)
 
-## Phase 1 — Super Admin + Multi-Auth (DONE — Juin 2026, tested 18/18 backend + 9/9 frontend)
+## Phase 1 — Super Admin + Multi-Auth (DONE — 18/18 + 9/9)
+## Phase 2 — Marque Blanche multi-tenant (DONE — 24/24)
+## Phase 3 — Intégrations "native first" (DONE)
 
-## Phase 2 — Marque Blanche multi-tenant (DONE — Juin 2026, tested 24/24 backend)
-- Collection `organizations` + rôles `org_admin`/`org_agent` + scoping data
-- 11 endpoints `/api/orgs/*` + super admin bypass
-- Page `/org` : sidebar, modal création, theming, équipe (invite/remove), KPIs par agent, Dataroom
+### ⭐ Modèle de communications (Juin 2026)
+**Sur chaque fiche prospect** :
+- Bouton **"Appeler"** → ouvre le dialer natif avec ton numéro (le prospect voit TON n°)
+- Modal post-appel : durée + résultat (terminé/sans réponse/voicemail/occupé) + notes + **upload optionnel d'un enregistrement audio** → transcription Whisper auto attachée au call_log
+- Bouton **"WhatsApp"** → modal pour rédiger + deep link `wa.me/XXX?text=...` qui ouvre WhatsApp avec ton compte
+- **Section "Historique"** sur la fiche : appels + messages WhatsApp chronologiques, badge "1 appel · 1 message"
+- Clic sur un appel → **modal "Détail de l'appel"** : date/durée/résultat/notes/audio player/**transcription Whisper**
 
-## Phase 3 — Intégrations "native first" (DONE — Juin 2026) ⭐ MODIFIÉ
-**Modèle : l'agent utilise son propre téléphone. KOLO log juste l'activité.**
-- ✅ **Appels natifs** — `tel:+33XXX` deep link → ouvre le dialer iPhone/Android/Mac. Endpoint `POST /api/integrations/calls/log` pour enregistrer durée + notes après l'appel.
-- ✅ **WhatsApp natif** — `https://wa.me/XXX?text=...` deep link → ouvre WhatsApp avec le numéro de l'agent. Endpoint `POST /api/integrations/whatsapp/log`.
-- ✅ **Transcription Whisper** — `POST /api/integrations/transcribe-upload` (multipart/form-data) → upload mp3/m4a/wav (max 25 Mo) → transcript FR via Emergent LLM Key.
-- ✅ **Google Calendar** — OAuth2 complet (auth-url → callback → refresh tokens), list + create events. Requiert `GOOGLE_CAL_CLIENT_ID/SECRET` (guide dans `/app/memory/guide_google_calendar.md`).
-- 🟡 **Outlook + Apple Calendar** — placeholders UI "Bientôt disponible"
-- 🟡 **Twilio Voice/WhatsApp avancé** (recording auto + webhook) — code conservé pour les users qui voudraient activer ces modes optionnels via `TWILIO_FROM_NUMBER` / `TWILIO_WHATSAPP_FROM`
+### Endpoints backend
+- `POST /api/integrations/calls/log` — log durée + notes
+- `POST /api/integrations/whatsapp/log` — log WA envoyé
+- `POST /api/integrations/transcribe-upload` — upload audio (mp3/m4a/wav, max 25 Mo) → Whisper
+- `GET /api/integrations/prospect/{id}/history` — appels + WA fusionnés chronologiquement
+- `GET /api/integrations/calls/{id}` — détail d'un appel
+- Google Calendar OAuth complet (en attente du `GOOGLE_CAL_CLIENT_ID/SECRET`)
+- Twilio Voice/WhatsApp avancé (code conservé, optionnel)
 
 ## Phase 4 — Polish (DONE)
-- ✅ Animation mesh gradient premium sur Landing
-- 🟢 Refacto `server.py` — reporté (P2 backlog)
+- Animation mesh gradient sur Landing
+- Composant `ProspectCommsPanel` minimaliste intégré à la fiche prospect
 
-## Twilio (configuré, mode "avancé optionnel")
-Le compte Twilio d'Elliot est connecté dans `backend/.env` :
-- `TWILIO_ACCOUNT_SID=ACe53a773c2ac5c2a7dcf500207efd7eec`
-- `TWILIO_API_KEY_SID=SK26774d0724c35a58d2b1be92b567521a`
-- `TWILIO_API_KEY_SECRET=XFxH2t2lYFq6Tni9JxWb3lwZWiwxWT6z`
-
-**Non utilisé en mode natif** mais disponible si on veut un jour activer le recording auto (chaque agent devrait alors vérifier son numéro via Verified Caller ID).
+## Clés et credentials
+- **Twilio** : SID + API Key SID + Secret dans `.env` (gardé pour le mode "avancé" optionnel)
+- **Emergent LLM Key** : active (Whisper, Claude, OpenAI, Gemini)
+- **Google Maps API Key** : `AIzaSyA_G8BvG2fEmnz6XSW8s44dcFIErsI1IBg` (réservée pour Places autocomplete sur les adresses prospect, plus tard)
+- **Google Calendar OAuth** : à fournir (guide dans `/app/memory/guide_google_calendar.md`)
+- **Apple Sign-In** : reporté
 
 ## P2 Backlog technique
-- Bouton "Appeler" + "WhatsApp" directement sur la fiche prospect (dans `/app`)
+- Google Maps Places autocomplete sur la fiche prospect (adresses normalisées)
 - Sync Outlook (MS Graph) + Apple Calendar (CalDAV)
 - Notification email/Resend après invite org acceptée
-- Refacto `server.py` en routers modulaires
-- Fix wrapping `<tr>` cosmétique dans tables admin
-- LoginPage/RegisterPage : remplacer `https://trykolo.io` hardcodé par `API_URL`
+- Modulariser `server.py` (6700 lignes maintenant) en routers
+- Optimiser `/api/orgs/{id}/kpis` (N+1 → aggregation $facet)
 
 ## Comptes test
 Voir `/app/memory/test_credentials.md`
 
 ## Documents
-- `/app/memory/guide_apple_signin.md` — Guide pas-à-pas Apple Sign-In Web
-- `/app/memory/guide_google_calendar.md` — Guide pas-à-pas Google Calendar API
+- `/app/memory/guide_apple_signin.md` — Guide Apple Sign-In Web
+- `/app/memory/guide_google_calendar.md` — Guide Google Calendar API
 - `/app/auth_testing.md` — Playbook tests auth
 - `/app/test_reports/iteration_26.json` & `iteration_27.json`

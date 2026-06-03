@@ -15,6 +15,8 @@ import { HeatScoreBadge } from '../components/HeatScoreBadge';
 import { ROIDashboard } from '../components/ROIDashboard';
 import { InteractionTimeline } from '../components/InteractionTimeline';
 import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
+import ProspectCommsPanel from '../components/ProspectCommsPanel';
+import '../styles/prospect-comms.css';
 import { API_URL } from '../config/api';
 import { trackTaskCompleted, trackSmsGenerated, trackSmsSent, trackProspectCreated, trackProspectViewed, trackTaskCreated, trackAiSuggestionAccepted, trackLogout, trackFeatureUsed } from '../utils/analytics';
 import { openExternalUrl } from '../utils/externalUrl';
@@ -4103,6 +4105,9 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
           })()}
         </div>
       </div>
+
+      {/* Communications (calls + WhatsApp) */}
+      <ProspectCommsPanel prospect={prospectData} />
 
       {/* Notes */}
       {prospectData.notes && (

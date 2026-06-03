@@ -5950,6 +5950,33 @@ async def list_calls(request: Request, limit: int = 50):
     return {"count": len(calls), "calls": calls}
 
 
+@api_router.get("/integrations/prospect/{prospect_id}/history")
+async def prospect_communication_history(prospect_id: str, request: Request):
+    """All calls + WhatsApp messages for a single prospect (current user)."""
+    user = await require_auth(request)
+    calls_cur = db.call_logs.find({"user_id": user.user_id, "prospect_id": prospect_id}, {"_id": 0}).sort("created_at", -1)
+    wa_cur = db.whatsapp_messages.find({"user_id": user.user_id, "prospect_id": prospect_id}, {"_id": 0}).sort("created_at", -1)
+    calls = await calls_cur.to_list(length=100)
+    messages = await wa_cur.to_list(length=100)
+    # Merge chronologically
+    items = []
+    for c in calls:
+        items.append({**c, "_kind": "call", "_ts": c.get("created_at", "")})
+    for m in messages:
+        items.append({**m, "_kind": "whatsapp", "_ts": m.get("created_at", "")})
+    items.sort(key=lambda x: x["_ts"], reverse=True)
+    return {"count": len(items), "items": items, "calls_count": len(calls), "wa_count": len(messages)}
+
+
+@api_router.get("/integrations/calls/{call_id}")
+async def get_call_detail(call_id: str, request: Request):
+    user = await require_auth(request)
+    call = await db.call_logs.find_one({"call_id": call_id, "user_id": user.user_id}, {"_id": 0})
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+    return call
+
+
 # ---------- WHATSAPP BUSINESS ---------- #
 
 class WhatsAppSendPayload(BaseModel):
