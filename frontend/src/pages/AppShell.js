@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -969,7 +969,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 boxShadow: '0 4px 12px rgba(139, 92, 246, 0.25)',
               }}
             >
-              <Crown size={13} strokeWidth={2.5} />
+              <BadgeCheck size={13} strokeWidth={2.5} />
               <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>Admin</span>
             </button>
           )}

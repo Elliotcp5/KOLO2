@@ -1,0 +1,399 @@
+/* ==========================================================================
+   KOLO — Realistic iPhone Mockup
+   True proportions (iPhone 14/15), Dynamic Island, side buttons, status bar.
+   ========================================================================== */
+
+.kolo-iphone-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  perspective: 1500px;
+}
+
+.kolo-iphone {
+  position: relative;
+  width: 320px;
+  height: 680px;
+  background: linear-gradient(165deg, #1c1c1e 0%, #0a0a0a 100%);
+  border-radius: 54px;
+  padding: 12px;
+  box-shadow:
+    0 0 0 2.5px #2a2a2c,
+    0 0 0 5px #161618,
+    0 40px 80px -20px rgba(0, 0, 0, 0.45),
+    0 24px 48px -12px rgba(139, 92, 246, 0.25),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  animation: kolo-phone-float-pro 6s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+@keyframes kolo-phone-float-pro {
+  0%   { transform: translateY(0) rotateY(-2deg) rotateX(2deg); }
+  100% { transform: translateY(-14px) rotateY(2deg) rotateX(-1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kolo-iphone { animation: none; }
+}
+
+/* Side buttons */
+.kolo-iphone-btn {
+  position: absolute;
+  background: linear-gradient(90deg, #2a2a2c, #404042, #2a2a2c);
+  border-radius: 2px;
+}
+.kolo-iphone-btn-power {
+  right: -3px;
+  top: 180px;
+  width: 4px;
+  height: 90px;
+}
+.kolo-iphone-btn-vol-up {
+  left: -3px;
+  top: 165px;
+  width: 4px;
+  height: 60px;
+}
+.kolo-iphone-btn-vol-down {
+  left: -3px;
+  top: 235px;
+  width: 4px;
+  height: 60px;
+}
+.kolo-iphone-btn-mute {
+  left: -3px;
+  top: 110px;
+  width: 4px;
+  height: 30px;
+}
+
+/* Screen */
+.kolo-iphone-screen {
+  width: 100%;
+  height: 100%;
+  background: #FAFAFB;
+  border-radius: 42px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic Island */
+.kolo-iphone-island {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 30px;
+  background: #000;
+  border-radius: 22px;
+  z-index: 10;
+}
+
+/* Status bar */
+.kolo-iphone-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 28px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0B0B0F;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.kolo-iphone-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #0B0B0F;
+}
+
+/* App content */
+.kolo-iphone-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 20px 18px 0;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.kolo-iphone-app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.kolo-iphone-logo {
+  font-weight: 800;
+  font-size: 16px;
+  color: #0B0B0F;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.kolo-iphone-logo-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #CB6CE6;
+  margin-bottom: 7px;
+  margin-left: 1px;
+}
+.kolo-iphone-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #004AAD, #CB6CE6);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kolo-iphone-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0B0B0F;
+  letter-spacing: -0.02em;
+  animation: kolo-iphone-fadein 600ms ease both;
+  animation-delay: 100ms;
+}
+.kolo-iphone-subtitle {
+  font-size: 11px;
+  color: #6B7280;
+  margin-bottom: 14px;
+  animation: kolo-iphone-fadein 600ms ease both;
+  animation-delay: 180ms;
+}
+
+/* Stats */
+.kolo-iphone-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+  animation: kolo-iphone-fadein 600ms ease both;
+  animation-delay: 260ms;
+}
+.kolo-iphone-stat {
+  background: #F3F4F6;
+  border-radius: 10px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.kolo-iphone-stat-active {
+  background: linear-gradient(135deg, #004AAD, #CB6CE6);
+}
+.kolo-iphone-stat-active .kolo-iphone-stat-num,
+.kolo-iphone-stat-active .kolo-iphone-stat-label { color: #fff; }
+.kolo-iphone-stat-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0B0B0F;
+  letter-spacing: -0.02em;
+}
+.kolo-iphone-stat-label {
+  font-size: 9px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+/* AI Suggestion (re-mount animated when index changes) */
+.kolo-iphone-ai-card {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(236, 72, 153, 0.06));
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  animation: kolo-iphone-ai-pop 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes kolo-iphone-ai-pop {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.kolo-iphone-ai-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.kolo-iphone-ai-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kolo-iphone-ai-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8B5CF6;
+  flex: 1;
+}
+.kolo-iphone-ai-pill {
+  font-size: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+  padding: 2px 6px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.kolo-iphone-ai-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0B0B0F;
+  margin-bottom: 2px;
+}
+.kolo-iphone-ai-text {
+  font-size: 10px;
+  color: #4B5563;
+  line-height: 1.35;
+}
+
+/* Task rows */
+.kolo-iphone-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  animation: kolo-iphone-fadein 500ms ease both;
+}
+.kolo-iphone-task:nth-of-type(2) { animation-delay: 340ms; }
+.kolo-iphone-task:nth-of-type(3) { animation-delay: 420ms; }
+.kolo-iphone-task:nth-of-type(4) { animation-delay: 500ms; }
+
+.kolo-iphone-task-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kolo-iphone-task-call { background: #DCFCE7; color: #10B981; }
+.kolo-iphone-task-msg { background: #E0E7FF; color: #6366F1; }
+.kolo-iphone-task-check { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+
+.kolo-iphone-task-body { flex: 1; min-width: 0; }
+.kolo-iphone-task-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0B0B0F;
+}
+.kolo-iphone-task-sub {
+  font-size: 9px;
+  color: #6B7280;
+  margin-top: 1px;
+}
+.kolo-iphone-task-done .kolo-iphone-task-title {
+  text-decoration: line-through;
+  color: #9CA3AF;
+}
+
+/* Bottom nav */
+.kolo-iphone-bottomnav {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 16px 26px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+.kolo-iphone-tab {
+  font-size: 9px;
+  color: #9CA3AF;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.kolo-iphone-tab-active { color: #8B5CF6; font-weight: 700; }
+.kolo-iphone-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8B5CF6;
+}
+
+/* Home indicator */
+.kolo-iphone-home {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 4px;
+  background: #0B0B0F;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+/* Floating chips around the phone (premium "feature highlights") */
+.kolo-iphone-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0B0B0F;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
+  animation: kolo-chip-float 4.5s ease-in-out infinite alternate;
+}
+.kolo-iphone-chip svg { color: #8B5CF6; }
+.kolo-iphone-chip-1 {
+  top: 8%;
+  left: -30%;
+  animation-delay: 0s;
+}
+.kolo-iphone-chip-2 {
+  top: 42%;
+  right: -32%;
+  animation-delay: 1.5s;
+}
+.kolo-iphone-chip-3 {
+  bottom: 12%;
+  left: -22%;
+  animation-delay: 3s;
+}
+@keyframes kolo-chip-float {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
+}
+
+@keyframes kolo-iphone-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Hide chips on small screens */
+@media (max-width: 900px) {
+  .kolo-iphone-chip { display: none; }
+}
+@media (max-width: 480px) {
+  .kolo-iphone { width: 260px; height: 552px; border-radius: 44px; padding: 10px; }
+  .kolo-iphone-screen { border-radius: 34px; }
+  .kolo-iphone-island { width: 80px; height: 24px; top: 8px; }
+}

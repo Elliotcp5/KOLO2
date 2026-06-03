@@ -4,8 +4,10 @@ import { ArrowRight, Check, ChevronDown, ChevronUp, X, Sparkles } from 'lucide-r
 import { Capacitor } from '@capacitor/core';
 import { useLocale } from '../context/LocaleContext';
 import PremiumBackdrop from '../components/PremiumBackdrop';
+import PhoneMockup from '../components/PhoneMockup';
 import '../styles/landing.css';
 import '../styles/premium-backdrop.css';
+import '../styles/iphone-mockup.css';
 
 // Maps our internal locale to Apple's storefront + badge language codes.
 const APP_STORE_LOCALE_MAP = {
@@ -277,9 +279,6 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
-          <button className="nav-pricing" onClick={() => navigate('/pricing')}>
-            {t('pricingLink')}
-          </button>
           <button
             className="nav-pricing nav-business"
             onClick={() => navigate('/business')}
@@ -329,50 +328,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* PRODUCT SHOWCASE — single centered phone */}
+      {/* PRODUCT SHOWCASE — realistic iPhone with animated KOLO app */}
       <section className="phone-showcase">
         <div className="container">
-          <div className="hero-phones">
-            <div className="phone-main">
-              <div className="phone-header">
-                <div className="phone-notch"></div>
-                <div className="phone-h">{t('myClients')} ✦</div>
-                <div className="phone-sub">{t('followupsToday')}</div>
-              </div>
-              <div className="phone-body">
-                <div className="p-contact">
-                  <div className="p-avatar">ML</div>
-                  <div>
-                    <div className="p-name">Marie Leblanc</div>
-                    <div className="p-status">{t('visitDaysAgo')}</div>
-                  </div>
-                  <span className="p-badge hot">🔥 {t('urgent')}</span>
-                </div>
-                <div className="p-contact">
-                  <div className="p-avatar b">TM</div>
-                  <div>
-                    <div className="p-name">Thomas Moreau</div>
-                    <div className="p-status">{t('contactedYesterday')}</div>
-                  </div>
-                  <span className="p-badge warm">⚡ {t('hot')}</span>
-                </div>
-                <div className="p-contact">
-                  <div className="p-avatar c">SC</div>
-                  <div>
-                    <div className="p-name">Sophie Curel</div>
-                    <div className="p-status">{t('newProspectLabel')}</div>
-                  </div>
-                  <span className="p-badge ok">✓ {t('qualified')}</span>
-                </div>
-                <div className="p-ai-card">
-                  <div className="p-ai-label">✦ {t('aiTip')}</div>
-                  <div className="p-ai-text">
-                    {t('aiTipExample')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PhoneMockup />
         </div>
       </section>
 
