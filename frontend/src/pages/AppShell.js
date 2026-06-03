@@ -2713,6 +2713,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
 // ==================== PROSPECT DETAIL ====================
 const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
   const { t, formatDate, locale } = useLocale();
+  const labels = UI_LABELS[locale] || UI_LABELS.en;
   const { c, isDark } = useThemeColors();
   const [prospectData, setProspectData] = useState(prospect);
   const [tasks, setTasks] = useState([]);
@@ -2772,7 +2773,20 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       }
     };
 
-    fetchProspectDetail();
+    // Trigger heat-score recompute (PRO+ feature — backend silently 403 for others)
+    const refreshHeatScore = async () => {
+      try {
+        const r = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}/calculate-heat`, { method: 'POST' });
+        if (r.ok) {
+          const d = await r.json();
+          if (typeof d.heat_score === 'number') {
+            setProspectData((prev) => prev ? { ...prev, heat_score: d.heat_score } : prev);
+          }
+        }
+      } catch (_) { /* silent — PRO+ feature */ }
+    };
+
+    fetchProspectDetail().then(() => refreshHeatScore());
   }, [prospect.prospect_id]);
 
   // Fetch AI suggested task for this prospect
@@ -3094,8 +3108,10 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
       <div className="kolo-prospect-header" data-testid="prospect-detail-header" style={{ position: 'relative' }}>
         <ProspectScoreRing
+          heatScore={typeof prospectData.heat_score === 'number' ? prospectData.heat_score : null}
           score={prospectData.score}
-          size={68}
+          size={72}
+          showValue={typeof prospectData.heat_score === 'number'}
           onClick={() => setShowScoreMenu((v) => !v)}
         />
         <div className="kolo-prospect-header-body">
@@ -3103,7 +3119,11 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             {prospectData.full_name}
           </h1>
           <div className="kolo-prospect-sub">
-            <ScoreLabel score={prospectData.score} locale={locale} />
+            <ScoreLabel
+              heatScore={typeof prospectData.heat_score === 'number' ? prospectData.heat_score : null}
+              score={prospectData.score}
+              locale={locale}
+            />
             {prospectData.phone && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Phone size={11} strokeWidth={2.2} /> {prospectData.phone}
@@ -3549,66 +3569,94 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
       
       {/* Suggested Task Modal */}
       {showSuggestionModal && suggestedTask && (
-        <div style={{
+        <div className="kolo-glass-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10000,
           padding: '16px'
         }} onClick={() => setShowSuggestionModal(false)}>
-          <div style={{
-            background: isDark ? '#1a1a24' : '#ffffff',
-            borderRadius: '20px',
-            padding: '24px',
+          <div className="kolo-glass-modal" style={{
+            borderRadius: '22px',
+            padding: '26px',
             width: '100%',
-            maxWidth: '350px',
-            border: `1px solid ${isDark ? '#2a2a3b' : '#e5e7eb'}`,
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            maxWidth: '380px',
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#ffffff' : '#0E0B1E' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', color: '#0B0B0F' }}>
                 <Lightbulb size={18} style={{ color: '#F59E0B' }} />
                 {locale === 'fr' ? 'Tâche suggérée' : 'Suggested Task'}
+                {suggestedTask.ai_powered && (
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    padding: '2px 7px',
+                    background: 'linear-gradient(135deg, #6D28D9, #EC4899)',
+                    color: 'white',
+                    borderRadius: 999,
+                    textTransform: 'uppercase',
+                  }}>IA</span>
+                )}
               </h2>
-              <button onClick={() => setShowSuggestionModal(false)} style={{ background: 'none', border: 'none', color: isDark ? '#6b7280' : '#9ca3af', cursor: 'pointer', padding: '4px' }}>
+              <button onClick={() => setShowSuggestionModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
             
-            <div style={{ 
-              padding: '16px', 
-              background: isDark ? '#2a2a3b' : '#f9fafb', 
-              borderRadius: '12px',
-              marginBottom: '16px'
+            <div className="kolo-ai-pulse" style={{ 
+              position: 'relative',
+              padding: '16px 18px', 
+              background: 'white', 
+              borderRadius: '14px',
+              marginBottom: '18px',
+              border: '1px solid rgba(0,0,0,0.05)',
             }}>
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '8px',
-                marginBottom: '8px'
+                marginBottom: '8px',
+                flexWrap: 'wrap',
               }}>
                 <span style={{ 
                   padding: '4px 10px', 
-                  background: suggestedTask.task_type === 'appel' ? '#3B82F6' : suggestedTask.task_type === 'sms' ? '#10B981' : '#8B5CF6',
+                  background: suggestedTask.task_type === 'appel' || suggestedTask.task_type === 'call' ? '#22C55E' :
+                              suggestedTask.task_type === 'sms' ? '#3B82F6' :
+                              suggestedTask.task_type === 'whatsapp' ? '#25D366' :
+                              suggestedTask.task_type === 'visit' ? '#EC4899' :
+                              suggestedTask.task_type === 'email' ? '#F59E0B' :
+                              '#8B5CF6',
                   color: 'white',
                   borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  textTransform: 'uppercase'
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
                 }}>
                   {suggestedTask.task_type}
                 </span>
+                {suggestedTask.priority === 'high' && (
+                  <span style={{ fontSize: 11, color: '#EF4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
+                    {locale === 'fr' ? 'Urgent' : 'Urgent'}
+                  </span>
+                )}
               </div>
+              {suggestedTask.task_title && (
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0B0B0F', marginBottom: 6, lineHeight: 1.3 }}>
+                  {suggestedTask.task_title}
+                </div>
+              )}
               <p style={{ 
-                color: isDark ? '#d1d5db' : '#4b5563', 
-                fontSize: '14px',
-                lineHeight: '1.5',
+                color: '#4B5563', 
+                fontSize: '13.5px',
+                lineHeight: '1.55',
                 margin: 0
               }}>
                 {suggestedTask.reason}

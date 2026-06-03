@@ -188,11 +188,11 @@
   50%      { opacity: 0.85; transform: scale(1.08); }
 }
 
-/* score variants */
-.kolo-score-ring[data-score="chaud"] { --color: #EF4444; --pct: 92; }
-.kolo-score-ring[data-score="tiede"] { --color: #F59E0B; --pct: 58; }
-.kolo-score-ring[data-score="froid"] { --color: #3B82F6; --pct: 24; }
-.kolo-score-ring[data-score="none"]  { --color: #9CA3AF; --pct: 0; }
+/* score variants — used for qualitative fallback when no numeric --color/--pct provided */
+.kolo-score-ring:not([style*="--color"])[data-score="chaud"] { --color: #EF4444; --pct: 92; }
+.kolo-score-ring:not([style*="--color"])[data-score="tiede"] { --color: #F59E0B; --pct: 58; }
+.kolo-score-ring:not([style*="--color"])[data-score="froid"] { --color: #3B82F6; --pct: 24; }
+.kolo-score-ring:not([style*="--color"])[data-score="none"]  { --color: #9CA3AF; --pct: 0; }
 .kolo-score-ring[data-score="none"] .halo { display: none; }
 
 .kolo-score-label {

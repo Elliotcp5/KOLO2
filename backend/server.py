@@ -5032,94 +5032,177 @@ class GenerateSMSRequest(BaseModel):
 @api_router.get("/ai/suggest-for-prospect/{prospect_id}")
 @limiter.limit("20/minute")
 async def get_ai_suggestion_for_prospect(prospect_id: str, request: Request):
-    """Get AI task suggestion for a specific prospect"""
+    """Get AI-powered contextual task suggestion for a specific prospect (uses Emergent LLM)."""
     user = await get_user_from_session(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
-    # Get prospect
+
     prospect = await db.prospects.find_one(
         {"prospect_id": prospect_id, "user_id": user.user_id},
         {"_id": 0}
     )
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
-    
-    # Get last contact date
+
+    # Compute days since last contact
     last_contact = prospect.get("last_contact_date")
-    days_since_contact = 999
-    
+    days_since_contact = None
     if last_contact:
         try:
-            last_dt = datetime.fromisoformat(last_contact.replace('Z', '+00:00'))
+            last_dt = datetime.fromisoformat(str(last_contact).replace('Z', '+00:00'))
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
             days_since_contact = (datetime.now(timezone.utc) - last_dt).days
         except (ValueError, TypeError):
-            pass
-    
-    # Generate suggestion based on context
+            days_since_contact = None
+
     prospect_name = prospect.get("full_name", prospect.get("name", "Client"))
     status = prospect.get("status", "nouveau")
-    
-    # Determine task type and reason with full i18n support
-    reasons = {
-        "inactive_long": {
-            "fr": f"Pas de contact depuis {days_since_contact} jours - un appel permettrait de relancer {prospect_name}",
-            "en": f"No contact for {days_since_contact} days - a call would help re-engage {prospect_name}",
-            "de": f"Kein Kontakt seit {days_since_contact} Tagen - ein Anruf würde helfen, {prospect_name} wieder zu aktivieren",
-            "it": f"Nessun contatto da {days_since_contact} giorni - una chiamata aiuterebbe a riattivare {prospect_name}"
-        },
-        "inactive_medium": {
-            "fr": f"Pas de nouvelles depuis {days_since_contact} jours - un SMS de suivi serait approprié",
-            "en": f"No news for {days_since_contact} days - a follow-up SMS would be appropriate",
-            "de": f"Keine Nachrichten seit {days_since_contact} Tagen - eine Follow-up SMS wäre angemessen",
-            "it": f"Nessuna notizia da {days_since_contact} giorni - un SMS di follow-up sarebbe appropriato"
-        },
-        "new_prospect": {
-            "fr": "Nouveau prospect - un appel de présentation permettrait de qualifier le projet",
-            "en": "New prospect - an introduction call would help qualify the project",
-            "de": "Neuer Interessent - ein Vorstellungsgespräch würde helfen, das Projekt zu qualifizieren",
-            "it": "Nuovo prospect - una chiamata di presentazione aiuterebbe a qualificare il progetto"
-        },
-        "maintain_contact": {
-            "fr": f"Maintenir le contact avec {prospect_name} pour rester présent",
-            "en": f"Maintain contact with {prospect_name} to stay top of mind",
-            "de": f"Kontakt mit {prospect_name} pflegen, um präsent zu bleiben",
-            "it": f"Mantenere il contatto con {prospect_name} per restare presente"
-        }
-    }
-    
-    if days_since_contact >= 14:
-        task_type = "appel"
-        reason_key = "inactive_long"
-    elif days_since_contact >= 7:
-        task_type = "sms"
-        reason_key = "inactive_medium"
-    elif status in ["nouveau", "new"]:
-        task_type = "appel"
-        reason_key = "new_prospect"
-    else:
-        task_type = "sms"
-        reason_key = "maintain_contact"
-    
+    score = prospect.get("score") or "—"
+    project_type = prospect.get("project_type") or "—"
+    budget_min = prospect.get("budget_min")
+    budget_max = prospect.get("budget_max")
+    delay = prospect.get("delay") or "—"
+    notes = (prospect.get("notes") or "")[:300]
+
+    # Recent comms (calls + WhatsApp) to give context to the LLM
+    recent_calls = await db.call_logs.find(
+        {"prospect_id": prospect_id, "user_id": user.user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(3)
+    recent_wa = await db.whatsapp_messages.find(
+        {"prospect_id": prospect_id, "user_id": user.user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(3)
+
+    def _fmt_call(c):
+        bits = [f"appel ({c.get('outcome', '?')}, {c.get('duration_sec', 0)}s)"]
+        if c.get("notes"):
+            bits.append(f"notes: {c['notes'][:120]}")
+        return " — ".join(bits)
+
+    def _fmt_wa(m):
+        return f"whatsapp {m.get('direction', 'out')}: {(m.get('body') or '')[:120]}"
+
+    history_lines = [_fmt_call(c) for c in recent_calls] + [_fmt_wa(m) for m in recent_wa]
+    history_block = "\n".join(f"- {h}" for h in history_lines) if history_lines else "Aucun échange enregistré."
+
+    # Resolve locale
     accept_lang = request.headers.get("Accept-Language", "fr").lower()
     if accept_lang.startswith("fr"):
-        locale = "fr"
+        lang = "fr"
     elif accept_lang.startswith("de"):
-        locale = "de"
+        lang = "de"
     elif accept_lang.startswith("it"):
-        locale = "it"
+        lang = "it"
     else:
-        locale = "en"
-    
-    reason = reasons[reason_key].get(locale, reasons[reason_key]["en"])
-    
+        lang = "en"
+
+    fallback_reasons = {
+        "fr": f"Reprendre contact avec {prospect_name} pour relancer le projet.",
+        "en": f"Reach out to {prospect_name} to keep the deal moving.",
+        "de": f"Kontakt mit {prospect_name} aufnehmen, um das Projekt voranzubringen.",
+        "it": f"Contattare {prospect_name} per far avanzare il progetto.",
+    }
+
+    # Try LLM-powered suggestion
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise RuntimeError("EMERGENT_LLM_KEY missing")
+
+        system_msgs = {
+            "fr": (
+                "Tu es un coach commercial immobilier expert. Réponds en JSON STRICT uniquement, sans aucun texte avant ou après. "
+                "Schema: {\"task_type\":\"call|sms|whatsapp|visit|note|email\",\"task_title\":\"≤8 mots\",\"reason\":\"1 phrase concrète et personnalisée ≤160 caractères\",\"priority\":\"low|medium|high\"}. "
+                "Sois concret, mentionne un détail spécifique du prospect (statut, score, jours sans contact, dernier échange). Pas de formules génériques."
+            ),
+            "en": (
+                "You are an expert real-estate sales coach. Reply with STRICT JSON only, no prose before or after. "
+                "Schema: {\"task_type\":\"call|sms|whatsapp|visit|note|email\",\"task_title\":\"≤8 words\",\"reason\":\"1 concrete personalized sentence ≤160 chars\",\"priority\":\"low|medium|high\"}. "
+                "Be concrete, cite a specific detail of the prospect (status, score, days since contact, last interaction). Avoid generic advice."
+            ),
+            "de": (
+                "Du bist Immobilien-Verkaufscoach. Antworte STRENG nur in JSON, kein Text davor/danach. "
+                "Schema: {\"task_type\":\"call|sms|whatsapp|visit|note|email\",\"task_title\":\"≤8 Wörter\",\"reason\":\"1 konkreter personalisierter Satz ≤160 Zeichen\",\"priority\":\"low|medium|high\"}."
+            ),
+            "it": (
+                "Sei un coach commerciale immobiliare. Rispondi SOLO in JSON STRETTO, nessun testo prima o dopo. "
+                "Schema: {\"task_type\":\"call|sms|whatsapp|visit|note|email\",\"task_title\":\"≤8 parole\",\"reason\":\"1 frase concreta personalizzata ≤160 caratteri\",\"priority\":\"low|medium|high\"}."
+            ),
+        }
+
+        context_block = (
+            f"Prospect : {prospect_name}\n"
+            f"Statut : {status}\n"
+            f"Score chaleur : {score}\n"
+            f"Type de projet : {project_type}\n"
+            f"Budget : {budget_min or '?'} - {budget_max or '?'}\n"
+            f"Délai : {delay}\n"
+            f"Jours sans contact : {days_since_contact if days_since_contact is not None else 'jamais contacté'}\n"
+            f"Notes : {notes or '—'}\n"
+            f"Échanges récents :\n{history_block}"
+        )
+
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"prospect_suggest_{user.user_id}_{prospect_id}",
+            system_message=system_msgs.get(lang, system_msgs["en"]),
+        ).with_model("openai", "gpt-4.1-nano")
+
+        msg = UserMessage(text=context_block)
+        raw = await chat.send_message(msg)
+        # Parse JSON
+        import json as _json, re as _re
+        m = _re.search(r"\{.*\}", raw, _re.S)
+        if not m:
+            raise ValueError("LLM returned no JSON")
+        data = _json.loads(m.group(0))
+
+        task_type = (data.get("task_type") or "call").strip().lower()
+        if task_type not in {"call", "sms", "whatsapp", "visit", "note", "email"}:
+            task_type = "call"
+        # Map legacy
+        if task_type == "call":
+            legacy = "appel"
+        elif task_type == "sms":
+            legacy = "sms"
+        else:
+            legacy = task_type
+
+        return {
+            "suggestion": {
+                "prospect_id": prospect_id,
+                "prospect_name": prospect_name,
+                "task_type": legacy,
+                "task_type_normalized": task_type,
+                "task_title": (data.get("task_title") or "Prochaine action")[:80],
+                "reason": (data.get("reason") or fallback_reasons[lang])[:200],
+                "priority": (data.get("priority") or "medium").lower(),
+                "ai_powered": True,
+            }
+        }
+    except Exception as e:
+        logger.warning(f"AI suggestion fallback for {prospect_id}: {e}")
+
+    # Fallback: deterministic rule-based suggestion
+    if days_since_contact is None or days_since_contact >= 14:
+        task_type, priority = "appel", "high"
+    elif days_since_contact >= 7:
+        task_type, priority = "sms", "medium"
+    elif status in {"nouveau", "new"}:
+        task_type, priority = "appel", "high"
+    else:
+        task_type, priority = "sms", "medium"
+
     return {
         "suggestion": {
             "prospect_id": prospect_id,
             "prospect_name": prospect_name,
             "task_type": task_type,
-            "reason": reason,
-            "priority": "high" if days_since_contact > 14 else "medium"
+            "task_title": "Prochaine action" if lang == "fr" else "Next action",
+            "reason": fallback_reasons[lang],
+            "priority": priority,
+            "ai_powered": False,
         }
     }
 
