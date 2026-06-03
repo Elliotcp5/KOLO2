@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Phone, MessageCircle, Calendar, Mic, Check, X, ArrowLeft, ExternalLink, Plug } from 'lucide-react';
+import {
+  Phone, MessageCircle, Calendar, Mic, ArrowLeft, ExternalLink,
+  Upload, FileAudio, Check, X,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 import { toast } from 'sonner';
@@ -9,217 +12,377 @@ import '../styles/org.css';
 
 const auth = () => { const t = localStorage.getItem('kolo_token'); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
-const StatusPill = ({ ok, soon, label }) => (
+const StatusPill = ({ ok, soon, custom }) => (
   <span className={`integration-status-pill ${soon ? 'soon' : ok ? 'ok' : 'ko'}`}>
-    {ok ? <Check size={12} /> : soon ? null : <X size={12} />}
-    {label || (soon ? 'Bientôt' : ok ? 'Connecté' : 'Non configuré')}
+    {custom || (ok ? <><Check size={12} /> Actif</> : soon ? 'Bientôt' : <><X size={12} /> Non configuré</>)}
   </span>
 );
 
-const IntegrationCard = ({ icon: Icon, title, description, status, soon, actions }) => (
+const Card = ({ icon: Icon, title, description, badge, children, color = '#8B5CF6' }) => (
   <div className="integration-card">
     <div className="header">
-      <div className="icon-circle"><Icon size={22} strokeWidth={1.75} /></div>
+      <div className="icon-circle" style={{ background: `${color}15`, color }}><Icon size={22} strokeWidth={1.75} /></div>
       <h3>{title}</h3>
-      <span style={{ marginLeft: 'auto' }}><StatusPill ok={status?.configured} soon={soon} /></span>
+      {badge && <span style={{ marginLeft: 'auto' }}>{badge}</span>}
     </div>
-    <p className="desc">{description}</p>
-    <div className="actions">{actions}</div>
+    {description && <p className="desc">{description}</p>}
+    <div className="actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>{children}</div>
   </div>
 );
 
+// ===========================================================================
+// Native dialer card
+// ===========================================================================
+const NativeCallCard = () => {
+  const [to, setTo] = useState('');
+  const [duration, setDuration] = useState('');
+  const [notes, setNotes] = useState('');
+  const [step, setStep] = useState('dial'); // dial or log
+
+  const dial = (e) => {
+    e.preventDefault();
+    if (!to.trim()) return;
+    // Open the user's native dialer
+    window.location.href = `tel:${to.trim()}`;
+    setStep('log');
+  };
+
+  const logCall = async (e) => {
+    e.preventDefault();
+    try {
+      await fetch(`${API_URL}/api/integrations/calls/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth() },
+        body: JSON.stringify({ to, duration_sec: parseInt(duration || '0', 10), notes, outcome: 'completed' }),
+      });
+      toast.success('Appel enregistré dans ton historique');
+      setTo(''); setDuration(''); setNotes(''); setStep('dial');
+    } catch (e) { toast.error('Erreur'); }
+  };
+
+  return (
+    <Card
+      icon={Phone}
+      title="Appels (ton numéro)"
+      description="Appelle directement depuis ton iPhone, Android ou ton Mac. Le prospect voit ton numéro — pas un numéro Twilio. KOLO enregistre l'historique."
+      badge={<StatusPill ok />}
+      color="#10B981"
+    >
+      {step === 'dial' ? (
+        <form onSubmit={dial} style={{ display: 'flex', gap: 8 }}>
+          <input
+            data-testid="native-call-to"
+            required
+            type="tel"
+            placeholder="+33612345678"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            style={{ flex: 1, padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14 }}
+          />
+          <button data-testid="native-call-btn" type="submit" className="org-btn-primary"><Phone size={14} /> Appeler</button>
+        </form>
+      ) : (
+        <form onSubmit={logCall} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="call-log-form">
+          <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>Appel passé à <strong>{to}</strong>. Note ce qu'il s'est dit :</div>
+          <input data-testid="call-log-duration" type="number" placeholder="Durée en secondes" value={duration} onChange={(e) => setDuration(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontSize: 14 }} />
+          <textarea data-testid="call-log-notes" rows={2} placeholder="Notes (optionnel)" value={notes} onChange={(e) => setNotes(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14, resize: 'vertical' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => setStep('dial')} className="admin-btn" style={{ flex: 1 }}>Annuler</button>
+            <button data-testid="call-log-submit" type="submit" className="org-btn-primary" style={{ flex: 2 }}>Enregistrer</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+};
+
+// ===========================================================================
+// Native WhatsApp card
+// ===========================================================================
+const NativeWhatsAppCard = () => {
+  const [to, setTo] = useState('');
+  const [body, setBody] = useState('Bonjour, je suis votre conseiller KOLO. ');
+
+  const send = async (e) => {
+    e.preventDefault();
+    if (!to.trim() || !body.trim()) return;
+    // Open WhatsApp with prefilled message
+    const phone = to.trim().replace(/[^\d+]/g, '');
+    const text = encodeURIComponent(body);
+    window.open(`https://wa.me/${phone.replace('+', '')}?text=${text}`, '_blank');
+    // Log it
+    try {
+      await fetch(`${API_URL}/api/integrations/whatsapp/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth() },
+        body: JSON.stringify({ to, body }),
+      });
+      toast.success('Message envoyé et enregistré');
+      setTo(''); setBody('Bonjour, je suis votre conseiller KOLO. ');
+    } catch (e) { /* still opened WA */ }
+  };
+
+  return (
+    <Card
+      icon={MessageCircle}
+      title="WhatsApp (ton compte)"
+      description="Le message s'ouvre dans TON WhatsApp (perso ou Business), avec ton numéro. Tu appuies juste sur 'Envoyer' — et le prospect répond directement sur ton mobile."
+      badge={<StatusPill ok />}
+      color="#25D366"
+    >
+      <form onSubmit={send} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <input
+          data-testid="native-wa-to"
+          required
+          type="tel"
+          placeholder="+33612345678"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontSize: 14 }}
+        />
+        <textarea
+          data-testid="native-wa-body"
+          required
+          rows={2}
+          placeholder="Bonjour…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14, resize: 'vertical' }}
+        />
+        <button data-testid="native-wa-btn" type="submit" className="org-btn-primary"><MessageCircle size={14} /> Ouvrir dans WhatsApp</button>
+      </form>
+    </Card>
+  );
+};
+
+// ===========================================================================
+// Whisper upload card
+// ===========================================================================
+const WhisperCard = ({ configured }) => {
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const fileRef = useRef();
+
+  const transcribe = async () => {
+    if (!file) return;
+    setBusy(true); setResult(null);
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await fetch(`${API_URL}/api/integrations/transcribe-upload`, { method: 'POST', headers: auth(), body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Erreur');
+      setResult(d.transcript);
+      toast.success(`Transcrit (${d.char_count} caractères)`);
+    } catch (e) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card
+      icon={Mic}
+      title="Transcription Whisper"
+      description="Enregistre ton appel sur ton téléphone, glisse-dépose le fichier audio (mp3, m4a, wav, max 25 Mo) → texte exploitable en français. 50+ langues supportées."
+      badge={<StatusPill ok={configured} />}
+      color="#F59E0B"
+    >
+      {!configured ? (
+        <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>EMERGENT_LLM_KEY manquante</div>
+      ) : (
+        <>
+          <div
+            data-testid="whisper-dropzone"
+            onClick={() => fileRef.current?.click()}
+            style={{
+              border: '1.5px dashed var(--border)',
+              borderRadius: 12,
+              padding: 20,
+              textAlign: 'center',
+              cursor: 'pointer',
+              transition: 'border-color 160ms',
+              background: file ? 'rgba(245, 158, 11, 0.05)' : 'transparent',
+            }}
+          >
+            <FileAudio size={28} strokeWidth={1.25} style={{ color: 'var(--ink-mid)', marginBottom: 8 }} />
+            <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{file ? file.name : 'Clique ou glisse un fichier audio ici'}</div>
+            <input ref={fileRef} data-testid="whisper-file-input" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          </div>
+          <button data-testid="whisper-transcribe-btn" onClick={transcribe} disabled={!file || busy} className="org-btn-primary">
+            {busy ? 'Transcription…' : <><Upload size={14} /> Transcrire</>}
+          </button>
+          {result && (
+            <div style={{ marginTop: 10, padding: 12, background: 'rgba(0,0,0,0.04)', borderRadius: 8, fontSize: 13, maxHeight: 140, overflow: 'auto' }} data-testid="whisper-result">
+              {result}
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+};
+
+// ===========================================================================
+// Google Calendar card
+// ===========================================================================
+const GoogleCalendarCard = ({ status }) => {
+  const [connecting, setConnecting] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (status?.configured) {
+      (async () => {
+        try {
+          const r = await fetch(`${API_URL}/api/integrations/google-calendar/events?max_results=5`, { headers: auth() });
+          if (r.ok) {
+            const d = await r.json();
+            setEvents(d.events || []); setConnected(true);
+          }
+        } catch (_) {}
+      })();
+    }
+  }, [status?.configured]);
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const r = await fetch(`${API_URL}/api/integrations/google-calendar/auth-url`, { headers: auth() });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail);
+      window.location.href = d.authorization_url;
+    } catch (e) { toast.error(e.message); setConnecting(false); }
+  };
+
+  const disconnect = async () => {
+    try { await fetch(`${API_URL}/api/integrations/google-calendar/disconnect`, { method: 'POST', headers: auth() }); setConnected(false); setEvents([]); toast.success('Déconnecté'); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  return (
+    <Card
+      icon={Calendar}
+      title="Google Calendar"
+      description="Synchronise tes rendez-vous : crée un événement depuis KOLO, retrouve tes événements Google dans ton tableau de bord."
+      badge={<StatusPill ok={status?.configured && connected} custom={!status?.configured ? <><X size={12} /> Non configuré côté serveur</> : null} />}
+      color="#4285F4"
+    >
+      {!status?.configured ? (
+        <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>
+          Manque <code>GOOGLE_CAL_CLIENT_ID</code> et <code>GOOGLE_CAL_CLIENT_SECRET</code> dans <code>.env</code>.
+          <br /><a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4285F4' }}>Voir le guide</a>
+        </div>
+      ) : connected ? (
+        <>
+          <button data-testid="gcal-disconnect-btn" onClick={disconnect} className="admin-btn" style={{ width: '100%' }}>Déconnecter</button>
+          {events.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-mid)', marginBottom: 8 }}>{events.length} prochains événements</div>
+              {events.slice(0, 3).map((ev) => (
+                <a key={ev.id} href={ev.html_link} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 8, fontSize: 13, color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.summary || '(sans titre)'}</span>
+                  <ExternalLink size={12} />
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <button data-testid="gcal-connect-btn" onClick={connect} disabled={connecting} className="org-btn-primary"><Calendar size={14} /> {connecting ? 'Redirection…' : 'Connecter mon Google Calendar'}</button>
+      )}
+    </Card>
+  );
+};
+
+// ===========================================================================
+// Recent activity widget
+// ===========================================================================
+const RecentActivity = () => {
+  const [calls, setCalls] = useState([]);
+  const [wa, setWa] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try { setCalls((await (await fetch(`${API_URL}/api/integrations/calls?limit=10`, { headers: auth() })).json()).calls || []); } catch (_) {}
+      try { setWa((await (await fetch(`${API_URL}/api/integrations/whatsapp/messages?limit=10`, { headers: auth() })).json()).messages || []); } catch (_) {}
+    })();
+  }, []);
+
+  if (calls.length + wa.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 48 }}>
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Activité récente</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 20 }}>
+        {calls.length > 0 && (
+          <div className="integration-card">
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}><Phone size={16} style={{ display: 'inline', marginRight: 6 }} /> Derniers appels</h3>
+            {calls.slice(0, 5).map((c) => (
+              <div key={c.call_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <span>{c.to}</span>
+                <span style={{ color: 'var(--ink-mid)' }}>{c.duration_sec ? `${c.duration_sec}s` : '—'} · {new Date(c.created_at).toLocaleDateString('fr-FR')}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {wa.length > 0 && (
+          <div className="integration-card">
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}><MessageCircle size={16} style={{ display: 'inline', marginRight: 6 }} /> Derniers WhatsApp</h3>
+            {wa.slice(0, 5).map((m) => (
+              <div key={m.wa_message_id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>{m.to}</strong>
+                  <span style={{ color: 'var(--ink-mid)' }}>{new Date(m.created_at).toLocaleDateString('fr-FR')}</span>
+                </div>
+                <div style={{ color: 'var(--ink-mid)', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.body}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ===========================================================================
+// Page
+// ===========================================================================
 const IntegrationsPage = () => {
   const navigate = useNavigate();
   const { loading: authLoading, isAuthenticated } = useAuth();
   const [statuses, setStatuses] = useState({});
-  const [calls, setCalls] = useState([]);
-  const [gcalEvents, setGcalEvents] = useState([]);
-  const [callTo, setCallTo] = useState('');
-  const [waTo, setWaTo] = useState('');
-  const [waBody, setWaBody] = useState('');
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) { navigate('/login'); return; }
     if (searchParams.get('gcal') === 'connected') toast.success('Google Calendar connecté ✅');
-    loadAll();
-  }, [authLoading, isAuthenticated]); // eslint-disable-line
-
-  const loadAll = async () => {
-    try {
-      const s = await (await fetch(`${API_URL}/api/integrations/status`, { headers: auth() })).json();
-      setStatuses(s);
-    } catch (_) {}
-    try {
-      const c = await (await fetch(`${API_URL}/api/integrations/calls?limit=20`, { headers: auth() })).json();
-      setCalls(c.calls || []);
-    } catch (_) {}
-    if (statuses?.google_calendar?.configured) {
+    (async () => {
       try {
-        const ev = await (await fetch(`${API_URL}/api/integrations/google-calendar/events?max_results=10`, { headers: auth() })).json();
-        setGcalEvents(ev.events || []);
+        const r = await fetch(`${API_URL}/api/integrations/status`, { headers: auth() });
+        if (r.ok) setStatuses(await r.json());
       } catch (_) {}
-    }
-  };
-
-  const initiateCall = async (e) => {
-    e.preventDefault();
-    try {
-      const r = await fetch(`${API_URL}/api/integrations/twilio/call`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() }, body: JSON.stringify({ to: callTo }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Erreur');
-      toast.success('Appel initié'); setCallTo(''); loadAll();
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const sendWA = async (e) => {
-    e.preventDefault();
-    try {
-      const r = await fetch(`${API_URL}/api/integrations/whatsapp/send`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() }, body: JSON.stringify({ to: waTo, body: waBody }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || JSON.stringify(d));
-      toast.success('Message envoyé'); setWaTo(''); setWaBody('');
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const connectGCal = async () => {
-    try {
-      const r = await fetch(`${API_URL}/api/integrations/google-calendar/auth-url`, { headers: auth() });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail);
-      window.location.href = d.authorization_url;
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const disconnectGCal = async () => {
-    try { await fetch(`${API_URL}/api/integrations/google-calendar/disconnect`, { method: 'POST', headers: auth() }); toast.success('Déconnecté'); loadAll(); }
-    catch (e) { toast.error(e.message); }
-  };
-
-  const transcribe = async (callId) => {
-    toast.info('Transcription en cours…');
-    try {
-      const r = await fetch(`${API_URL}/api/integrations/whisper/transcribe`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() }, body: JSON.stringify({ call_id: callId }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Échec');
-      toast.success('Transcrit'); loadAll();
-    } catch (e) { toast.error(e.message); }
-  };
+    })();
+  }, [authLoading, isAuthenticated]); // eslint-disable-line
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 0' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <button onClick={() => navigate(-1)} className="admin-icon-btn" style={{ marginBottom: 24 }}><ArrowLeft size={16} /> Retour</button>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 800, margin: '0 0 8px' }}>Intégrations</h1>
-        <p style={{ color: 'var(--ink-mid)', marginBottom: 40 }}>Connecte tes outils pour automatiser appels, messages et agendas.</p>
+        <p style={{ color: 'var(--ink-mid)', marginBottom: 12, maxWidth: 640, lineHeight: 1.55 }}>
+          KOLO ne se met jamais entre toi et tes prospects. Tu utilises <strong>ton propre numéro</strong> de téléphone et <strong>ton WhatsApp</strong> — KOLO sert juste à logger les échanges, transcrire et synchroniser ton agenda.
+        </p>
+        <p style={{ color: 'var(--ink-soft)', marginBottom: 40, fontSize: 13 }}>Pas de coût Twilio par minute. Pas de numéro tiers. Le prospect voit ton numéro.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 20 }} data-testid="integrations-grid">
-
-          {/* Twilio Voice */}
-          <IntegrationCard
-            icon={Phone}
-            title="Appels Twilio"
-            description="Click-to-call vers tes prospects, recording auto, transcription via Whisper. Les appels sont historisés."
-            status={statuses?.twilio}
-            actions={
-              statuses?.twilio?.configured ? (
-                <form onSubmit={initiateCall} style={{ display: 'flex', gap: 8, width: '100%' }}>
-                  <input data-testid="twilio-to-input" required placeholder="+33612345678" value={callTo} onChange={(e) => setCallTo(e.target.value)} style={{ flex: 1, padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14 }} />
-                  <button data-testid="twilio-call-btn" type="submit" className="org-btn-primary">Appeler</button>
-                </form>
-              ) : (
-                <span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>
-                  Manque : {statuses?.twilio?.missing?.join(', ')}
-                </span>
-              )
-            }
-          />
-
-          {/* WhatsApp */}
-          <IntegrationCard
-            icon={MessageCircle}
-            title="WhatsApp Business"
-            description="Envoie des messages WhatsApp à tes prospects et reçois leurs réponses dans l'app (webhook Meta automatique)."
-            status={statuses?.whatsapp}
-            actions={
-              statuses?.whatsapp?.configured ? (
-                <form onSubmit={sendWA} style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                  <input data-testid="wa-to-input" required placeholder="+33612345678" value={waTo} onChange={(e) => setWaTo(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14 }} />
-                  <textarea data-testid="wa-body-input" required rows={2} placeholder="Bonjour, …" value={waBody} onChange={(e) => setWaBody(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 14, resize: 'vertical' }} />
-                  <button data-testid="wa-send-btn" type="submit" className="org-btn-primary">Envoyer</button>
-                </form>
-              ) : (
-                <span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>Manque : {statuses?.whatsapp?.missing?.join(', ')}</span>
-              )
-            }
-          />
-
-          {/* Google Calendar */}
-          <IntegrationCard
-            icon={Calendar}
-            title="Google Calendar"
-            description="Synchronise tes rendez-vous : crée un événement depuis KOLO, retrouve tes événements Google dans l'app."
-            status={statuses?.google_calendar}
-            actions={
-              !statuses?.google_calendar?.configured ? (
-                <span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>Ajoute GOOGLE_CAL_CLIENT_ID et SECRET dans .env</span>
-              ) : (
-                <button data-testid="gcal-connect-btn" onClick={connectGCal} className="org-btn-primary">Connecter mon compte Google</button>
-              )
-            }
-          />
-
-          {/* Outlook — soon */}
-          <IntegrationCard icon={Calendar} title="Outlook Calendar" description="Synchronisation Microsoft 365 — disponible prochainement." soon actions={<button disabled className="org-btn-primary" style={{ opacity: 0.4, cursor: 'not-allowed' }}>Bientôt disponible</button>} />
-
-          {/* Apple Calendar — soon */}
-          <IntegrationCard icon={Calendar} title="Apple Calendar (CalDAV)" description="Synchronisation iCloud Calendar — disponible prochainement." soon actions={<button disabled className="org-btn-primary" style={{ opacity: 0.4, cursor: 'not-allowed' }}>Bientôt disponible</button>} />
-
-          {/* Whisper */}
-          <IntegrationCard icon={Mic} title="Transcription Whisper" description="Transcription automatique des appels enregistrés (français + 50 autres langues)." status={statuses?.whisper} actions={<span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{statuses?.whisper?.configured ? 'Actif sur tous tes enregistrements' : 'EMERGENT_LLM_KEY manquante'}</span>} />
+          <NativeCallCard />
+          <NativeWhatsAppCard />
+          <WhisperCard configured={statuses?.whisper?.configured} />
+          <GoogleCalendarCard status={statuses?.google_calendar} />
+          <Card icon={Calendar} title="Outlook Calendar" description="Synchronisation Microsoft 365." badge={<StatusPill soon />} color="#0078D4" />
+          <Card icon={Calendar} title="Apple Calendar" description="Synchronisation iCloud via CalDAV." badge={<StatusPill soon />} color="#000000" />
         </div>
 
-        {/* Recent calls list */}
-        {calls.length > 0 && (
-          <div style={{ marginTop: 48 }}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Derniers appels</h2>
-            <div className="admin-table-wrap" data-testid="calls-list">
-              <table className="admin-table">
-                <thead><tr><th>Vers</th><th>Statut</th><th>Durée</th><th>Date</th><th>Action</th></tr></thead>
-                <tbody>
-                  {calls.map((c) => (
-                    <tr key={c.call_id} data-testid={`call-row-${c.call_id}`}>
-                      <td>{c.to}</td>
-                      <td>{c.status}</td>
-                      <td>{c.duration_sec ? `${c.duration_sec}s` : '—'}</td>
-                      <td>{new Date(c.created_at).toLocaleString('fr-FR')}</td>
-                      <td>
-                        {c.recording_url && !c.transcript && <button onClick={() => transcribe(c.call_id)} className="admin-btn">Transcrire</button>}
-                        {c.transcript && <details><summary style={{ cursor: 'pointer' }}>Voir transcription</summary><p style={{ fontSize: 13, marginTop: 6 }}>{c.transcript}</p></details>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {gcalEvents.length > 0 && (
-          <div style={{ marginTop: 48 }}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Prochains événements (Google Calendar)</h2>
-            <div className="admin-list">
-              {gcalEvents.map((ev) => (
-                <a key={ev.id} href={ev.html_link} target="_blank" rel="noopener noreferrer" className="admin-list-row" style={{ textDecoration: 'none' }}>
-                  <div><div style={{ fontWeight: 600 }}>{ev.summary || '(sans titre)'}</div><div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{(ev.start?.dateTime || ev.start?.date) ?? ''}</div></div>
-                  <ExternalLink size={16} />
-                </a>
-              ))}
-            </div>
-            <button onClick={disconnectGCal} className="admin-btn" style={{ marginTop: 12 }}>Déconnecter Google Calendar</button>
-          </div>
-        )}
+        <RecentActivity />
       </div>
     </div>
   );

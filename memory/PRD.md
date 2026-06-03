@@ -1,7 +1,7 @@
 # KOLO – Product Requirements (PRD)
 
 ## Vision
-SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue (fr/en/de/it). Pivot B2B / marque blanche pour réseaux d'agences.
+SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue. Pivot B2B / marque blanche pour réseaux d'agences. **Modèle "native first" : chaque agent utilise son propre téléphone et son propre WhatsApp — KOLO ne s'interpose jamais.**
 
 ## Architecture
 - Frontend: React + Capacitor (iOS native)
@@ -10,67 +10,61 @@ SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 
 - Production: https://trykolo.io · Preview: https://responsive-kolo.preview.emergentagent.com
 
 ## Auth providers
-- Email + password (existant)
+- Email + password
 - Google Sign-In (Emergent OAuth) — sur `/login` et `/register`
-- Apple Sign-In Web — bouton placeholder "Bientôt disponible"
+- Apple Sign-In Web — bouton placeholder "Bientôt disponible" (guide dans `/app/memory/guide_apple_signin.md`)
 
 ## Espaces / Routes
-- `/` — Landing avec animation premium (mesh gradient 28s)
+- `/` — Landing avec animation premium (mesh gradient subtil 28s)
 - `/business` — Lead capture B2B
-- `/login`, `/register` — Auth (Google + Email + Apple soon)
-- `/app/**` — App standard (CRM agent)
-- `/kolo-admin` — **Super Admin KOLO** (allowlist email → KPIs globaux, leads B2B, gestion users)
-- `/org` — **Espace Organisation** (marque blanche multi-tenant, vue d'ensemble / équipe / KPIs / dataroom)
+- `/login`, `/register` — Auth multi-providers
+- `/app/**` — CRM agent standard
+- `/kolo-admin` — **Super Admin KOLO** (allowlist email)
+- `/org` — **Espace Organisation** (marque blanche multi-tenant)
 - `/org/join/:token` — Acceptation d'invitation
-- `/integrations` — Branchement Twilio, WhatsApp, Google Calendar, Whisper (Outlook + Apple Calendar "soon")
+- `/integrations` — Branchements natifs + Whisper + Google Calendar
 
-## Phase 1 — Super Admin + Multi-Auth (DONE — Juin 2026, 100% tested)
-- Allowlist `KOLO_SUPER_ADMIN_EMAILS` hard-coded server.py
-- 5 endpoints `/api/admin/check|stats|leads|users` + champ `is_super_admin` dans /auth/me
-- Apple Sign-In placeholders dans backend/.env
+## Phase 1 — Super Admin + Multi-Auth (DONE — Juin 2026, tested 18/18 backend + 9/9 frontend)
 
-## Phase 2 — Marque Blanche multi-tenant (DONE — Juin 2026, 100% tested backend 24/24)
-- Collection `organizations` : {org_id, name, slug, primary_color, logo_url, owner_user_id, plan}
-- Users ont `org_id` + `org_role` ("org_admin" ou "org_agent")
-- Endpoints `/api/orgs/*`:
-  - POST /orgs (create + creator devient org_admin)
-  - GET /orgs/me, PATCH /orgs/{id}, GET /orgs/{id}/members
-  - POST /orgs/{id}/invite, POST /orgs/accept-invite/{token}, DELETE /orgs/{id}/members/{user_id}
-  - GET /orgs/{id}/kpis (par agent), POST /orgs/{id}/prospects/reassign
-  - POST/GET/DELETE /orgs/{id}/dataroom (URL-based)
-- Super Admin bypass : `is_super_admin_email()` court-circuite la check org_member
-- Frontend `/org` : sidebar Linear-like (5 onglets), modal création, edit theming live, table membres, table KPIs avec breakdown agent
+## Phase 2 — Marque Blanche multi-tenant (DONE — Juin 2026, tested 24/24 backend)
+- Collection `organizations` + rôles `org_admin`/`org_agent` + scoping data
+- 11 endpoints `/api/orgs/*` + super admin bypass
+- Page `/org` : sidebar, modal création, theming, équipe (invite/remove), KPIs par agent, Dataroom
 
-## Phase 3 — Intégrations (DONE — Juin 2026, 100% tested code + 400 graceful path)
-- **Twilio Voice** — click-to-call + recording webhook → stocké dans `call_logs`
-- **OpenAI Whisper** (Emergent LLM key) — transcrit l'mp3 de Twilio (français + autres)
-- **WhatsApp Business** — send + receive (webhook handshake + signature Meta `X-Hub-Signature-256` vérifiée si `WHATSAPP_APP_SECRET` configuré)
-- **Google Calendar** — OAuth2 complet (auth-url → callback → refresh tokens stockés en DB), list + create events
-- **Outlook + Apple Calendar** — placeholders UI "Bientôt disponible"
-- `GET /api/integrations/status` — retourne {configured, missing} par service → l'UI sait quoi afficher
-- Tous les endpoints renvoient 400 explicite si la clé manque (jamais 500)
+## Phase 3 — Intégrations "native first" (DONE — Juin 2026) ⭐ MODIFIÉ
+**Modèle : l'agent utilise son propre téléphone. KOLO log juste l'activité.**
+- ✅ **Appels natifs** — `tel:+33XXX` deep link → ouvre le dialer iPhone/Android/Mac. Endpoint `POST /api/integrations/calls/log` pour enregistrer durée + notes après l'appel.
+- ✅ **WhatsApp natif** — `https://wa.me/XXX?text=...` deep link → ouvre WhatsApp avec le numéro de l'agent. Endpoint `POST /api/integrations/whatsapp/log`.
+- ✅ **Transcription Whisper** — `POST /api/integrations/transcribe-upload` (multipart/form-data) → upload mp3/m4a/wav (max 25 Mo) → transcript FR via Emergent LLM Key.
+- ✅ **Google Calendar** — OAuth2 complet (auth-url → callback → refresh tokens), list + create events. Requiert `GOOGLE_CAL_CLIENT_ID/SECRET` (guide dans `/app/memory/guide_google_calendar.md`).
+- 🟡 **Outlook + Apple Calendar** — placeholders UI "Bientôt disponible"
+- 🟡 **Twilio Voice/WhatsApp avancé** (recording auto + webhook) — code conservé pour les users qui voudraient activer ces modes optionnels via `TWILIO_FROM_NUMBER` / `TWILIO_WHATSAPP_FROM`
 
 ## Phase 4 — Polish (DONE)
-- ✅ Animation premium subtile sur Landing : 3 radial-gradients mauve/rose/bleu, blur 40px, animation 28s `kolo-mesh-drift`, respect `prefers-reduced-motion`
-- 🟢 Refacto `server.py` (~6200 lignes) — reporté (P2 backlog, risque de régression élevé)
+- ✅ Animation mesh gradient premium sur Landing
+- 🟢 Refacto `server.py` — reporté (P2 backlog)
 
-## Mai 2026 (rappel — DONE)
-- App iOS App Store (`6761818371`), Stripe SDK 14.x fix, App Store badge sur Landing fr/en/de/it.
+## Twilio (configuré, mode "avancé optionnel")
+Le compte Twilio d'Elliot est connecté dans `backend/.env` :
+- `TWILIO_ACCOUNT_SID=ACe53a773c2ac5c2a7dcf500207efd7eec`
+- `TWILIO_API_KEY_SID=SK26774d0724c35a58d2b1be92b567521a`
+- `TWILIO_API_KEY_SECRET=XFxH2t2lYFq6Tni9JxWb3lwZWiwxWT6z`
+
+**Non utilisé en mode natif** mais disponible si on veut un jour activer le recording auto (chaque agent devrait alors vérifier son numéro via Verified Caller ID).
 
 ## P2 Backlog technique
-- Modulariser `server.py` en routers (auth, orgs, integrations, payments, admin)
-- Optimiser `/api/orgs/{id}/kpis` (actuellement N+1 queries → $facet aggregation)
-- Implémenter Outlook (MS Graph) + Apple Calendar (CalDAV)
-- Notification email/Resend après invite acceptée
-- Fix wrapping `<tr>` dans tables admin (hydration warning cosmétique)
-- LoginPage/RegisterPage : passer de `https://trykolo.io` hardcodé à `API_URL` (preview ne marche qu'avec Google login)
-- Email à l'invité quand invite générée (actuellement on génère seulement un lien)
+- Bouton "Appeler" + "WhatsApp" directement sur la fiche prospect (dans `/app`)
+- Sync Outlook (MS Graph) + Apple Calendar (CalDAV)
+- Notification email/Resend après invite org acceptée
+- Refacto `server.py` en routers modulaires
+- Fix wrapping `<tr>` cosmétique dans tables admin
+- LoginPage/RegisterPage : remplacer `https://trykolo.io` hardcodé par `API_URL`
 
 ## Comptes test
-Voir `/app/memory/test_credentials.md`.
+Voir `/app/memory/test_credentials.md`
 
-## Documents associés
-- `/app/auth_testing.md` — Playbook tests auth + seed mongosh
-- `/app/memory/CHANGELOG.md` — Historique daté
-- `/app/test_reports/iteration_26.json` — Phase 1 (18/18 + 9/9)
-- `/app/test_reports/iteration_27.json` — Phase 2+3+4 (24/24 + 85%)
+## Documents
+- `/app/memory/guide_apple_signin.md` — Guide pas-à-pas Apple Sign-In Web
+- `/app/memory/guide_google_calendar.md` — Guide pas-à-pas Google Calendar API
+- `/app/auth_testing.md` — Playbook tests auth
+- `/app/test_reports/iteration_26.json` & `iteration_27.json`

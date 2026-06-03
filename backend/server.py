@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -5664,6 +5664,9 @@ def _integration_status(env_keys: list, optional: list = None) -> dict:
 @api_router.get("/integrations/status")
 async def integrations_status(request: Request):
     await require_auth(request)
+    # Native dialer + WhatsApp deep links are ALWAYS available (use the user's own phone).
+    # Twilio Voice + WhatsApp Sender remain as optional "advanced" modes (e.g. Verified
+    # Caller ID, Sandbox testing, automated outbound) but are no longer the default.
     twilio_voice_keys = ["TWILIO_ACCOUNT_SID", "TWILIO_FROM_NUMBER"]
     twilio_auth_ok = bool(
         os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
@@ -5674,20 +5677,135 @@ async def integrations_status(request: Request):
     )
     voice_ok = twilio_auth_ok and bool(os.environ.get("TWILIO_FROM_NUMBER", "").strip())
     wa_ok = twilio_auth_ok and bool(os.environ.get("TWILIO_WHATSAPP_FROM", "").strip())
-    voice_missing = []
-    if not twilio_auth_ok: voice_missing.append("TWILIO_ACCOUNT_SID + API_KEY/SECRET ou AUTH_TOKEN")
-    if not os.environ.get("TWILIO_FROM_NUMBER", "").strip(): voice_missing.append("TWILIO_FROM_NUMBER")
-    wa_missing = []
-    if not twilio_auth_ok: wa_missing.append("TWILIO_ACCOUNT_SID + API_KEY/SECRET ou AUTH_TOKEN")
-    if not os.environ.get("TWILIO_WHATSAPP_FROM", "").strip(): wa_missing.append("TWILIO_WHATSAPP_FROM")
     return {
-        "twilio": {"configured": voice_ok, "missing": voice_missing},
-        "whatsapp": {"configured": wa_ok, "missing": wa_missing, "via": "twilio"},
+        # Always-on native modes (uses the agent's own phone/WhatsApp)
+        "native_call": {"configured": True, "mode": "tel-link", "missing": []},
+        "native_whatsapp": {"configured": True, "mode": "wa.me-link", "missing": []},
+        "whisper": _integration_status(["EMERGENT_LLM_KEY"]),
+        # Optional advanced Twilio modes (recording, automated outbound)
+        "twilio_voice_advanced": {"configured": voice_ok, "missing": [k for k in ["TWILIO_FROM_NUMBER"] if not os.environ.get(k, "").strip()], "note": "Optionnel — recording auto + transcription. Sinon, mode natif."},
+        "twilio_whatsapp_advanced": {"configured": wa_ok, "missing": [k for k in ["TWILIO_WHATSAPP_FROM"] if not os.environ.get(k, "").strip()], "note": "Optionnel — pour réception webhook. Sinon, mode natif."},
+        # Calendar OAuth integrations
         "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"]),
         "outlook_calendar": {"configured": False, "missing": ["MS_GRAPH_CLIENT_ID"], "note": "Bientôt disponible"},
         "apple_calendar": {"configured": False, "missing": ["APPLE_CALDAV"], "note": "Bientôt disponible"},
-        "whisper": _integration_status(["EMERGENT_LLM_KEY"]),
     }
+
+
+# ---- NATIVE DIALER & WHATSAPP (user's own phone, no Twilio cost) ---- #
+
+class CallLogPayload(BaseModel):
+    to: str
+    prospect_id: Optional[str] = None
+    duration_sec: Optional[int] = 0
+    notes: Optional[str] = None
+    outcome: Optional[str] = "completed"  # completed / no-answer / voicemail / busy
+
+
+@api_router.post("/integrations/calls/log")
+async def log_native_call(payload: CallLogPayload, request: Request):
+    """Log a call made via the user's own phone (tel: deeplink).
+    The frontend opens tel:+XXX, then calls this to record the activity."""
+    user = await require_auth(request)
+    log = {
+        "call_id": f"call_{uuid.uuid4().hex[:14]}",
+        "user_id": user.user_id,
+        "prospect_id": payload.prospect_id,
+        "to": payload.to,
+        "from": "native",
+        "duration_sec": payload.duration_sec or 0,
+        "notes": (payload.notes or "").strip(),
+        "outcome": payload.outcome,
+        "status": "logged",
+        "provider": "native",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.call_logs.insert_one(log)
+    log.pop("_id", None)
+    return {"ok": True, "call": log}
+
+
+class WhatsAppLogPayload(BaseModel):
+    to: str
+    body: str
+    prospect_id: Optional[str] = None
+
+
+@api_router.post("/integrations/whatsapp/log")
+async def log_native_whatsapp(payload: WhatsAppLogPayload, request: Request):
+    """Log a WhatsApp message sent via the user's own WhatsApp (wa.me deeplink).
+    The frontend opens https://wa.me/XXX?text=..., then calls this to record the activity."""
+    user = await require_auth(request)
+    log = {
+        "wa_message_id": f"wa_{uuid.uuid4().hex[:14]}",
+        "direction": "outbound",
+        "user_id": user.user_id,
+        "prospect_id": payload.prospect_id,
+        "to": payload.to,
+        "from": "native",
+        "body": payload.body,
+        "status": "sent",
+        "provider": "native",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.whatsapp_messages.insert_one(log)
+    log.pop("_id", None)
+    return {"ok": True, "message": log}
+
+
+@api_router.post("/integrations/transcribe-upload")
+async def transcribe_upload(request: Request, file: UploadFile = File(...), prospect_id: Optional[str] = Form(None), call_id: Optional[str] = Form(None)):
+    """Manually upload an audio file (mp3/m4a/wav) to get a Whisper transcript.
+    Used when an agent records a call on their phone and wants the transcript."""
+    user = await require_auth(request)
+    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="EMERGENT_LLM_KEY missing")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 25 MB)")
+
+    import tempfile
+    suffix = "." + (file.filename or "audio.mp3").rsplit(".", 1)[-1].lower()
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+        stt = OpenAISpeechToText(api_key=key)
+        with open(tmp_path, "rb") as af:
+            resp = await stt.transcribe(file=af, model="whisper-1", response_format="json", language="fr")
+        transcript_text = getattr(resp, "text", "") or str(resp)
+        os.unlink(tmp_path)
+
+        # Save transcript next to the call_log if call_id given
+        if call_id:
+            await db.call_logs.update_one(
+                {"call_id": call_id, "user_id": user.user_id},
+                {"$set": {"transcript": transcript_text, "transcript_at": datetime.now(timezone.utc).isoformat()}}
+            )
+        else:
+            # Standalone transcript
+            await db.transcripts.insert_one({
+                "transcript_id": f"tr_{uuid.uuid4().hex[:14]}",
+                "user_id": user.user_id,
+                "prospect_id": prospect_id,
+                "filename": file.filename,
+                "text": transcript_text,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        return {"ok": True, "transcript": transcript_text, "char_count": len(transcript_text)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        try: os.unlink(tmp_path)
+        except Exception: pass
+        logger.error(f"Whisper upload transcribe: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)[:200]}")
 
 
 # ---------- TWILIO VOICE ---------- #
