@@ -5345,11 +5345,739 @@ async def get_vapid_public_key():
 
 
 
+
+# ============================================================================
+# PHASE 2 — MARQUE BLANCHE / MULTI-TENANT
+# Organizations (B2B real estate networks) with roles: org_admin, org_agent.
+# Theming (logo + primary_color). Team management. KPIs. Dataroom (light).
+# ============================================================================
+
+class OrgCreatePayload(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    primary_color: Optional[str] = "#8B5CF6"
+    logo_url: Optional[str] = None
+
+
+class OrgUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    primary_color: Optional[str] = None
+    logo_url: Optional[str] = None
+
+
+class OrgInvitePayload(BaseModel):
+    email: str
+    role: Optional[str] = "org_agent"  # org_agent or org_admin
+
+
+def _slugify(s: str) -> str:
+    import re
+    s = re.sub(r"[^a-zA-Z0-9]+", "-", (s or "").lower()).strip("-")
+    return s[:48] or f"org-{uuid.uuid4().hex[:8]}"
+
+
+async def _require_org_member(request: Request, org_id: str, admin_only: bool = False):
+    """Return (user, org_doc) if the user belongs to the org. 403 otherwise.
+    Super admins always pass."""
+    user = await require_auth(request)
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if is_super_admin_email(user.email):
+        return user, org
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    if user_doc.get("org_id") != org_id:
+        raise HTTPException(status_code=403, detail="Not a member of this organization")
+    if admin_only and user_doc.get("org_role") != "org_admin":
+        raise HTTPException(status_code=403, detail="Only org admins can perform this action")
+    return user, org
+
+
+@api_router.post("/orgs")
+async def create_org(payload: OrgCreatePayload, request: Request):
+    """Create a new organization. The creator becomes the first org_admin."""
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    if user_doc.get("org_id") and not is_super_admin_email(user.email):
+        raise HTTPException(status_code=400, detail="User already belongs to an organization")
+    if not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    org_id = f"org_{uuid.uuid4().hex[:14]}"
+    slug = _slugify(payload.slug or payload.name)
+    # Ensure unique slug
+    if await db.organizations.find_one({"slug": slug}, {"_id": 0}):
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+
+    org_doc = {
+        "org_id": org_id,
+        "name": payload.name.strip(),
+        "slug": slug,
+        "primary_color": payload.primary_color or "#8B5CF6",
+        "logo_url": payload.logo_url,
+        "owner_user_id": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "plan": "trial",
+    }
+    await db.organizations.insert_one(org_doc)
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"org_id": org_id, "org_role": "org_admin", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    org_doc.pop("_id", None)
+    return {"ok": True, "org": org_doc}
+
+
+@api_router.get("/orgs/me")
+async def get_my_org(request: Request):
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    org_id = user_doc.get("org_id")
+    if not org_id:
+        return {"org": None, "role": None}
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    return {"org": org, "role": user_doc.get("org_role")}
+
+
+@api_router.patch("/orgs/{org_id}")
+async def update_org(org_id: str, payload: OrgUpdatePayload, request: Request):
+    await _require_org_member(request, org_id, admin_only=True)
+    update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if payload.name is not None: update["name"] = payload.name.strip()
+    if payload.primary_color is not None: update["primary_color"] = payload.primary_color
+    if payload.logo_url is not None: update["logo_url"] = payload.logo_url
+    await db.organizations.update_one({"org_id": org_id}, {"$set": update})
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    return {"ok": True, "org": org}
+
+
+@api_router.get("/orgs/{org_id}/members")
+async def list_org_members(org_id: str, request: Request):
+    await _require_org_member(request, org_id, admin_only=False)
+    cursor = db.users.find(
+        {"org_id": org_id},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "org_role": 1, "phone": 1, "created_at": 1, "subscription_status": 1},
+    ).sort("created_at", 1)
+    members = await cursor.to_list(length=500)
+    return {"count": len(members), "members": members}
+
+
+@api_router.post("/orgs/{org_id}/invite")
+async def invite_to_org(org_id: str, payload: OrgInvitePayload, request: Request):
+    user, org = await _require_org_member(request, org_id, admin_only=True)
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    role = payload.role if payload.role in ("org_admin", "org_agent") else "org_agent"
+
+    token = secrets.token_urlsafe(24)
+    invite = {
+        "invite_id": f"inv_{uuid.uuid4().hex[:14]}",
+        "org_id": org_id,
+        "email": email,
+        "role": role,
+        "token": token,
+        "invited_by": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "accepted": False,
+    }
+    await db.org_invites.insert_one(invite)
+    invite.pop("_id", None)
+    return {"ok": True, "invite": invite, "accept_url": f"/org/join/{token}"}
+
+
+@api_router.post("/orgs/accept-invite/{token}")
+async def accept_org_invite(token: str, request: Request):
+    user = await require_auth(request)
+    invite = await db.org_invites.find_one({"token": token, "accepted": False}, {"_id": 0})
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invitation not found or already accepted")
+    expires_at = invite.get("expires_at")
+    if expires_at:
+        ed = datetime.fromisoformat(expires_at) if isinstance(expires_at, str) else expires_at
+        if ed.tzinfo is None: ed = ed.replace(tzinfo=timezone.utc)
+        if ed < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Invitation expired")
+
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    if user_doc.get("org_id") and user_doc.get("org_id") != invite["org_id"]:
+        raise HTTPException(status_code=400, detail="User already belongs to a different organization")
+
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"org_id": invite["org_id"], "org_role": invite["role"], "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    await db.org_invites.update_one(
+        {"token": token},
+        {"$set": {"accepted": True, "accepted_at": datetime.now(timezone.utc).isoformat(), "accepted_by": user.user_id}}
+    )
+    org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
+    return {"ok": True, "org": org, "role": invite["role"]}
+
+
+@api_router.delete("/orgs/{org_id}/members/{user_id}")
+async def remove_org_member(org_id: str, user_id: str, request: Request):
+    _, org = await _require_org_member(request, org_id, admin_only=True)
+    if org.get("owner_user_id") == user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the organization owner")
+    await db.users.update_one(
+        {"user_id": user_id, "org_id": org_id},
+        {"$set": {"org_id": None, "org_role": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"ok": True}
+
+
+@api_router.get("/orgs/{org_id}/kpis")
+async def org_kpis(org_id: str, request: Request):
+    """KPIs for the team: prospects, calls, conversions, per-agent breakdown."""
+    await _require_org_member(request, org_id, admin_only=False)
+    members = await db.users.find({"org_id": org_id}, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(length=500)
+    member_ids = [m["user_id"] for m in members]
+
+    total_prospects = await db.prospects.count_documents({"user_id": {"$in": member_ids}}) if member_ids else 0
+    chaud = await db.prospects.count_documents({"user_id": {"$in": member_ids}, "score": "chaud"}) if member_ids else 0
+    tiede = await db.prospects.count_documents({"user_id": {"$in": member_ids}, "score": "tiede"}) if member_ids else 0
+    froid = await db.prospects.count_documents({"user_id": {"$in": member_ids}, "score": "froid"}) if member_ids else 0
+    sold = await db.prospects.count_documents({"user_id": {"$in": member_ids}, "stage": "vendu"}) if member_ids else 0
+    completed_tasks = await db.tasks.count_documents({"user_id": {"$in": member_ids}, "completed": True}) if member_ids else 0
+    calls_count = await db.call_logs.count_documents({"user_id": {"$in": member_ids}}) if member_ids else 0
+
+    # Per-agent breakdown
+    breakdown = []
+    for m in members:
+        uid = m["user_id"]
+        breakdown.append({
+            "user_id": uid,
+            "name": m.get("name") or m.get("email"),
+            "email": m.get("email"),
+            "prospects": await db.prospects.count_documents({"user_id": uid}),
+            "chaud": await db.prospects.count_documents({"user_id": uid, "score": "chaud"}),
+            "sold": await db.prospects.count_documents({"user_id": uid, "stage": "vendu"}),
+            "completed_tasks": await db.tasks.count_documents({"user_id": uid, "completed": True}),
+            "calls": await db.call_logs.count_documents({"user_id": uid}),
+        })
+
+    return {
+        "total_prospects": total_prospects,
+        "by_score": {"chaud": chaud, "tiede": tiede, "froid": froid},
+        "sold": sold,
+        "completed_tasks": completed_tasks,
+        "calls": calls_count,
+        "members_count": len(members),
+        "breakdown": sorted(breakdown, key=lambda x: x["prospects"], reverse=True),
+    }
+
+
+@api_router.post("/orgs/{org_id}/prospects/reassign")
+async def reassign_prospects(org_id: str, request: Request):
+    """Reassign prospects from one team member to another. Body: {from_user_id, to_user_id, prospect_ids?:[]}"""
+    _, org = await _require_org_member(request, org_id, admin_only=True)
+    body = await request.json()
+    from_user = body.get("from_user_id")
+    to_user = body.get("to_user_id")
+    prospect_ids = body.get("prospect_ids") or []
+
+    if not from_user or not to_user:
+        raise HTTPException(status_code=400, detail="from_user_id and to_user_id required")
+
+    # Both must be in the same org
+    members = await db.users.find({"user_id": {"$in": [from_user, to_user]}, "org_id": org_id}, {"_id": 0}).to_list(length=2)
+    if len(members) != 2:
+        raise HTTPException(status_code=400, detail="Both users must belong to this organization")
+
+    q = {"user_id": from_user}
+    if prospect_ids: q["prospect_id"] = {"$in": prospect_ids}
+
+    result = await db.prospects.update_many(q, {"$set": {"user_id": to_user, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.tasks.update_many(q, {"$set": {"user_id": to_user}})
+    return {"ok": True, "reassigned": result.modified_count}
+
+
+class DataroomEntry(BaseModel):
+    title: str
+    url: str
+    description: Optional[str] = None
+    category: Optional[str] = "general"
+
+
+@api_router.post("/orgs/{org_id}/dataroom")
+async def add_dataroom_entry(org_id: str, payload: DataroomEntry, request: Request):
+    user, _ = await _require_org_member(request, org_id, admin_only=True)
+    entry = {
+        "entry_id": f"dr_{uuid.uuid4().hex[:14]}",
+        "org_id": org_id,
+        "title": payload.title.strip(),
+        "url": payload.url.strip(),
+        "description": (payload.description or "").strip(),
+        "category": payload.category or "general",
+        "uploaded_by": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.dataroom.insert_one(entry)
+    entry.pop("_id", None)
+    return {"ok": True, "entry": entry}
+
+
+@api_router.get("/orgs/{org_id}/dataroom")
+async def list_dataroom(org_id: str, request: Request):
+    await _require_org_member(request, org_id)
+    cursor = db.dataroom.find({"org_id": org_id}, {"_id": 0}).sort("created_at", -1)
+    entries = await cursor.to_list(length=500)
+    return {"count": len(entries), "entries": entries}
+
+
+@api_router.delete("/orgs/{org_id}/dataroom/{entry_id}")
+async def delete_dataroom_entry(org_id: str, entry_id: str, request: Request):
+    await _require_org_member(request, org_id, admin_only=True)
+    result = await db.dataroom.delete_one({"entry_id": entry_id, "org_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return {"ok": True}
+
+
+# Super admin can list / create orgs from the KOLO admin panel
+@api_router.get("/admin/orgs")
+async def admin_list_orgs(request: Request, limit: int = 200):
+    await require_super_admin(request)
+    cursor = db.organizations.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    orgs = await cursor.to_list(length=limit)
+    # Add member counts
+    for o in orgs:
+        o["members_count"] = await db.users.count_documents({"org_id": o["org_id"]})
+    return {"count": len(orgs), "orgs": orgs}
+
+
+# ============================================================================
+# PHASE 3 — INTÉGRATIONS (Twilio Voice + Whisper, WhatsApp, Google Calendar)
+# Tous les endpoints existent même sans clés. Si les clés manquent, ils renvoient
+# une 400 explicite. Cela permet à l'UI d'afficher "Connecter <service>".
+# ============================================================================
+
+def _integration_status(env_keys: list, optional: list = None) -> dict:
+    """Return {configured: bool, missing: [...]} given env keys to check."""
+    missing = [k for k in env_keys if not os.environ.get(k, "").strip()]
+    return {"configured": len(missing) == 0, "missing": missing}
+
+
+@api_router.get("/integrations/status")
+async def integrations_status(request: Request):
+    await require_auth(request)
+    return {
+        "twilio": _integration_status(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"]),
+        "whatsapp": _integration_status(["WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN"]),
+        "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"]),
+        "outlook_calendar": {"configured": False, "missing": ["MS_GRAPH_CLIENT_ID"], "note": "Bientôt disponible"},
+        "apple_calendar": {"configured": False, "missing": ["APPLE_CALDAV"], "note": "Bientôt disponible"},
+        "whisper": _integration_status(["EMERGENT_LLM_KEY"]),
+    }
+
+
+# ---------- TWILIO VOICE ---------- #
+
+class TwilioCallRequest(BaseModel):
+    to: str
+    prospect_id: Optional[str] = None
+
+
+@api_router.post("/integrations/twilio/call")
+async def twilio_initiate_call(payload: TwilioCallRequest, request: Request):
+    """Initiate a click-to-call. Requires TWILIO_* env vars."""
+    user = await require_auth(request)
+    sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+    token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+    from_number = os.environ.get("TWILIO_FROM_NUMBER", "").strip()
+    if not (sid and token and from_number):
+        raise HTTPException(status_code=400, detail="Twilio non configuré — ajoute TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER dans .env")
+
+    try:
+        from twilio.rest import Client
+        client = Client(sid, token)
+        # Build the recording webhook URL (Twilio will POST when recording is ready)
+        base_url = str(request.base_url).rstrip("/")
+        recording_callback = f"{base_url}/api/integrations/twilio/recording-webhook?call_initiator={user.user_id}"
+        # TwiML: read a greeting, dial the prospect, record the call
+        twiml = f'<Response><Say language="fr-FR">Connexion en cours via KOLO.</Say><Dial record="record-from-answer" recordingStatusCallback="{recording_callback}">{payload.to}</Dial></Response>'
+        # Inline twiml — use Twilio's TwiML URL escape via twiml param requires URL, so use TwiML Bins or just use the "twiml" arg on calls.create:
+        call = client.calls.create(to=payload.to, from_=from_number, twiml=twiml, record=True)
+        log = {
+            "call_id": f"call_{uuid.uuid4().hex[:14]}",
+            "twilio_sid": call.sid,
+            "user_id": user.user_id,
+            "prospect_id": payload.prospect_id,
+            "to": payload.to,
+            "from": from_number,
+            "status": "initiated",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.call_logs.insert_one(log)
+        log.pop("_id", None)
+        return {"ok": True, "call": log}
+    except Exception as e:
+        logger.error(f"Twilio call error: {e}")
+        raise HTTPException(status_code=500, detail=f"Twilio error: {str(e)[:200]}")
+
+
+@api_router.post("/integrations/twilio/recording-webhook")
+async def twilio_recording_webhook(request: Request, call_initiator: Optional[str] = None):
+    """Twilio fires this when a recording is ready. We store the URL + trigger Whisper async."""
+    form = await request.form()
+    recording_url = form.get("RecordingUrl")
+    recording_sid = form.get("RecordingSid")
+    call_sid = form.get("CallSid")
+    duration = form.get("RecordingDuration")
+
+    if not recording_url:
+        return {"ok": False, "error": "no recording"}
+
+    await db.call_logs.update_one(
+        {"twilio_sid": call_sid},
+        {"$set": {
+            "recording_url": recording_url + ".mp3",
+            "recording_sid": recording_sid,
+            "duration_sec": int(duration or 0),
+            "status": "recorded",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {"ok": True}
+
+
+@api_router.post("/integrations/whisper/transcribe")
+async def whisper_transcribe(request: Request):
+    """Transcribe an mp3 (URL or call_id). Body: {call_id} or {url}."""
+    user = await require_auth(request)
+    body = await request.json()
+    url = body.get("url")
+    call_id = body.get("call_id")
+
+    if call_id and not url:
+        log = await db.call_logs.find_one({"call_id": call_id, "user_id": user.user_id}, {"_id": 0})
+        if not log:
+            raise HTTPException(status_code=404, detail="Call not found")
+        url = log.get("recording_url")
+        if not url:
+            raise HTTPException(status_code=400, detail="Recording not ready yet")
+
+    if not url:
+        raise HTTPException(status_code=400, detail="url or call_id required")
+
+    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="EMERGENT_LLM_KEY missing")
+
+    try:
+        import tempfile
+        async with httpx.AsyncClient(timeout=60) as hc:
+            # For Twilio recordings, need basic auth
+            twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+            twilio_tok = os.environ.get("TWILIO_AUTH_TOKEN", "")
+            auth = (twilio_sid, twilio_tok) if "twilio.com" in url else None
+            r = await hc.get(url, auth=auth)
+            r.raise_for_status()
+            audio_bytes = r.content
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+        stt = OpenAISpeechToText(api_key=key)
+        with open(tmp_path, "rb") as af:
+            resp = await stt.transcribe(file=af, model="whisper-1", response_format="json", language="fr")
+        transcript_text = getattr(resp, "text", "") or str(resp)
+        os.unlink(tmp_path)
+
+        if call_id:
+            await db.call_logs.update_one({"call_id": call_id}, {"$set": {"transcript": transcript_text, "transcript_at": datetime.now(timezone.utc).isoformat()}})
+        return {"ok": True, "transcript": transcript_text}
+    except Exception as e:
+        logger.error(f"Whisper transcribe error: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)[:200]}")
+
+
+@api_router.get("/integrations/calls")
+async def list_calls(request: Request, limit: int = 50):
+    user = await require_auth(request)
+    cursor = db.call_logs.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    calls = await cursor.to_list(length=limit)
+    return {"count": len(calls), "calls": calls}
+
+
+# ---------- WHATSAPP BUSINESS ---------- #
+
+class WhatsAppSendPayload(BaseModel):
+    to: str
+    body: str
+    prospect_id: Optional[str] = None
+
+
+@api_router.post("/integrations/whatsapp/send")
+async def whatsapp_send(payload: WhatsAppSendPayload, request: Request):
+    user = await require_auth(request)
+    phone_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+    token = os.environ.get("WHATSAPP_ACCESS_TOKEN", "").strip()
+    if not (phone_id and token):
+        raise HTTPException(status_code=400, detail="WhatsApp non configuré — ajoute WHATSAPP_PHONE_NUMBER_ID et WHATSAPP_ACCESS_TOKEN dans .env")
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as hc:
+            r = await hc.post(
+                f"https://graph.facebook.com/v21.0/{phone_id}/messages",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"messaging_product": "whatsapp", "to": payload.to, "type": "text", "text": {"body": payload.body}},
+            )
+        data = r.json()
+        if r.status_code >= 400:
+            raise HTTPException(status_code=502, detail={"meta_error": data})
+        wa_msg_id = (data.get("messages") or [{}])[0].get("id")
+        log = {
+            "wa_message_id": wa_msg_id,
+            "direction": "outbound",
+            "user_id": user.user_id,
+            "prospect_id": payload.prospect_id,
+            "to": payload.to,
+            "from": phone_id,
+            "body": payload.body,
+            "status": "sent",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.whatsapp_messages.insert_one(log)
+        log.pop("_id", None)
+        return {"ok": True, "message": log}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"WhatsApp send error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@api_router.get("/integrations/whatsapp/webhook")
+async def whatsapp_webhook_verify(request: Request):
+    """Meta webhook verification handshake."""
+    params = dict(request.query_params)
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge", "")
+    expected = os.environ.get("WHATSAPP_VERIFY_TOKEN", "kolo_wa_verify_2026")
+    if mode == "subscribe" and token == expected:
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(challenge)
+    raise HTTPException(status_code=403, detail="Invalid verify token")
+
+
+@api_router.post("/integrations/whatsapp/webhook")
+async def whatsapp_webhook_receive(request: Request):
+    payload = await request.json()
+    try:
+        for entry in payload.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                metadata = value.get("metadata", {})
+                phone_id = metadata.get("phone_number_id")
+                for msg in value.get("messages", []) or []:
+                    body = (msg.get("text") or {}).get("body", "") if msg.get("type") == "text" else ""
+                    doc = {
+                        "wa_message_id": msg.get("id"),
+                        "direction": "inbound",
+                        "from": msg.get("from"),
+                        "to": phone_id,
+                        "type": msg.get("type"),
+                        "body": body,
+                        "raw": msg,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    await db.whatsapp_messages.insert_one(doc)
+                    # Link to prospect by phone match (best-effort)
+                    if msg.get("from"):
+                        await db.prospects.update_one(
+                            {"phone": {"$regex": msg["from"][-9:]}},
+                            {"$push": {"whatsapp_threads": doc["wa_message_id"]}}
+                        )
+    except Exception as e:
+        logger.warning(f"WhatsApp webhook parse error: {e}")
+    return {"status": "ok"}
+
+
+@api_router.get("/integrations/whatsapp/messages")
+async def list_whatsapp_messages(request: Request, prospect_id: Optional[str] = None, limit: int = 100):
+    user = await require_auth(request)
+    q = {"user_id": user.user_id} if not prospect_id else {"$or": [{"user_id": user.user_id, "prospect_id": prospect_id}, {"prospect_id": prospect_id}]}
+    cursor = db.whatsapp_messages.find(q, {"_id": 0}).sort("created_at", -1).limit(limit)
+    msgs = await cursor.to_list(length=limit)
+    return {"count": len(msgs), "messages": msgs}
+
+
+# ---------- GOOGLE CALENDAR ---------- #
+
+GOOGLE_CAL_SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/userinfo.email", "openid"]
+
+
+@api_router.get("/integrations/google-calendar/auth-url")
+async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
+    user = await require_auth(request)
+    cid = os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+    if not cid:
+        raise HTTPException(status_code=400, detail="GOOGLE_CAL_CLIENT_ID missing — ajoute tes credentials dans .env")
+    base_url = str(request.base_url).rstrip("/")
+    redirect_uri = f"{base_url}/api/integrations/google-calendar/callback"
+    state = secrets.token_urlsafe(16)
+    await db.google_cal_states.insert_one({
+        "state": state,
+        "user_id": user.user_id,
+        "redirect_to": redirect_to or "/app",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    from urllib.parse import urlencode
+    params = {
+        "client_id": cid,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_CAL_SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+    }
+    return {"authorization_url": f"https://accounts.google.com/o/oauth2/auth?{urlencode(params)}"}
+
+
+@api_router.get("/integrations/google-calendar/callback")
+async def gcal_callback(request: Request, code: str, state: str):
+    cid = os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+    cs = os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
+    if not (cid and cs):
+        raise HTTPException(status_code=400, detail="Google Calendar credentials missing")
+
+    state_doc = await db.google_cal_states.find_one({"state": state}, {"_id": 0})
+    if not state_doc:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+    base_url = str(request.base_url).rstrip("/")
+    redirect_uri = f"{base_url}/api/integrations/google-calendar/callback"
+    try:
+        async with httpx.AsyncClient(timeout=15) as hc:
+            tr = await hc.post("https://oauth2.googleapis.com/token", data={
+                "code": code, "client_id": cid, "client_secret": cs,
+                "redirect_uri": redirect_uri, "grant_type": "authorization_code"
+            })
+        tokens = tr.json()
+        if "access_token" not in tokens:
+            raise HTTPException(status_code=400, detail={"google_error": tokens})
+
+        await db.users.update_one(
+            {"user_id": state_doc["user_id"]},
+            {"$set": {"google_calendar_tokens": tokens, "google_calendar_connected_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        await db.google_cal_states.delete_one({"state": state})
+
+        from fastapi.responses import RedirectResponse
+        # Redirect back to the frontend integrations page
+        return RedirectResponse(url=f"/integrations?gcal=connected")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Google Calendar callback error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+def _gcal_creds_for_user(tokens: dict):
+    from google.oauth2.credentials import Credentials
+    return Credentials(
+        token=tokens.get("access_token"),
+        refresh_token=tokens.get("refresh_token"),
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.environ.get("GOOGLE_CAL_CLIENT_ID"),
+        client_secret=os.environ.get("GOOGLE_CAL_CLIENT_SECRET"),
+        scopes=GOOGLE_CAL_SCOPES,
+    )
+
+
+@api_router.get("/integrations/google-calendar/events")
+async def gcal_list_events(request: Request, max_results: int = 50):
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    tokens = user_doc.get("google_calendar_tokens")
+    if not tokens:
+        raise HTTPException(status_code=400, detail="Google Calendar non connecté")
+    try:
+        from googleapiclient.discovery import build
+        from google.auth.transport.requests import Request as GR
+        creds = _gcal_creds_for_user(tokens)
+        if creds.expired and creds.refresh_token:
+            creds.refresh(GR())
+            await db.users.update_one({"user_id": user.user_id}, {"$set": {"google_calendar_tokens.access_token": creds.token}})
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+        result = service.events().list(
+            calendarId="primary",
+            timeMin=datetime.now(timezone.utc).isoformat(),
+            maxResults=max_results,
+            singleEvents=True,
+            orderBy="startTime",
+        ).execute()
+        events = result.get("items", [])
+        clean = []
+        for ev in events:
+            clean.append({
+                "id": ev.get("id"),
+                "summary": ev.get("summary"),
+                "start": ev.get("start"),
+                "end": ev.get("end"),
+                "html_link": ev.get("htmlLink"),
+            })
+        return {"count": len(clean), "events": clean}
+    except Exception as e:
+        logger.error(f"GCal list events: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+class GCalEventCreate(BaseModel):
+    title: str
+    start_iso: str  # ISO 8601 datetime
+    end_iso: str
+    description: Optional[str] = None
+    prospect_id: Optional[str] = None
+
+
+@api_router.post("/integrations/google-calendar/events")
+async def gcal_create_event(payload: GCalEventCreate, request: Request):
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    tokens = user_doc.get("google_calendar_tokens")
+    if not tokens:
+        raise HTTPException(status_code=400, detail="Google Calendar non connecté")
+    try:
+        from googleapiclient.discovery import build
+        from google.auth.transport.requests import Request as GR
+        creds = _gcal_creds_for_user(tokens)
+        if creds.expired and creds.refresh_token:
+            creds.refresh(GR())
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+        ev = service.events().insert(calendarId="primary", body={
+            "summary": payload.title,
+            "description": payload.description or "",
+            "start": {"dateTime": payload.start_iso},
+            "end": {"dateTime": payload.end_iso},
+        }).execute()
+        return {"ok": True, "event": {"id": ev.get("id"), "html_link": ev.get("htmlLink")}}
+    except Exception as e:
+        logger.error(f"GCal create event: {e}")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@api_router.post("/integrations/google-calendar/disconnect")
+async def gcal_disconnect(request: Request):
+    user = await require_auth(request)
+    await db.users.update_one({"user_id": user.user_id}, {"$unset": {"google_calendar_tokens": "", "google_calendar_connected_at": ""}})
+    return {"ok": True}
+
+
 # ==================== ROOT ENDPOINTS ====================
 
 @api_router.get("/")
 async def root():
     return {"message": "KOLO API v1.0.0"}
+
 
 # Include the router in the main app
 app.include_router(api_router)

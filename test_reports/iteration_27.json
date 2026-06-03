@@ -1,0 +1,38 @@
+{
+  "summary": "Phase 2 (Orgs / Marque Blanche), Phase 3 (Integrations), Phase 4 (Landing animation) tested end-to-end. Backend: 24/24 pytest passed covering /api/orgs/* CRUD + roles + invite flow + KPIs + dataroom, /api/integrations/status + 400 placeholder paths for Twilio/WhatsApp/GCal, WhatsApp webhook handshake (GET 200 + correct token, 403 wrong, POST stores inbound). Frontend: /org page CTA + creation modal + all 5 tabs (overview/team/kpis/dataroom/integrations) render correctly with super admin token; /integrations page renders 6 cards with correct status pills (Twilio/WhatsApp/GoogleCalendar 'Non configuré', Outlook/Apple 'Bientôt disponible', Whisper 'Connecté'); landing animation kolo-mesh-drift (28s) present on .landing-page::before; /org/join/:token route protected and renders accept-invite-btn.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "OrgSpace TeamTab", "issue": "Invite form data-testids (invite-email/invite-role/invite-submit) not found via query_selector when the Team tab is active. Either the form is conditionally hidden, the testids are on a different element than expected, or the testid attribute is being absorbed by the ve-dynamic <span> wrapper that surrounds dynamic blocks. Needs verification.", "selector": "[data-testid='invite-email']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "OrgSpace TeamTab members table", "issues": ["React hydration warning identical pattern to iteration_26 admin table: '<span> cannot be a child of <tbody>' and '<tr> as child of <span>'. The visual-editor (ve_dynamic) wrapper injects a <span style='display:contents'> around each mapped <tr>, which breaks valid HTML. Non-blocking but should be fixed by not wrapping table rows with the dynamic span (e.g., apply x-excluded on the tbody mapping)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase234.py",
+    "/app/test_reports/pytest/iteration_27_results.xml"
+  ],
+  "action_items": [
+    "Verify that invite-email/invite-role/invite-submit data-testid attributes are actually rendered on the Team tab when isOrgAdmin=true. Likely the testid is set on a parent <form> instead of the inputs, or the ve-dynamic wrapper is stripping it. Quick test: open /org as super-admin → Team tab → inspect DOM for data-testid='invite-email'.",
+    "Fix recurring hydration warning by not wrapping <tr> rows inside the ve-dynamic <span> in OrgSpace (and AdminDashboard users table from iteration_26)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~6150 lines — split into routers (auth, payments, orgs, integrations, admin, ai, prospects, tasks).",
+    "/api/orgs/{id}/kpis runs 5*N count_documents queries in a Python loop (one per agent per metric). For an org with 50 agents that's 250+ sequential mongo calls. Should aggregate with $facet.",
+    "/api/integrations/whatsapp/webhook POST does not verify Meta signature (WHATSAPP_APP_SECRET). Currently anyone can POST fake messages to db.whatsapp_messages.",
+    "Reassign endpoint mutates db.tasks with q={'user_id': from_user, 'prospect_id': {'$in': ids}} — if no ids were provided, ALL tasks of from_user are reassigned (intended) but doc-string says 'prospects' only.",
+    "create_org slug collision uses one retry only; under load could still collide (low risk)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase234.py (NEW pytest suite, 24 tests, all pass)"
+  ],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "~85% (landing+org create+all tabs+integrations+join route OK; invite-form testids not located)"},
+  "test_credentials": "Seeded via mongosh: ADMIN_TOKEN=TEST_admin_sess_1780490334158 (elliot.cohenpressard@trykolo.io super-admin), USER_TOKEN=TEST_user_sess_1780490334158 (phase2.user@example.com), USER2_TOKEN=TEST_user2_sess_1780490334158 (phase2.user2@example.com). Cleanup: db.users.deleteMany({email: {$in: ['phase2.user@example.com','phase2.user2@example.com']}}); db.user_sessions.deleteMany({user_id:/^TEST_/}).",
+  "seed_data_creation": "3 TEST_ users + 3 sessions + 1 org (TEST_OrgAlphaV2) created by user_id=TEST_user_1780490334158 with user2 joined as org_agent via invite. Org persists in db.organizations; cleanup with db.organizations.deleteMany({name:/^TEST_/}); db.org_invites.deleteMany({}); db.dataroom.deleteMany({title:/^TEST_/}).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite /app/backend/tests/test_phase234.py is fully reusable — just re-seed via mongosh playbook in /app/auth_testing.md and export KOLO_ADMIN_TOKEN/KOLO_USER_TOKEN/KOLO_USER2_TOKEN/KOLO_USER_ID/KOLO_USER2_ID. Note: the test creates an org for USER_TOKEN, so on re-run reset its org_id first: db.users.updateOne({email:'phase2.user@example.com'},{$unset:{org_id:'',org_role:''}}). To verify invite UI testids, log in as super admin (admin doesn't have an org so create one first) then go to /org → Team tab and inspect.",
+  "rca of the issue": "Invite form testid miss is likely due to the ve-dynamic span wrapper (same root cause as the hydration warnings) interfering with selector resolution OR the testid is on the wrapping <div> instead of the input. The full /org flow including invite is verified working at the BACKEND level (test_invite_admin_only_and_token_generated + test_accept_invite_user2_joins both pass), so the UI just needs a testid placement fix on the inputs."
+}

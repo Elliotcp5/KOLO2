@@ -4,9 +4,40 @@
   background: var(--bg);
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
   /* Safe area for iOS notch */
   padding-top: env(safe-area-inset-top, 0);
 }
+
+/* ===== Premium animated background (subtle gradient mesh) ===== */
+.landing-page::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 15%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
+    radial-gradient(50% 45% at 85% 25%, rgba(236, 72, 153, 0.10) 0%, transparent 60%),
+    radial-gradient(70% 55% at 50% 85%, rgba(59, 130, 246, 0.07) 0%, transparent 65%);
+  filter: blur(40px);
+  animation: kolo-mesh-drift 28s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes kolo-mesh-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.95; }
+  33%  { transform: translate3d(2%, -1.5%, 0) scale(1.04); opacity: 1; }
+  66%  { transform: translate3d(-1.5%, 1.5%, 0) scale(1.02); opacity: 0.95; }
+  100% { transform: translate3d(1%, 2%, 0) scale(1.05); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page::before { animation: none; }
+}
+
+/* Make sure content sits above the animated bg */
+.landing-page > * { position: relative; z-index: 1; }
 
 /* ===== NAVBAR ===== */
 .landing-nav {

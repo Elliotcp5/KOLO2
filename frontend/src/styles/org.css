@@ -1,0 +1,137 @@
+/* KOLO Org Space styles */
+.org-empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  max-width: 460px;
+  margin: 60px auto;
+}
+.org-empty-state svg { color: var(--ink-mid); margin-bottom: 20px; }
+.org-empty-state h1 { font-family: var(--font-heading); font-size: 24px; font-weight: 800; margin: 0 0 12px; }
+.org-empty-state p { color: var(--ink-mid); margin-bottom: 24px; }
+
+.org-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--grad, linear-gradient(135deg, #EC4899, #8B5CF6));
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+.org-btn-primary:hover { opacity: 0.9; }
+.org-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Modal */
+.org-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 9999;
+}
+.org-modal {
+  background: var(--bg-alt, #fff);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+}
+.org-modal h2 { font-family: var(--font-heading); font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+.org-modal-sub { color: var(--ink-mid); font-size: 14px; margin-bottom: 24px; }
+
+.org-form { display: flex; flex-direction: column; gap: 14px; }
+.org-form label { display: flex; flex-direction: column; gap: 6px; }
+.org-form label > span { font-size: 13px; font-weight: 500; color: var(--ink-mid); }
+.org-form input, .org-form select, .org-form textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 160ms;
+}
+.org-form input:focus, .org-form select:focus { border-color: var(--ink-soft); }
+
+.org-invite-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.org-invite-card h3 { font-family: var(--font-heading); font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.org-invite-card input, .org-invite-card select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+.org-invite-link {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(139, 92, 246, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.org-invite-link code { font-family: monospace; word-break: break-all; }
+
+/* Integrations page */
+.integration-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+}
+.integration-card .header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.integration-card .icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8B5CF6;
+}
+.integration-card h3 { font-family: var(--font-heading); font-size: 18px; font-weight: 700; margin: 0; }
+.integration-card .desc { color: var(--ink-mid); font-size: 14px; margin: 8px 0 16px; line-height: 1.5; }
+.integration-card .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.integration-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.integration-status-pill.ok { background: rgba(16, 185, 129, 0.1); color: #10B981; border-color: rgba(16, 185, 129, 0.3); }
+.integration-status-pill.ko { background: rgba(107, 114, 128, 0.1); color: #6B7280; border-color: rgba(107, 114, 128, 0.3); }
+.integration-status-pill.soon { background: rgba(245, 158, 11, 0.1); color: #F59E0B; border-color: rgba(245, 158, 11, 0.3); }

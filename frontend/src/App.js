@@ -28,6 +28,9 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import BusinessPage from "./pages/BusinessPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import OrgSpace from "./pages/OrgSpace";
+import IntegrationsPage from "./pages/IntegrationsPage";
+import JoinOrgPage from "./pages/JoinOrgPage";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -153,6 +156,27 @@ const AppRouter = () => {
           <SuperAdminRoute>
             <AdminDashboard />
           </SuperAdminRoute>
+        }
+      />
+
+      {/* Org Space (multi-tenant marque blanche) */}
+      <Route
+        path="/org"
+        element={
+          <ProtectedRoute>
+            <OrgSpace />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/org/join/:token" element={<JoinOrgPage />} />
+
+      {/* Integrations (Twilio, WhatsApp, Calendars) */}
+      <Route
+        path="/integrations"
+        element={
+          <ProtectedRoute>
+            <IntegrationsPage />
+          </ProtectedRoute>
         }
       />
 
