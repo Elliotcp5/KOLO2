@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import SocialAuthButtons from '../components/SocialAuthButtons';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_87fbdd54-54db-47ca-8301-2670fecb634d/artifacts/eaq0wshz_KOLO%20LOGO%20TEXT%20PNG.png";
 
@@ -190,7 +191,7 @@ const CreateAccountPage = () => {
             onClick={handleCreateAccount}
             disabled={!email || !password || creating}
             data-testid="create-account-button"
-            style={{ marginBottom: '24px' }}
+            style={{ marginBottom: '16px' }}
           >
             {creating ? (
               <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
@@ -199,8 +200,16 @@ const CreateAccountPage = () => {
             )}
           </button>
 
+          {/* Google Sign-In — alternate path. Note: this is post-Stripe so the
+              Google account will be linked to the existing paid user via email
+              matching on the backend (idempotent /api/auth/google/exchange). */}
+          <SocialAuthButtons
+            mode="register"
+            dividerLabel={locale === 'fr' ? 'ou avec un compte' : 'or with an account'}
+          />
+
           {/* Terms */}
-          <p className="text-small text-muted" style={{ textAlign: 'center' }}>
+          <p className="text-small text-muted" style={{ textAlign: 'center', marginTop: '20px' }}>
             {locale === 'fr' 
               ? 'En créant un compte, vous acceptez nos conditions d\'utilisation'
               : 'By creating an account, you agree to our terms of service'

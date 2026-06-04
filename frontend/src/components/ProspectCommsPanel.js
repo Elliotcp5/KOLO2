@@ -5,7 +5,155 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import { useLocale } from '../context/LocaleContext';
 import VoiceDictateButton from './VoiceDictateButton';
+
+const I18N = {
+  fr: {
+    call: 'Appeler', whatsapp: 'WhatsApp', agenda: 'Agenda',
+    callPlaced: 'Appel passé', toward: 'Vers',
+    outcome: 'Résultat', durationSec: 'Durée (secondes)',
+    audioOpt: 'Enregistrement audio (optionnel)', choose: 'Choisir un fichier…',
+    notes: 'Notes', notesPh: 'Ce qui a été dit, prochaine étape…',
+    cancel: 'Annuler', save: 'Enregistrer', saving: 'Enregistrement…',
+    completed: 'Conversation terminée', noAnswer: 'Pas de réponse', voicemail: 'Messagerie', busy: 'Occupé',
+    transcribing: 'Transcription en cours…',
+    transcribeFailed: "Transcription échouée — l'appel est tout de même loggé.",
+    savedTranscribed: 'Appel enregistré et transcrit ✓', saved: 'Appel enregistré ✓',
+    detailTitle: "Détail de l'appel", outcomeLabel: 'Résultat',
+    recording: 'Enregistrement', transcription: 'Transcription',
+    noTranscript: "Aucune transcription disponible. Tu peux uploader un enregistrement depuis la fiche prospect.",
+    sendWA: 'Envoyer un WhatsApp', helloPrefix: 'Bonjour',
+    message: 'Message',
+    waNotice: "WhatsApp s'ouvrira avec le message pré-rempli. Tu cliques sur \"Envoyer\" depuis ton WhatsApp.",
+    openWA: 'Ouvrir WhatsApp', sent: 'Message envoyé et enregistré',
+    addToCalendar: 'Ajouter à mon agenda',
+    eventTitle: 'Titre', start: 'Début', end: 'Fin',
+    descOpt: 'Description (optionnel)', descPh: 'Adresse du RDV, points à aborder…',
+    createEvent: "Créer l'événement", creating: 'Création…',
+    eventCreated: (p) => `Événement créé dans ${p === 'google' ? 'Google Calendar' : 'Outlook'} ✓`,
+    needConnect: "Connecte d'abord Google ou Outlook dans Intégrations.",
+    history: 'Historique', calls: 'appel', callsPl: 'appels', msgs: 'message', msgsPl: 'messages',
+    callTitle: 'Appel', recv: 'reçu', sent2: 'envoyé', wa2: 'WhatsApp', detail: 'Détail',
+    emptyTitle: 'Aucun échange pour le moment',
+    emptyText: 'Lance ton premier appel ou WhatsApp depuis les boutons ci-dessus — KOLO archive tout automatiquement.',
+    noPhone: 'Pas de numéro de téléphone',
+    noPhoneProspect: 'Pas de numéro pour ce prospect',
+    appel: 'Appel',
+    rdvWith: (n) => `RDV avec ${n}`,
+    phoneCol: 'Téléphone',
+    prospect: 'prospect',
+  },
+  en: {
+    call: 'Call', whatsapp: 'WhatsApp', agenda: 'Calendar',
+    callPlaced: 'Call placed', toward: 'To',
+    outcome: 'Outcome', durationSec: 'Duration (seconds)',
+    audioOpt: 'Audio recording (optional)', choose: 'Pick a file…',
+    notes: 'Notes', notesPh: 'What was said, next step…',
+    cancel: 'Cancel', save: 'Save', saving: 'Saving…',
+    completed: 'Conversation completed', noAnswer: 'No answer', voicemail: 'Voicemail', busy: 'Busy',
+    transcribing: 'Transcribing…',
+    transcribeFailed: 'Transcription failed — call still logged.',
+    savedTranscribed: 'Call saved and transcribed ✓', saved: 'Call saved ✓',
+    detailTitle: 'Call detail', outcomeLabel: 'Outcome',
+    recording: 'Recording', transcription: 'Transcript',
+    noTranscript: 'No transcript available. You can upload a recording from the prospect page.',
+    sendWA: 'Send a WhatsApp', helloPrefix: 'Hi',
+    message: 'Message',
+    waNotice: 'WhatsApp will open with the message pre-filled. Tap Send from your WhatsApp.',
+    openWA: 'Open WhatsApp', sent: 'Message sent and logged',
+    addToCalendar: 'Add to my calendar',
+    eventTitle: 'Title', start: 'Start', end: 'End',
+    descOpt: 'Description (optional)', descPh: 'Meeting address, talking points…',
+    createEvent: 'Create event', creating: 'Creating…',
+    eventCreated: (p) => `Event created in ${p === 'google' ? 'Google Calendar' : 'Outlook'} ✓`,
+    needConnect: 'Connect Google or Outlook first in Integrations.',
+    history: 'History', calls: 'call', callsPl: 'calls', msgs: 'message', msgsPl: 'messages',
+    callTitle: 'Call', recv: 'received', sent2: 'sent', wa2: 'WhatsApp', detail: 'Detail',
+    emptyTitle: 'No conversation yet',
+    emptyText: 'Place your first call or WhatsApp from the buttons above — KOLO archives everything automatically.',
+    noPhone: 'No phone number',
+    noPhoneProspect: 'No phone number for this prospect',
+    appel: 'Call',
+    rdvWith: (n) => `Meeting with ${n}`,
+    phoneCol: 'Phone',
+    prospect: 'prospect',
+  },
+  de: {
+    call: 'Anrufen', whatsapp: 'WhatsApp', agenda: 'Kalender',
+    callPlaced: 'Anruf getätigt', toward: 'An',
+    outcome: 'Ergebnis', durationSec: 'Dauer (Sekunden)',
+    audioOpt: 'Audio (optional)', choose: 'Datei wählen…',
+    notes: 'Notizen', notesPh: 'Was wurde besprochen, nächster Schritt…',
+    cancel: 'Abbrechen', save: 'Speichern', saving: 'Speichern…',
+    completed: 'Gespräch beendet', noAnswer: 'Keine Antwort', voicemail: 'Mailbox', busy: 'Besetzt',
+    transcribing: 'Transkription läuft…',
+    transcribeFailed: 'Transkription fehlgeschlagen — Anruf trotzdem gespeichert.',
+    savedTranscribed: 'Anruf gespeichert und transkribiert ✓', saved: 'Anruf gespeichert ✓',
+    detailTitle: 'Anrufdetails', outcomeLabel: 'Ergebnis',
+    recording: 'Aufnahme', transcription: 'Transkript',
+    noTranscript: 'Kein Transkript verfügbar. Du kannst eine Aufnahme hochladen.',
+    sendWA: 'WhatsApp senden', helloPrefix: 'Hallo',
+    message: 'Nachricht',
+    waNotice: 'WhatsApp öffnet sich mit der vorbereiteten Nachricht. Tippe in WhatsApp auf Senden.',
+    openWA: 'WhatsApp öffnen', sent: 'Nachricht gesendet und gespeichert',
+    addToCalendar: 'Zu meinem Kalender hinzufügen',
+    eventTitle: 'Titel', start: 'Beginn', end: 'Ende',
+    descOpt: 'Beschreibung (optional)', descPh: 'Adresse, Themen…',
+    createEvent: 'Termin erstellen', creating: 'Erstelle…',
+    eventCreated: (p) => `Termin in ${p === 'google' ? 'Google Kalender' : 'Outlook'} erstellt ✓`,
+    needConnect: 'Verbinde zuerst Google oder Outlook in Integrationen.',
+    history: 'Verlauf', calls: 'Anruf', callsPl: 'Anrufe', msgs: 'Nachricht', msgsPl: 'Nachrichten',
+    callTitle: 'Anruf', recv: 'empfangen', sent2: 'gesendet', wa2: 'WhatsApp', detail: 'Details',
+    emptyTitle: 'Noch keine Unterhaltung',
+    emptyText: 'Tätige deinen ersten Anruf oder WhatsApp über die Buttons oben — KOLO archiviert automatisch.',
+    noPhone: 'Keine Telefonnummer',
+    noPhoneProspect: 'Keine Nummer für diesen Interessenten',
+    appel: 'Anruf',
+    rdvWith: (n) => `Termin mit ${n}`,
+    phoneCol: 'Telefon',
+    prospect: 'Interessent',
+  },
+  it: {
+    call: 'Chiama', whatsapp: 'WhatsApp', agenda: 'Calendario',
+    callPlaced: 'Chiamata effettuata', toward: 'A',
+    outcome: 'Esito', durationSec: 'Durata (secondi)',
+    audioOpt: 'Registrazione audio (opzionale)', choose: 'Scegli un file…',
+    notes: 'Note', notesPh: 'Cosa è stato detto, prossimo passo…',
+    cancel: 'Annulla', save: 'Salva', saving: 'Salvataggio…',
+    completed: 'Conversazione terminata', noAnswer: 'Nessuna risposta', voicemail: 'Segreteria', busy: 'Occupato',
+    transcribing: 'Trascrizione in corso…',
+    transcribeFailed: 'Trascrizione fallita — chiamata comunque salvata.',
+    savedTranscribed: 'Chiamata salvata e trascritta ✓', saved: 'Chiamata salvata ✓',
+    detailTitle: 'Dettaglio chiamata', outcomeLabel: 'Esito',
+    recording: 'Registrazione', transcription: 'Trascrizione',
+    noTranscript: 'Nessuna trascrizione disponibile. Puoi caricare una registrazione.',
+    sendWA: 'Invia WhatsApp', helloPrefix: 'Ciao',
+    message: 'Messaggio',
+    waNotice: 'WhatsApp si aprirà con il messaggio precompilato. Tocca Invia da WhatsApp.',
+    openWA: 'Apri WhatsApp', sent: 'Messaggio inviato e salvato',
+    addToCalendar: 'Aggiungi al mio calendario',
+    eventTitle: 'Titolo', start: 'Inizio', end: 'Fine',
+    descOpt: 'Descrizione (opzionale)', descPh: 'Indirizzo, punti da affrontare…',
+    createEvent: "Crea l'evento", creating: 'Creazione…',
+    eventCreated: (p) => `Evento creato in ${p === 'google' ? 'Google Calendar' : 'Outlook'} ✓`,
+    needConnect: 'Connetti prima Google o Outlook in Integrazioni.',
+    history: 'Storico', calls: 'chiamata', callsPl: 'chiamate', msgs: 'messaggio', msgsPl: 'messaggi',
+    callTitle: 'Chiamata', recv: 'ricevuto', sent2: 'inviato', wa2: 'WhatsApp', detail: 'Dettaglio',
+    emptyTitle: 'Nessuna conversazione ancora',
+    emptyText: 'Effettua la prima chiamata o WhatsApp dai pulsanti sopra — KOLO archivia tutto in automatico.',
+    noPhone: 'Nessun numero',
+    noPhoneProspect: 'Nessun numero per questo contatto',
+    appel: 'Chiamata',
+    rdvWith: (n) => `Appuntamento con ${n}`,
+    phoneCol: 'Telefono',
+    prospect: 'contatto',
+  },
+};
+const useTr = () => {
+  const { locale } = useLocale();
+  return { tr: I18N[locale] || I18N.en, locale };
+};
 
 const auth = () => { const t = localStorage.getItem('kolo_token'); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
@@ -26,6 +174,7 @@ const formatDuration = (s) => {
 // Post-call log modal (note + optional audio upload for transcription)
 // ===========================================================================
 const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
+  const { tr, locale } = useTr();
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [outcome, setOutcome] = useState('completed');
@@ -49,7 +198,7 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
         }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || 'Erreur');
+      if (!r.ok) throw new Error(data.detail || 'Error');
       const callId = data.call.call_id;
 
       if (file) {
@@ -57,18 +206,18 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
         fd.append('file', file);
         fd.append('prospect_id', prospect.prospect_id);
         fd.append('call_id', callId);
-        toast.info('Transcription en cours…');
-        const tr = await fetch(`${API_URL}/api/integrations/transcribe-upload`, {
+        toast.info(tr.transcribing);
+        const upR = await fetch(`${API_URL}/api/integrations/transcribe-upload`, {
           method: 'POST', headers: auth(), body: fd,
         });
-        if (!tr.ok) {
-          const td = await tr.json().catch(() => ({}));
-          toast.error(td.detail || 'Transcription échouée — l\'appel est tout de même loggé.');
+        if (!upR.ok) {
+          const td = await upR.json().catch(() => ({}));
+          toast.error(td.detail || tr.transcribeFailed);
         } else {
-          toast.success('Appel enregistré et transcrit ✓');
+          toast.success(tr.savedTranscribed);
         }
       } else {
-        toast.success('Appel enregistré ✓');
+        toast.success(tr.saved);
       }
       onSaved && onSaved();
       onClose();
@@ -81,46 +230,46 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
       <div className="kolo-comm-modal kolo-glass-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kolo-comm-modal-header">
           <div>
-            <h2>Appel passé</h2>
-            <p>Vers <strong>{phoneCalled}</strong> · {prospect.full_name || prospect.name}</p>
+            <h2>{tr.callPlaced}</h2>
+            <p>{tr.toward} <strong>{phoneCalled}</strong> · {prospect.full_name || prospect.name}</p>
           </div>
           <button onClick={onClose} className="kolo-comm-close-btn"><X size={18} /></button>
         </div>
         <form onSubmit={save} className="kolo-comm-form">
           <label>
-            <span>Résultat</span>
+            <span>{tr.outcome}</span>
             <select data-testid="postcall-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-              <option value="completed">Conversation terminée</option>
-              <option value="no-answer">Pas de réponse</option>
-              <option value="voicemail">Messagerie</option>
-              <option value="busy">Occupé</option>
+              <option value="completed">{tr.completed}</option>
+              <option value="no-answer">{tr.noAnswer}</option>
+              <option value="voicemail">{tr.voicemail}</option>
+              <option value="busy">{tr.busy}</option>
             </select>
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label>
-              <span>Durée (secondes)</span>
+              <span>{tr.durationSec}</span>
               <input data-testid="postcall-duration" type="number" min="0" placeholder="0" value={duration} onChange={(e) => setDuration(e.target.value)} />
             </label>
             <label>
-              <span>Enregistrement audio (optionnel)</span>
+              <span>{tr.audioOpt}</span>
               <button type="button" onClick={() => fileRef.current?.click()} className="kolo-comm-file-btn">
                 <FileAudio size={14} />
-                <span>{file ? file.name.slice(0, 22) : 'Choisir un fichier…'}</span>
+                <span>{file ? file.name.slice(0, 22) : tr.choose}</span>
               </button>
               <input ref={fileRef} data-testid="postcall-audio" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
           </div>
           <label>
-            <span>Notes</span>
+            <span>{tr.notes}</span>
             <div className="kolo-textarea-with-dictate">
-              <textarea data-testid="postcall-notes" rows={4} placeholder="Ce qui a été dit, prochaine étape…" value={notes} onChange={(e) => setNotes(e.target.value)} />
-              <VoiceDictateButton value={notes} onChange={setNotes} locale="fr" testId="dictate-postcall-notes" />
+              <textarea data-testid="postcall-notes" rows={4} placeholder={tr.notesPh} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <VoiceDictateButton value={notes} onChange={setNotes} locale={locale} testId="dictate-postcall-notes" />
             </div>
           </label>
           <div className="kolo-comm-actions">
-            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">Annuler</button>
+            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">{tr.cancel}</button>
             <button data-testid="postcall-save" type="submit" disabled={busy} className="kolo-comm-btn-primary">
-              {busy ? 'Enregistrement…' : 'Enregistrer'}
+              {busy ? tr.saving : tr.save}
             </button>
           </div>
         </form>
@@ -132,54 +281,58 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
 // ===========================================================================
 // Call detail modal (transcript + audio + notes)
 // ===========================================================================
-const CallDetailModal = ({ call, onClose }) => (
+const CallDetailModal = ({ call, onClose }) => {
+  const { tr } = useTr();
+  return (
   <div className="kolo-modal-backdrop kolo-glass-backdrop" onClick={onClose}>
     <div className="kolo-comm-modal kolo-glass-modal" onClick={(e) => e.stopPropagation()} data-testid="call-detail-modal">
       <div className="kolo-comm-modal-header">
         <div>
-          <h2>Détail de l'appel</h2>
+          <h2>{tr.detailTitle}</h2>
           <p>{formatDate(call.created_at)} · {formatDuration(call.duration_sec)}</p>
         </div>
         <button onClick={onClose} className="kolo-comm-close-btn"><X size={18} /></button>
       </div>
       <div className="kolo-comm-detail-body">
-        <div className="kolo-comm-row"><span>Vers</span><strong>{call.to}</strong></div>
-        <div className="kolo-comm-row"><span>Résultat</span><strong>{call.outcome || 'completed'}</strong></div>
+        <div className="kolo-comm-row"><span>{tr.toward}</span><strong>{call.to}</strong></div>
+        <div className="kolo-comm-row"><span>{tr.outcomeLabel}</span><strong>{call.outcome || 'completed'}</strong></div>
         {call.notes && (
           <div className="kolo-comm-block">
-            <div className="kolo-comm-block-label">Notes</div>
+            <div className="kolo-comm-block-label">{tr.notes}</div>
             <p>{call.notes}</p>
           </div>
         )}
         {call.recording_url && (
           <div className="kolo-comm-block">
-            <div className="kolo-comm-block-label">Enregistrement</div>
+            <div className="kolo-comm-block-label">{tr.recording}</div>
             <audio src={call.recording_url} controls style={{ width: '100%' }} />
           </div>
         )}
         {call.transcript ? (
           <div className="kolo-comm-block">
-            <div className="kolo-comm-block-label"><Mic size={12} style={{ display: 'inline', marginRight: 4 }} /> Transcription</div>
+            <div className="kolo-comm-block-label"><Mic size={12} style={{ display: 'inline', marginRight: 4 }} /> {tr.transcription}</div>
             <p style={{ whiteSpace: 'pre-wrap' }}>{call.transcript}</p>
           </div>
         ) : (
-          <div className="kolo-comm-hint">Aucune transcription disponible pour cet appel. Tu peux uploader un enregistrement depuis la fiche prospect.</div>
+          <div className="kolo-comm-hint">{tr.noTranscript}</div>
         )}
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ===========================================================================
 // Quick WhatsApp send modal (deep link + log)
 // ===========================================================================
 const WhatsAppQuickModal = ({ prospect, onClose, onSent }) => {
-  const [body, setBody] = useState(`Bonjour ${(prospect.full_name || '').split(' ')[0] || ''}, `);
+  const { tr, locale } = useTr();
+  const [body, setBody] = useState(`${tr.helloPrefix} ${(prospect.full_name || '').split(' ')[0] || ''}, `);
   const [busy, setBusy] = useState(false);
 
   const send = async (e) => {
     e.preventDefault();
-    if (!prospect.phone) { toast.error('Pas de numéro pour ce prospect'); return; }
+    if (!prospect.phone) { toast.error(tr.noPhoneProspect); return; }
     setBusy(true);
     const phoneClean = prospect.phone.replace(/[^\d+]/g, '').replace('+', '');
     const text = encodeURIComponent(body);
@@ -189,7 +342,7 @@ const WhatsAppQuickModal = ({ prospect, onClose, onSent }) => {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() },
         body: JSON.stringify({ to: prospect.phone, body, prospect_id: prospect.prospect_id }),
       });
-      toast.success('Message envoyé et enregistré');
+      toast.success(tr.sent);
       onSent && onSent();
     } catch (_) {}
     finally { setBusy(false); onClose(); }
@@ -200,26 +353,26 @@ const WhatsAppQuickModal = ({ prospect, onClose, onSent }) => {
       <div className="kolo-comm-modal kolo-glass-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kolo-comm-modal-header">
           <div>
-            <h2>Envoyer un WhatsApp</h2>
+            <h2>{tr.sendWA}</h2>
             <p>{prospect.full_name} · {prospect.phone}</p>
           </div>
           <button onClick={onClose} className="kolo-comm-close-btn"><X size={18} /></button>
         </div>
         <form onSubmit={send} className="kolo-comm-form">
           <label>
-            <span>Message</span>
+            <span>{tr.message}</span>
             <div className="kolo-textarea-with-dictate">
               <textarea data-testid="wa-quick-body" rows={5} required value={body} onChange={(e) => setBody(e.target.value)} />
-              <VoiceDictateButton value={body} onChange={setBody} locale="fr" testId="dictate-wa-body" />
+              <VoiceDictateButton value={body} onChange={setBody} locale={locale} testId="dictate-wa-body" />
             </div>
           </label>
           <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 0 }}>
-            WhatsApp s'ouvrira avec le message pré-rempli. Tu cliques sur "Envoyer" depuis ton WhatsApp.
+            {tr.waNotice}
           </p>
           <div className="kolo-comm-actions">
-            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">Annuler</button>
+            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">{tr.cancel}</button>
             <button data-testid="wa-quick-send" type="submit" disabled={busy} className="kolo-comm-btn-primary" style={{ background: '#25D366' }}>
-              <MessageCircle size={14} /> Ouvrir WhatsApp
+              <MessageCircle size={14} /> {tr.openWA}
             </button>
           </div>
         </form>
@@ -243,13 +396,14 @@ const toLocalInput = (d) => {
 };
 
 const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
+  const { tr, locale } = useTr();
   const [provider, setProvider] = useState(providers[0] || 'google');
-  const [title, setTitle] = useState(`RDV avec ${prospect.full_name || prospect.name || 'prospect'}`);
+  const [title, setTitle] = useState(tr.rdvWith(prospect.full_name || prospect.name || tr.prospect));
   const start = defaultEventTime();
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   const [startStr, setStartStr] = useState(toLocalInput(start));
   const [endStr, setEndStr] = useState(toLocalInput(end));
-  const [description, setDescription] = useState(prospect.phone ? `Téléphone : ${prospect.phone}` : '');
+  const [description, setDescription] = useState(prospect.phone ? `${tr.phoneCol} : ${prospect.phone}` : '');
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
@@ -289,11 +443,11 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
         });
       }
       const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Erreur');
-      toast.success(`Événement créé dans ${provider === 'google' ? 'Google Calendar' : 'Outlook'} ✓`);
+      if (!r.ok) throw new Error(d.detail || 'Error');
+      toast.success(tr.eventCreated(provider));
       onSaved && onSaved(d);
       onClose();
-    } catch (e) { toast.error(typeof e.message === 'string' ? e.message : 'Erreur'); }
+    } catch (e) { toast.error(typeof e.message === 'string' ? e.message : 'Error'); }
     finally { setBusy(false); }
   };
 
@@ -302,7 +456,7 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
       <div className="kolo-comm-modal kolo-glass-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kolo-comm-modal-header">
           <div>
-            <h2>Ajouter à mon agenda</h2>
+            <h2>{tr.addToCalendar}</h2>
             <p>{prospect.full_name} · {prospect.phone || '—'}</p>
           </div>
           <button onClick={onClose} className="kolo-comm-close-btn"><X size={18} /></button>
@@ -340,30 +494,30 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
             </div>
           )}
           <label>
-            <span>Titre</span>
+            <span>{tr.eventTitle}</span>
             <input data-testid="cal-event-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label>
-              <span>Début</span>
+              <span>{tr.start}</span>
               <input data-testid="cal-event-start" type="datetime-local" value={startStr} onChange={(e) => setStartStr(e.target.value)} required />
             </label>
             <label>
-              <span>Fin</span>
+              <span>{tr.end}</span>
               <input data-testid="cal-event-end" type="datetime-local" value={endStr} onChange={(e) => setEndStr(e.target.value)} required />
             </label>
           </div>
           <label>
-            <span>Description (optionnel)</span>
+            <span>{tr.descOpt}</span>
             <div className="kolo-textarea-with-dictate">
-              <textarea data-testid="cal-event-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Adresse du RDV, points à aborder…" />
-              <VoiceDictateButton value={description} onChange={setDescription} locale="fr" testId="dictate-cal-desc" />
+              <textarea data-testid="cal-event-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={tr.descPh} />
+              <VoiceDictateButton value={description} onChange={setDescription} locale={locale} testId="dictate-cal-desc" />
             </div>
           </label>
           <div className="kolo-comm-actions">
-            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">Annuler</button>
+            <button type="button" onClick={onClose} className="kolo-comm-btn-secondary">{tr.cancel}</button>
             <button data-testid="cal-event-save" type="submit" disabled={busy} className="kolo-comm-btn-primary" style={{ background: 'linear-gradient(135deg, #6D28D9, #EC4899)' }}>
-              <Calendar size={14} /> {busy ? 'Création…' : 'Créer l\'événement'}
+              <Calendar size={14} /> {busy ? tr.creating : tr.createEvent}
             </button>
           </div>
         </form>
@@ -376,6 +530,7 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
 // Main panel — unified timeline + integrated CTAs
 // ===========================================================================
 const ProspectCommsPanel = ({ prospect }) => {
+  const { tr } = useTr();
   const [history, setHistory] = useState([]);
   const [callsCount, setCallsCount] = useState(0);
   const [waCount, setWaCount] = useState(0);
@@ -401,7 +556,6 @@ const ProspectCommsPanel = ({ prospect }) => {
     finally { setLoading(false); }
   }, [prospect.prospect_id]);
 
-  // Discover which calendar providers are connected for THIS user
   const discoverCalendars = useCallback(async () => {
     const providers = [];
     try {
@@ -418,7 +572,7 @@ const ProspectCommsPanel = ({ prospect }) => {
   useEffect(() => { reload(); discoverCalendars(); }, [reload, discoverCalendars]);
 
   const call = () => {
-    if (!prospect.phone) { toast.error('Pas de numéro de téléphone'); return; }
+    if (!prospect.phone) { toast.error(tr.noPhone); return; }
     setPhoneCalled(prospect.phone);
     window.location.href = `tel:${prospect.phone}`;
     setTimeout(() => setShowPostCall(true), 300);
@@ -426,7 +580,7 @@ const ProspectCommsPanel = ({ prospect }) => {
 
   const openCalendar = () => {
     if (calProviders.length === 0) {
-      toast.info('Connecte d\'abord Google ou Outlook dans Intégrations.');
+      toast.info(tr.needConnect);
       return;
     }
     setShowCal(true);
@@ -434,39 +588,37 @@ const ProspectCommsPanel = ({ prospect }) => {
 
   return (
     <div className="kolo-comm-panel" data-testid="prospect-comms-panel">
-      {/* Premium action bar — call / whatsapp / calendar */}
       <div className="kolo-comm-actionbar" data-testid="prospect-action-bar">
         <button data-testid="prospect-call-btn" onClick={call} className="kolo-comm-btn" data-kind="call">
           <span className="icon"><Phone size={16} strokeWidth={2.2} /></span>
-          <span>Appeler</span>
+          <span>{tr.call}</span>
         </button>
         <button data-testid="prospect-wa-btn" onClick={() => setShowWA(true)} className="kolo-comm-btn" data-kind="whatsapp">
           <span className="icon"><MessageCircle size={16} strokeWidth={2.2} /></span>
-          <span>WhatsApp</span>
+          <span>{tr.whatsapp}</span>
         </button>
         <button
           data-testid="prospect-cal-btn"
           onClick={openCalendar}
           className="kolo-comm-btn"
           data-kind="note"
-          title={calProviders.length === 0 ? 'Connecte un agenda dans Intégrations' : `${calProviders.length} agenda(s) connecté(s)`}
+          title={calProviders.length === 0 ? tr.needConnect : `${calProviders.length} ✓`}
         >
           <span className="icon" style={{ background: 'linear-gradient(135deg, #6D28D9, #EC4899)' }}>
             <Calendar size={16} strokeWidth={2.2} />
           </span>
-          <span>Agenda</span>
+          <span>{tr.agenda}</span>
         </button>
       </div>
 
-      {/* Unified timeline */}
       {history.length > 0 ? (
         <div data-testid="comms-history" style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
             <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#6B7280' }}>
-              Historique
+              {tr.history}
             </span>
             <span style={{ fontSize: 11, color: '#9CA3AF' }}>
-              {callsCount} appel{callsCount > 1 ? 's' : ''} · {waCount} message{waCount > 1 ? 's' : ''}
+              {callsCount} {callsCount > 1 ? tr.callsPl : tr.calls} · {waCount} {waCount > 1 ? tr.msgsPl : tr.msgs}
             </span>
           </div>
           <div className="kolo-comm-timeline">
@@ -486,9 +638,9 @@ const ProspectCommsPanel = ({ prospect }) => {
                     >
                       <div className="kolo-comm-head">
                         <div className="kolo-comm-title">
-                          Appel · {formatDuration(item.duration_sec)}
+                          {tr.callTitle} · {formatDuration(item.duration_sec)}
                           {item.transcript && (
-                            <Mic size={11} style={{ marginLeft: 6, opacity: 0.7, verticalAlign: 'middle' }} aria-label="Transcrit" />
+                            <Mic size={11} style={{ marginLeft: 6, opacity: 0.7, verticalAlign: 'middle' }} aria-label="Transcribed" />
                           )}
                         </div>
                         <span className="kolo-comm-time">{formatDate(item.created_at)}</span>
@@ -497,14 +649,13 @@ const ProspectCommsPanel = ({ prospect }) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                         <span className="kolo-comm-meta">{item.outcome || 'completed'}</span>
                         <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9CA3AF', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                          Détail <ChevronRight size={12} />
+                          {tr.detail} <ChevronRight size={12} />
                         </span>
                       </div>
                     </button>
                   </div>
                 );
               }
-              // WhatsApp item
               const isInbound = item.direction === 'inbound';
               return (
                 <div key={item.wa_message_id} className="kolo-comm-item">
@@ -513,7 +664,7 @@ const ProspectCommsPanel = ({ prospect }) => {
                   </div>
                   <div className="kolo-comm-body">
                     <div className="kolo-comm-head">
-                      <div className="kolo-comm-title">WhatsApp · {isInbound ? 'reçu' : 'envoyé'}</div>
+                      <div className="kolo-comm-title">{tr.wa2} · {isInbound ? tr.recv : tr.sent2}</div>
                       <span className="kolo-comm-time">{formatDate(item.created_at)}</span>
                     </div>
                     {item.body && (
@@ -530,12 +681,11 @@ const ProspectCommsPanel = ({ prospect }) => {
       ) : !loading ? (
         <div className="kolo-empty" data-testid="comms-empty">
           <div className="kolo-empty-art"><MessageCircle size={36} strokeWidth={1.6} /></div>
-          <h3 className="kolo-empty-title">Aucun échange pour le moment</h3>
-          <p className="kolo-empty-text">Lance ton premier appel ou WhatsApp depuis les boutons ci-dessus — KOLO archive tout automatiquement.</p>
+          <h3 className="kolo-empty-title">{tr.emptyTitle}</h3>
+          <p className="kolo-empty-text">{tr.emptyText}</p>
         </div>
       ) : null}
 
-      {/* Modals */}
       {showPostCall && <PostCallModal prospect={prospect} phoneCalled={phoneCalled} onClose={() => setShowPostCall(false)} onSaved={reload} />}
       {showWA && <WhatsAppQuickModal prospect={prospect} onClose={() => setShowWA(false)} onSent={reload} />}
       {selectedCall && <CallDetailModal call={selectedCall} onClose={() => setSelectedCall(null)} />}

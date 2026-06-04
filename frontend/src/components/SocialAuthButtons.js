@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { API_URL } from '../config/api';
+import { useLocale } from '../context/LocaleContext';
 
 /**
  * Reusable Google / Apple social login buttons block.
@@ -9,10 +11,45 @@ import React from 'react';
  *
  * - Apple → disabled (placeholder) until APPLE_SIGNIN_ENABLED is flipped on the server.
  */
-import { useEffect, useState } from 'react';
-import { API_URL } from '../config/api';
 
-const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = false, mode = 'login' }) => {
+const I18N = {
+  fr: {
+    continueGoogle: 'Continuer avec Google',
+    signupGoogle: "S'inscrire avec Google",
+    redirecting: 'Redirection…',
+    unavailable: 'Google indisponible',
+    orContinue: 'ou continuer avec',
+    orSignup: "ou s'inscrire avec",
+  },
+  en: {
+    continueGoogle: 'Continue with Google',
+    signupGoogle: 'Sign up with Google',
+    redirecting: 'Redirecting…',
+    unavailable: 'Google unavailable',
+    orContinue: 'or continue with',
+    orSignup: 'or sign up with',
+  },
+  de: {
+    continueGoogle: 'Mit Google fortfahren',
+    signupGoogle: 'Mit Google registrieren',
+    redirecting: 'Weiterleitung…',
+    unavailable: 'Google nicht verfügbar',
+    orContinue: 'oder fortfahren mit',
+    orSignup: 'oder registrieren mit',
+  },
+  it: {
+    continueGoogle: 'Continua con Google',
+    signupGoogle: 'Registrati con Google',
+    redirecting: 'Reindirizzamento…',
+    unavailable: 'Google non disponibile',
+    orContinue: 'o continua con',
+    orSignup: 'o registrati con',
+  },
+};
+
+const SocialAuthButtons = ({ dividerLabel, appleEnabled = false, mode = 'login' }) => {
+  const { locale } = useLocale();
+  const tr = I18N[locale] || I18N.en;
   const [clientId, setClientId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +76,7 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
     try {
       sessionStorage.setItem('kolo_oauth_state', state);
       sessionStorage.setItem('kolo_oauth_mode', mode);
+      sessionStorage.setItem('kolo_oauth_locale', locale || 'fr');
     } catch (_) {}
     const params = new URLSearchParams({
       client_id: clientId,
@@ -53,9 +91,8 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   };
 
-  const ctaText = mode === 'register'
-    ? "S'inscrire avec Google"
-    : 'Continuer avec Google';
+  const divider = dividerLabel || (mode === 'register' ? tr.orSignup : tr.orContinue);
+  const ctaText = mode === 'register' ? tr.signupGoogle : tr.continueGoogle;
 
   const baseBtn = {
     width: '100%',
@@ -91,7 +128,7 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
         }}
       >
         <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-        <span>{dividerLabel}</span>
+        <span>{divider}</span>
         <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
       </div>
 

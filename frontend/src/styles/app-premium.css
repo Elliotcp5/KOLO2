@@ -325,6 +325,12 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 18px;
   box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.12);
+  max-width: 560px;
+}
+@media (min-width: 768px) {
+  .kolo-comm-actionbar { padding: 12px; gap: 12px; }
+  .kolo-comm-btn { padding: 14px 8px; font-size: 12px; }
+  .kolo-comm-btn .icon { width: 34px; height: 34px; border-radius: 11px; }
 }
 .kolo-comm-btn {
   display: inline-flex;

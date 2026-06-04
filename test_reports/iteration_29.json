@@ -1,0 +1,52 @@
+{
+  "summary": "Backend regression (6/6) is GREEN. i18n verification on /register and /login pages reveals a real BUG: RegisterPage.js (line 433) and LoginPage.js (line 302) pass a hardcoded FRENCH dividerLabel prop ('ou s'inscrire avec' / 'ou continuer avec') to SocialAuthButtons, which overrides the new locale-aware divider in I18N — so for /register?locale=en|de|it the Google CTA text is correctly translated ('Sign up with Google' / 'Mit Google registrieren' / 'Registrati con Google') but the divider stays in French. ProspectCommsPanel i18n dict is correct (verified for FR & EN), but locale param does not survive the login → /app redirect, so the prospect detail page renders in English by default. Desktop action-bar width and mobile dashboard render fine. All 5 in-scope backend endpoints (super-admin login, google client-id, google exchange 400, calls/log, whatsapp/log, prospect history) PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SocialAuthButtons (used by RegisterPage and LoginPage)",
+        "issue": "Divider label is hardcoded in French at RegisterPage.js line 433 (`dividerLabel=\"ou s'inscrire avec\"`) and LoginPage.js line 302 (`dividerLabel=\"ou continuer avec\"`). When user opens /register?locale=en|de|it the button label IS correctly localized but the divider above it remains 'ou s'inscrire avec' (FR). Fix: remove the dividerLabel prop in both files so the locale-aware fallback (`tr.orSignup` / `tr.orContinue`) defined in SocialAuthButtons.js takes over.",
+        "selector": "[data-testid='google-signin-btn']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Locale persistence after login redirect",
+        "issue": "Opening /login?locale=fr translates the login UI correctly, but after successful login the SPA redirects to /app WITHOUT the ?locale=fr query param, and the Today dashboard + ProspectCommsPanel render in English (the LocaleContext default). Explicit URLs like /app?locale=de and /app?locale=it do switch the locale (verified for DE — saw 'Heute / Alle meine Aufgaben'). RCA: LocaleContext appears to only read ?locale= on initial mount; the value isn't persisted to localStorage on redirect (kolo_locale_manual is required for persistence per the test note). Recommendation: persist locale to localStorage on first read of URL param so it survives the post-login redirect.",
+        "affected_selectors": ["[data-testid='prospect-action-bar']", "[data-testid='prospect-comms-panel']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_29.py",
+    "/app/test_reports/pytest/iteration_29_results.xml"
+  ],
+  "action_items": [
+    "Remove the hardcoded French `dividerLabel` prop from `/app/frontend/src/pages/RegisterPage.js` line 433 and from `/app/frontend/src/pages/LoginPage.js` line 302 — let SocialAuthButtons compute the divider from the locale (`tr.orSignup` / `tr.orContinue`). After this fix /register?locale=en|de|it will show the correct divider in 4 languages.",
+    "Make the locale survive the post-login redirect: in LocaleContext, when ?locale= URL param is detected, persist it to localStorage (kolo_locale) so that /app picks it up after the redirect. Without this fix, /login?locale=fr → /app falls back to English and ProspectCommsPanel renders English labels even though the user explicitly chose FR."
+  ],
+  "critical_code_review_comments": [
+    "SocialAuthButtons.js fallback string `'Redirection…'` and `'Google indisponible'` on line 150 are still hardcoded in French (the `loading ? ...` and `clientId ? ctaText : ...` branches). The I18N dict has `tr.redirecting` and `tr.unavailable` defined but never used. Replace with `{loading ? tr.redirecting : (clientId ? ctaText : tr.unavailable)}`.",
+    "ProspectCommsPanel.js formatDate (line 162) hardcodes locale 'fr-FR' for new Date().toLocaleString — should use the active locale ('en-US', 'de-DE', 'it-IT') to localise dates in the timeline.",
+    "Repeating finding from iteration_28: server.py is ~7k lines and should be split into routers.",
+    "Repeating finding from iteration_28: hardcoded super-admin fallback password in server.py is a production security smell — remove the literal once SUPER_ADMIN_SEED_PASSWORD is wired in prod."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_29.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 — super-admin login, google client-id, google exchange 400, calls/log, whatsapp/log, prospect history)",
+    "frontend": "60% — 1/4 register-locale dividers correct (only FR), login FR divider correct, action bar i18n dict OK but locale doesn't survive post-login redirect, mobile dashboard renders without overflow"
+  },
+  "test_credentials": "elliot.cohenpressard@trykolo.io / Psychologue75007%! — works (200 + token).",
+  "seed_data_creation": "No new seed data. Used existing Marie Leblanc prospect (prospect_19d7efcbdfd2). Created 1 test call log and 1 test wa log on that prospect during integration tests.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file /app/backend/tests/test_iteration_29.py covers the 5 endpoints requested for this iteration. The big finding is that LoginPage and RegisterPage pass a hardcoded FR `dividerLabel` to SocialAuthButtons — once main agent removes that prop, re-run the /register?locale=en|de|it divider checks. Second finding: locale param needs to be persisted to localStorage on login screen so the post-login redirect to /app inherits it. ProspectCommsPanel I18N dictionary itself is correct and complete for fr/en/de/it.",
+  "rca of the issue": "BUG #1 (dividers): RegisterPage.js:433 passes `dividerLabel=\"ou s'inscrire avec\"`. In SocialAuthButtons.js line 94 the divider value resolves to `dividerLabel || (mode === 'register' ? tr.orSignup : tr.orContinue)` — because dividerLabel is truthy and hardcoded in French, the locale-aware branch is bypassed. Same root cause on LoginPage.js:302. Fix: remove the dividerLabel prop in both call sites. BUG #2 (locale-persistence): LocaleContext reads ?locale= URL param but doesn't write it to localStorage; the login submit handler then triggers a React-router redirect to /app which loses the query string, so the Provider re-initialises with the default ('en'). Verified by visiting /app?locale=de directly — Today dashboard correctly renders in German ('Heute / Alle meine Aufgaben / Erledigt / Zu erledigen'). So URL-param locale IS supported, it just doesn't persist. Fix: on URL-param detection, write `localStorage.setItem('kolo_locale', urlLocale)` AND `localStorage.setItem('kolo_locale_manual', '1')` so the redirect destination inherits the choice."
+}

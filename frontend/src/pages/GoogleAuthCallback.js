@@ -3,6 +3,62 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
+
+const I18N = {
+  fr: {
+    connecting: 'Connexion en cours…',
+    finalizing: 'Finalisation avec Google',
+    impossibleTitle: 'Connexion impossible',
+    back: 'Retour à la connexion',
+    welcomeNew: (name) => `Bienvenue sur KOLO, ${name || 'agent'} ! 🎉`,
+    welcomeBack: 'Bon retour !',
+    csrf: 'État OAuth invalide (CSRF)',
+    missingCode: 'Code OAuth manquant',
+    googleRefused: (e) => `Google a refusé la connexion : ${e}`,
+    exchangeFail: 'Échec de la connexion Google',
+    unexpected: 'Erreur inattendue',
+  },
+  en: {
+    connecting: 'Connecting…',
+    finalizing: 'Finalizing with Google',
+    impossibleTitle: 'Sign-in failed',
+    back: 'Back to login',
+    welcomeNew: (name) => `Welcome to KOLO, ${name || 'agent'}! 🎉`,
+    welcomeBack: 'Welcome back!',
+    csrf: 'Invalid OAuth state (CSRF)',
+    missingCode: 'OAuth code missing',
+    googleRefused: (e) => `Google denied sign-in: ${e}`,
+    exchangeFail: 'Google sign-in failed',
+    unexpected: 'Unexpected error',
+  },
+  de: {
+    connecting: 'Anmeldung läuft…',
+    finalizing: 'Abschluss mit Google',
+    impossibleTitle: 'Anmeldung fehlgeschlagen',
+    back: 'Zurück zur Anmeldung',
+    welcomeNew: (name) => `Willkommen bei KOLO, ${name || 'Agent'}! 🎉`,
+    welcomeBack: 'Willkommen zurück!',
+    csrf: 'Ungültiger OAuth-Zustand (CSRF)',
+    missingCode: 'OAuth-Code fehlt',
+    googleRefused: (e) => `Google hat die Anmeldung verweigert: ${e}`,
+    exchangeFail: 'Google-Anmeldung fehlgeschlagen',
+    unexpected: 'Unerwarteter Fehler',
+  },
+  it: {
+    connecting: 'Accesso in corso…',
+    finalizing: 'Completamento con Google',
+    impossibleTitle: 'Accesso non riuscito',
+    back: "Torna all'accesso",
+    welcomeNew: (name) => `Benvenuto su KOLO, ${name || 'agente'}! 🎉`,
+    welcomeBack: 'Bentornato!',
+    csrf: 'Stato OAuth non valido (CSRF)',
+    missingCode: 'Codice OAuth mancante',
+    googleRefused: (e) => `Google ha rifiutato l'accesso: ${e}`,
+    exchangeFail: 'Accesso Google non riuscito',
+    unexpected: 'Errore imprevisto',
+  },
+};
 
 /**
  * Google OAuth callback page.
@@ -15,6 +71,8 @@ const GoogleAuthCallback = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { login } = useAuth();
+  const { locale } = useLocale();
+  const tr = I18N[locale] || I18N.en;
   const [error, setError] = useState(null);
   const ranRef = useRef(false);
 
@@ -27,34 +85,36 @@ const GoogleAuthCallback = () => {
     const errParam = params.get('error');
 
     if (errParam) {
-      setError(`Google a refusé la connexion : ${errParam}`);
+      setError(tr.googleRefused(errParam));
       return;
     }
     if (!code) {
-      setError('Code OAuth manquant');
+      setError(tr.missingCode);
       return;
     }
-    // Verify state to prevent CSRF
     try {
       const expected = sessionStorage.getItem('kolo_oauth_state');
       if (expected && state && expected !== state) {
-        setError('État OAuth invalide (CSRF)');
+        setError(tr.csrf);
         return;
       }
       sessionStorage.removeItem('kolo_oauth_state');
-    } catch (_) { /* ignore */ }
+    } catch (_) {}
 
     const redirectUri = window.location.origin + '/auth/google';
+    let oauthLocale = locale || 'fr';
+    try { oauthLocale = sessionStorage.getItem('kolo_oauth_locale') || locale || 'fr'; } catch (_) {}
+
     (async () => {
       try {
         const r = await fetch(`${API_URL}/api/auth/google/exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, redirect_uri: redirectUri, locale: (navigator.language || 'fr').slice(0, 2) }),
+          body: JSON.stringify({ code, redirect_uri: redirectUri, locale: oauthLocale }),
         });
         const data = await r.json();
         if (!r.ok || !data.token) {
-          throw new Error(data.detail || 'Échec de la connexion Google');
+          throw new Error(data.detail || tr.exchangeFail);
         }
         localStorage.setItem('kolo_token', data.token);
         login({
@@ -67,21 +127,20 @@ const GoogleAuthCallback = () => {
           is_super_admin: data.is_super_admin,
           token: data.token,
         });
-        // Different welcome depending on register vs login intent
         let mode = 'login';
         try { mode = sessionStorage.getItem('kolo_oauth_mode') || 'login'; } catch (_) {}
-        try { sessionStorage.removeItem('kolo_oauth_mode'); } catch (_) {}
+        try { sessionStorage.removeItem('kolo_oauth_mode'); sessionStorage.removeItem('kolo_oauth_locale'); } catch (_) {}
         const isNewish = mode === 'register' || data.subscription_status === 'trialing';
-        toast.success(isNewish
-          ? `Bienvenue sur KOLO, ${(data.name || '').split(' ')[0] || 'agent'} ! 🎉`
-          : 'Bon retour !');
+        const firstName = (data.name || '').split(' ')[0] || '';
+        toast.success(isNewish ? tr.welcomeNew(firstName) : tr.welcomeBack);
         window.location.replace('/app');
       } catch (e) {
         console.error('Google OAuth exchange failed', e);
-        setError(typeof e?.message === 'string' ? e.message : 'Erreur inattendue');
+        setError(typeof e?.message === 'string' ? e.message : tr.unexpected);
       }
     })();
-  }, [params, login, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   return (
     <div style={{
@@ -94,7 +153,6 @@ const GoogleAuthCallback = () => {
       fontFamily: 'var(--font-body)',
     }}>
       <div style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
-        {/* KOLO Logo */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 24 }}>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800, color: 'var(--ink)' }}>KOLO</span>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--grad)', marginBottom: 10 }} />
@@ -109,14 +167,14 @@ const GoogleAuthCallback = () => {
               margin: '0 auto 16px',
             }} />
             <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>
-              Connexion en cours…
+              {tr.connecting}
             </h1>
-            <p style={{ fontSize: 14, color: 'var(--ink-mid)' }}>Finalisation avec Google</p>
+            <p style={{ fontSize: 14, color: 'var(--ink-mid)' }}>{tr.finalizing}</p>
           </>
         ) : (
           <>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, color: '#EF4444', marginBottom: 10 }}>
-              Connexion impossible
+              {tr.impossibleTitle}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--ink-mid)', marginBottom: 22 }}>{error}</p>
             <button
@@ -133,7 +191,7 @@ const GoogleAuthCallback = () => {
                 cursor: 'pointer',
               }}
             >
-              Retour à la connexion
+              {tr.back}
             </button>
           </>
         )}
