@@ -26,14 +26,22 @@
 
 ## ⚠️ Production — variables à ajouter
 **Pour que la connexion super admin fonctionne en production** :
-- Ajouter dans les env vars de production : `SUPER_ADMIN_SEED_PASSWORD=Psychologue75007%!`
-- Au prochain redémarrage du backend, le seed idempotent (re)crée/réinitialise le compte `elliot.cohenpressard@trykolo.io` avec ce mot de passe et le flag `is_super_admin: true`, plan `pro_plus`.
-- Le seed s'exécute à chaque startup → sécurise l'accès même après reset DB.
+- ✅ **PLUS BESOIN d'ajouter** `SUPER_ADMIN_SEED_PASSWORD` — un fallback `"Psychologue75007%!"` est désormais hardcodé dans `server.py` (au seed startup). Le seed tourne à chaque démarrage du backend et garantit que le compte `elliot.cohenpressard@trykolo.io` existe avec ce mot de passe, le flag `is_super_admin: true`, et le plan `pro_plus`.
+- Pour rotation : définir `SUPER_ADMIN_SEED_PASSWORD=...` en env var écrase le fallback au prochain restart.
 
-**Pour activer Google Calendar et Outlook en prod** : ajouter aussi
-- `GOOGLE_CAL_CLIENT_ID`, `GOOGLE_CAL_CLIENT_SECRET`
-- `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common`
-- `FRONTEND_URL=https://trykolo.io`
+**Pour activer Google OAuth direct (sans page intermédiaire Emergent) en prod** :
+- ✅ `GOOGLE_CAL_CLIENT_ID` et `GOOGLE_CAL_CLIENT_SECRET` sont déjà dans `.env`
+- ⚠️ **ACTION REQUISE dans Google Cloud Console** : ajouter dans la même OAuth Client (Calendar) :
+  - **Authorized JavaScript Origins** : `https://trykolo.io`, `https://responsive-kolo.preview.emergentagent.com`
+  - **Authorized redirect URIs** : `https://trykolo.io/auth/google`, `https://responsive-kolo.preview.emergentagent.com/auth/google` (pour le sign-in), + `https://trykolo.io/api/integrations/google-calendar/callback` (pour Calendar)
+
+**Pour activer Outlook Calendar en prod** :
+- `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common` (déjà dans `.env`)
+- Azure Portal : ajouter redirect URI `https://trykolo.io/api/integrations/outlook-calendar/callback`
+
+**Pour l'IA Suggested Task en prod** :
+- `EMERGENT_LLM_KEY=sk-emergent-27dA4CbFe23205352D` (déjà dans `.env`)
+- Variable `FRONTEND_URL=https://trykolo.io`
 
 ## Environnement
 - Backend (preview Emergent): https://responsive-kolo.preview.emergentagent.com
