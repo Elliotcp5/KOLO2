@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Sun, Moon, Users, Phone, Mail, Calendar, ChevronRight, Sparkles, ArrowRight, X } from 'lucide-react';
+import { Check, Sun, Moon, Users, Phone, Mail, Calendar, ChevronRight, Sparkles, ArrowRight, X, Mic, Bell, Shield } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useLocale } from '../context/LocaleContext';
 import { API_URL } from '../config/api';
@@ -11,6 +11,9 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   const [selectedTheme, setSelectedTheme] = useState('light');
   const [importedContacts, setImportedContacts] = useState([]);
   const [animatingIn, setAnimatingIn] = useState(true);
+  const [permMic, setPermMic] = useState('idle'); // idle | granted | denied
+  const [permNotif, setPermNotif] = useState('idle');
+  const [permCal, setPermCal] = useState('idle'); // idle | connecting | connected
   const { theme, changeTheme } = useTheme();
   const { locale } = useLocale();
 
@@ -31,18 +34,32 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       feature2Desc: "KOLO génère des relances personnalisées pour chaque prospect.",
       feature3Title: "Ne ratez rien",
       feature3Desc: "Notifications au bon moment pour ne jamais oublier un suivi.",
-      // Step 3 - Import
+      // Step 3 - Permissions
+      permissionsTitle: "Activez le superpouvoir KOLO",
+      permissionsDesc: "Trois autorisations facultatives pour libérer toute la puissance de l'app. Vous gardez le contrôle total.",
+      permMicTitle: "Microphone",
+      permMicDesc: "Dictez vos notes et transcrivez vos appels automatiquement.",
+      permCalTitle: "Calendrier",
+      permCalDesc: "Synchronisez vos rendez-vous avec Google ou Outlook.",
+      permNotifTitle: "Notifications",
+      permNotifDesc: "Restez alerté en temps réel pour ne rien oublier.",
+      permEnable: "Activer",
+      permEnabled: "Activé",
+      permLater: "Plus tard dans les paramètres",
+      permSkip: "Je configurerai plus tard",
+      permPrivacy: "Vos données restent privées. Aucun accès sans votre validation explicite.",
+      // Step 4 - Import
       importTitle: "Importez vos premiers prospects",
       importDescription: "Commencez avec vos contacts existants. Sélectionnez ceux que vous souhaitez suivre.",
       importBtn: "Importer mes contacts",
       skipImport: "Je préfère ajouter manuellement",
       contactsImported: "contacts importés",
-      // Step 4 - Theme
+      // Step 5 - Theme
       themeTitle: "Choisissez votre interface",
       themeDescription: "Mode clair ou sombre ? Vous pourrez toujours changer dans les paramètres.",
       lightMode: "Mode clair",
       darkMode: "Mode sombre",
-      // Step 5 - Ready
+      // Step 6 - Ready
       readyTitle: "Vous êtes prêt !",
       readyDescription: "KOLO est configuré. Commencez à transformer vos prospects en clients.",
       accessApp: "Accéder à mon espace",
@@ -64,6 +81,19 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       feature2Desc: "KOLO generates personalized follow-ups for each prospect.",
       feature3Title: "Never miss anything",
       feature3Desc: "Notifications at the right time so you never forget a follow-up.",
+      permissionsTitle: "Unlock KOLO's superpowers",
+      permissionsDesc: "Three optional permissions to unleash the full power. You stay in full control.",
+      permMicTitle: "Microphone",
+      permMicDesc: "Dictate notes and transcribe calls automatically.",
+      permCalTitle: "Calendar",
+      permCalDesc: "Sync your meetings with Google or Outlook.",
+      permNotifTitle: "Notifications",
+      permNotifDesc: "Stay alerted in real-time so you never miss a thing.",
+      permEnable: "Enable",
+      permEnabled: "Enabled",
+      permLater: "Later from settings",
+      permSkip: "I'll set this up later",
+      permPrivacy: "Your data stays private. No access without your explicit consent.",
       importTitle: "Import your first prospects",
       importDescription: "Start with your existing contacts. Select those you want to follow.",
       importBtn: "Import my contacts",
@@ -83,7 +113,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   };
 
   const t = content[locale] || content.fr;
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   // Animation on step change - smoother transition
   useEffect(() => {
@@ -190,6 +220,60 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
     }
   };
 
+  // ===== Permission requests (Step 3) =====
+  const requestMic = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.info(locale === 'fr' ? 'Micro non supporté ici' : 'Mic not supported');
+      setPermMic('denied');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setPermMic('granted');
+      toast.success(locale === 'fr' ? 'Micro activé ✓' : 'Mic enabled ✓');
+    } catch (_e) {
+      setPermMic('denied');
+      toast.info(locale === 'fr' ? 'Vous pourrez l\'activer plus tard' : 'You can enable it later');
+    }
+  };
+
+  const requestNotif = async () => {
+    if (!('Notification' in window)) {
+      toast.info(locale === 'fr' ? 'Notifications non supportées' : 'Notifications not supported');
+      setPermNotif('denied');
+      return;
+    }
+    try {
+      const res = await Notification.requestPermission();
+      if (res === 'granted') {
+        setPermNotif('granted');
+        toast.success(locale === 'fr' ? 'Notifications activées ✓' : 'Notifications enabled ✓');
+      } else {
+        setPermNotif('denied');
+      }
+    } catch (_e) { setPermNotif('denied'); }
+  };
+
+  const requestCalendar = async () => {
+    setPermCal('connecting');
+    try {
+      // Try to open Google Calendar OAuth flow in popup
+      const r = await authFetch(`${API_URL}/api/integrations/google-calendar/auth-url`);
+      if (r && r.ok) {
+        const d = await r.json();
+        if (d.auth_url) {
+          window.open(d.auth_url, 'kolo_cal_oauth', 'width=520,height=640');
+          setPermCal('connected'); // optimistic — user can verify in Integrations
+          toast.success(locale === 'fr' ? 'Connectez votre calendrier dans la fenêtre' : 'Connect calendar in popup');
+          return;
+        }
+      }
+    } catch (_e) {}
+    setPermCal('idle');
+    toast.info(locale === 'fr' ? 'Configurez ça depuis Intégrations.' : 'Set this up from Integrations.');
+  };
+
   const isDark = selectedTheme === 'dark';
   const bgColor = isDark ? '#0E0B1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#0E0B1E';
@@ -226,7 +310,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   // Progress indicator
   const ProgressDots = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '32px' }}>
-      {[1, 2, 3, 4, 5].map((i) => (
+      {Array.from({ length: totalSteps }, (_, i) => i + 1).map((i) => (
         <div
           key={i}
           style={{
@@ -432,6 +516,117 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       </button>
     </div>
   );
+
+  // Step 3: Permissions (premium request)
+  const PermissionsStep = () => {
+    const items = [
+      {
+        key: 'mic', icon: Mic, title: t.permMicTitle, desc: t.permMicDesc,
+        state: permMic, action: requestMic,
+      },
+      {
+        key: 'cal', icon: Calendar, title: t.permCalTitle, desc: t.permCalDesc,
+        state: permCal === 'connecting' ? 'idle' : permCal, action: requestCalendar,
+      },
+      {
+        key: 'notif', icon: Bell, title: t.permNotifTitle, desc: t.permNotifDesc,
+        state: permNotif, action: requestNotif,
+      },
+    ];
+    return (
+      <div style={contentStyle}>
+        <ProgressDots />
+        <h2 style={{ fontSize: '24px', fontWeight: '700', color: textColor, textAlign: 'center', marginBottom: '8px' }}>
+          {t.permissionsTitle}
+        </h2>
+        <p style={{ fontSize: '14px', color: mutedColor, textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
+          {t.permissionsDesc}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+          {items.map(({ key, icon: Icon, title, desc, state, action }) => {
+            const granted = state === 'granted' || state === 'connected';
+            return (
+              <div key={key} data-testid={`onb-perm-${key}`} style={{
+                background: cardBg,
+                borderRadius: '16px',
+                padding: '16px',
+                border: granted ? '1.5px solid #22c55e' : `1px solid ${borderColor}`,
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'center',
+                transition: 'border-color 0.25s ease',
+              }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: granted ? '#22c55e' : gradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Icon size={20} color="white" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: textColor }}>{title}</div>
+                  <div style={{ fontSize: '12.5px', color: mutedColor, lineHeight: 1.4 }}>{desc}</div>
+                </div>
+                <button
+                  onClick={action}
+                  disabled={granted}
+                  data-testid={`onb-perm-${key}-btn`}
+                  style={{
+                    background: granted ? 'transparent' : gradient,
+                    color: granted ? '#22c55e' : 'white',
+                    border: granted ? '1.5px solid #22c55e' : 'none',
+                    borderRadius: '999px',
+                    padding: '8px 14px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: granted ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {granted ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={14} /> {t.permEnabled}</span> : t.permEnable}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{
+          marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px',
+          color: mutedColor, fontSize: '12px', justifyContent: 'center', textAlign: 'center', lineHeight: 1.4,
+        }}>
+          <Shield size={14} />
+          <span>{t.permPrivacy}</span>
+        </div>
+        <button
+          onClick={nextStep}
+          data-testid="onboarding-perm-continue"
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: gradient,
+            border: 'none',
+            borderRadius: '999px',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginTop: '20px'
+          }}
+        >
+          {t.continueBtn}
+        </button>
+        <button
+          onClick={nextStep}
+          style={{
+            background: 'none', border: 'none', color: mutedColor,
+            fontSize: '13px', cursor: 'pointer', padding: '12px', marginTop: 4,
+          }}
+        >
+          {t.permSkip}
+        </button>
+      </div>
+    );
+  };
 
   // Step 3: Import contacts
   const ImportStep = () => (
@@ -710,7 +905,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   return (
     <div style={containerStyle}>
       {/* Skip button - top right */}
-      {step < 5 && (
+      {step < totalSteps && (
         <button
           onClick={handleSkip}
           style={{
@@ -737,9 +932,10 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       
       {step === 1 && <WelcomeStep />}
       {step === 2 && <HowItWorksStep />}
-      {step === 3 && <ImportStep />}
-      {step === 4 && <ThemeStep />}
-      {step === 5 && <ReadyStep />}
+      {step === 3 && <PermissionsStep />}
+      {step === 4 && <ImportStep />}
+      {step === 5 && <ThemeStep />}
+      {step === 6 && <ReadyStep />}
     </div>
   );
 };

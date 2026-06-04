@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, MessageCircle, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -1584,39 +1584,71 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     </div>
                   </div>
                   
-                  {/* Quick action buttons - ONLY for non-completed call/sms/email tasks */}
-                  {!isCompleted && task.prospect && showActions && (
+                  {/* Quick action buttons - ALWAYS visible for tasks with a linked prospect */}
+                  {!isCompleted && task.prospect && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      {/* Call button for call tasks only */}
-                      {task.task_type === 'call' && task.prospect.phone && (
-                        <a href={`tel:${task.prospect.phone}`} 
+                      {/* Call button - if prospect has phone */}
+                      {task.prospect.phone && (
+                        <a
+                          href={`tel:${task.prospect.phone}`}
                           onClick={(e) => e.stopPropagation()}
-                          style={{ padding: '8px', color: c('success'), textDecoration: 'none' }}>
+                          aria-label="Call"
+                          data-testid={`task-call-${task.task_id}`}
+                          style={{ padding: '8px', color: c('success'), textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                        >
                           <Phone size={18} />
                         </a>
                       )}
-                      {/* Email button for email tasks only */}
-                      {task.task_type === 'email' && task.prospect.email && (
-                        <a href={`mailto:${task.prospect.email}`}
+                      {/* WhatsApp - if prospect has phone */}
+                      {task.prospect.phone && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const cleaned = task.prospect.phone.replace(/[^\d+]/g, '').replace('+', '');
+                            const greet = locale === 'fr' ? 'Bonjour' : locale === 'de' ? 'Hallo' : locale === 'it' ? 'Ciao' : 'Hi';
+                            const first = (task.prospect.full_name || '').split(' ')[0] || '';
+                            const text = encodeURIComponent(`${greet} ${first}, `);
+                            window.open(`https://wa.me/${cleaned}?text=${text}`, '_blank');
+                          }}
+                          aria-label="WhatsApp"
+                          data-testid={`task-wa-${task.task_id}`}
+                          style={{ padding: '8px', background: 'none', border: 'none', color: '#25D366', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                          <MessageCircle size={18} />
+                        </button>
+                      )}
+                      {/* Email - if prospect has email */}
+                      {task.prospect.email && (
+                        <a
+                          href={`mailto:${task.prospect.email}`}
                           onClick={(e) => e.stopPropagation()}
-                          style={{ padding: '8px', color: c('text'), textDecoration: 'none' }}>
+                          aria-label="Email"
+                          data-testid={`task-email-${task.task_id}`}
+                          style={{ padding: '8px', color: c('text'), textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                        >
                           <Mail size={18} />
                         </a>
                       )}
-                      {/* SMS buttons for sms tasks only - native + AI */}
+                      {/* Calendar - always available */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onSelectProspect && onSelectProspect(task.prospect); }}
+                        aria-label="Calendar"
+                        data-testid={`task-cal-${task.task_id}`}
+                        title={locale === 'fr' ? 'Ajouter à mon agenda' : 'Add to calendar'}
+                        style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <Calendar size={18} />
+                      </button>
+                      {/* SMS AI suggestion - for sms tasks only */}
                       {task.task_type === 'sms' && task.prospect.phone && (
-                        <>
-                          <a href={`sms:${task.prospect.phone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ padding: '8px', color: c('text'), textDecoration: 'none' }}>
-                            <MessageSquare size={18} />
-                          </a>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
-                            style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <Sparkles size={16} />
-                          </button>
-                        </>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
+                          aria-label="AI"
+                          data-testid={`task-ai-${task.task_id}`}
+                          style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                          <Sparkles size={16} />
+                        </button>
                       )}
                     </div>
                   )}

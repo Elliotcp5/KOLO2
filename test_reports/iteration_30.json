@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 30 — Backend 10/10 GREEN (pytest /app/backend/tests/test_iteration_30.py) and Frontend 9/9 GREEN. All requested NEW flows pass: (1) Super admin login + /api/auth/me returns plan='pro_plus', effective_plan='pro_plus', is_super_admin=true. (2) White-label AI wizard: POST /api/admin/whitelabel/scan with stripe.com returns suggestion.name/primary_color/colors_found (LLM enrichment via Emergent universal key works, took ~4s). (3) POST /api/admin/whitelabel/create returns 200 with org.org_id (org_xxx prefix) + invite_url containing /join-org/. (4) GET /api/admin/whitelabel/list returns count>=1. (5) POST /api/reports/weekly returns 200 with stats payload (Resend send works in background). (6) POST/PUT/DELETE /api/tasks all 200, no 500 from best-effort _sync_task_to_calendar (silent when user has no Google/Outlook connected). (7) /api/integrations/google-calendar/auth-url returns valid Google OAuth URL (note: key is 'authorization_url', not 'auth_url'). Regression /api/integrations/calls/log and /api/integrations/whatsapp/log still GREEN. Frontend: /app shows the 4 quick-action buttons inline (call/wa/email/cal) on the Marie Leblanc task; /kolo-admin loads AdminDashboard with Marque blanche tab — full scan→configuration wizard works (Stripe scan auto-fills name='Stripe', colors detected, tagline+pitch from LLM); admin-back-btn navigates back to /app. Onboarding 6-step flow shows Step 3 = Permissions with 3 cards onb-perm-mic/cal/notif and onboarding-perm-continue. Iter-29 divider bug FIXED: /login?locale=en shows English divider, /register?locale=de shows German 'oder' divider, no French residue.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/integrations/google-calendar/auth-url", "issue": "Response key is 'authorization_url' (used by frontend OnboardingFlow & SettingsPage); test was prepared for 'auth_url'. Inconsistent with /api/integrations/outlook-calendar/auth-url naming if any. Cosmetic — frontend already uses authorization_url so this is OK, but worth standardising in a future refactor."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_30.py",
+    "/app/test_reports/pytest/iteration_30_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Recurring (iter_28/29): server.py is ~7.3k lines — should be split into routers (admin/whitelabel, integrations, reports, tasks…). Maintainability risk.",
+    "Recurring (iter_28/29): hardcoded super-admin fallback password 'Psychologue75007%!' in server.py startup_event is a security smell — once SUPER_ADMIN_SEED_PASSWORD is wired in production env, remove the literal default.",
+    "whitelabel_scan (server.py:5907) caps HTML to 120k chars but sends up to 4k chars of stripped text to the LLM. For very large landing pages the title regex .group(1) can be 'Stripe | Financial Infrastructure …' which currently is split on '|' or '-' to extract the name — this heuristic can produce noisy names for sites whose <title> doesn't contain a separator; rely more on the LLM for the brand name.",
+    "_sync_task_to_calendar (server.py:4430) is called via plain await inside POST/PUT/DELETE /api/tasks handlers — if Google/Outlook return a 5xx slowness, it will block the response. Should be wrapped in asyncio.create_task or kept truly best-effort with a tight timeout. (Currently silent so no 500 observed in tests.)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_30.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 — super-admin login+me, whitelabel scan/create/list, weekly report, tasks CRUD+sync, google-cal auth-url, calls/log, whatsapp/log)",
+    "frontend": "100% (9/9 — login, today 4 quick-action buttons present, admin-back-btn present + navigates, whitelabel tab loads, whitelabel-url-input+scan-btn render, scan→create wizard transitions, onboarding-perm-mic/cal/notif + onboarding-perm-continue, login EN divider, register DE divider)"
+  },
+  "test_credentials": "Super admin elliot.cohenpressard@trykolo.io / Psychologue75007%! works (login returns token, /me returns pro_plus + is_super_admin=true).",
+  "seed_data_creation": "Created 1 white-label org 'TEST_Brand QA i30' via POST /api/admin/whitelabel/create + 1 invite token in db.org_invites. Created 1 test task (deleted in same test). Created 1 test call log + 1 test wa log on the first prospect (regression coverage).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 30 verifies the AI Wizard Marque Blanche (POST /api/admin/whitelabel/{scan,create,list}), the weekly report endpoint, the task→calendar best-effort sync (silent when no calendar connected), the super-admin pro_plus+is_super_admin profile, the AdminDashboard back-button, and the new 6-step OnboardingFlow with PermissionsStep (3 cards: mic/cal/notif). All GREEN. The iter-29 SocialAuthButtons hardcoded French divider regression has been FIXED — /login?locale=en and /register?locale=de now render the correct language divider (no French residue). Backend regression file at /app/backend/tests/test_iteration_30.py covers all 10 endpoints in this scope and runs in ~5s.",
+  "rca of the issue": "No bugs found. The two pytest assertion mismatches initially observed were test-code issues (task POST requires due_date field, and the calendar auth-url response uses key 'authorization_url' not 'auth_url'); both fixed in the test file. Backend implementation is correct."
+}
