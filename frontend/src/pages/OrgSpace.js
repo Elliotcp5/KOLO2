@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users as UsersIcon, BarChart3, FolderOpen, Plug,
   ArrowLeft, Mail, Trash2, RefreshCw, Plus, Phone, MessageCircle,
-  Calendar, ExternalLink, Check, X,
+  Calendar, ExternalLink, Check, X, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
@@ -361,6 +361,138 @@ const DataroomTab = ({ org, isOrgAdmin }) => {
 };
 
 // =========================================================================
+// Billing tab — seats consumed, monthly cost, checkout
+// =========================================================================
+const BillingTab = ({ org, isOrgAdmin }) => {
+  const [billing, setBilling] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api(`/api/orgs/${org.org_id}/billing`);
+      setBilling(r);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [org.org_id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const checkout = async () => {
+    setCheckingOut(true);
+    try {
+      const r = await api(`/api/orgs/${org.org_id}/billing/checkout`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      if (r.checkout_url) {
+        window.location.href = r.checkout_url;
+      } else {
+        toast.error('Aucune URL de paiement');
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  if (loading || !billing) return <div className="admin-empty">Chargement…</div>;
+
+  const pct = billing.seats_max > 0 ? Math.min(100, (billing.seats_used / billing.seats_max) * 100) : 0;
+  const isPaid = billing.billing_status === 'active';
+
+  return (
+    <div data-testid="org-billing-tab">
+      <div className="admin-section-header">
+        <div>
+          <h1>Facturation</h1>
+          <p className="admin-section-sub">Sièges consommés · abonnement mensuel par siège.</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Sièges utilisés</div>
+          <div className="admin-stat-value" data-testid="billing-seats-used">
+            {billing.seats_used} <span style={{ fontSize: 14, color: 'var(--ink-mid)', fontWeight: 400 }}>/ {billing.seats_max}</span>
+          </div>
+          <div style={{ marginTop: 10, height: 6, background: 'rgba(0,0,0,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+            <div style={{
+              width: `${pct}%`, height: '100%',
+              background: pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : 'linear-gradient(90deg, #8B5CF6, #EC4899)',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
+          <div className="admin-stat-sub">{billing.seats_available} disponibles</div>
+        </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Prix par siège</div>
+          <div className="admin-stat-value">{billing.monthly_price_per_seat_eur}€<span style={{ fontSize: 14, color: 'var(--ink-mid)', fontWeight: 400 }}> / mois</span></div>
+          <div className="admin-stat-sub">facturation mensuelle</div>
+        </div>
+
+        <div className="admin-stat-card" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.06))', border: '1px solid rgba(139,92,246,0.2)' }}>
+          <div className="admin-stat-label">Total mensuel</div>
+          <div className="admin-stat-value" data-testid="billing-monthly-total">{billing.monthly_total_eur}€</div>
+          <div className="admin-stat-sub">{billing.seats_max} sièges × {billing.monthly_price_per_seat_eur}€</div>
+        </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Statut</div>
+          <div className="admin-stat-value" style={{ color: isPaid ? '#22C55E' : '#F59E0B', fontSize: 18 }}>
+            {isPaid ? 'Active' : (billing.billing_status === 'trialing' ? 'Essai' : billing.billing_status)}
+          </div>
+          {billing.stripe_subscription_id && (
+            <div className="admin-stat-sub" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+              {billing.stripe_subscription_id.slice(0, 16)}…
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isOrgAdmin && !isPaid && (
+        <div className="admin-stat-card" style={{ padding: 24, textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
+            Activer l'abonnement
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--ink-mid)', marginBottom: 20 }}>
+            Paye {billing.monthly_total_eur}€/mois pour débloquer {billing.seats_max} sièges et accéder à toutes les fonctionnalités KOLO en marque blanche.
+          </p>
+          <button
+            onClick={checkout}
+            disabled={checkingOut}
+            data-testid="billing-checkout-btn"
+            className="org-btn-primary"
+            style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', minWidth: 220 }}
+          >
+            {checkingOut ? 'Redirection…' : (<><CreditCard size={16} /> Payer avec Stripe</>)}
+          </button>
+        </div>
+      )}
+
+      {isOrgAdmin && isPaid && (
+        <div className="admin-stat-card" style={{ padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Check size={20} color="#22C55E" />
+            <div>
+              <div style={{ fontWeight: 700 }}>Abonnement actif</div>
+              <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>Renouvellement automatique chaque mois.</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// =========================================================================
 // Root
 // =========================================================================
 const OrgSpace = () => {
@@ -415,6 +547,7 @@ const OrgSpace = () => {
           <button onClick={() => setTab('team')} className={`admin-sidebar-item ${tab === 'team' ? 'is-active' : ''}`} data-testid="org-nav-team"><UsersIcon size={18} strokeWidth={1.75} /><span>Équipe</span></button>
           <button onClick={() => setTab('kpis')} className={`admin-sidebar-item ${tab === 'kpis' ? 'is-active' : ''}`} data-testid="org-nav-kpis"><BarChart3 size={18} strokeWidth={1.75} /><span>KPIs</span></button>
           <button onClick={() => setTab('dataroom')} className={`admin-sidebar-item ${tab === 'dataroom' ? 'is-active' : ''}`} data-testid="org-nav-dataroom"><FolderOpen size={18} strokeWidth={1.75} /><span>Dataroom</span></button>
+          <button onClick={() => setTab('billing')} className={`admin-sidebar-item ${tab === 'billing' ? 'is-active' : ''}`} data-testid="org-nav-billing"><CreditCard size={18} strokeWidth={1.75} /><span>Facturation</span></button>
           <button onClick={() => navigate('/integrations')} className="admin-sidebar-item" data-testid="org-nav-integrations"><Plug size={18} strokeWidth={1.75} /><span>Intégrations</span></button>
         </nav>
         <div className="admin-sidebar-footer">
@@ -426,6 +559,7 @@ const OrgSpace = () => {
         {tab === 'team' && <TeamTab org={org} isOrgAdmin={isOrgAdmin} />}
         {tab === 'kpis' && <KPIsTab org={org} />}
         {tab === 'dataroom' && <DataroomTab org={org} isOrgAdmin={isOrgAdmin} />}
+        {tab === 'billing' && <BillingTab org={org} isOrgAdmin={isOrgAdmin} />}
       </main>
       {editing && <EditOrgModal org={org} onSaved={(o) => { setOrg(o); setEditing(false); }} onClose={() => setEditing(false)} />}
     </div>

@@ -8,6 +8,7 @@ import { LocaleProvider } from "./context/LocaleContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider, AuthCallback, ProtectedRoute, SuperAdminRoute } from "./context/AuthContext";
 import { PlanProvider } from "./context/PlanContext";
+import { OrgProvider } from "./context/OrgContext";
 import { trackPageView } from "./utils/analytics";
 import { useCapacitorDeepLinks } from "./hooks/useCapacitorDeepLinks";
 import { useSEO } from "./hooks/useSEO";
@@ -172,6 +173,7 @@ const AppRouter = () => {
         }
       />
       <Route path="/org/join/:token" element={<JoinOrgPage />} />
+      <Route path="/join-org/:token" element={<JoinOrgPage />} />
 
       {/* Integrations (Twilio, WhatsApp, Calendars) */}
       <Route
@@ -204,9 +206,11 @@ function App() {
           <PlanProvider>
             <BrowserRouter>
               <AuthProvider>
-                <AnalyticsTracker />
-                <AppRouter />
-                <ThemedToaster />
+                <OrgProvider>
+                  <AnalyticsTracker />
+                  <AppRouter />
+                  <ThemedToaster />
+                </OrgProvider>
               </AuthProvider>
             </BrowserRouter>
           </PlanProvider>

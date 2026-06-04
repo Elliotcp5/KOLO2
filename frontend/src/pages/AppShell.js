@@ -5,6 +5,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { usePlan } from '../context/PlanContext';
+import { useOrg } from '../context/OrgContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
 import OnboardingFlow from '../components/OnboardingFlow';
@@ -445,6 +446,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const { c, isDark } = useThemeColors();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
+  const { org: userOrg, branding: orgBranding } = useOrg();
   const labels = UI_LABELS[locale] || UI_LABELS.en;
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -906,26 +908,51 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
 
   return (
     <div style={{ padding: '20px', backgroundColor: c('bg'), minHeight: '100vh' }}>
-      {/* Header - KOLO Logo + Profile Button */}
+      {/* Header - Logo (Org-branded if user belongs to an org) + Profile */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ 
-          fontFamily: 'var(--font-heading)', 
-          fontSize: '22px', 
-          fontWeight: '800',
-          color: c('text'),
-          display: 'flex',
-          alignItems: 'center',
-          gap: '3px'
-        }}>
-          KOLO
-          <span style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: isDark ? '#8A2BE2' : '#CB6CE6',
-            marginBottom: '10px'
-          }}></span>
-        </div>
+        {userOrg && orgBranding.logo_url ? (
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            onClick={() => navigate('/org')}
+            data-testid="appshell-org-logo"
+          >
+            <img
+              src={orgBranding.logo_url}
+              alt={orgBranding.name}
+              style={{ height: '32px', maxWidth: '120px', objectFit: 'contain' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <span style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: c('muted'),
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              borderLeft: `1px solid ${c('border')}`,
+              paddingLeft: '10px',
+            }}>by KOLO</span>
+          </div>
+        ) : (
+          <div style={{ 
+            fontFamily: 'var(--font-heading)', 
+            fontSize: '22px', 
+            fontWeight: '800',
+            color: c('text'),
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}>
+            KOLO
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: userOrg ? orgBranding.primary_color : (isDark ? '#8A2BE2' : '#CB6CE6'),
+              marginBottom: '10px'
+            }}></span>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Org Space (visible for everyone — they can create one) */}
           <button

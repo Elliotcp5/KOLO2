@@ -6007,6 +6007,8 @@ class WhiteLabelCreatePayload(BaseModel):
     contact_email: Optional[str] = None
     seats: Optional[int] = 50
     plan: Optional[str] = "enterprise"
+    custom_subdomain: Optional[str] = None
+    monthly_price_per_seat_eur: Optional[int] = 1900  # in cents
 
 
 @api_router.post("/admin/whitelabel/create")
@@ -6038,7 +6040,11 @@ async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
         "agent_count_estimate": payload.agent_count_estimate,
         "contact_email": payload.contact_email,
         "seats": payload.seats or 50,
+        "seats_used": 0,
         "plan": payload.plan or "enterprise",
+        "custom_subdomain": (payload.custom_subdomain or "").strip().lower() or None,
+        "monthly_price_per_seat_eur": payload.monthly_price_per_seat_eur or 1900,
+        "billing_status": "trialing",  # trialing | active | past_due | canceled
         "owner_user_id": user.user_id,
         "white_label": True,
         "created_by": user.email,
@@ -6087,6 +6093,43 @@ async def get_my_org(request: Request):
         return {"org": None, "role": None}
     org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
     return {"org": org, "role": user_doc.get("org_role")}
+
+
+@api_router.get("/orgs/public/{slug}")
+async def get_public_org_branding(slug: str):
+    """Public endpoint (no auth). Returns the brand identity of an org by its slug or custom_subdomain.
+    Used by /register?org=slug, /login pre-auth, and subdomain detection."""
+    slug = (slug or "").strip().lower()
+    if not slug:
+        raise HTTPException(status_code=400, detail="Slug required")
+    org = await db.organizations.find_one(
+        {"$or": [{"slug": slug}, {"custom_subdomain": slug}]},
+        {"_id": 0, "org_id": 1, "name": 1, "slug": 1, "logo_url": 1, "primary_color": 1,
+         "secondary_color": 1, "font_family": 1, "tagline": 1, "pitch": 1, "sector": 1,
+         "white_label": 1, "custom_subdomain": 1},
+    )
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return {"org": org}
+
+
+@api_router.get("/orgs/by-domain")
+async def get_org_by_domain(request: Request):
+    """Lookup an org by request Host header — convenience for sub-domain detection client-side.
+    Example: iad.trykolo.io → returns the IAD org branding (if custom_subdomain='iad')."""
+    host = (request.headers.get("host") or "").lower().split(":")[0]
+    parts = host.split(".")
+    if len(parts) < 3:
+        return {"org": None}
+    sub = parts[0]
+    if sub in ("www", "app", "api", "localhost"):
+        return {"org": None}
+    org = await db.organizations.find_one(
+        {"custom_subdomain": sub},
+        {"_id": 0, "org_id": 1, "name": 1, "slug": 1, "logo_url": 1, "primary_color": 1,
+         "secondary_color": 1, "font_family": 1, "tagline": 1, "pitch": 1, "custom_subdomain": 1},
+    )
+    return {"org": org}
 
 
 @api_router.patch("/orgs/{org_id}")
@@ -6154,6 +6197,19 @@ async def accept_org_invite(token: str, request: Request):
     if user_doc.get("org_id") and user_doc.get("org_id") != invite["org_id"]:
         raise HTTPException(status_code=400, detail="User already belongs to a different organization")
 
+    # ===== SEATS ENFORCEMENT =====
+    org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
+    if org:
+        seats_max = int(org.get("seats") or 0)
+        seats_used = await db.users.count_documents({"org_id": invite["org_id"]})
+        # If user is already member (re-accepting), don't count again
+        already_member = user_doc.get("org_id") == invite["org_id"]
+        if seats_max > 0 and not already_member and seats_used >= seats_max:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Toutes les places de l'organisation sont occupées ({seats_used}/{seats_max}). Contactez l'admin pour augmenter les sièges.",
+            )
+
     await db.users.update_one(
         {"user_id": user.user_id},
         {"$set": {"org_id": invite["org_id"], "org_role": invite["role"], "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -6162,6 +6218,9 @@ async def accept_org_invite(token: str, request: Request):
         {"token": token},
         {"$set": {"accepted": True, "accepted_at": datetime.now(timezone.utc).isoformat(), "accepted_by": user.user_id}}
     )
+    # Update seats_used cache
+    new_count = await db.users.count_documents({"org_id": invite["org_id"]})
+    await db.organizations.update_one({"org_id": invite["org_id"]}, {"$set": {"seats_used": new_count}})
     org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
     return {"ok": True, "org": org, "role": invite["role"]}
 
@@ -6176,6 +6235,85 @@ async def remove_org_member(org_id: str, user_id: str, request: Request):
         {"$set": {"org_id": None, "org_role": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"ok": True}
+
+
+# ==================== B2B BILLING (per-org seats) ====================
+
+class OrgBillingCheckoutPayload(BaseModel):
+    seats: Optional[int] = None  # Optional override; defaults to org.seats
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+
+@api_router.get("/orgs/{org_id}/billing")
+async def org_billing_info(org_id: str, request: Request):
+    """Return seats consumed/available + monthly cost preview for the org."""
+    _, org = await _require_org_member(request, org_id, admin_only=False)
+    seats_used = await db.users.count_documents({"org_id": org_id})
+    seats_max = int(org.get("seats") or 0)
+    price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    return {
+        "org_id": org_id,
+        "seats_used": seats_used,
+        "seats_max": seats_max,
+        "seats_available": max(0, seats_max - seats_used),
+        "monthly_price_per_seat_cents": price_cents,
+        "monthly_price_per_seat_eur": round(price_cents / 100, 2),
+        "monthly_total_cents": price_cents * seats_max,
+        "monthly_total_eur": round((price_cents * seats_max) / 100, 2),
+        "billing_status": org.get("billing_status", "trialing"),
+        "stripe_subscription_id": org.get("stripe_subscription_id"),
+    }
+
+
+@api_router.post("/orgs/{org_id}/billing/checkout")
+async def org_billing_checkout(org_id: str, payload: OrgBillingCheckoutPayload, request: Request):
+    """Create a Stripe checkout session for the org subscription (seats × monthly price).
+    Only an org_admin can pay."""
+    _, org = await _require_org_member(request, org_id, admin_only=True)
+    import stripe
+    stripe.api_key = STRIPE_API_KEY
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    seats = int(payload.seats or org.get("seats") or 0)
+    if seats <= 0:
+        raise HTTPException(status_code=400, detail="Seats must be > 0")
+    price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+
+    frontend_url = (os.environ.get("FRONTEND_URL") or "https://trykolo.io").rstrip("/")
+    success_url = payload.success_url or f"{frontend_url}/org?billing=success"
+    cancel_url = payload.cancel_url or f"{frontend_url}/org?billing=cancel"
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"KOLO Marque Blanche — {org.get('name','Organisation')}",
+                        "description": f"{seats} sièges agents · accès complet KOLO brandé",
+                    },
+                    "unit_amount": price_cents,
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": seats,
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"org_id": org_id, "seats": str(seats), "type": "org_b2b"},
+            subscription_data={"metadata": {"org_id": org_id, "seats": str(seats)}},
+        )
+        # Persist intent
+        await db.organizations.update_one(
+            {"org_id": org_id},
+            {"$set": {"stripe_checkout_session_id": session.id, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return {"checkout_url": session.url, "session_id": session.id}
+    except Exception as e:
+        logger.error(f"Stripe org checkout failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Stripe error: {str(e)[:200]}")
 
 
 @api_router.get("/orgs/{org_id}/kpis")

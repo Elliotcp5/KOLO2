@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
+import { useOrg } from '../context/OrgContext';
 import { toast } from 'sonner';
 import SocialAuthButtons from '../components/SocialAuthButtons';
 import { API_URL } from '../config/api';
@@ -13,6 +14,7 @@ const RegisterPage = () => {
   const location = useLocation();
   const { t, locale } = useLocale();
   const { login } = useAuth();
+  const { branding, isBranded } = useOrg();
   
   // Get email and plan from landing page if passed
   const initialEmail = location.state?.email || '';
@@ -164,28 +166,61 @@ const RegisterPage = () => {
           <span>{t('back')}</span>
         </button>
 
-        {/* Logo - Text KOLO with dot */}
+        {/* Logo - Org-branded if present, else KOLO with dot */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '3px',
-          marginBottom: '24px'
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: '36px',
-            fontWeight: '800',
-            color: 'var(--ink)'
-          }}>KOLO</span>
-          <span style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: 'var(--grad)',
-            marginBottom: '14px'
-          }}></span>
+          gap: isBranded && branding.logo_url ? '12px' : '3px',
+          marginBottom: '12px',
+          flexDirection: isBranded && branding.logo_url ? 'column' : 'row'
+        }} data-testid="register-brand-logo">
+          {isBranded && branding.logo_url ? (
+            <>
+              <img
+                src={branding.logo_url}
+                alt={branding.name}
+                style={{ maxHeight: '56px', maxWidth: '220px', objectFit: 'contain' }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+              <span style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'var(--ink-mid)',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}>
+                {branding.name} {locale === 'fr' ? 'propulsé par' : 'powered by'} KOLO
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: '36px',
+                fontWeight: '800',
+                color: 'var(--ink)'
+              }}>KOLO</span>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--brand-gradient, var(--grad))',
+                marginBottom: '14px'
+              }}></span>
+            </>
+          )}
         </div>
+        {isBranded && branding.tagline && (
+          <p style={{
+            textAlign: 'center',
+            fontSize: '14px',
+            color: 'var(--ink-mid)',
+            marginBottom: '20px',
+            fontStyle: 'italic',
+          }}>{branding.tagline}</p>
+        )}
 
         {/* Trial badge */}
         <div style={{

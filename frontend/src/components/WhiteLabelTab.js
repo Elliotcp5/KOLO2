@@ -24,6 +24,7 @@ const WhiteLabelTab = () => {
     name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899',
     logo_url: '', sector: 'immobilier', font_family: 'Inter',
     tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise',
+    custom_subdomain: '', monthly_price_per_seat_eur: 1900,
   });
   const [createdOrg, setCreatedOrg] = useState(null);
 
@@ -85,7 +86,7 @@ const WhiteLabelTab = () => {
 
   const reset = () => {
     setStep(1); setWebsiteUrl(''); setScan(null); setCreatedOrg(null);
-    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise' });
+    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise', custom_subdomain: '', monthly_price_per_seat_eur: 1900 });
   };
 
   return (
@@ -180,6 +181,8 @@ const WhiteLabelTab = () => {
               <Field label="Logo URL" value={config.logo_url} onChange={(v) => setConfig({ ...config, logo_url: v })} testid="wl-logo" />
               <Field label="Email contact admin" value={config.contact_email} onChange={(v) => setConfig({ ...config, contact_email: v })} type="email" testid="wl-email" />
               <Field label="Sièges (collaborateurs)" value={config.seats} onChange={(v) => setConfig({ ...config, seats: parseInt(v) || 0 })} type="number" testid="wl-seats" />
+              <Field label="Sous-domaine (ex: iad)" value={config.custom_subdomain} onChange={(v) => setConfig({ ...config, custom_subdomain: v.toLowerCase().replace(/[^a-z0-9-]/g, '') })} testid="wl-subdomain" />
+              <Field label="Prix par siège / mois (€)" value={config.monthly_price_per_seat_eur ? (config.monthly_price_per_seat_eur / 100) : 19} onChange={(v) => setConfig({ ...config, monthly_price_per_seat_eur: Math.round((parseFloat(v) || 0) * 100) })} type="number" testid="wl-price" />
               <div style={{ gridColumn: '1/-1' }}><Field label="Tagline" value={config.tagline} onChange={(v) => setConfig({ ...config, tagline: v })} testid="wl-tagline" /></div>
               <div style={{ gridColumn: '1/-1' }}><Field label="Pitch / présentation courte" value={config.pitch} onChange={(v) => setConfig({ ...config, pitch: v })} testid="wl-pitch" multiline /></div>
             </div>
@@ -238,8 +241,18 @@ const WhiteLabelTab = () => {
             <button onClick={() => { navigator.clipboard.writeText(createdOrg.invite_url); toast.success('Copié'); }} className="admin-icon-btn" data-testid="wl-copy-invite"><Copy size={14} /></button>
             <a href={createdOrg.invite_url} target="_blank" rel="noopener noreferrer" className="admin-icon-btn"><ExternalLink size={14} /></a>
           </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={reset} className="admin-btn" data-testid="wl-create-another">Créer une autre marque blanche</button>
+            <a
+              href={`/register?org=${createdOrg.org.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="wl-preview-brand"
+              className="admin-btn"
+              style={{ background: 'rgba(139,92,246,0.1)', color: '#6D28D9', border: '1px solid rgba(139,92,246,0.3)' }}
+            >
+              Aperçu inscription brandée
+            </a>
             <a href="/org" className="org-btn-primary" style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)' }}>Voir l'espace</a>
           </div>
         </div>
