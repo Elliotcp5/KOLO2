@@ -67,7 +67,14 @@ const GoogleAuthCallback = () => {
           is_super_admin: data.is_super_admin,
           token: data.token,
         });
-        toast.success('Bienvenue !');
+        // Different welcome depending on register vs login intent
+        let mode = 'login';
+        try { mode = sessionStorage.getItem('kolo_oauth_mode') || 'login'; } catch (_) {}
+        try { sessionStorage.removeItem('kolo_oauth_mode'); } catch (_) {}
+        const isNewish = mode === 'register' || data.subscription_status === 'trialing';
+        toast.success(isNewish
+          ? `Bienvenue sur KOLO, ${(data.name || '').split(' ')[0] || 'agent'} ! 🎉`
+          : 'Bon retour !');
         window.location.replace('/app');
       } catch (e) {
         console.error('Google OAuth exchange failed', e);

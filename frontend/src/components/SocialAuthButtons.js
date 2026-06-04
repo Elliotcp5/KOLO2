@@ -12,7 +12,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { API_URL } from '../config/api';
 
-const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = false }) => {
+const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = false, mode = 'login' }) => {
   const [clientId, setClientId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +36,10 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     const redirectUri = window.location.origin + '/auth/google';
     const state = Math.random().toString(36).slice(2);
-    try { sessionStorage.setItem('kolo_oauth_state', state); } catch (_) {}
+    try {
+      sessionStorage.setItem('kolo_oauth_state', state);
+      sessionStorage.setItem('kolo_oauth_mode', mode);
+    } catch (_) {}
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -49,6 +52,10 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
     });
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   };
+
+  const ctaText = mode === 'register'
+    ? "S'inscrire avec Google"
+    : 'Continuer avec Google';
 
   const baseBtn = {
     width: '100%',
@@ -103,7 +110,7 @@ const SocialAuthButtons = ({ dividerLabel = 'ou continuer avec', appleEnabled = 
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
         </svg>
-        <span>{loading ? 'Redirection…' : (clientId ? 'Continuer avec Google' : 'Google indisponible')}</span>
+        <span>{loading ? 'Redirection…' : (clientId ? ctaText : 'Google indisponible')}</span>
       </button>
     </div>
   );
