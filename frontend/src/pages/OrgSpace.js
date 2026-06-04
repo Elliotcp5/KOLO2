@@ -433,13 +433,17 @@ const BillingTab = ({ org, isOrgAdmin }) => {
         <div className="admin-stat-card">
           <div className="admin-stat-label">Prix par siège</div>
           <div className="admin-stat-value">{billing.monthly_price_per_seat_eur}€<span style={{ fontSize: 14, color: 'var(--ink-mid)', fontWeight: 400 }}> / mois</span></div>
-          <div className="admin-stat-sub">facturation mensuelle</div>
+          <div className="admin-stat-sub">facturation annuelle</div>
         </div>
 
         <div className="admin-stat-card" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.06))', border: '1px solid rgba(139,92,246,0.2)' }}>
-          <div className="admin-stat-label">Total mensuel</div>
-          <div className="admin-stat-value" data-testid="billing-monthly-total">{billing.monthly_total_eur}€</div>
-          <div className="admin-stat-sub">{billing.seats_max} sièges × {billing.monthly_price_per_seat_eur}€</div>
+          <div className="admin-stat-label">Total annuel HT</div>
+          <div className="admin-stat-value" data-testid="billing-yearly-total">{billing.yearly_total_eur || billing.monthly_total_eur * 12}€</div>
+          <div className="admin-stat-sub">
+            {billing.promo_months_free > 0
+              ? `${billing.billed_months} mois facturés (économie : ${(billing.yearly_gross_eur - billing.yearly_total_eur).toFixed(2)}€)`
+              : `${billing.seats_max} sièges × ${billing.monthly_price_per_seat_eur}€ × 12 mois`}
+          </div>
         </div>
 
         <div className="admin-stat-card">
@@ -458,10 +462,13 @@ const BillingTab = ({ org, isOrgAdmin }) => {
       {isOrgAdmin && !isPaid && (
         <div className="admin-stat-card" style={{ padding: 24, textAlign: 'center' }}>
           <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
-            Activer l'abonnement
+            Activer l'abonnement annuel
           </h2>
           <p style={{ fontSize: 14, color: 'var(--ink-mid)', marginBottom: 20 }}>
-            Paye {billing.monthly_total_eur}€/mois pour débloquer {billing.seats_max} sièges et accéder à toutes les fonctionnalités KOLO en marque blanche.
+            Paye {billing.yearly_total_eur || billing.monthly_total_eur * 12}€/an pour débloquer {billing.seats_max} sièges et accéder à toutes les fonctionnalités KOLO en marque blanche.
+            {billing.promo_months_free > 0 && (
+              <> Promotion appliquée : <strong>{billing.promo_months_free} mois offert{billing.promo_months_free > 1 ? 's' : ''}</strong>.</>
+            )}
           </p>
           <button
             onClick={checkout}

@@ -6008,8 +6008,10 @@ class WhiteLabelCreatePayload(BaseModel):
     seats: Optional[int] = 50
     plan: Optional[str] = "enterprise"
     custom_subdomain: Optional[str] = None
-    monthly_price_per_seat_eur: Optional[int] = 1900  # in cents
+    monthly_price_per_seat_eur: Optional[int] = 1900  # in cents (per seat per month)
     billing_country: Optional[str] = "FR"  # ISO-2 country code for VAT
+    promo_months_free: Optional[int] = 0  # 0-12 months offered on annual subscription
+    billing_period: Optional[str] = "annual"  # white-label is annual-only
 
 
 @api_router.post("/admin/whitelabel/create")
@@ -6046,6 +6048,8 @@ async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
         "custom_subdomain": (payload.custom_subdomain or "").strip().lower() or None,
         "monthly_price_per_seat_eur": payload.monthly_price_per_seat_eur or 1900,
         "billing_country": (payload.billing_country or "FR").upper(),
+        "promo_months_free": max(0, min(12, int(payload.promo_months_free or 0))),
+        "billing_period": "annual",  # white-label B2B is annual-only
         "billing_status": "trialing",  # trialing | active | past_due | canceled
         "owner_user_id": user.user_id,
         "white_label": True,
@@ -6255,11 +6259,15 @@ class OrgBillingCheckoutPayload(BaseModel):
 
 @api_router.get("/orgs/{org_id}/billing")
 async def org_billing_info(org_id: str, request: Request):
-    """Return seats consumed/available + monthly cost preview for the org."""
+    """Return seats consumed/available + monthly + annual cost preview for the org."""
     _, org = await _require_org_member(request, org_id, admin_only=False)
     seats_used = await db.users.count_documents({"org_id": org_id})
     seats_max = int(org.get("seats") or 0)
     price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    promo_months_free = max(0, min(12, int(org.get("promo_months_free") or 0)))
+    billed_months = max(0, 12 - promo_months_free)
+    yearly_total_cents = price_cents * seats_max * billed_months
+    yearly_gross_cents = price_cents * seats_max * 12
     return {
         "org_id": org_id,
         "seats_used": seats_used,
@@ -6269,6 +6277,14 @@ async def org_billing_info(org_id: str, request: Request):
         "monthly_price_per_seat_eur": round(price_cents / 100, 2),
         "monthly_total_cents": price_cents * seats_max,
         "monthly_total_eur": round((price_cents * seats_max) / 100, 2),
+        "billing_period": org.get("billing_period", "annual"),
+        "promo_months_free": promo_months_free,
+        "billed_months": billed_months,
+        "yearly_total_cents": yearly_total_cents,
+        "yearly_total_eur": round(yearly_total_cents / 100, 2),
+        "yearly_gross_cents": yearly_gross_cents,
+        "yearly_gross_eur": round(yearly_gross_cents / 100, 2),
+        "billing_country": org.get("billing_country", "FR"),
         "billing_status": org.get("billing_status", "trialing"),
         "stripe_subscription_id": org.get("stripe_subscription_id"),
     }
@@ -6287,13 +6303,20 @@ async def org_billing_checkout(org_id: str, payload: OrgBillingCheckoutPayload, 
     seats = int(payload.seats or org.get("seats") or 0)
     if seats <= 0:
         raise HTTPException(status_code=400, detail="Seats must be > 0")
-    price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    monthly_price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    promo_months_free = max(0, min(12, int(org.get("promo_months_free") or 0)))
+    billed_months = max(1, 12 - promo_months_free)
+    # Annual unit price per seat (cents) with promo months removed
+    yearly_unit_amount = monthly_price_cents * billed_months
 
     frontend_url = (os.environ.get("FRONTEND_URL") or "https://trykolo.io").rstrip("/")
     success_url = payload.success_url or f"{frontend_url}/org?billing=success"
     cancel_url = payload.cancel_url or f"{frontend_url}/org?billing=cancel"
 
     try:
+        description_parts = [f"{seats} sièges agents · accès complet KOLO brandé · facturation annuelle"]
+        if promo_months_free > 0:
+            description_parts.append(f"Promotion : {promo_months_free} mois offert{'s' if promo_months_free > 1 else ''}")
         session = stripe.checkout.Session.create(
             mode="subscription",
             line_items=[{
@@ -6301,17 +6324,23 @@ async def org_billing_checkout(org_id: str, payload: OrgBillingCheckoutPayload, 
                     "currency": "eur",
                     "product_data": {
                         "name": f"KOLO Marque Blanche — {org.get('name','Organisation')}",
-                        "description": f"{seats} sièges agents · accès complet KOLO brandé",
+                        "description": " · ".join(description_parts),
                     },
-                    "unit_amount": price_cents,
-                    "recurring": {"interval": "month"},
+                    "unit_amount": yearly_unit_amount,
+                    "recurring": {"interval": "year"},
                 },
                 "quantity": seats,
             }],
             success_url=success_url,
             cancel_url=cancel_url,
-            metadata={"org_id": org_id, "seats": str(seats), "type": "org_b2b"},
-            subscription_data={"metadata": {"org_id": org_id, "seats": str(seats)}},
+            metadata={
+                "org_id": org_id,
+                "seats": str(seats),
+                "type": "org_b2b",
+                "billing_period": "annual",
+                "promo_months_free": str(promo_months_free),
+            },
+            subscription_data={"metadata": {"org_id": org_id, "seats": str(seats), "billing_period": "annual"}},
         )
         # Persist intent
         await db.organizations.update_one(
