@@ -930,25 +930,25 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             onClick={() => navigate('/org')}
             data-testid="header-org-btn"
             title={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
+            aria-label={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              padding: 0,
               background: 'transparent',
               border: `1px solid ${c('border')}`,
-              borderRadius: '999px',
+              borderRadius: '50%',
               cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: c('text'),
-              fontFamily: 'var(--font-body)',
+              color: c('muted'),
+              transition: 'all 160ms ease',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c('text'); e.currentTarget.style.color = c('text'); }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c('border'); e.currentTarget.style.color = c('muted'); }}
           >
-            <Briefcase size={13} strokeWidth={2} />
-            <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>
-              {locale === 'fr' ? 'Réseau' : 'Network'}
-            </span>
+            <Briefcase size={15} strokeWidth={2} />
           </button>
           {/* Super Admin badge — only visible to allowlisted users */}
           {isSuperAdmin && (

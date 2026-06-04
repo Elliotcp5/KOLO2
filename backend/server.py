@@ -466,6 +466,13 @@ async def require_auth(request: Request) -> User:
 async def require_active_subscription(request: Request) -> User:
     user = await require_auth(request)
     
+    # Super admin and lifetime access users bypass all subscription checks
+    if is_super_admin_email(user.email):
+        return user
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    if user_doc.get("lifetime_access") or user_doc.get("is_super_admin"):
+        return user
+    
     # Check if user has active subscription
     if user.subscription_status == 'active':
         return user
@@ -4410,7 +4417,129 @@ async def create_task(request: Request, task_data: CreateTaskRequest):
             }}
         )
     
+    # Best-effort: mirror to calendar (Google/Outlook) — silent on failure
+    try:
+        await _sync_task_to_calendar(user.user_id, task.task_id, "create", doc)
+    except Exception as e:
+        logger.warning(f"Calendar sync on create_task failed: {e}")
+
     return {"task_id": task.task_id, "message": "Task created"}
+
+
+# ==================== TASK ↔ CALENDAR SYNC HELPERS ====================
+async def _sync_task_to_calendar(user_id: str, task_id: str, action: str, task_doc: Optional[dict] = None):
+    """Mirror task changes into the user's connected calendars (Google/Outlook).
+    Stores the calendar event IDs on the task to allow later updates/deletes.
+    All failures are silent (best-effort sync)."""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    has_google = bool(user_doc.get("google_calendar_tokens"))
+    has_outlook = bool(user_doc.get("outlook_tokens"))
+    if not (has_google or has_outlook):
+        return  # No calendar connected
+
+    if not task_doc:
+        task_doc = await db.tasks.find_one({"task_id": task_id, "user_id": user_id}, {"_id": 0})
+        if not task_doc:
+            return
+
+    title = (task_doc.get("title") or "Tâche KOLO")[:200]
+    desc = task_doc.get("description") or ""
+    if task_doc.get("prospect_id"):
+        prospect = await db.prospects.find_one({"prospect_id": task_doc["prospect_id"]}, {"_id": 0})
+        if prospect:
+            desc = f"KOLO • Prospect: {prospect.get('full_name','')} • {prospect.get('phone','')}\n{desc}"
+    due = task_doc.get("due_date")
+    if not due:
+        return
+    if isinstance(due, str):
+        try:
+            start_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+        except Exception:
+            return
+    else:
+        start_dt = due
+    if start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=timezone.utc)
+    end_dt = start_dt + timedelta(minutes=30)
+
+    existing_events = (task_doc.get("calendar_events") or {})
+
+    # ----- GOOGLE -----
+    if has_google:
+        try:
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+            tokens = user_doc["google_calendar_tokens"]
+            creds = Credentials(
+                token=tokens.get("access_token"),
+                refresh_token=tokens.get("refresh_token"),
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+                         or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com",
+                client_secret=os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
+                              or "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",
+                scopes=tokens.get("scopes") or ["https://www.googleapis.com/auth/calendar"],
+            )
+            service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+            ev_body = {
+                "summary": "🔵 " + title,
+                "description": desc,
+                "start": {"dateTime": start_dt.isoformat()},
+                "end": {"dateTime": end_dt.isoformat()},
+                "extendedProperties": {"private": {"kolo_task_id": task_id}},
+            }
+            g_event_id = existing_events.get("google")
+            if action == "delete" and g_event_id:
+                service.events().delete(calendarId="primary", eventId=g_event_id).execute()
+                existing_events.pop("google", None)
+            elif action == "update" and g_event_id:
+                service.events().patch(calendarId="primary", eventId=g_event_id, body=ev_body).execute()
+            elif action in ("create", "update"):
+                created = service.events().insert(calendarId="primary", body=ev_body).execute()
+                existing_events["google"] = created.get("id")
+        except Exception as e:
+            logger.warning(f"Google task sync failed ({action}): {e}")
+
+    # ----- OUTLOOK -----
+    if has_outlook:
+        try:
+            token = await _ensure_outlook_access_token(user_id)
+            ms_body = {
+                "subject": "🔵 " + title,
+                "body": {"contentType": "HTML", "content": desc.replace("\n", "<br>")},
+                "start": {"dateTime": start_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"},
+                "end": {"dateTime": end_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"},
+                "singleValueExtendedProperties": [{
+                    "id": "String {a8b9c0d1-1234-5678-9abc-def012345678} Name kolo_task_id",
+                    "value": task_id
+                }]
+            }
+            ms_event_id = existing_events.get("outlook")
+            async with httpx.AsyncClient(timeout=12) as hc:
+                if action == "delete" and ms_event_id:
+                    await hc.delete(f"https://graph.microsoft.com/v1.0/me/events/{ms_event_id}",
+                                    headers={"Authorization": f"Bearer {token}"})
+                    existing_events.pop("outlook", None)
+                elif action == "update" and ms_event_id:
+                    await hc.patch(f"https://graph.microsoft.com/v1.0/me/events/{ms_event_id}",
+                                   headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                                   json=ms_body)
+                elif action in ("create", "update"):
+                    r = await hc.post("https://graph.microsoft.com/v1.0/me/events",
+                                      headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                                      json=ms_body)
+                    if r.status_code in (200, 201):
+                        existing_events["outlook"] = r.json().get("id")
+        except Exception as e:
+            logger.warning(f"Outlook task sync failed ({action}): {e}")
+
+    # Persist the calendar event IDs back on the task
+    if action != "delete":
+        await db.tasks.update_one({"task_id": task_id, "user_id": user_id},
+                                  {"$set": {"calendar_events": existing_events}})
+    else:
+        await db.tasks.update_one({"task_id": task_id, "user_id": user_id},
+                                  {"$set": {"calendar_events": existing_events}})
 
 @api_router.put("/tasks/{task_id}")
 async def update_task(request: Request, task_id: str, update_data: UpdateTaskRequest):
@@ -4455,6 +4584,17 @@ async def update_task(request: Request, task_id: str, update_data: UpdateTaskReq
     if task.get("prospect_id"):
         await update_prospect_next_task(task["prospect_id"], user.user_id)
     
+    # Sync to calendar: delete event if completed, else update
+    try:
+        if update_data.completed is True:
+            await _sync_task_to_calendar(user.user_id, task_id, "delete", task)
+        else:
+            updated_task = await db.tasks.find_one({"task_id": task_id, "user_id": user.user_id}, {"_id": 0})
+            if updated_task:
+                await _sync_task_to_calendar(user.user_id, task_id, "update", updated_task)
+    except Exception as e:
+        logger.warning(f"Calendar sync on update_task failed: {e}")
+    
     return {"message": "Task updated"}
 
 @api_router.delete("/tasks/{task_id}")
@@ -4472,6 +4612,12 @@ async def delete_task(request: Request, task_id: str):
     
     prospect_id = task.get("prospect_id")
     
+    # Remove from calendar first
+    try:
+        await _sync_task_to_calendar(user.user_id, task_id, "delete", task)
+    except Exception as e:
+        logger.warning(f"Calendar sync on delete_task failed: {e}")
+
     await db.tasks.delete_one({"task_id": task_id, "user_id": user.user_id})
     
     # Update prospect's next task if applicable
@@ -4517,6 +4663,12 @@ async def complete_task(request: Request, task_id: str):
     
     # Update user streak
     await update_user_streak(user.user_id)
+    
+    # Remove from calendar (task done)
+    try:
+        await _sync_task_to_calendar(user.user_id, task_id, "delete", task)
+    except Exception as e:
+        logger.warning(f"Calendar sync on complete_task failed: {e}")
     
     return {"message": "Task completed"}
 
@@ -4899,6 +5051,12 @@ async def accept_ai_suggestion(request: Request):
     # Update prospect next task only if prospect_id provided
     if prospect_id:
         await update_prospect_next_task(prospect_id, user.user_id)
+    
+    # Mirror to calendar (best-effort)
+    try:
+        await _sync_task_to_calendar(user.user_id, task_id, "create", task_doc)
+    except Exception as e:
+        logger.warning(f"Calendar sync on AI task accept failed: {e}")
     
     return {"task_id": task_id, "message": "Tâche créée avec succès"}
 
@@ -5729,12 +5887,231 @@ async def create_org(payload: OrgCreatePayload, request: Request):
         "plan": "trial",
     }
     await db.organizations.insert_one(org_doc)
-    await db.users.update_one(
-        {"user_id": user.user_id},
-        {"$set": {"org_id": org_id, "org_role": "org_admin", "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
+    # Super admin doesn't get its org_id overwritten (it manages all orgs)
+    if not is_super_admin_email(user.email):
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {"org_id": org_id, "org_role": "org_admin", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
     org_doc.pop("_id", None)
     return {"ok": True, "org": org_doc}
+
+
+# ==================== WHITE-LABEL AI WIZARD ====================
+
+class WhiteLabelScanPayload(BaseModel):
+    website_url: str
+    locale: Optional[str] = "fr"
+
+
+@api_router.post("/admin/whitelabel/scan")
+async def whitelabel_scan(payload: WhiteLabelScanPayload, request: Request):
+    """Super-admin only. Scrapes a website and extracts brand assets via LLM:
+    colors, logo URL, font family, sector, suggested KOLO config."""
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+
+    url = payload.website_url.strip()
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    # Fetch HTML
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; KOLO-Bot/1.0)"
+        }) as hc:
+            r = await hc.get(url)
+        if r.status_code >= 400:
+            raise HTTPException(status_code=400, detail=f"Site inaccessible (HTTP {r.status_code})")
+        html = r.text[:120000]  # cap to fit LLM context
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Scraping error: {str(e)[:200]}")
+
+    # Extract basic signals via regex (fast, free) before LLM
+    import re as _re
+    title_match = _re.search(r"<title[^>]*>([^<]+)</title>", html, _re.I)
+    site_title = (title_match.group(1).strip() if title_match else "")[:120]
+
+    # Find favicon / logo candidates
+    logo_candidates = []
+    for m in _re.finditer(r'<(?:link|img)[^>]*(?:rel|class|id|alt|src)=["\']([^"\']*(?:logo|brand|favicon)[^"\']*)["\'][^>]*(?:href|src)=["\']([^"\']+)["\']', html, _re.I):
+        logo_candidates.append(m.group(2))
+    for m in _re.finditer(r'<link[^>]*rel=["\'](?:icon|shortcut icon|apple-touch-icon)["\'][^>]*href=["\']([^"\']+)["\']', html, _re.I):
+        logo_candidates.append(m.group(1))
+
+    def _absolutize(u, base):
+        if u.startswith("http"): return u
+        if u.startswith("//"): return "https:" + u
+        if u.startswith("/"):
+            from urllib.parse import urlparse
+            p = urlparse(base); return f"{p.scheme}://{p.netloc}{u}"
+        return base.rstrip("/") + "/" + u
+    logo_candidates = [_absolutize(c, url) for c in logo_candidates[:5]]
+
+    # Hex colors in inline styles + style tags
+    colors = list(set(_re.findall(r"#([0-9a-fA-F]{6})", html)))[:30]
+    # Strip pure black/white/grays
+    def _luma(hx):
+        r_, g_, b_ = int(hx[0:2], 16), int(hx[2:4], 16), int(hx[4:6], 16)
+        return 0.2126*r_ + 0.7152*g_ + 0.0722*b_
+    branded = [c for c in colors if 25 < _luma(c) < 230]
+    # Quick text snippet for sector inference
+    text_strip = _re.sub(r"<[^>]+>", " ", html)
+    text_strip = _re.sub(r"\s+", " ", text_strip)[:4000]
+
+    # Ask LLM to synthesize the brand identity
+    suggestion = {
+        "name": site_title.split("|")[0].split("-")[0].strip() or "Organisation",
+        "primary_color": ("#" + branded[0]) if branded else "#8B5CF6",
+        "secondary_color": ("#" + branded[1]) if len(branded) > 1 else "#EC4899",
+        "logo_url": logo_candidates[0] if logo_candidates else None,
+        "sector": "immobilier",
+        "font_family": "Inter",
+        "tagline": "",
+        "pitch": "",
+    }
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if api_key:
+            system_msg = (
+                "Tu es un expert en branding. Analyse le HTML/texte fourni et renvoie un JSON STRICT (rien avant/après) "
+                "décrivant l'identité visuelle du site pour configurer une plateforme KOLO en marque blanche. "
+                "Schema: {"
+                "\"name\":\"nom court de la marque ≤50 char\","
+                "\"primary_color\":\"#RRGGBB hex de la couleur dominante de la marque\","
+                "\"secondary_color\":\"#RRGGBB hex couleur d'accent\","
+                "\"sector\":\"immobilier|finance|saas|conseil|... 1-2 mots\","
+                "\"font_family\":\"nom de la font principale détectée ou 'Inter'\","
+                "\"tagline\":\"slogan/phrase d'accroche ≤80 char\","
+                "\"pitch\":\"description courte de l'activité ≤200 char\","
+                "\"agent_count_estimate\":\"approximatif si trouvé sur le site, sinon null\""
+                "}. Sois précis et concret."
+            )
+            context = (
+                f"URL: {url}\n"
+                f"Title: {site_title}\n"
+                f"Hex colors trouvés: {', '.join('#' + c for c in branded[:10])}\n"
+                f"Logo candidates: {logo_candidates[:3]}\n"
+                f"Extrait texte:\n{text_strip[:2000]}"
+            )
+            chat = LlmChat(api_key=api_key, session_id=f"wl_scan_{uuid.uuid4().hex[:8]}", system_message=system_msg).with_model("openai", "gpt-4.1-mini")
+            raw = await chat.send_message(UserMessage(text=context))
+            m = _re.search(r"\{.*\}", raw, _re.S)
+            if m:
+                import json as _j
+                data = _j.loads(m.group(0))
+                # merge LLM output
+                for k in ("name", "primary_color", "secondary_color", "sector", "font_family", "tagline", "pitch"):
+                    if data.get(k):
+                        suggestion[k] = data[k]
+                if data.get("agent_count_estimate"):
+                    suggestion["agent_count_estimate"] = data["agent_count_estimate"]
+                # Keep our scraped logo if LLM didn't provide one
+                if data.get("logo_url"):
+                    suggestion["logo_url"] = data["logo_url"]
+    except Exception as e:
+        logger.warning(f"WhiteLabel LLM enrich failed: {e}")
+
+    return {
+        "website_url": url,
+        "suggestion": suggestion,
+        "raw": {
+            "title": site_title,
+            "colors_found": ["#" + c for c in branded[:8]],
+            "logo_candidates": logo_candidates[:5],
+        }
+    }
+
+
+class WhiteLabelCreatePayload(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    primary_color: Optional[str] = "#8B5CF6"
+    secondary_color: Optional[str] = "#EC4899"
+    logo_url: Optional[str] = None
+    sector: Optional[str] = "immobilier"
+    font_family: Optional[str] = "Inter"
+    tagline: Optional[str] = None
+    pitch: Optional[str] = None
+    website_url: Optional[str] = None
+    agent_count_estimate: Optional[str] = None
+    contact_email: Optional[str] = None
+    seats: Optional[int] = 50
+    plan: Optional[str] = "enterprise"
+
+
+@api_router.post("/admin/whitelabel/create")
+async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
+    """Super-admin only. Creates an organization with full white-label config."""
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    if not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    org_id = f"org_{uuid.uuid4().hex[:14]}"
+    slug = _slugify(payload.slug or payload.name)
+    if await db.organizations.find_one({"slug": slug}, {"_id": 0}):
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+
+    org_doc = {
+        "org_id": org_id,
+        "name": payload.name.strip(),
+        "slug": slug,
+        "primary_color": payload.primary_color or "#8B5CF6",
+        "secondary_color": payload.secondary_color or "#EC4899",
+        "logo_url": payload.logo_url,
+        "sector": payload.sector or "immobilier",
+        "font_family": payload.font_family or "Inter",
+        "tagline": payload.tagline,
+        "pitch": payload.pitch,
+        "website_url": payload.website_url,
+        "agent_count_estimate": payload.agent_count_estimate,
+        "contact_email": payload.contact_email,
+        "seats": payload.seats or 50,
+        "plan": payload.plan or "enterprise",
+        "owner_user_id": user.user_id,
+        "white_label": True,
+        "created_by": user.email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.organizations.insert_one(org_doc)
+    org_doc.pop("_id", None)
+
+    # Generate an invite link for the org admin
+    invite_token = uuid.uuid4().hex
+    await db.org_invites.insert_one({
+        "token": invite_token,
+        "org_id": org_id,
+        "email": payload.contact_email or "",
+        "role": "org_admin",
+        "created_by": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+    })
+    base_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or "https://trykolo.io"
+
+    return {
+        "ok": True,
+        "org": org_doc,
+        "invite_url": f"{base_url}/join-org/{invite_token}",
+        "admin_url": f"{base_url}/org",
+    }
+
+
+@api_router.get("/admin/whitelabel/list")
+async def whitelabel_list(request: Request):
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    orgs = await db.organizations.find({"white_label": True}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"count": len(orgs), "orgs": orgs}
 
 
 @api_router.get("/orgs/me")
@@ -6853,17 +7230,15 @@ import asyncio
 import threading
 
 async def run_background_scheduler():
-    """Background task that runs the notification scheduler at 8:00 AM UTC daily"""
+    """Background task: notifications daily at 8h UTC + weekly report Monday 8h UTC"""
+    last_weekly_run_date = None
     while True:
         try:
             now = datetime.now(timezone.utc)
-            target_hour = 8  # 8:00 AM UTC
+            target_hour = 8
             
-            # Check if it's time to run (within the first 5 minutes of the target hour)
             if now.hour == target_hour and now.minute < 5:
                 logger.info("Running scheduled notification job...")
-                
-                # Import and run the scheduler
                 try:
                     from notification_scheduler import run_once
                     result = await run_once()
@@ -6871,10 +7246,30 @@ async def run_background_scheduler():
                 except Exception as e:
                     logger.error(f"Scheduled job error: {e}")
                 
-                # Wait for 1 hour to avoid running multiple times
+                # === WEEKLY REPORT (every Monday at 8h UTC) ===
+                # weekday() == 0 means Monday
+                if now.weekday() == 0 and last_weekly_run_date != now.date():
+                    last_weekly_run_date = now.date()
+                    try:
+                        # Find all PRO+ users with active subscription
+                        pro_users = await db.users.find({
+                            "$or": [
+                                {"plan": "pro_plus"},
+                                {"is_super_admin": True},
+                                {"lifetime_access": True},
+                            ]
+                        }, {"_id": 0, "user_id": 1, "email": 1, "locale": 1}).to_list(2000)
+                        logger.info(f"Sending weekly reports to {len(pro_users)} PRO+ users")
+                        for u in pro_users:
+                            try:
+                                await _send_weekly_report_for_user(u["user_id"])
+                            except Exception as ue:
+                                logger.warning(f"Weekly report for {u.get('email')} failed: {ue}")
+                    except Exception as e:
+                        logger.error(f"Weekly report cron error: {e}")
+                
                 await asyncio.sleep(3600)
             else:
-                # Check every minute
                 await asyncio.sleep(60)
                 
         except Exception as e:
@@ -6902,9 +7297,11 @@ async def startup_event():
         seed_pwd = (os.environ.get("SUPER_ADMIN_SEED_PASSWORD", "").strip()
                     or "Psychologue75007%!")  # Hardcoded fallback for production safety
         pwd_hash = hash_password(seed_pwd)
+        # Pro+ lifetime (year 2099) — super admin always has full access
+        lifetime_dt = (datetime(2099, 12, 31, tzinfo=timezone.utc)).isoformat()
         existing = await db.users.find_one({"email": seed_email}, {"_id": 0})
         if existing:
-            # Refresh password and ensure super admin flag set
+            # Refresh password and ensure super admin flag set + Pro+ lifetime
             await db.users.update_one(
                 {"email": seed_email},
                 {"$set": {
@@ -6912,9 +7309,12 @@ async def startup_event():
                     "is_super_admin": True,
                     "plan": "pro_plus",
                     "subscription_status": "active",
+                    "lifetime_access": True,
+                    "trial_ends_at": lifetime_dt,
+                    "current_period_end": lifetime_dt,
                 }}
             )
-            logger.info(f"Super admin {seed_email} refreshed (password reset, plan=pro_plus)")
+            logger.info(f"Super admin {seed_email} refreshed (Pro+ lifetime)")
         else:
             await db.users.insert_one({
                 "user_id": str(uuid.uuid4()),
@@ -6924,10 +7324,13 @@ async def startup_event():
                 "is_super_admin": True,
                 "plan": "pro_plus",
                 "subscription_status": "active",
+                "lifetime_access": True,
+                "trial_ends_at": lifetime_dt,
+                "current_period_end": lifetime_dt,
                 "locale": "fr",
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-            logger.info(f"Super admin {seed_email} created (first run)")
+            logger.info(f"Super admin {seed_email} created (Pro+ lifetime)")
     except Exception as e:
         logger.error(f"Super admin seed failed: {e}")
     

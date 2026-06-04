@@ -8,7 +8,10 @@ import {
   RefreshCw,
   Search,
   ChevronRight,
+  ArrowLeft,
+  Building2,
 } from 'lucide-react';
+import WhiteLabelTab from '../components/WhiteLabelTab';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 import '../styles/admin.css';
@@ -378,10 +381,22 @@ const AdminDashboard = () => {
           <span className="admin-brand-tag">Admin</span>
         </div>
 
+        {/* Back to app */}
+        <button
+          data-testid="admin-back-btn"
+          onClick={() => navigate('/app')}
+          className="admin-sidebar-item"
+          style={{ marginBottom: 8, opacity: 0.85 }}
+        >
+          <ArrowLeft size={16} strokeWidth={2} />
+          <span>Retour à l'app</span>
+        </button>
+
         <nav className="admin-nav">
           <SidebarItem testid="admin-nav-overview" icon={LayoutDashboard} label="Vue d'ensemble" active={tab === 'overview'} onClick={() => setTab('overview')} />
           <SidebarItem testid="admin-nav-leads" icon={Briefcase} label="Leads B2B" active={tab === 'leads'} onClick={() => setTab('leads')} />
           <SidebarItem testid="admin-nav-users" icon={UsersIcon} label="Utilisateurs" active={tab === 'users'} onClick={() => setTab('users')} />
+          <SidebarItem testid="admin-nav-whitelabel" icon={Building2} label="Marque blanche" active={tab === 'whitelabel'} onClick={() => setTab('whitelabel')} />
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -400,6 +415,7 @@ const AdminDashboard = () => {
         {tab === 'overview' && <Overview stats={stats} loading={statsLoading} onRefresh={loadStats} />}
         {tab === 'leads' && <Leads />}
         {tab === 'users' && <Users />}
+        {tab === 'whitelabel' && <WhiteLabelTab />}
       </main>
     </div>
   );
