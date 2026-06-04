@@ -11,9 +11,9 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 ## Core Stack
 - React frontend (`/app/frontend`, react-router 7)
-- FastAPI backend (`/app/backend/server.py` monolithe ~7.3k lignes + `/app/backend/routes/*.py`)
+- FastAPI backend (`/app/backend/server.py` monolithe ~7.4k lignes)
 - MongoDB (motor async)
-- Stripe (billing + crypto), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
+- Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
 ### Auth & Comptes
@@ -22,58 +22,71 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Apple Sign-In : placeholders (`APPLE_SIGNIN_ENABLED=false`).
 
 ### Pipeline Prospect
-- Statuts : **nouveau → contacté → qualifié → offre → offre_acceptée → signé → perdu** (incl. nouveau statut `offre_acceptee` ajouté en iter 31).
-- `Marquer comme vendu` : modale demande **commission initiale (prévue)** + **commission finale (perçue)**, sauvegarde les deux + commission_amount pour rétrocompat.
+- Statuts : **nouveau → contacté → qualifié → offre → offre_acceptée → signé → perdu**.
+- `Marquer comme vendu` : modale demande **commission initiale (prévue)** + **commission finale (perçue)**.
 
 ### Communication
 - ProspectCommsPanel : Call/WhatsApp/Calendar boutons + historique unifié, transcription Whisper.
-- **Today task list** : 4 boutons quick-action (Call, WhatsApp, Email, Calendar) toujours visibles inline sur les tâches liées à un prospect (P1 résolu en iter 30).
+- **Today task list** : 4 boutons quick-action (Call, WhatsApp, Email, Calendar) toujours visibles inline.
 
 ### Calendrier
-- Google Calendar + Microsoft Outlook auth-url, événements, sync bidirectionnelle Tâches ↔ Calendar via `_sync_task_to_calendar` (best-effort silencieux).
+- Google Calendar + Microsoft Outlook auth-url, événements, sync bidirectionnelle Tâches ↔ Calendar.
 
-### White-Label AI Wizard
-- POST `/api/admin/whitelabel/scan` (LLM scrape stripe.com/iadfrance.fr → extraction logo, couleurs, sector, tagline, pitch).
-- POST `/api/admin/whitelabel/create` (instance org + invite link).
-- GET `/api/admin/whitelabel/list`.
-- Admin Dashboard avec onglet « Marque blanche » + bouton « Retour à l'app » (`admin-back-btn`).
+### Marque Blanche complète (iter 32 — 4 lots)
+- **Lot 1 — Branding partout** : `OrgContext` charge `/api/orgs/me` au boot, injecte CSS vars (`--brand-primary/secondary/gradient/font/logo-url`) sur `<html>`. AppShell affiche le logo de l'org dans le header (`data-testid=appshell-org-logo`).
+- **Lot 2 — Funnel inscription brandé** : `/register?org=slug` et `/login?org=slug` chargent `/api/orgs/public/{slug}` (no auth) et affichent logo + tagline « X powered by KOLO ». Détection automatique aussi via sous-domaine.
+- **Lot 3 — Facturation B2B Stripe** : champs `seats`, `seats_used`, `monthly_price_per_seat_eur`, `billing_status` sur org. Endpoints :
+  - `GET /api/orgs/{id}/billing` → seats utilisés / restants + coût mensuel
+  - `POST /api/orgs/{id}/billing/checkout` → Stripe Subscription Checkout (price_data × quantity=seats)
+  - `POST /api/orgs/accept-invite/{token}` enforce les sièges → 402 « Toutes les places sont occupées (X/Y) »
+  - OrgSpace nouveau onglet « Facturation » (BillingTab) avec progress bar sièges + bouton « Payer avec Stripe »
+- **Lot 4 — Sous-domaine custom** : champ `custom_subdomain` sur les orgs. `GET /api/orgs/by-domain` (lit le Host header) + `GET /api/orgs/public/{slug-or-subdomain}` ($or query). WhiteLabelTab capture `wl-subdomain` lors de la création.
+
+### AI Wizard White-Label
+- POST `/api/admin/whitelabel/scan` (LLM scrape → couleurs, logo, sector, tagline, pitch).
+- POST `/api/admin/whitelabel/create` (instance + invite + sous-domaine + tarif).
+- Aperçu inscription brandée en 1 clic depuis le wizard (`wl-preview-brand` ouvre `/register?org=slug`).
 
 ### Rapports automatiques
-- Helper `_send_weekly_report_for_user(user_id)` (refactor iter 31, F821 fixé).
-- Endpoint POST `/api/reports/weekly` + scheduler background (Monday 8h UTC) qui envoie aux users PRO+/super_admin/lifetime.
-- Email HTML pointe vers `${FRONTEND_URL}/app` = `https://trykolo.io/app` (fix iter 31, plus de `kolo.app/app`).
+- Helper `_send_weekly_report_for_user(user_id)` + scheduler background (Monday 8h UTC).
+- Email HTML pointe vers `${FRONTEND_URL}/app` = `https://trykolo.io/app`.
 
 ### Onboarding
 - 6 étapes (Welcome → How → **Permissions** → Import → Theme → Ready).
-- Step 3 Permissions premium : 3 cartes (Mic/Calendar/Notif) avec demandes natives propres + `Shield`/privacy notice.
+- Step 3 Permissions premium : 3 cartes (Mic/Calendar/Notif) + Shield/privacy notice.
 
 ### IA
 - ProspectScoreRing + IA Suggested Task (modale glassmorphism).
-- VoiceDictateButton (Whisper) intégré dans toutes les textareas (notes, WA, agenda desc).
+- VoiceDictateButton (Whisper) intégré dans toutes les textareas.
 
 ### i18n
 - FR/EN/DE/IT pour OnboardingFlow, SocialAuthButtons, ProspectCommsPanel, MarkAsSoldButton.
-- Bug iter 29 (dividerLabel hardcoded FR) corrigé.
 
 ## Backlog (prioritized)
 ### P1
 - Apple Sign-In réel (clé dev disponible `460ed08b...`).
-- Refactor monolithe `server.py` → `routes/*.py` (admin, whitelabel, reports, integrations).
-- Passe i18n exhaustive (autres textes FR hardcodés).
+- Refactor monolithe `server.py` → `routes/whitelabel.py`, `routes/billing.py`, `routes/reports.py`.
+- Passe i18n exhaustive (textes FR encore hardcodés).
+- Whitelist `success_url/cancel_url` pour `OrgBillingCheckoutPayload` (sécurité Stripe redirect).
+- Renommer `monthly_price_per_seat_eur` → `monthly_price_per_seat_cents` (noms cohérents avec les valeurs).
 
 ### P2
-- Rate limiting Resend pour scheduler hebdo lors de scaling > 100 users PRO+.
-- Enum strict pour `UpdateProspectRequest.status` (Literal pour forward safety).
+- Race condition seats_used (concurrent accept-invite) — verrou ou transaction.
+- Rate-limit Resend pour le scheduler hebdo lors du scaling > 100 PRO+.
+- Enum strict `Literal[...]` pour `UpdateProspectRequest.status`.
 - Source unique pour `PROSPECT_STATUSES` (actuellement dupliqué dans `AppShell.js`).
+- Apple Calendar (CaldAV).
 
 ## Testing checkpoints
 - iter 28: i18n + integrations
 - iter 29: divider bug + locale persistence
 - iter 30: whitelabel + scheduler + super-admin pro+ + permissions step
 - iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
+- iter 32: 4 lots marque blanche (branding partout + funnel brandé + billing B2B + sous-domaine)
 
 ## Critical info
 - **Réponse FR exclusive** dans toutes les interactions agent.
 - **REACT_APP_BACKEND_URL** (preview) = `https://responsive-kolo.preview.emergentagent.com`
 - **FRONTEND_URL** (prod) = `https://trykolo.io`
 - Le scheduler tourne dans un thread async daemon initialisé au startup FastAPI.
+- L'org de test `iad-demo` (custom_subdomain=`iad`) ne doit pas être supprimée — fixture de branding pour les tests UI.
