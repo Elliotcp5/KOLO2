@@ -41,14 +41,66 @@ const LoginPage = () => {
       
       if (xhr.status === 200 && data.token) {
         localStorage.setItem('kolo_token', data.token);
-        login({
-          user_id: data.user_id,
-          email: data.email,
-          subscription_status: data.subscription_status,
-          trial_ends_at: data.trial_ends_at,
-          token: data.token
-        });
-        window.location.href = '/app';
+        // Fetch full user info via /auth/me BEFORE redirect so AuthContext
+        // has plan + is_super_admin and ProtectedRoute won't bounce us back.
+        try {
+          const meXhr = new XMLHttpRequest();
+          meXhr.open('GET', `${API_BASE}/api/auth/me`, true);
+          meXhr.setRequestHeader('Authorization', `Bearer ${data.token}`);
+          meXhr.onload = function() {
+            try {
+              const fullUser = JSON.parse(meXhr.responseText);
+              if (meXhr.status === 200 && fullUser) {
+                login({ ...fullUser, token: data.token });
+              } else {
+                login({
+                  user_id: data.user_id,
+                  email: data.email,
+                  subscription_status: data.subscription_status,
+                  trial_ends_at: data.trial_ends_at,
+                  token: data.token
+                });
+              }
+            } catch {
+              login({
+                user_id: data.user_id,
+                email: data.email,
+                subscription_status: data.subscription_status,
+                trial_ends_at: data.trial_ends_at,
+                token: data.token
+              });
+            }
+            // Use navigate (SPA) so React state survives — fallback to full
+            // redirect after a tick in case the router is misconfigured.
+            try { navigate('/app', { replace: true }); } catch (_) {}
+            setTimeout(() => {
+              if (window.location.pathname !== '/app') {
+                window.location.replace('/app');
+              }
+            }, 250);
+          };
+          meXhr.onerror = function() {
+            // Network blip on /auth/me — fall back to minimal login + reload
+            login({
+              user_id: data.user_id,
+              email: data.email,
+              subscription_status: data.subscription_status,
+              trial_ends_at: data.trial_ends_at,
+              token: data.token
+            });
+            window.location.replace('/app');
+          };
+          meXhr.send();
+        } catch {
+          login({
+            user_id: data.user_id,
+            email: data.email,
+            subscription_status: data.subscription_status,
+            trial_ends_at: data.trial_ends_at,
+            token: data.token
+          });
+          window.location.replace('/app');
+        }
       } else {
         // Handle specific error messages
         const errorMessage = data.detail || '';

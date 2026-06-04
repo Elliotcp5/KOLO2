@@ -40,10 +40,11 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('kolo_token');
-    // Always try /auth/me first — it works with cookie OR Bearer
+    // If we have a Bearer token, skip cookie credentials to avoid CORS issues
+    // with allow_origins=* (the browser rejects credentials with wildcard).
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        credentials: 'include',
+        credentials: token ? 'omit' : 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       
