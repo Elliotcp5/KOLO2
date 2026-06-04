@@ -95,6 +95,13 @@ export const LocaleProvider = ({ children }) => {
     setLocale(supportedLocale);
     if (!userChangedLang) localStorage.setItem('kolo_locale', supportedLocale);
 
+    // If locale was set via URL param, persist it as a manual choice so it survives
+    // post-login redirects (which strip query strings).
+    if (localeOverride && ['en', 'fr', 'de', 'it'].includes(localeOverride)) {
+      localStorage.setItem('kolo_locale', localeOverride);
+      localStorage.setItem('kolo_locale_manual', 'true');
+    }
+
     if (guessedRegion) {
       setCountry(guessedRegion);
       if (!userChangedCurrency) {

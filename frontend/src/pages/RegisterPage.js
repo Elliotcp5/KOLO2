@@ -430,7 +430,7 @@ const RegisterPage = () => {
             )}
           </button>
 
-          <SocialAuthButtons dividerLabel="ou s'inscrire avec" mode="register" />
+          <SocialAuthButtons mode="register" />
         </form>
 
         {/* Legal — required by Apple 3.1.2(c): Terms (EULA) + Privacy accessible before sign-up */}

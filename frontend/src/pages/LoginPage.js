@@ -299,7 +299,7 @@ const LoginPage = () => {
             )}
           </button>
 
-          <SocialAuthButtons dividerLabel="ou continuer avec" />
+          <SocialAuthButtons />
         </form>
 
         {/* Footer */}

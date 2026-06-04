@@ -157,10 +157,15 @@ const useTr = () => {
 
 const auth = () => { const t = localStorage.getItem('kolo_token'); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
-const formatDate = (iso) => {
+const LOCALE_MAP_DATE = { fr: 'fr-FR', en: 'en-US', de: 'de-DE', it: 'it-IT' };
+
+const formatDate = (iso, locale = 'fr') => {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
-  catch { return '—'; }
+  try {
+    return new Date(iso).toLocaleString(LOCALE_MAP_DATE[locale] || 'en-US', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return '—'; }
 };
 
 const formatDuration = (s) => {
@@ -282,14 +287,14 @@ const PostCallModal = ({ prospect, phoneCalled, onClose, onSaved }) => {
 // Call detail modal (transcript + audio + notes)
 // ===========================================================================
 const CallDetailModal = ({ call, onClose }) => {
-  const { tr } = useTr();
+  const { tr, locale } = useTr();
   return (
   <div className="kolo-modal-backdrop kolo-glass-backdrop" onClick={onClose}>
     <div className="kolo-comm-modal kolo-glass-modal" onClick={(e) => e.stopPropagation()} data-testid="call-detail-modal">
       <div className="kolo-comm-modal-header">
         <div>
           <h2>{tr.detailTitle}</h2>
-          <p>{formatDate(call.created_at)} · {formatDuration(call.duration_sec)}</p>
+          <p>{formatDate(call.created_at, locale)} · {formatDuration(call.duration_sec)}</p>
         </div>
         <button onClick={onClose} className="kolo-comm-close-btn"><X size={18} /></button>
       </div>
@@ -530,7 +535,7 @@ const AddToCalendarModal = ({ prospect, providers, onClose, onSaved }) => {
 // Main panel — unified timeline + integrated CTAs
 // ===========================================================================
 const ProspectCommsPanel = ({ prospect }) => {
-  const { tr } = useTr();
+  const { tr, locale } = useTr();
   const [history, setHistory] = useState([]);
   const [callsCount, setCallsCount] = useState(0);
   const [waCount, setWaCount] = useState(0);
@@ -643,7 +648,7 @@ const ProspectCommsPanel = ({ prospect }) => {
                             <Mic size={11} style={{ marginLeft: 6, opacity: 0.7, verticalAlign: 'middle' }} aria-label="Transcribed" />
                           )}
                         </div>
-                        <span className="kolo-comm-time">{formatDate(item.created_at)}</span>
+                        <span className="kolo-comm-time">{formatDate(item.created_at, locale)}</span>
                       </div>
                       {item.notes && <div className="kolo-comm-text">{item.notes.slice(0, 140)}{item.notes.length > 140 ? '…' : ''}</div>}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
@@ -665,7 +670,7 @@ const ProspectCommsPanel = ({ prospect }) => {
                   <div className="kolo-comm-body">
                     <div className="kolo-comm-head">
                       <div className="kolo-comm-title">{tr.wa2} · {isInbound ? tr.recv : tr.sent2}</div>
-                      <span className="kolo-comm-time">{formatDate(item.created_at)}</span>
+                      <span className="kolo-comm-time">{formatDate(item.created_at, locale)}</span>
                     </div>
                     {item.body && (
                       <div className="kolo-comm-text">
