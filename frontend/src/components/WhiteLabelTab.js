@@ -25,6 +25,7 @@ const WhiteLabelTab = () => {
     logo_url: '', sector: 'immobilier', font_family: 'Inter',
     tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise',
     custom_subdomain: '', monthly_price_per_seat_eur: 1900,
+    billing_country: 'FR',
   });
   const [createdOrg, setCreatedOrg] = useState(null);
 
@@ -86,7 +87,7 @@ const WhiteLabelTab = () => {
 
   const reset = () => {
     setStep(1); setWebsiteUrl(''); setScan(null); setCreatedOrg(null);
-    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise', custom_subdomain: '', monthly_price_per_seat_eur: 1900 });
+    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise', custom_subdomain: '', monthly_price_per_seat_eur: 1900, billing_country: 'FR' });
   };
 
   return (
@@ -186,6 +187,10 @@ const WhiteLabelTab = () => {
               <div style={{ gridColumn: '1/-1' }}><Field label="Tagline" value={config.tagline} onChange={(v) => setConfig({ ...config, tagline: v })} testid="wl-tagline" /></div>
               <div style={{ gridColumn: '1/-1' }}><Field label="Pitch / présentation courte" value={config.pitch} onChange={(v) => setConfig({ ...config, pitch: v })} testid="wl-pitch" multiline /></div>
             </div>
+
+            {/* Récapitulatif facturation TTC/HT */}
+            <PriceSummary config={config} setConfig={setConfig} />
+
             <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
               <button onClick={() => setStep(1)} className="admin-btn">Retour</button>
               <button
@@ -339,5 +344,122 @@ const FontSelect = ({ label, value, onChange, testid }) => (
     </select>
   </label>
 );
+
+// VAT rates by country (EU + main European markets). Values are %.
+const VAT_RATES = [
+  { code: 'FR', label: '🇫🇷 France', vat: 20 },
+  { code: 'BE', label: '🇧🇪 Belgique', vat: 21 },
+  { code: 'LU', label: '🇱🇺 Luxembourg', vat: 17 },
+  { code: 'CH', label: '🇨🇭 Suisse', vat: 8.1 },
+  { code: 'MC', label: '🇲🇨 Monaco', vat: 20 },
+  { code: 'DE', label: '🇩🇪 Allemagne', vat: 19 },
+  { code: 'ES', label: '🇪🇸 Espagne', vat: 21 },
+  { code: 'IT', label: '🇮🇹 Italie', vat: 22 },
+  { code: 'PT', label: '🇵🇹 Portugal', vat: 23 },
+  { code: 'NL', label: '🇳🇱 Pays-Bas', vat: 21 },
+  { code: 'GB', label: '🇬🇧 Royaume-Uni', vat: 20 },
+  { code: 'IE', label: '🇮🇪 Irlande', vat: 23 },
+  { code: 'AT', label: '🇦🇹 Autriche', vat: 20 },
+  { code: 'DK', label: '🇩🇰 Danemark', vat: 25 },
+  { code: 'SE', label: '🇸🇪 Suède', vat: 25 },
+  { code: 'FI', label: '🇫🇮 Finlande', vat: 24 },
+  { code: 'PL', label: '🇵🇱 Pologne', vat: 23 },
+  { code: 'CZ', label: '🇨🇿 République tchèque', vat: 21 },
+  { code: 'OTHER', label: '🌍 Hors UE / Autres', vat: 0 },
+];
+
+const fmtEur = (cents) => {
+  const eur = (cents || 0) / 100;
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(eur);
+};
+
+const PriceSummary = ({ config, setConfig }) => {
+  const seats = Number(config.seats || 0);
+  const pricePerSeatCents = Number(config.monthly_price_per_seat_eur || 0); // stored in cents
+  const country = VAT_RATES.find((c) => c.code === (config.billing_country || 'FR')) || VAT_RATES[0];
+  const vatPct = country.vat;
+  const htCents = seats * pricePerSeatCents;
+  const vatCents = Math.round((htCents * vatPct) / 100);
+  const ttcCents = htCents + vatCents;
+
+  const hasValues = seats > 0 && pricePerSeatCents > 0;
+
+  return (
+    <div
+      data-testid="wl-price-summary"
+      style={{
+        marginTop: 20,
+        padding: 18,
+        borderRadius: 14,
+        border: '1px solid rgba(139,92,246,0.25)',
+        background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(236,72,153,0.05))',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(220px, 1fr) 1fr 1fr',
+        gap: 16,
+        alignItems: 'center',
+      }}
+    >
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--ink-mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pays de facturation</span>
+        <select
+          data-testid="wl-country"
+          value={config.billing_country || 'FR'}
+          onChange={(e) => setConfig({ ...config, billing_country: e.target.value })}
+          style={{
+            padding: '10px 12px',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            fontSize: 13,
+            background: 'var(--bg)',
+            color: 'var(--ink)',
+            cursor: 'pointer',
+            appearance: 'none',
+            backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 10px center',
+            backgroundSize: '14px',
+            paddingRight: 32,
+          }}
+        >
+          {VAT_RATES.map((c) => (
+            <option key={c.code} value={c.code}>{c.label} · TVA {c.vat}%</option>
+          ))}
+        </select>
+        <span style={{ fontSize: 11, color: 'var(--ink-mid)', marginTop: 2 }}>
+          {seats > 0 && pricePerSeatCents > 0
+            ? `${seats} sièges × ${fmtEur(pricePerSeatCents)}`
+            : 'Renseignez sièges + prix au-dessus'}
+        </span>
+      </label>
+
+      <div style={{ textAlign: 'center' }} data-testid="wl-price-ht">
+        <div style={{ fontSize: 11, color: 'var(--ink-mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Prix HT / mois</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--ink)' }}>
+          {hasValues ? fmtEur(htCents) : '—'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--ink-mid)', marginTop: 2 }}>hors taxes</div>
+      </div>
+
+      <div
+        style={{
+          textAlign: 'center',
+          padding: '12px 14px',
+          borderRadius: 10,
+          background: 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(20,184,166,0.08))',
+          border: '1px solid rgba(34,197,94,0.25)',
+        }}
+        data-testid="wl-price-ttc"
+      >
+        <div style={{ fontSize: 11, color: '#15803D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Prix TTC / mois</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: '#15803D' }}>
+          {hasValues ? fmtEur(ttcCents) : '—'}
+        </div>
+        <div style={{ fontSize: 11, color: '#15803D', marginTop: 2 }}>
+          {vatPct > 0 ? `incl. TVA ${vatPct}% (${fmtEur(vatCents)})` : 'hors UE — TVA non appliquée'}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default WhiteLabelTab;

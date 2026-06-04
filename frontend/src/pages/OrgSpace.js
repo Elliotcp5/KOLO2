@@ -19,7 +19,6 @@ const authHeaders = () => {
 
 const api = async (path, options = {}) => {
   const resp = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
     ...options,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) },
   });

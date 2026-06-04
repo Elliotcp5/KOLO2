@@ -1,0 +1,40 @@
+{
+  "summary": "ITER 34 — CORS cleanup + billing_country + PriceSummary GREEN. Backend pytest 8/8 PASS (new iter_34) + 6/6 iter_33 regression PASS. Frontend Playwright ALL checks pass: PriceSummary component (wl-price-summary, wl-country with 19 options, wl-price-ht, wl-price-ttc) renders correctly on step 2 of WhiteLabel wizard. FR/BE/LU VAT switching verified: 50 sièges × 19€ = 950€ HT → FR(20%)=1140€ TTC, BE(21%)=1149,50€ TTC, LU(17%)=1111,50€ TTC. HT stays constant when country changes. Backend POST /api/admin/whitelabel/create accepts billing_country='BE' and persists it; GET /api/admin/whitelabel/list returns it correctly. Default 'FR' applied when omitted. All Bearer-token auth flows still work after credentials:'include' removal: login (200+token), /auth/me (200+email), /admin/check (200), /auth/logout (200). accept-invite regression returns clean 4xx for invalid token (no 5xx).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/whitelabel/scan", "issue": "AI scan can take 30-45s on iadfrance.fr (no regression, observed in iter 33 too)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_34.py",
+    "/app/test_reports/pytest/iteration_34_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AuthContext.js line 47 still has `credentials: token ? 'omit' : 'include'` — this is acceptable as a fallback for OAuth cookie-session path on first /auth/me call when no Bearer token exists. Total credentials:'include' occurrences in src/ went from 7 to 1 (only this fallback remains).",
+    "WhiteLabelTab.js PriceSummary is well-isolated component (~lines 376-463), VAT_RATES properly typed (19 entries with code/label/vat fields), VAT calculation in cents (Math.round to avoid FP drift) — clean implementation.",
+    "Same recurring observation as iter_28+/33: /app/backend/server.py exceeds 7400 lines — splitting whitelabel + billing + branding into routers/whitelabel.py would improve maintainability.",
+    "monthly_price_per_seat_eur field name misleading (stored in cents) — same observation as iter_32/33.",
+    "billing_country has no Pydantic validation (any 2-letter code accepted) — could be tightened to enum of allowed ISO-2 codes matching VAT_RATES on backend. Low priority since UI controls the input."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_34.py (NEW)",
+    "/app/test_reports/iteration_34.json (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 new + 6/6 iter_33 regression = 14/14)",
+    "frontend": "100% — PriceSummary on step 2 of WhiteLabel wizard: 19 country options including FR/BE/LU/CH/DE; FR 950€/1140€, BE 950€/1149,50€, LU 950€/1111,50€ TTC verified; HT constant on country change; super admin login + Bearer-only auth path works"
+  },
+  "test_credentials": "Super admin elliot.cohenpressard@trykolo.io / Psychologue75007%! works. Token returned at top-level of /api/auth/login response (not nested under user).",
+  "seed_data_creation": "iter_34 creates 2 short-lived orgs (audit-bc-* with billing_country=BE, audit-bc-fr-* with default FR) per pytest run, auto-cleaned via class-scoped fixture teardown.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter_34 GREEN. To re-test: `pytest /app/backend/tests/test_iteration_34.py /app/backend/tests/test_iteration_33.py -v` (≤8s for the iter_34 set, +6s for iter_33 AI scan). For frontend probe: login as super admin → /kolo-admin → Marque blanche tab → fill whitelabel-url-input with https://www.iadfrance.fr → click whitelabel-scan-btn → wait 30-60s for AI scan → step 2 wizard shows wl-price-summary with wl-country/wl-price-ht/wl-price-ttc. Field component renders <input data-testid={testid}> directly so fill via [data-testid='wl-seats'] (no nested input selector). The login response contains token+email at top-level (NOT nested under .user — adjusted assertion accordingly).",
+  "rca of the issue": "NO BUGS. Backend WhiteLabelCreatePayload.billing_country (Optional[str]='FR') on line 6012 is correctly persisted at line 6048 as .upper(). Frontend PriceSummary at lines 376-463 of WhiteLabelTab.js calculates: htCents=seats*pricePerSeatCents, vatCents=Math.round(htCents*vatPct/100), ttcCents=htCents+vatCents — all values match expected output. VAT_RATES array (line 349) has exactly 19 entries with the 5 key countries the problem statement requires (FR=20, BE=21, LU=17, CH=8.1, DE=19). CORS cleanup verified: 7 credentials:'include' → 1 remaining in AuthContext.js line 47 as legitimate OAuth fallback when no Bearer token exists. All 4 auth flows (login/me/logout/admin-check) work with Bearer-only."
+}

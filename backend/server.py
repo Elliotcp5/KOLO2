@@ -6009,6 +6009,7 @@ class WhiteLabelCreatePayload(BaseModel):
     plan: Optional[str] = "enterprise"
     custom_subdomain: Optional[str] = None
     monthly_price_per_seat_eur: Optional[int] = 1900  # in cents
+    billing_country: Optional[str] = "FR"  # ISO-2 country code for VAT
 
 
 @api_router.post("/admin/whitelabel/create")
@@ -6044,6 +6045,7 @@ async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
         "plan": payload.plan or "enterprise",
         "custom_subdomain": (payload.custom_subdomain or "").strip().lower() or None,
         "monthly_price_per_seat_eur": payload.monthly_price_per_seat_eur or 1900,
+        "billing_country": (payload.billing_country or "FR").upper(),
         "billing_status": "trialing",  # trialing | active | past_due | canceled
         "owner_user_id": user.user_id,
         "white_label": True,

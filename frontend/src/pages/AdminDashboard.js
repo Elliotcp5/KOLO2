@@ -39,7 +39,6 @@ const authHeaders = () => {
 
 const fetchAdmin = async (path) => {
   const resp = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
     headers: authHeaders(),
   });
   if (!resp.ok) throw new Error(`Failed: ${path}`);
@@ -143,7 +142,6 @@ const Leads = () => {
     try {
       const resp = await fetch(`${API_URL}/api/admin/leads/${leadId}`, {
         method: 'PATCH',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload),
       });

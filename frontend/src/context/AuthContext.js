@@ -82,7 +82,6 @@ export const AuthProvider = ({ children }) => {
   const processOAuthSession = async (sessionId) => {
     const response = await fetch(`${API_URL}/api/auth/session`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId })
     });
@@ -90,11 +89,18 @@ export const AuthProvider = ({ children }) => {
       throw new Error('OAuth session exchange failed');
     }
     const userData = await response.json();
+    // Persist the token so subsequent calls authenticate via Bearer (no cookies)
+    if (userData.token) {
+      localStorage.setItem('kolo_token', userData.token);
+    }
     setUser(userData);
     setIsAuthenticated(true);
     // Immediately fetch the full /auth/me payload so we have plan/super admin info
     try {
-      const meResp = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+      const token = userData.token || localStorage.getItem('kolo_token');
+      const meResp = await fetch(`${API_URL}/api/auth/me`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (meResp.ok) {
         const fullUser = await meResp.json();
         setUser(fullUser);
@@ -108,7 +114,6 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
-        credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
     } catch (e) {
@@ -347,7 +352,6 @@ export const SuperAdminRoute = ({ children }) => {
       try {
         const token = localStorage.getItem('kolo_token');
         const resp = await fetch(`${API_URL}/api/admin/check`, {
-          credentials: 'include',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (resp.ok) {
