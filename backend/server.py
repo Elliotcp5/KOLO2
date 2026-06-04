@@ -6186,20 +6186,79 @@ async def invite_to_org(org_id: str, payload: OrgInvitePayload, request: Request
     return {"ok": True, "invite": invite, "accept_url": f"/org/join/{token}"}
 
 
+@api_router.get("/orgs/invite/{token}")
+async def get_invite_info(token: str, request: Request):
+    """Inspect an invite without consuming it. Returns 200 with status info so the UI
+    can show a clear message (already accepted, expired, already member, or ready to accept)."""
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+
+    invite = await db.org_invites.find_one({"token": token}, {"_id": 0})
+    if not invite:
+        return {"found": False}
+
+    org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
+    if not org:
+        return {"found": False}
+
+    expired = False
+    expires_at = invite.get("expires_at")
+    if expires_at:
+        ed = datetime.fromisoformat(expires_at) if isinstance(expires_at, str) else expires_at
+        if ed.tzinfo is None:
+            ed = ed.replace(tzinfo=timezone.utc)
+        expired = ed < datetime.now(timezone.utc)
+
+    you_are_member = user_doc.get("org_id") == invite["org_id"]
+    you_are_in_other_org = bool(user_doc.get("org_id")) and not you_are_member
+    other_org_name = None
+    if you_are_in_other_org:
+        other = await db.organizations.find_one({"org_id": user_doc["org_id"]}, {"_id": 0, "name": 1})
+        other_org_name = (other or {}).get("name")
+
+    return {
+        "found": True,
+        "accepted": bool(invite.get("accepted")),
+        "expired": expired,
+        "you_are_member": you_are_member,
+        "you_are_in_other_org": you_are_in_other_org,
+        "other_org_name": other_org_name,
+        "org": {
+            "org_id": org.get("org_id"),
+            "name": org.get("name"),
+            "logo_url": org.get("logo_url"),
+            "primary_color": org.get("primary_color"),
+            "tagline": org.get("tagline"),
+        },
+        "role": invite.get("role"),
+        "expires_at": expires_at,
+    }
+
+
 @api_router.post("/orgs/accept-invite/{token}")
 async def accept_org_invite(token: str, request: Request):
     user = await require_auth(request)
-    invite = await db.org_invites.find_one({"token": token, "accepted": False}, {"_id": 0})
+    # Look up the invite regardless of acceptance state so we can be idempotent
+    invite = await db.org_invites.find_one({"token": token}, {"_id": 0})
     if not invite:
-        raise HTTPException(status_code=404, detail="Invitation not found or already accepted")
+        raise HTTPException(status_code=404, detail="Invitation introuvable. Demande à l'admin de te renvoyer un nouveau lien.")
+
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    # IDEMPOTENT: if user is already a member of THIS org, treat as success.
+    if user_doc.get("org_id") == invite["org_id"]:
+        org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
+        return {"ok": True, "already_member": True, "org": org, "role": user_doc.get("org_role") or invite.get("role")}
+
+    if invite.get("accepted"):
+        raise HTTPException(status_code=410, detail="Cette invitation a déjà été utilisée. Demande à l'admin un nouveau lien.")
+
     expires_at = invite.get("expires_at")
     if expires_at:
         ed = datetime.fromisoformat(expires_at) if isinstance(expires_at, str) else expires_at
         if ed.tzinfo is None: ed = ed.replace(tzinfo=timezone.utc)
         if ed < datetime.now(timezone.utc):
-            raise HTTPException(status_code=400, detail="Invitation expired")
+            raise HTTPException(status_code=410, detail="Cette invitation a expiré. Demande à l'admin un nouveau lien.")
 
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
     if user_doc.get("org_id") and user_doc.get("org_id") != invite["org_id"]:
         # Look up the existing org for a nicer error message
         existing = await db.organizations.find_one({"org_id": user_doc["org_id"]}, {"_id": 0, "name": 1})
@@ -6211,16 +6270,15 @@ async def accept_org_invite(token: str, request: Request):
 
     # ===== SEATS ENFORCEMENT =====
     org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
-    if org:
-        seats_max = int(org.get("seats") or 0)
-        seats_used = await db.users.count_documents({"org_id": invite["org_id"]})
-        # If user is already member (re-accepting), don't count again
-        already_member = user_doc.get("org_id") == invite["org_id"]
-        if seats_max > 0 and not already_member and seats_used >= seats_max:
-            raise HTTPException(
-                status_code=402,
-                detail=f"Toutes les places de l'organisation sont occupées ({seats_used}/{seats_max}). Contactez l'admin pour augmenter les sièges.",
-            )
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable.")
+    seats_max = int(org.get("seats") or 0)
+    seats_used = await db.users.count_documents({"org_id": invite["org_id"]})
+    if seats_max > 0 and seats_used >= seats_max:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Toutes les places de l'organisation sont occupées ({seats_used}/{seats_max}). Contactez l'admin pour augmenter les sièges.",
+        )
 
     await db.users.update_one(
         {"user_id": user.user_id},
