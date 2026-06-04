@@ -177,7 +177,7 @@ const WhiteLabelTab = () => {
               <Field label="Secteur" value={config.sector} onChange={(v) => setConfig({ ...config, sector: v })} testid="wl-sector" />
               <Field label="Couleur primaire" value={config.primary_color} onChange={(v) => setConfig({ ...config, primary_color: v })} type="color" testid="wl-primary" />
               <Field label="Couleur secondaire" value={config.secondary_color} onChange={(v) => setConfig({ ...config, secondary_color: v })} type="color" testid="wl-secondary" />
-              <Field label="Police" value={config.font_family} onChange={(v) => setConfig({ ...config, font_family: v })} testid="wl-font" />
+              <FontSelect label="Police" value={config.font_family} onChange={(v) => setConfig({ ...config, font_family: v })} testid="wl-font" />
               <Field label="Logo URL" value={config.logo_url} onChange={(v) => setConfig({ ...config, logo_url: v })} testid="wl-logo" />
               <Field label="Email contact admin" value={config.contact_email} onChange={(v) => setConfig({ ...config, contact_email: v })} type="email" testid="wl-email" />
               <Field label="Sièges (collaborateurs)" value={config.seats} onChange={(v) => setConfig({ ...config, seats: parseInt(v) || 0 })} type="number" testid="wl-seats" />
@@ -243,17 +243,24 @@ const WhiteLabelTab = () => {
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={reset} className="admin-btn" data-testid="wl-create-another">Créer une autre marque blanche</button>
+            <button
+              onClick={() => { navigator.clipboard.writeText(createdOrg.invite_url); toast.success('Lien copié'); }}
+              data-testid="wl-copy-invite-btn"
+              className="admin-btn"
+              style={{ background: 'rgba(139,92,246,0.1)', color: '#6D28D9', border: '1px solid rgba(139,92,246,0.3)' }}
+            >
+              <Copy size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Copier le lien d'invitation
+            </button>
             <a
               href={`/register?org=${createdOrg.org.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               data-testid="wl-preview-brand"
-              className="admin-btn"
-              style={{ background: 'rgba(139,92,246,0.1)', color: '#6D28D9', border: '1px solid rgba(139,92,246,0.3)' }}
+              className="org-btn-primary"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)' }}
             >
-              Aperçu inscription brandée
+              <Sparkles size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Aperçu inscription brandée
             </a>
-            <a href="/org" className="org-btn-primary" style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)' }}>Voir l'espace</a>
           </div>
         </div>
       )}
@@ -278,6 +285,58 @@ const Field = ({ label, value, onChange, type = 'text', testid, multiline = fals
       <input data-testid={testid} type={type} value={value || ''} onChange={(e) => onChange(e.target.value)}
         style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg)' }} />
     )}
+  </label>
+);
+
+// Curated premium font list (web-safe + Google Fonts loaded in landing.css)
+const FONT_OPTIONS = [
+  { value: 'Inter', label: 'Inter — neutre moderne' },
+  { value: 'Poppins', label: 'Poppins — friendly & rond' },
+  { value: 'Montserrat', label: 'Montserrat — élégant' },
+  { value: 'Manrope', label: 'Manrope — geometric' },
+  { value: 'DM Sans', label: 'DM Sans — minimal' },
+  { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans — premium' },
+  { value: 'Space Grotesk', label: 'Space Grotesk — tech' },
+  { value: 'Outfit', label: 'Outfit — variable contemporain' },
+  { value: 'Roboto', label: 'Roboto — corporate' },
+  { value: 'Lato', label: 'Lato — humaniste' },
+  { value: 'Nunito', label: 'Nunito — arrondi doux' },
+  { value: 'Work Sans', label: 'Work Sans — éditorial' },
+  { value: 'Playfair Display', label: 'Playfair Display — serif chic (titres)' },
+  { value: 'Lora', label: 'Lora — serif éditorial' },
+  { value: 'Merriweather', label: 'Merriweather — serif premium' },
+  { value: 'SF Pro Display', label: 'SF Pro — Apple system' },
+  { value: 'system-ui', label: 'System UI — natif OS' },
+];
+
+const FontSelect = ({ label, value, onChange, testid }) => (
+  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <span style={{ fontSize: 11, color: 'var(--ink-mid)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+    <select
+      data-testid={testid}
+      value={value || 'Inter'}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        padding: '10px 12px',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        fontSize: 13,
+        fontFamily: value || 'Inter',
+        background: 'var(--bg)',
+        color: 'var(--ink)',
+        cursor: 'pointer',
+        appearance: 'none',
+        backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 12px center',
+        backgroundSize: '14px',
+        paddingRight: 36,
+      }}
+    >
+      {FONT_OPTIONS.map((f) => (
+        <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+      ))}
+    </select>
   </label>
 );
 

@@ -954,31 +954,33 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Org Space (visible for everyone — they can create one) */}
-          <button
-            onClick={() => navigate('/org')}
-            data-testid="header-org-btn"
-            title={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
-            aria-label={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              padding: 0,
-              background: 'transparent',
-              border: `1px solid ${c('border')}`,
-              borderRadius: '50%',
-              cursor: 'pointer',
-              color: c('muted'),
-              transition: 'all 160ms ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c('text'); e.currentTarget.style.color = c('text'); }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c('border'); e.currentTarget.style.color = c('muted'); }}
-          >
-            <Briefcase size={15} strokeWidth={2} />
-          </button>
+          {/* Org Space — only visible if user belongs to an org OR is super admin */}
+          {(userOrg || isSuperAdmin) && (
+            <button
+              onClick={() => navigate('/org')}
+              data-testid="header-org-btn"
+              title={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
+              aria-label={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                padding: 0,
+                background: 'transparent',
+                border: `1px solid ${c('border')}`,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                color: c('muted'),
+                transition: 'all 160ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = c('text'); e.currentTarget.style.color = c('text'); }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = c('border'); e.currentTarget.style.color = c('muted'); }}
+            >
+              <Briefcase size={15} strokeWidth={2} />
+            </button>
+          )}
           {/* Super Admin badge — only visible to allowlisted users */}
           {isSuperAdmin && (
             <button
