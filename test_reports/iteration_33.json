@@ -1,0 +1,39 @@
+{
+  "summary": "ITERATION 33 — FINAL audit marque blanche GREEN. Backend pytest = 15/15 PASSED in 6.13s (9 from iter_32 regression + 6 new for whitelabel/scan + font_family persistence). Frontend Playwright = ALL checks pass including the NEW dynamic Google Font loading via OrgContext.\n\nBACKEND NEW (6 new tests, all PASS): (1) POST /api/admin/whitelabel/scan with website_url=https://www.iadfrance.fr returns full suggestion {name, primary_color=#xx, secondary_color=#xx, font_family='string', tagline='string'}. (2) POST /api/admin/whitelabel/create accepts font_family='Montserrat' and persists it on the org. (3) GET /api/orgs/public/{slug-of-Montserrat-org} returns font_family='Montserrat' (used by frontend OrgContext.loadGoogleFont). (4) GET /api/orgs/public/{custom_subdomain} also returns font_family. (5) GET /api/orgs/public/responsive-kolo returns 200/404 cleanly (no auth, no 5xx). (6) GET /api/orgs/public/iad-demo exposes font_family field. Plus 9/9 iter_32 regression still GREEN (public branding by slug + custom_subdomain + 404, by-domain null on preview, whitelabel/create new fields, billing seats/total, Stripe checkout URL contains stripe.com, accept-invite 402 when seats full).\n\nFRONTEND ALL PASS: (1) /register?org=iad-demo → register-brand-logo='IAD France Demo powered by KOLO', --brand-primary='#EC1C24', tagline IAD visible, kolo-font-inter link injected in <head> with href=fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap. (2) /login?org=iad-demo → login-brand-logo='IAD France Demo powered by KOLO', --brand-primary='#EC1C24'. (3) NEW — /register?org=audit-1780611617 (Montserrat org) → kolo-font-montserrat link injected, --font-body='\"Montserrat\", system-ui, -apple-system, sans-serif', --font-heading=same, --brand-primary='#FF6600'. Dynamic Google Font loading via loadGoogleFont() in OrgContext.js works perfectly. (4) Login test@test.com / testtest → on /app, header-org-btn is HIDDEN (correct - user has no org). (5) Login super admin → on /app, header-org-btn is VISIBLE (correct). (6) /kolo-admin AdminDashboard sidebar .admin-user-email computedStyle.fontSize='11px' (matches spec). (7) /kolo-admin → 'Marque blanche' wizard step 1: 'Analyser https://www.iadfrance.fr' triggers AI scan and advances to step 2: wl-font is a SELECT element with EXACTLY 17 options (Inter, Poppins, Montserrat, Manrope, DM Sans, ...), wl-name + wl-subdomain + wl-price all present. (8) WhiteLabelTab.js source grep confirms wl-create-another, wl-copy-invite-btn, wl-preview-brand exist on step 3 (lines 245/248/258).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/streak and /api/today (legacy)", "issue": "Two 401 errors persist in browser console right after login - carried over from iter_31/32, does not block UI flows"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_33.py",
+    "/app/backend/tests/test_iteration_32.py",
+    "/app/test_reports/pytest/iteration_33_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Same recurring observation as iter_28+/32: /app/backend/server.py exceeds 7400 lines - splitting whitelabel + billing + branding (~6014-6320) into routers/whitelabel.py would improve maintainability.",
+    "OrgContext.loadGoogleFont() (line 29) and applyBranding() (line 56) now correctly inject a single <link id='kolo-font-{slug}'> and override --font-body/--font-heading via setProperty, with proper teardown when font_family falls back to Inter (removeProperty). No double-injection on slug change observed (the function checks for existing id before insert).",
+    "OrgBillingCheckoutPayload still allows arbitrary success_url/cancel_url - same observation as iter_32, low risk but worth whitelisting against FRONTEND_URL for prod hardening.",
+    "monthly_price_per_seat_eur misleading field name (stored as cents) - same observation as iter_32, consider renaming to monthly_price_per_seat_cents in a future cleanup."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_33.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 - 9 iter_32 regression + 6 new for whitelabel/scan suggestion + font_family persistence on create + public endpoint exposes font_family + responsive-kolo public endpoint cleanly handled)",
+    "frontend": "100% on every probe (register-brand-logo + login-brand-logo with IAD label and tagline; --brand-primary=#EC1C24; kolo-font-inter for IAD; kolo-font-montserrat + --font-body Montserrat stack for Montserrat org via dynamic loadGoogleFont; header-org-btn correctly hidden for no-org user and shown for super admin; admin-user-email font-size=11px; WhiteLabelTab wizard step 2 wl-font is SELECT with 17 options; step 3 testids verified via source grep)"
+  },
+  "test_credentials": "Super admin elliot.cohenpressard@trykolo.io / Psychologue75007%! still works. Normal user test@test.com / testtest works and correctly has no org so header-org-btn stays hidden.",
+  "seed_data_creation": "iter_33 creates 1 short-lived org 'Audit Font Org' (slug=audit-font-*, font_family=Montserrat) per pytest run, auto-cleaned via class-scoped fixture teardown. Pre-existing 'audit-1780611617' org (Montserrat, primary=#FF6600) was reused for the frontend Montserrat font-loading test - left in place. iad-demo fixture (custom_subdomain=iad, IAD wikimedia logo, tagline 'Le reseau immobilier nouvelle generation', font_family=Inter) preserved as critical UI fixture.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter_33 FINAL audit GREEN — confirms iter_32 (4 lots marque blanche) + the new dynamic Google Font loading via OrgContext.loadGoogleFont(). To re-verify the Montserrat font test, visit /register?org=audit-1780611617 in a browser and check `document.querySelector('link#kolo-font-montserrat')` is present. To re-test the FULL backend regression in 6s: `pytest backend/tests/test_iteration_32.py backend/tests/test_iteration_33.py -v` from /app. The whitelabel/scan endpoint requires payload key 'website_url' (NOT 'url' - 422 otherwise). Do NOT delete iad-demo or audit-1780611617 - both are referenced UI fixtures.",
+  "rca of the issue": "NO BUGS. The user's question 'tout doit être parfait et fonctionnel en production' is answered GREEN. All 15 backend tests pass, all 7 frontend probes pass including the new dynamic Google Font loading: OrgContext.js loadGoogleFont() at line 29 builds id=kolo-font-{font-lowercased} and injects <link rel=stylesheet href=https://fonts.googleapis.com/css2?family={font}:wght@400;500;600;700;800&display=swap> into <head>; applyBranding() at line 56 sets --brand-primary and overrides --font-body/--font-heading when font_family !== 'Inter' (lines 64-71). Backend WhitelabelScanPayload.website_url is correctly required, and the AI scan on iadfrance.fr returns all 5 expected fields (name, primary_color, secondary_color, font_family, tagline). The Montserrat org (audit-1780611617) is correctly served by /api/orgs/public/audit-1780611617 with font_family='Montserrat', and visiting /register?org=audit-1780611617 in the browser confirms <link id='kolo-font-montserrat'> appears in <head> + --font-body/--font-heading override to the Montserrat stack. Production readiness: GREEN."
+}

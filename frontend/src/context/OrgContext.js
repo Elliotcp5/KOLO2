@@ -19,6 +19,37 @@ const KOLO_DEFAULTS = {
   tagline: null,
 };
 
+// Google Fonts that need to be loaded dynamically when an org uses them
+const GOOGLE_FONTS = new Set([
+  'Inter', 'Poppins', 'Montserrat', 'Manrope', 'DM Sans', 'Plus Jakarta Sans',
+  'Space Grotesk', 'Outfit', 'Roboto', 'Lato', 'Nunito', 'Work Sans',
+  'Playfair Display', 'Lora', 'Merriweather',
+]);
+
+const loadGoogleFont = (fontFamily) => {
+  if (!fontFamily || !GOOGLE_FONTS.has(fontFamily)) return;
+  const id = `kolo-font-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+  if (document.getElementById(id)) return; // already loaded
+  // Preconnect once
+  if (!document.getElementById('kolo-gfonts-preconnect')) {
+    const pre1 = document.createElement('link');
+    pre1.id = 'kolo-gfonts-preconnect';
+    pre1.rel = 'preconnect';
+    pre1.href = 'https://fonts.googleapis.com';
+    document.head.appendChild(pre1);
+    const pre2 = document.createElement('link');
+    pre2.rel = 'preconnect';
+    pre2.href = 'https://fonts.gstatic.com';
+    pre2.crossOrigin = 'anonymous';
+    document.head.appendChild(pre2);
+  }
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700;800&display=swap`;
+  document.head.appendChild(link);
+};
+
 const applyBranding = (org) => {
   const root = document.documentElement;
   const conf = { ...KOLO_DEFAULTS, ...(org || {}) };
@@ -29,6 +60,17 @@ const applyBranding = (org) => {
   root.style.setProperty('--brand-logo-url', conf.logo_url ? `url(${conf.logo_url})` : 'none');
   // Friendly hex helper for transparent variants
   root.style.setProperty('--brand-primary-soft', conf.primary_color + '1A');
+  // Override the global app fonts when an org provides a custom font; reset to defaults otherwise.
+  if (org && conf.font_family && conf.font_family !== 'Inter') {
+    const stack = `"${conf.font_family}", system-ui, -apple-system, sans-serif`;
+    root.style.setProperty('--font-body', stack);
+    root.style.setProperty('--font-heading', stack);
+  } else {
+    root.style.removeProperty('--font-body');
+    root.style.removeProperty('--font-heading');
+  }
+  // Dynamically load the brand's Google Font (idempotent)
+  loadGoogleFont(conf.font_family);
 };
 
 export const OrgProvider = ({ children }) => {
