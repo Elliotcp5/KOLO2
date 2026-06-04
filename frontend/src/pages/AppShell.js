@@ -15,6 +15,7 @@ import { HeatScoreBadge } from '../components/HeatScoreBadge';
 import { ROIDashboard } from '../components/ROIDashboard';
 import { InteractionTimeline } from '../components/InteractionTimeline';
 import { PaywallBottomSheet } from '../components/PaywallBottomSheet';
+import { MarkAsSoldButton } from '../components/MarkAsSoldButton';
 import ProspectCommsPanel from '../components/ProspectCommsPanel';
 import { ProspectScoreRing, ScoreLabel } from '../components/ProspectScoreRing';
 import VoiceDictateButton from '../components/VoiceDictateButton';
@@ -33,6 +34,7 @@ const PROSPECT_STATUSES = {
   contacte: { fr: 'Contacté', en: 'Contacted', de: 'Kontaktiert', it: 'Contattato', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
   qualifie: { fr: 'Qualifié', en: 'Qualified', de: 'Qualifiziert', it: 'Qualificato', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' },
   offre: { fr: 'Offre', en: 'Offer', de: 'Angebot', it: 'Offerta', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
+  offre_acceptee: { fr: 'Offre Acceptée', en: 'Offer Accepted', de: 'Angebot Angenommen', it: 'Offerta Accettata', color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.15)' },
   signe: { fr: 'Signé', en: 'Signed', de: 'Unterzeichnet', it: 'Firmato', color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)' },
   perdu: { fr: 'Perdu', en: 'Lost', de: 'Verloren', it: 'Perso', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' }
 };
@@ -2995,12 +2997,18 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
 
   const handleStatusChange = async (newStatus) => {
     // If status is "perdu", ask for confirmation before deleting
     if (newStatus === 'perdu') {
       setPendingStatus(newStatus);
       setShowConfirmDialog(true);
+      return;
+    }
+    // If status becomes "signe", open commission modal first (final amount required)
+    if (newStatus === 'signe') {
+      setShowCommissionModal(true);
       return;
     }
     
@@ -3089,6 +3097,7 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
     { value: 'contacte', label: locale === 'fr' ? 'Contacté' : 'Contacted', color: '#3B82F6' },
     { value: 'qualifie', label: locale === 'fr' ? 'Qualifié' : 'Qualified', color: '#8B5CF6' },
     { value: 'offre', label: locale === 'fr' ? 'Offre' : 'Offer', color: '#F59E0B' },
+    { value: 'offre_acceptee', label: locale === 'fr' ? 'Offre Acceptée' : 'Offer Accepted', color: '#14B8A6' },
     { value: 'signe', label: locale === 'fr' ? 'Signé' : 'Signed', color: '#22C55E' },
     { value: 'perdu', label: locale === 'fr' ? 'Perdu' : 'Lost', color: '#EF4444' }
   ];
@@ -3502,6 +3511,26 @@ const ProspectDetail = ({ prospect, onBack, onUpdate }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Commission modal triggered by status -> signe */}
+      {showCommissionModal && (
+        <MarkAsSoldButton
+          prospect={prospectData}
+          variant="hidden"
+          forceOpen
+          onModalClose={() => setShowCommissionModal(false)}
+          onSuccess={async () => {
+            setShowCommissionModal(false);
+            setProspectData((prev) => ({ ...prev, status: 'closed_won' }));
+            try {
+              const r = await authFetch(`${API_URL}/api/prospects/${prospect.prospect_id}`);
+              if (r.ok) setProspectData(await r.json());
+            } catch (_) {}
+            onUpdate && onUpdate();
+            toast.success(t('statusUpdated'));
+          }}
+        />
       )}
 
       {/* Contact info */}

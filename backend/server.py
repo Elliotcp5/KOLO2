@@ -3140,7 +3140,9 @@ async def calculate_prospect_heat(prospect_id: str, request: Request):
 # ==================== ROI DASHBOARD ENDPOINTS (PRO+) ====================
 
 class MarkAsSoldRequest(BaseModel):
-    commission_amount: int  # in euros
+    commission_amount: Optional[int] = None  # Legacy field (= commission_final fallback)
+    commission_initial: Optional[int] = None  # Expected commission at the start
+    commission_final: Optional[int] = None  # Actual commission collected
 
 @api_router.post("/prospects/{prospect_id}/mark-sold")
 async def mark_prospect_as_sold(prospect_id: str, request: MarkAsSoldRequest, http_request: Request):
@@ -3160,13 +3162,24 @@ async def mark_prospect_as_sold(prospect_id: str, request: MarkAsSoldRequest, ht
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found")
     
+    # Resolve final amount with backwards-compatible fallback
+    final_amount = request.commission_final
+    if final_amount is None:
+        final_amount = request.commission_amount
+    if final_amount is None or final_amount <= 0:
+        raise HTTPException(status_code=400, detail="commission_final (ou commission_amount) requis")
+
+    initial_amount = request.commission_initial if request.commission_initial is not None else final_amount
+
     now = datetime.now(timezone.utc)
     
     await db.prospects.update_one(
         {"prospect_id": prospect_id},
         {"$set": {
             "status": "closed_won",
-            "commission_amount": request.commission_amount,
+            "commission_amount": final_amount,  # Keep legacy field in sync (used by ROI aggregations)
+            "commission_initial": initial_amount,
+            "commission_final": final_amount,
             "closed_date": now.isoformat(),
             "updated_at": now.isoformat()
         }}
@@ -3177,13 +3190,18 @@ async def mark_prospect_as_sold(prospect_id: str, request: MarkAsSoldRequest, ht
         prospect_id=prospect_id,
         user_id=user.user_id,
         interaction_type="note",
-        content=f"Vente conclue - Commission: {request.commission_amount}€"
+        content=f"Vente conclue - Commission initiale: {initial_amount}€ · réelle: {final_amount}€"
     )
     interaction_doc = interaction.model_dump()
     interaction_doc["created_at"] = interaction_doc["created_at"].isoformat()
     await db.interactions.insert_one(interaction_doc)
     
-    return {"message": "Prospect marqué comme vendu", "commission": request.commission_amount}
+    return {
+        "message": "Prospect marqué comme vendu",
+        "commission": final_amount,
+        "commission_initial": initial_amount,
+        "commission_final": final_amount,
+    }
 
 @api_router.get("/dashboard/roi")
 async def get_roi_dashboard(request: Request):
@@ -3243,173 +3261,119 @@ async def get_roi_dashboard(request: Request):
 
 # ==================== WEEKLY REPORT ENDPOINT (PRO+) ====================
 
-@api_router.post("/reports/weekly")
-async def generate_weekly_report(request: Request):
-    """Generate and send weekly report email (PRO+ feature)"""
+async def _send_weekly_report_for_user(user_id: str):
+    """Generate + send the weekly report for a single user_id (used by both the API endpoint and the scheduler).
+    Returns a dict with stats + email_id, or raises HTTPException on auth/feature failures."""
     import resend
-    
-    user = await get_user_from_session(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
     if not check_feature_access(user_doc, "weekly_report"):
         raise HTTPException(status_code=403, detail="Le rapport hebdomadaire nécessite un abonnement PRO+")
-    
+
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
-    
-    # Get statistics for the week
-    # 1. Completed tasks
+
     completed_tasks = await db.tasks.count_documents({
-        "user_id": user.user_id,
+        "user_id": user_id,
         "completed": True,
         "completed_at": {"$gte": week_ago.isoformat()}
     })
-    
-    # 2. New prospects
     new_prospects = await db.prospects.count_documents({
-        "user_id": user.user_id,
+        "user_id": user_id,
         "created_at": {"$gte": week_ago.isoformat()}
     })
-    
-    # 3. Sales this week
     sales_pipeline = [
-        {
-            "$match": {
-                "user_id": user.user_id,
-                "status": "closed_won",
-                "closed_date": {"$gte": week_ago.isoformat()}
-            }
-        },
-        {
-            "$group": {
-                "_id": None,
-                "total_revenue": {"$sum": "$commission_amount"},
-                "sales_count": {"$sum": 1}
-            }
-        }
+        {"$match": {"user_id": user_id, "status": "closed_won", "closed_date": {"$gte": week_ago.isoformat()}}},
+        {"$group": {"_id": None, "total_revenue": {"$sum": "$commission_amount"}, "sales_count": {"$sum": 1}}},
     ]
-    
     sales_result = await db.prospects.aggregate(sales_pipeline).to_list(1)
     weekly_revenue = sales_result[0].get("total_revenue", 0) if sales_result else 0
     weekly_sales = sales_result[0].get("sales_count", 0) if sales_result else 0
-    
-    # 4. Hot prospects (score > 66)
     hot_prospects = await db.prospects.count_documents({
-        "user_id": user.user_id,
+        "user_id": user_id,
         "heat_score": {"$gt": 66},
         "status": {"$nin": ["closed_won", "closed_lost", "archived"]}
     })
-    
-    # Build email HTML
+
     locale = user_doc.get("locale", "fr")
-    user_name = user_doc.get("name", "Agent").split(" ")[0]
-    
+    user_name = (user_doc.get("name") or "Agent").split(" ")[0]
+    frontend_url = (os.environ.get("FRONTEND_URL") or "https://trykolo.io").rstrip("/")
     email_subjects = {
         "fr": "📊 Votre rapport hebdomadaire KOLO",
         "en": "📊 Your weekly KOLO report",
         "de": "📊 Ihr wöchentlicher KOLO-Bericht",
-        "it": "📊 Il tuo report settimanale KOLO"
+        "it": "📊 Il tuo report settimanale KOLO",
     }
-    
-    # Simple, clean email template
+
     html_content = f"""
     <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f7f7fa; margin: 0; padding: 20px; }}
-            .container {{ max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; }}
-            .header {{ text-align: center; margin-bottom: 24px; }}
-            .logo {{ font-size: 24px; font-weight: bold; color: #6C63FF; }}
-            .greeting {{ font-size: 16px; color: #374151; margin-bottom: 20px; }}
-            .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
-            .stat-card {{ background: #f7f7fa; border-radius: 12px; padding: 16px; text-align: center; }}
-            .stat-value {{ font-size: 24px; font-weight: bold; color: #0E0B1E; }}
-            .stat-label {{ font-size: 12px; color: #6b7280; margin-top: 4px; }}
-            .highlight {{ background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(147,51,234,0.1)); border: 1px solid rgba(108,99,255,0.3); }}
-            .cta {{ display: block; text-align: center; background: linear-gradient(135deg, #4F46E5, #9333EA); color: white; padding: 14px 24px; border-radius: 9999px; text-decoration: none; font-weight: 600; margin-top: 24px; }}
-            .footer {{ text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }}
-        </style>
-    </head>
-    <body>
+    <html><head><style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f7f7fa; margin: 0; padding: 20px; }}
+        .container {{ max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; }}
+        .header {{ text-align: center; margin-bottom: 24px; }}
+        .logo {{ font-size: 24px; font-weight: bold; color: #6C63FF; }}
+        .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
+        .stat-card {{ background: #f7f7fa; border-radius: 12px; padding: 16px; text-align: center; }}
+        .stat-value {{ font-size: 24px; font-weight: bold; color: #0E0B1E; }}
+        .stat-label {{ font-size: 12px; color: #6b7280; margin-top: 4px; }}
+        .highlight {{ background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(147,51,234,0.1)); border: 1px solid rgba(108,99,255,0.3); }}
+        .cta {{ display: block; text-align: center; background: linear-gradient(135deg, #4F46E5, #9333EA); color: white; padding: 14px 24px; border-radius: 9999px; text-decoration: none; font-weight: 600; margin-top: 24px; }}
+        .footer {{ text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }}
+    </style></head><body>
         <div class="container">
-            <div class="header">
-                <div class="logo">KOLO</div>
-            </div>
-            <p class="greeting">{"Bonjour" if locale == "fr" else "Hello"} {user_name} 👋</p>
-            <p style="color: #374151; margin-bottom: 20px;">
-                {"Voici votre récapitulatif de la semaine :" if locale == "fr" else "Here's your weekly summary:"}
-            </p>
-            
+            <div class="header"><div class="logo">KOLO</div></div>
+            <p>{"Bonjour" if locale == "fr" else "Hello"} {user_name} 👋</p>
+            <p style="color:#374151;margin-bottom:20px;">{"Voici votre récapitulatif de la semaine :" if locale == "fr" else "Here's your weekly summary:"}</p>
             <div class="stats-grid">
-                <div class="stat-card highlight">
-                    <div class="stat-value" style="color: #22c55e;">{weekly_revenue}€</div>
-                    <div class="stat-label">{"CA cette semaine" if locale == "fr" else "Revenue this week"}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{weekly_sales}</div>
-                    <div class="stat-label">{"Ventes" if locale == "fr" else "Sales"}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{completed_tasks}</div>
-                    <div class="stat-label">{"Tâches complétées" if locale == "fr" else "Tasks completed"}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{new_prospects}</div>
-                    <div class="stat-label">{"Nouveaux prospects" if locale == "fr" else "New prospects"}</div>
-                </div>
+                <div class="stat-card highlight"><div class="stat-value" style="color:#22c55e;">{weekly_revenue}€</div><div class="stat-label">{"CA cette semaine" if locale == "fr" else "Revenue this week"}</div></div>
+                <div class="stat-card"><div class="stat-value">{weekly_sales}</div><div class="stat-label">{"Ventes" if locale == "fr" else "Sales"}</div></div>
+                <div class="stat-card"><div class="stat-value">{completed_tasks}</div><div class="stat-label">{"Tâches complétées" if locale == "fr" else "Tasks completed"}</div></div>
+                <div class="stat-card"><div class="stat-value">{new_prospects}</div><div class="stat-label">{"Nouveaux prospects" if locale == "fr" else "New prospects"}</div></div>
             </div>
-            
-            <div class="stat-card" style="margin-bottom: 16px;">
-                <div class="stat-value" style="color: #ef4444;">🔥 {hot_prospects}</div>
-                <div class="stat-label">{"Prospects chauds à relancer" if locale == "fr" else "Hot prospects to follow up"}</div>
-            </div>
-            
-            <a href="https://kolo.app/app" class="cta">
-                {"Ouvrir KOLO" if locale == "fr" else "Open KOLO"}
-            </a>
-            
-            <div class="footer">
-                {"Vous recevez cet email car vous êtes abonné PRO+." if locale == "fr" else "You're receiving this email because you're a PRO+ subscriber."}
-            </div>
+            <div class="stat-card" style="margin-bottom:16px;"><div class="stat-value" style="color:#ef4444;">🔥 {hot_prospects}</div><div class="stat-label">{"Prospects chauds à relancer" if locale == "fr" else "Hot prospects to follow up"}</div></div>
+            <a href="{frontend_url}/app" class="cta">{"Ouvrir KOLO" if locale == "fr" else "Open KOLO"}</a>
+            <div class="footer">{"Vous recevez cet email car vous êtes abonné PRO+." if locale == "fr" else "You're receiving this email because you're a PRO+ subscriber."}</div>
         </div>
-    </body>
-    </html>
+    </body></html>
     """
-    
-    # Send email via Resend
+
     resend_api_key = os.environ.get("RESEND_API_KEY")
     sender_email = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-    
     if not resend_api_key:
         raise HTTPException(status_code=500, detail="Email service not configured")
-    
+    resend.api_key = resend_api_key
+    params = {
+        "from": f"KOLO <{sender_email}>",
+        "to": [user_doc["email"]],
+        "subject": email_subjects.get(locale, email_subjects["en"]),
+        "html": html_content,
+    }
+    email = resend.Emails.send(params)
+    return {
+        "message": "Rapport envoyé",
+        "email_id": email.get("id") if isinstance(email, dict) else str(email),
+        "stats": {
+            "weekly_revenue": weekly_revenue,
+            "weekly_sales": weekly_sales,
+            "completed_tasks": completed_tasks,
+            "new_prospects": new_prospects,
+            "hot_prospects": hot_prospects,
+        },
+    }
+
+
+@api_router.post("/reports/weekly")
+async def generate_weekly_report(request: Request):
+    """Generate and send weekly report email (PRO+ feature)"""
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        resend.api_key = resend_api_key
-        
-        params = {
-            "from": f"KOLO <{sender_email}>",
-            "to": [user.email],
-            "subject": email_subjects.get(locale, email_subjects["en"]),
-            "html": html_content
-        }
-        
-        email = resend.Emails.send(params)
-        
-        return {
-            "message": "Rapport envoyé",
-            "email_id": email.get("id") if isinstance(email, dict) else str(email),
-            "stats": {
-                "weekly_revenue": weekly_revenue,
-                "weekly_sales": weekly_sales,
-                "completed_tasks": completed_tasks,
-                "new_prospects": new_prospects,
-                "hot_prospects": hot_prospects
-            }
-        }
-        
+        return await _send_weekly_report_for_user(user.user_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to send weekly report: {e}")
         raise HTTPException(status_code=500, detail="Failed to send report email")

@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 31 — All 4 enhancements verified GREEN. Backend pytest /app/backend/tests/test_iteration_31.py = 9/9 PASSED in 2.3s. Frontend Playwright = ALL targets green. (1) Weekly URL fix: server.py uses os.environ.get('FRONTEND_URL') with 'https://trykolo.io' fallback, CTA = {frontend_url}/app, no 'kolo.app/app' literal anywhere; backend/.env contains FRONTEND_URL=https://trykolo.io. (2) POST /api/prospects/{id}/mark-sold accepts new {commission_initial, commission_final} (returns commission_initial=1500, commission_final=1800, commission=1800) AND legacy {commission_amount} (initial=final=2200 fallback); GET /api/prospects/{id} after mark-sold confirms status='closed_won' with commission_initial/commission_final/commission_amount all persisted correctly. mark-sold without amount returns 400 as expected. (3) PUT /api/prospects/{id} accepts status='offre_acceptee' and GET reflects it. (4) Refactor confirmed: async def _send_weekly_report_for_user exists (server.py:3264), generate_weekly_report endpoint delegates to it, and the background scheduler (server.py:7229) also calls _send_weekly_report_for_user(u['user_id']) — F821 fixed, scheduler will not crash at Mon 8am UTC. POST /api/reports/weekly returns 200 with full stats payload. FRONTEND: After super-admin login the prospect detail page shows all 7 status pills including 'Offer Accepted' (offre_acceptee) between Offer and Signed. Clicking 'Signed' on Marie Dupont (status=New) opens commission-modal with data-testid='commission-modal'; the modal renders BOTH commission-initial-input AND commission-final-input plus commission-confirm-btn — all 3 testids present and inputs accept numeric values. Regression OK: Today page shows the 4 quick-action buttons (task-call-*, task-wa-*, task-email-*, task-cal-*); /kolo-admin loads with admin-back-btn + Marque blanche tab and back-btn navigates correctly to /app.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/streak (and other endpoints)", "issue": "Two 401 + four 400 console errors appear right after login on the /app today screen (visible in browser console). They do not block UI flows but should be investigated — likely a fresh-user state where streak/AI-suggestions calls precede full auth hydration."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_31.py",
+    "/app/test_reports/pytest/iteration_31_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Recurring (iter_28/29/30): /app/backend/server.py is 7310 lines — long-overdue split into routers (prospects, reports, scheduler, whitelabel, integrations).",
+    "MarkAsSoldButton sends body with BOTH commission_initial/commission_final AND legacy commission_amount — fine for rétrocompat but consider dropping commission_amount from the request body once all clients (mobile included) are updated, to keep the API surface tight.",
+    "_send_weekly_report_for_user opens a fresh Resend client per user — for the Monday cron, batching or rate-limiting (resend free tier limit) should be considered before scaling to many PRO+ users.",
+    "PROSPECT_STATUSES is duplicated/refed in two spots of AppShell.js (line 32 const + line ~3100 array). Keep a single source of truth to avoid drift when adding new statuses (the next status added would have to be edited twice).",
+    "UpdateProspectRequest (server.py:351) does not validate 'status' against an enum — any string is accepted. Acceptable today but consider Literal[...] for forward safety."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_31.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 — weekly url fix code+env asserts, mark-sold new+legacy+missing-amount, offre_acceptee PUT, weekly endpoint 200)",
+    "frontend": "100% (login OK, 4 quick-actions present on Today, 7 statuses including Offer Accepted visible on prospect detail, Signed pill opens commission-modal with both commission-initial-input + commission-final-input + commission-confirm-btn, admin-back-btn + Marque blanche tab present, back navigates to /app)"
+  },
+  "test_credentials": "Super admin elliot.cohenpressard@trykolo.io / Psychologue75007%! still works (login + admin access + mark-sold).",
+  "seed_data_creation": "Created 1 prospect 'TEST_Iter31 MarkSold Subject' in pytest fixture (auto-deleted via DELETE /api/prospects/{id} on teardown). No leftover state expected.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 31 fully validates the 4 enhancements requested by the user: weekly email URL, dual commission inputs (initial+final), new offre_acceptee status, and the _send_weekly_report_for_user refactor that fixes the Monday-8am-UTC scheduler crash. The regression file at /app/backend/tests/test_iteration_31.py runs in ~2.3s and covers both NEW behaviour and backward compatibility. The MarkAsSoldButton now uses API_URL + kolo_token (confirmed by Playwright modal opening and form submission flow). Next testing agent: if extending mark-sold tests, note the prospect status must be reset to a non-closed_won value (e.g. 'offre') between two mark-sold calls because the button hides itself when status==='closed_won' and shows the green badge instead.",
+  "rca of the issue": "No bugs found in any of the 4 enhancements. Implementation matches the user request: (a) weekly report HTML uses FRONTEND_URL env (https://trykolo.io) so the CTA link is now https://trykolo.io/app — fixes the previous kolo.app/app typo. (b) MarkAsSoldRequest accepts commission_initial + commission_final, falls back to commission_amount for legacy clients, and returns all three fields. (c) PROSPECT_STATUSES dict includes 'offre_acceptee' (teal #14B8A6) between 'offre' and 'signe'; backend doesn't enforce a status enum so any string passes. (d) The helper _send_weekly_report_for_user(user_id) is correctly extracted and invoked by both the public endpoint AND the Monday-8am-UTC background scheduler loop (server.py:7229)."
+}
