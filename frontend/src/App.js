@@ -31,6 +31,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import OrgSpace from "./pages/OrgSpace";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import JoinOrgPage from "./pages/JoinOrgPage";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -107,6 +108,7 @@ const AppRouter = () => {
       <Route path="/faq" element={<FAQPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ForgotPasswordPage />} />
+      <Route path="/auth/google" element={<GoogleAuthCallback />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/terms-of-use" element={<TermsPage />} />

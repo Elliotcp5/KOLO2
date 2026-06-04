@@ -10,8 +10,7 @@ import '../styles/app-premium.css';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { Contacts } from '@capacitor-community/contacts';
-
-const API_URL = 'https://trykolo.io';
+import { API_URL } from '../config/api';
 
 // Project type options
 const PROJECT_TYPES = [

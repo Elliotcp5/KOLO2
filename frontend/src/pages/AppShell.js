@@ -4304,7 +4304,7 @@ const CurrencySelector = ({ c, locale }) => {
     const token = localStorage.getItem('kolo_token');
     if (token) {
       try {
-        await fetch(`https://trykolo.io/api/plans/set-currency`, {
+        await fetch(`${API_URL}/api/plans/set-currency`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -4708,7 +4708,7 @@ const SettingsTab = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('kolo_token');
-      const res = await fetch('https://trykolo.io/api/auth/me', {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });

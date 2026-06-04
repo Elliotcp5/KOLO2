@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 28 verifies post-fix backend + frontend for: super-admin email/password login, direct Google OAuth (client-id + exchange), Calendar auth-url builders (Google + Outlook), prospect heat calc, AI suggestion endpoint, mobile landing mockup, and the /reset-password + /auth/google routes. 13/13 pytest backend tests pass. All 7 critical frontend scenarios pass. The Emergent intermediary is gone — Google login now navigates to accounts.google.com directly with the real client_id 344180186708-…apps.googleusercontent.com.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Prospect detail open",
+        "issue": "Opening Marie Leblanc's detail page triggers 4× HTTP 400 console errors (background fetches — likely calendar/agenda endpoints that probe without a connected provider). Detail UI renders correctly so non-blocking but noisy.",
+        "affected_selectors": ["[data-testid='prospect-cal-btn']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_28.py",
+    "/app/test_reports/pytest/iteration_28_results.xml"
+  ],
+  "action_items": [
+    "Optional: silence the 4× 400 background fetches happening when a prospect detail is opened (calendar probe endpoints). Non-blocking; cosmetic in dev console.",
+    "Whitelist preview redirect_uri https://responsive-kolo.preview.emergentagent.com/auth/google in Google Cloud Console so end-to-end Google login can be exercised in preview (production trykolo.io likely already configured). Today the consent page returns redirect_uri_mismatch in preview — the front-end flow & backend exchange both work; only Google's allowlist is missing for the preview origin."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~6939 lines — same finding as iteration_27; please split into routers.",
+    "Hardcoded fallback password 'Psychologue75007%!' in server.py at line 6899 is a production security smell. Keep SUPER_ADMIN_SEED_PASSWORD as the ONLY source for prod and remove the literal fallback once the env var is wired in prod — otherwise the repo leaks the super-admin password in git history.",
+    "/api/auth/google/exchange returns 502 only on transport errors but raises 400 on Google's 'invalid_grant' response — good. However the response detail string 'Google OAuth: invalid code or redirect_uri' is the same for both cases (bad code AND bad redirect_uri); consider mapping Google's error_description to give clearer ops feedback.",
+    "CSRF check in /auth/google front-end correctly rejects mismatched state but the error 'État OAuth invalide (CSRF)' is shown before any backend call (verified). Good defensive coding."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_28.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13)",
+    "frontend": "100% on the 7 in-scope flows (login redirect, Google button URL, /auth/google CSRF graceful error, /reset-password form, ProspectScoreRing, Suggested-task modal, mobile mockup bottom nav)"
+  },
+  "test_credentials": "elliot.cohenpressard@trykolo.io / Psychologue75007%! — super admin login confirmed working (200 + sess_ token).",
+  "seed_data_creation": "No new seed data created. Existing prospect prospect_19d7efcbdfd2 (Marie Leblanc) used for heat-score + AI tests; both passed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file /app/backend/tests/test_iteration_28.py is self-contained: it logs in with the seeded super-admin credentials, picks the first existing prospect (key=prospect_id, response shape {prospects:[…]}), and validates auth/google/oauth/heat/AI/hot-endpoints. Just run `pytest backend/tests/test_iteration_28.py`. Google consent will return redirect_uri_mismatch in preview until the preview origin is whitelisted in Google Cloud Console — that is a Google-console config gap, not a code bug.",
+  "rca of the issue": "1) Super-admin login was failing in production because the password lived only in the in-memory seed; the new idempotent startup seed in server.py:6893 fixes it and is verified end-to-end (200 OK). 2) Google login button previously redirected through auth.emergentagent.com; new SocialAuthButtons fetches /api/auth/google/client-id then window.location.href = accounts.google.com/o/oauth2/v2/auth?…  — confirmed. 3) /auth/google handler enforces CSRF state match before POSTing to /api/auth/google/exchange (verified by injecting an invalid state — graceful 'État OAuth invalide' UI). 4) /api/auth/google/exchange returns 400 for invalid_grant (verified) and 422 for empty body (verified). 5) ProspectScoreRing + Suggested-task modal are wired with data-testid='prospect-score-ring-chaud', 'prospect-score-label-chaud', 'suggested-task-button' — modal shows IA badge, APPEL tag, Urgent indicator and AI-generated reason. No regressions found."
+}
