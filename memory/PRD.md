@@ -1,70 +1,79 @@
-# KOLO – Product Requirements (PRD)
+# KOLO - Product Requirements Document
 
-## Vision
-SaaS pour agents immobiliers + CRM IA. Web (Stripe) + iOS natif (Apple StoreKit 2). Multilingue. Pivot B2B / marque blanche. **Modèle "native first" : chaque agent utilise son propre numéro et son propre WhatsApp.**
+## Original Problem Statement
+Application SaaS B2B « Marque Blanche » pour les commerciaux indépendants (immobilier en priorité). 
+KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communication "native first" (Twilio/WhatsApp + Whisper), synchronisation calendars (Google/Apple/Outlook), IA Suggestions, Score Ring, Stripe billing, design premium startup glassmorphism, et ultra-responsive mobile/desktop.
 
-## Architecture
-- Frontend: React + Capacitor (iOS native)
-- Backend: FastAPI monolithique (`/app/backend/server.py`) + MongoDB
-- Paiements: Stripe (web) + Apple StoreKit 2 (iOS)
-- Production: https://trykolo.io · Preview: https://responsive-kolo.preview.emergentagent.com
+## User Personas
+1. **Agent commercial indépendant** (immobilier) — usage quotidien sur mobile : appels, suivi prospects, dictée, IA pour relancer.
+2. **Super Admin KOLO (Elliot)** — gère les marques blanches B2B + supervise les utilisateurs / abonnements / leads B2B.
+3. **Org Admin (réseau B2B partenaire)** — gère ses agents via une instance KOLO white-label.
 
-## Auth providers
-- Email + password
-- Google Sign-In (Emergent OAuth) ✅
-- Apple Sign-In Web : bouton placeholder (reporté à la demande de l'utilisateur)
+## Core Stack
+- React frontend (`/app/frontend`, react-router 7)
+- FastAPI backend (`/app/backend/server.py` monolithe ~7.3k lignes + `/app/backend/routes/*.py`)
+- MongoDB (motor async)
+- Stripe (billing + crypto), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
-## Espaces / Routes
-- `/` Landing animée · `/business` lead B2B · `/login` `/register`
-- `/app/**` CRM agent · **fiche prospect : Appeler + WhatsApp + Historique + Voir l'appel**
-- `/kolo-admin` Super Admin KOLO
-- `/org` Espace Organisation (marque blanche) · `/org/join/:token` accept invite
-- `/integrations` Branchements (Google Calendar + Whisper + Outlook/Apple à venir)
+## Implemented (état Feb 2026)
+### Auth & Comptes
+- Email/password + Google direct OAuth (no intermediary), Reset Password flow.
+- Super Admin hardcoded fallback (`elliot.cohenpressard@trykolo.io` / `Psychologue75007%!`) avec `lifetime_access=true` + plan `pro_plus`.
+- Apple Sign-In : placeholders (`APPLE_SIGNIN_ENABLED=false`).
 
-## Phase 1 — Super Admin + Multi-Auth (DONE — 18/18 + 9/9)
-## Phase 2 — Marque Blanche multi-tenant (DONE — 24/24)
-## Phase 3 — Intégrations "native first" (DONE)
+### Pipeline Prospect
+- Statuts : **nouveau → contacté → qualifié → offre → offre_acceptée → signé → perdu** (incl. nouveau statut `offre_acceptee` ajouté en iter 31).
+- `Marquer comme vendu` : modale demande **commission initiale (prévue)** + **commission finale (perçue)**, sauvegarde les deux + commission_amount pour rétrocompat.
 
-### ⭐ Modèle de communications (Juin 2026)
-**Sur chaque fiche prospect** :
-- Bouton **"Appeler"** → ouvre le dialer natif avec ton numéro (le prospect voit TON n°)
-- Modal post-appel : durée + résultat (terminé/sans réponse/voicemail/occupé) + notes + **upload optionnel d'un enregistrement audio** → transcription Whisper auto attachée au call_log
-- Bouton **"WhatsApp"** → modal pour rédiger + deep link `wa.me/XXX?text=...` qui ouvre WhatsApp avec ton compte
-- **Section "Historique"** sur la fiche : appels + messages WhatsApp chronologiques, badge "1 appel · 1 message"
-- Clic sur un appel → **modal "Détail de l'appel"** : date/durée/résultat/notes/audio player/**transcription Whisper**
+### Communication
+- ProspectCommsPanel : Call/WhatsApp/Calendar boutons + historique unifié, transcription Whisper.
+- **Today task list** : 4 boutons quick-action (Call, WhatsApp, Email, Calendar) toujours visibles inline sur les tâches liées à un prospect (P1 résolu en iter 30).
 
-### Endpoints backend
-- `POST /api/integrations/calls/log` — log durée + notes
-- `POST /api/integrations/whatsapp/log` — log WA envoyé
-- `POST /api/integrations/transcribe-upload` — upload audio (mp3/m4a/wav, max 25 Mo) → Whisper
-- `GET /api/integrations/prospect/{id}/history` — appels + WA fusionnés chronologiquement
-- `GET /api/integrations/calls/{id}` — détail d'un appel
-- Google Calendar OAuth complet (en attente du `GOOGLE_CAL_CLIENT_ID/SECRET`)
-- Twilio Voice/WhatsApp avancé (code conservé, optionnel)
+### Calendrier
+- Google Calendar + Microsoft Outlook auth-url, événements, sync bidirectionnelle Tâches ↔ Calendar via `_sync_task_to_calendar` (best-effort silencieux).
 
-## Phase 4 — Polish (DONE)
-- Animation mesh gradient sur Landing
-- Composant `ProspectCommsPanel` minimaliste intégré à la fiche prospect
+### White-Label AI Wizard
+- POST `/api/admin/whitelabel/scan` (LLM scrape stripe.com/iadfrance.fr → extraction logo, couleurs, sector, tagline, pitch).
+- POST `/api/admin/whitelabel/create` (instance org + invite link).
+- GET `/api/admin/whitelabel/list`.
+- Admin Dashboard avec onglet « Marque blanche » + bouton « Retour à l'app » (`admin-back-btn`).
 
-## Clés et credentials
-- **Twilio** : SID + API Key SID + Secret dans `.env` (gardé pour le mode "avancé" optionnel)
-- **Emergent LLM Key** : active (Whisper, Claude, OpenAI, Gemini)
-- **Google Maps API Key** : `AIzaSyA_G8BvG2fEmnz6XSW8s44dcFIErsI1IBg` (réservée pour Places autocomplete sur les adresses prospect, plus tard)
-- **Google Calendar OAuth** : à fournir (guide dans `/app/memory/guide_google_calendar.md`)
-- **Apple Sign-In** : reporté
+### Rapports automatiques
+- Helper `_send_weekly_report_for_user(user_id)` (refactor iter 31, F821 fixé).
+- Endpoint POST `/api/reports/weekly` + scheduler background (Monday 8h UTC) qui envoie aux users PRO+/super_admin/lifetime.
+- Email HTML pointe vers `${FRONTEND_URL}/app` = `https://trykolo.io/app` (fix iter 31, plus de `kolo.app/app`).
 
-## P2 Backlog technique
-- Google Maps Places autocomplete sur la fiche prospect (adresses normalisées)
-- Sync Outlook (MS Graph) + Apple Calendar (CalDAV)
-- Notification email/Resend après invite org acceptée
-- Modulariser `server.py` (6700 lignes maintenant) en routers
-- Optimiser `/api/orgs/{id}/kpis` (N+1 → aggregation $facet)
+### Onboarding
+- 6 étapes (Welcome → How → **Permissions** → Import → Theme → Ready).
+- Step 3 Permissions premium : 3 cartes (Mic/Calendar/Notif) avec demandes natives propres + `Shield`/privacy notice.
 
-## Comptes test
-Voir `/app/memory/test_credentials.md`
+### IA
+- ProspectScoreRing + IA Suggested Task (modale glassmorphism).
+- VoiceDictateButton (Whisper) intégré dans toutes les textareas (notes, WA, agenda desc).
 
-## Documents
-- `/app/memory/guide_apple_signin.md` — Guide Apple Sign-In Web
-- `/app/memory/guide_google_calendar.md` — Guide Google Calendar API
-- `/app/auth_testing.md` — Playbook tests auth
-- `/app/test_reports/iteration_26.json` & `iteration_27.json`
+### i18n
+- FR/EN/DE/IT pour OnboardingFlow, SocialAuthButtons, ProspectCommsPanel, MarkAsSoldButton.
+- Bug iter 29 (dividerLabel hardcoded FR) corrigé.
+
+## Backlog (prioritized)
+### P1
+- Apple Sign-In réel (clé dev disponible `460ed08b...`).
+- Refactor monolithe `server.py` → `routes/*.py` (admin, whitelabel, reports, integrations).
+- Passe i18n exhaustive (autres textes FR hardcodés).
+
+### P2
+- Rate limiting Resend pour scheduler hebdo lors de scaling > 100 users PRO+.
+- Enum strict pour `UpdateProspectRequest.status` (Literal pour forward safety).
+- Source unique pour `PROSPECT_STATUSES` (actuellement dupliqué dans `AppShell.js`).
+
+## Testing checkpoints
+- iter 28: i18n + integrations
+- iter 29: divider bug + locale persistence
+- iter 30: whitelabel + scheduler + super-admin pro+ + permissions step
+- iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
+
+## Critical info
+- **Réponse FR exclusive** dans toutes les interactions agent.
+- **REACT_APP_BACKEND_URL** (preview) = `https://responsive-kolo.preview.emergentagent.com`
+- **FRONTEND_URL** (prod) = `https://trykolo.io`
+- Le scheduler tourne dans un thread async daemon initialisé au startup FastAPI.
