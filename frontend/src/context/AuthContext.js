@@ -40,12 +40,16 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('kolo_token');
-    // If we have a Bearer token, skip cookie credentials to avoid CORS issues
-    // with allow_origins=* (the browser rejects credentials with wildcard).
+    // Bearer-token only — cookies are not supported by allow_origins=*
+    if (!token) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      return;
+    }
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        credentials: token ? 'omit' : 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: { Authorization: `Bearer ${token}` },
       });
       
       if (response.ok) {
@@ -53,7 +57,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
-        if (token) localStorage.removeItem('kolo_token');
+        localStorage.removeItem('kolo_token');
         setUser(null);
         setIsAuthenticated(false);
       }
