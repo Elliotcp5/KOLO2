@@ -26,18 +26,32 @@ const JoinOrgPage = () => {
     setAccepting(true); setError(null);
     try {
       const t = localStorage.getItem('kolo_token');
+      if (!t) throw new Error('Session expirée — reconnecte-toi.');
       const r = await fetch(`${API_URL}/api/orgs/accept-invite/${token}`, {
         method: 'POST',
-        credentials: 'include',
-        headers: t ? { Authorization: `Bearer ${t}` } : {},
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${t}`,
+        },
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Erreur');
+      let d = {};
+      try { d = await r.json(); } catch (_e) { /* no body */ }
+      if (!r.ok) {
+        const msg = d.detail || `Erreur ${r.status}`;
+        throw new Error(typeof msg === 'string' ? msg : 'Erreur inconnue');
+      }
       setDone(true);
       localStorage.removeItem('kolo_pending_invite');
       toast.success(`Bienvenue dans ${d.org?.name || 'l\'organisation'}`);
       setTimeout(() => navigate('/org'), 1500);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      const message = e?.message || String(e);
+      setError(
+        message.includes('Load failed') || message.includes('Failed to fetch')
+          ? 'Connexion impossible. Vérifie ta connexion ou réessaie dans quelques secondes.'
+          : message,
+      );
+    }
     finally { setAccepting(false); }
   };
 

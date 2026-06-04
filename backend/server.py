@@ -6195,7 +6195,13 @@ async def accept_org_invite(token: str, request: Request):
 
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
     if user_doc.get("org_id") and user_doc.get("org_id") != invite["org_id"]:
-        raise HTTPException(status_code=400, detail="User already belongs to a different organization")
+        # Look up the existing org for a nicer error message
+        existing = await db.organizations.find_one({"org_id": user_doc["org_id"]}, {"_id": 0, "name": 1})
+        existing_name = (existing or {}).get("name") or "une autre organisation"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tu fais déjà partie de {existing_name}. Quitte-la depuis ton espace pour rejoindre une autre organisation.",
+        )
 
     # ===== SEATS ENFORCEMENT =====
     org = await db.organizations.find_one({"org_id": invite["org_id"]}, {"_id": 0})
