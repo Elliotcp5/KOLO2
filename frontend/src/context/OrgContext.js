@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import { useAuth } from './AuthContext';
 
@@ -75,6 +76,7 @@ const applyBranding = (org) => {
 
 export const OrgProvider = ({ children }) => {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const location = useLocation();
   const [org, setOrg] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -105,12 +107,12 @@ export const OrgProvider = ({ children }) => {
 
   // 1. Public branding via ?org=slug URL param (used by /register, /login pre-auth)
   // 2. Or subdomain detection (custom.trykolo.io)
-  const fetchPublicBranding = useCallback(async () => {
+  // 3. If neither is present, RESET branding to KOLO defaults (avoid stale brand
+  //    leaking from a previous SPA navigation).
+  const syncPublicBranding = useCallback(async () => {
     const params = new URLSearchParams(window.location.search);
     const slugFromUrl = params.get('org');
     const host = window.location.hostname;
-    // Subdomain detection: subdomain.trykolo.io or subdomain.kolo.com etc.
-    // Skip 'www', 'app', 'api', preview hosts
     const parts = host.split('.');
     const skipSubs = new Set(['www', 'app', 'api', 'localhost']);
     const isPreview = host.includes('preview.emergentagent.com') || host.includes('localhost');
@@ -119,7 +121,14 @@ export const OrgProvider = ({ children }) => {
       slugFromSub = parts[0];
     }
     const slug = slugFromUrl || slugFromSub;
-    if (!slug) return;
+    if (!slug) {
+      // No org context in URL → clear any previously-applied white-label brand
+      if (!isAuthenticated) {
+        setPublicBranding(null);
+        applyBranding(null);
+      }
+      return;
+    }
     try {
       const r = await fetch(`${API_URL}/api/orgs/public/${slug}`);
       if (r.ok) {
@@ -127,13 +136,19 @@ export const OrgProvider = ({ children }) => {
         if (d?.org) {
           setPublicBranding(d.org);
           applyBranding(d.org);
+        } else {
+          setPublicBranding(null);
+          if (!isAuthenticated) applyBranding(null);
         }
+      } else {
+        setPublicBranding(null);
+        if (!isAuthenticated) applyBranding(null);
       }
     } catch (_e) { /* ignore */ }
-  }, []);
+  }, [isAuthenticated]);
 
-  // First boot: try public branding (no auth needed)
-  useEffect(() => { fetchPublicBranding(); }, [fetchPublicBranding]);
+  // Re-sync public branding on every route change (SPA navigations included)
+  useEffect(() => { syncPublicBranding(); }, [syncPublicBranding, location.pathname, location.search]);
 
   // After auth: fetch the user's org and override branding
   useEffect(() => {
