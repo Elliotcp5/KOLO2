@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Phone, MessageCircle, Calendar, Mic, ArrowLeft, ExternalLink,
+  Phone, MessageCircle, Calendar, Mic, ArrowLeft, ExternalLink, Plug,
   Upload, FileAudio, Check, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -12,13 +12,13 @@ import '../styles/org.css';
 
 const auth = () => { const t = localStorage.getItem('kolo_token'); return t ? { Authorization: `Bearer ${t}` } : {}; };
 
-const StatusPill = ({ ok, soon, custom }) => (
+const StatusPill = ({ ok, soon, custom, label }) => (
   <span className={`integration-status-pill ${soon ? 'soon' : ok ? 'ok' : 'ko'}`}>
-    {custom || (ok ? <><Check size={12} /> Actif</> : soon ? 'Bientôt' : <><X size={12} /> Non configuré</>)}
+    {custom || label || (ok ? <><Check size={12} /> Actif</> : soon ? 'Bientôt' : <><X size={12} /> Non configuré</>)}
   </span>
 );
 
-const Card = ({ icon: Icon, title, description, badge, children, color = '#8B5CF6' }) => (
+const Card = ({ icon: Icon, title, description, badge, children, color = '#8B5CF6', cta }) => (
   <div className="integration-card">
     <div className="header">
       <div className="icon-circle" style={{ background: `${color}15`, color }}><Icon size={22} strokeWidth={1.75} /></div>
@@ -26,7 +26,7 @@ const Card = ({ icon: Icon, title, description, badge, children, color = '#8B5CF
       {badge && <span style={{ marginLeft: 'auto' }}>{badge}</span>}
     </div>
     {description && <p className="desc">{description}</p>}
-    <div className="actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>{children}</div>
+    <div className="actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>{children}{cta}</div>
   </div>
 );
 
@@ -449,10 +449,25 @@ const IntegrationsPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 20 }} data-testid="integrations-grid">
           <NativeCallCard />
           <NativeWhatsAppCard />
-          <WhisperCard configured={statuses?.whisper?.configured} />
           <GoogleCalendarCard status={statuses?.google_calendar} />
           <OutlookCalendarCard status={statuses?.outlook_calendar} />
-          <Card icon={Calendar} title="Apple Calendar" description="Synchronisation iCloud via CalDAV." badge={<StatusPill soon />} color="#000000" />
+          <Card
+            icon={Plug}
+            title="Intégration CRM"
+            description="Connecte KOLO à ton CRM existant (HubSpot, Salesforce, Pipedrive, Zoho, AgentLink, etc.). Synchronisation des prospects et de l'historique. Mise en place sur-mesure par notre équipe — contacte-nous."
+            badge={<StatusPill soon label="Sur demande" />}
+            color="#6366F1"
+            cta={(
+              <a
+                href="mailto:contact@trykolo.io?subject=Int%C3%A9gration%20CRM"
+                className="org-btn-primary"
+                data-testid="crm-contact-btn"
+                style={{ background: '#6366F1', color: 'white', border: 'none', borderRadius: 8, padding: '10px 14px', fontWeight: 600, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                Nous contacter
+              </a>
+            )}
+          />
         </div>
 
         <RecentActivity />

@@ -954,8 +954,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Org Space — only visible if user belongs to an org OR is super admin */}
-          {(userOrg || isSuperAdmin) && (
+          {/* Org Space — only for org members (not super-admin standalone) */}
+          {userOrg && (
             <button
               onClick={() => navigate('/org')}
               data-testid="header-org-btn"

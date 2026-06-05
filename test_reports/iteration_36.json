@@ -1,0 +1,37 @@
+{
+  "summary": "ITER 36 — White-label refactor (CRUD + invoice generation) + 3 org roles (agent/manager/admin) + KPI search/manager filters. Backend pytest: 14/14 PASS for iter_36 covering: GET /admin/whitelabel/list (seats_used live count), PATCH whitelabel update (tagline/seats/price/promo/billing_country FR→BE uppercase), DELETE whitelabel (org + invites + detach members), GET invite-link (+14d expiry verified ~13-14d), POST /invoice (invoice_number KL-YYYYMM-XXXXXX, IBAN/BIC/beneficiary/reference + math FR 20%: 10×1900×12=228000c HT, +20%=273600c TTC), POST /orgs/{id}/invite with role=org_manager (manager_id ignored for managers) + 400 on invalid manager_id, PATCH /orgs/{id}/members/{uid} (404 on unknown member, 400 on bad role, 400 on bad manager_id, 200 on role=org_manager auto-clears manager_id), GET /orgs/{id}/members includes viewer_role+viewer_is_admin, GET /orgs/{id}/kpis includes viewer_role+breakdown+search+managers filters. Regression iter_34: 8/8 PASS. Frontend smoke (super admin elliot.cohenpressard / Psychologue75007%! → /kolo-admin): admin-nav-whitelabel-create + admin-nav-whitelabel-list both present, wl-list-grid renders, all card buttons (wl-preview-*/invite-*/billing-*/edit-*/delete-*) exist, wl-billing-modal opens with HT/TVA/TTC and wl-generate-invoice-btn, header-org-btn HIDDEN for super admin (correct), /integrations page shows crm-contact-btn and Whisper + Apple Calendar texts REMOVED.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_36.py",
+    "/app/test_reports/pytest/iteration_36_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py at 7800 lines — long-standing observation (since iter_28). Recommend extracting whitelabel + invoice + org-members into dedicated routers (e.g. routers/whitelabel.py, routers/orgs.py).",
+    "whitelabel_generate_invoice() stores in db.invoices but the endpoint does not currently expose a GET /api/admin/whitelabel/{org_id}/invoices listing. Consider adding so the UI can show invoice history (currently only generates fresh each call).",
+    "VAT_BY_COUNTRY dict is hardcoded inline in whitelabel_generate_invoice (line 6197) AND duplicated in WhiteLabelTab.js VAT_RATES (frontend) — DRY violation. Extract to a shared constant or expose via a small /api/billing/vat-rates endpoint to keep both in sync.",
+    "invoice_number generation uses secrets.token_hex(3).upper() (6-char suffix) — no uniqueness guarantee at scale. Low priority but recommend adding a unique index on db.invoices.invoice_number once volume grows.",
+    "MemberUpdatePayload allows 'name' updates which is not documented in the iter 36 spec — fine but worth noting in the PR description.",
+    "Pre-existing lint: 14 cosmetic E701/E401 warnings in server.py (pre-existing per iter 35 note) — NOT introduced in iter 36."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_36.py (NEW)",
+    "/app/test_reports/iteration_36.json (NEW)",
+    "/app/test_reports/pytest/iteration_36_results.xml (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 iter_36 + 8/8 iter_34 regression = 22/22)",
+    "frontend": "100% smoke — sidebar 2 tabs OK, WL list grid + all 5 card buttons OK, billing modal + generate invoice button OK, header-org-btn hidden for super admin OK, /integrations: CRM card present + Whisper/Apple removed OK"
+  },
+  "test_credentials": "Super admin elliot.cohenpressard@trykolo.io / Psychologue75007%! — Bearer token at top-level of /api/auth/login.",
+  "seed_data_creation": "iter_36 fixtures create short-lived TEST_iter36_* orgs auto-cleaned via fixture teardown. After this run I manually cleaned 11 residual TEST_iter36_*/TEST_inv_*/TEST_del_* orgs that were left over from previous test attempts (pymongo DB_NAME load failure). Current run leaves a clean state.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter_36 GREEN. To re-run: `pytest /app/backend/tests/test_iteration_36.py /app/backend/tests/test_iteration_34.py -v` (~7s). The test file uses load_dotenv('/app/backend/.env') so DB_NAME + MONGO_URL load correctly from backend env. NEW endpoints covered: PATCH /api/admin/whitelabel/{org_id}, DELETE /api/admin/whitelabel/{org_id}, GET /api/admin/whitelabel/{org_id}/invite-link, POST /api/admin/whitelabel/{org_id}/invoice, PATCH /api/orgs/{org_id}/members/{user_id}. Note: super admin elliot.cohenpressard@trykolo.io has NO org_id (detached per iter 35 cleanup) — that's why header-org-btn is correctly hidden. The fresh_org fixture creates orgs with name=TEST_iter36_<hex> and cleans them up after each test via _cleanup_org() (organizations + org_invites + invoices). For frontend test, login at /login then navigate /kolo-admin, click admin-nav-whitelabel-list → wl-list-grid loads with card-per-org including wl-billing-<slug> button that opens wl-billing-modal containing wl-generate-invoice-btn.",
+  "rca of the issue": "NO BUGS. All iter_36 endpoints behave per spec. Implementation notes verified: (1) whitelabel/list refreshes seats_used at line 6097-6099 via count_documents per org. (2) whitelabel_update at 6119 correctly uppercases billing_country and clamps promo_months_free to [0,12]. (3) whitelabel_delete at 6142 unsets org_id+org_role+manager_id on users, deletes invites, deletes the org. (4) invite-link returns expires_at = now+14d (line 6178). (5) invoice math uses VAT_BY_COUNTRY map at 6197 (18 countries), formula amount_ht = seats * monthly_cents * (12 - promo); ttc = ht + round(ht*vat_pct/100); invoice persisted to db.invoices. (6) invite_to_org validates manager_id is a manager/admin in same org (line 6377) before creating invite; manager_id only saved when role=org_agent. (7) update_org_member validates role enum, prevents owner downgrade, validates manager_id ownership; auto-clears manager_id when becoming manager/admin. (8) list_members filters by manager_id when viewer is org_manager. (9) org_kpis applies admin-only managers filter + search across name/email and exposes viewer_role/viewer_is_admin/breakdown[].manager_id+org_role."
+}

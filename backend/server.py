@@ -5797,7 +5797,14 @@ class OrgUpdatePayload(BaseModel):
 
 class OrgInvitePayload(BaseModel):
     email: str
-    role: Optional[str] = "org_agent"  # org_agent or org_admin
+    role: Optional[str] = "org_agent"  # org_agent | org_manager | org_admin
+    manager_id: Optional[str] = None  # only for org_agent
+
+
+class MemberUpdatePayload(BaseModel):
+    role: Optional[str] = None  # org_agent | org_manager | org_admin
+    manager_id: Optional[str] = None
+    name: Optional[str] = None
 
 
 def _slugify(s: str) -> str:
@@ -6087,7 +6094,151 @@ async def whitelabel_list(request: Request):
     if not is_super_admin_email(user.email):
         raise HTTPException(status_code=403, detail="Super admin only")
     orgs = await db.organizations.find({"white_label": True}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    # Refresh seats_used live for each org
+    for o in orgs:
+        o["seats_used"] = await db.users.count_documents({"org_id": o["org_id"]})
     return {"count": len(orgs), "orgs": orgs}
+
+
+class WhiteLabelUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    logo_url: Optional[str] = None
+    tagline: Optional[str] = None
+    pitch: Optional[str] = None
+    font_family: Optional[str] = None
+    seats: Optional[int] = None
+    monthly_price_per_seat_eur: Optional[int] = None
+    billing_country: Optional[str] = None
+    promo_months_free: Optional[int] = None
+    custom_subdomain: Optional[str] = None
+
+
+@api_router.patch("/admin/whitelabel/{org_id}")
+async def whitelabel_update(org_id: str, payload: WhiteLabelUpdatePayload, request: Request):
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+    update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    for k, v in payload.model_dump(exclude_none=True).items():
+        if k == "billing_country" and isinstance(v, str):
+            update[k] = v.upper()
+        elif k == "promo_months_free":
+            update[k] = max(0, min(12, int(v)))
+        elif k == "custom_subdomain" and isinstance(v, str):
+            update[k] = v.strip().lower() or None
+        else:
+            update[k] = v
+    await db.organizations.update_one({"org_id": org_id}, {"$set": update})
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    return {"ok": True, "org": org}
+
+
+@api_router.delete("/admin/whitelabel/{org_id}")
+async def whitelabel_delete(org_id: str, request: Request):
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+    # Detach all members
+    await db.users.update_many(
+        {"org_id": org_id},
+        {"$unset": {"org_id": "", "org_role": "", "manager_id": ""}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    # Delete pending invites + the org
+    await db.org_invites.delete_many({"org_id": org_id})
+    await db.organizations.delete_one({"org_id": org_id})
+    return {"ok": True}
+
+
+@api_router.get("/admin/whitelabel/{org_id}/invite-link")
+async def whitelabel_invite_link(org_id: str, request: Request):
+    """Return a fresh invite link for the given white-label org (super admin)."""
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+    token = secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:48]
+    invite = {
+        "invite_id": f"inv_{secrets.token_hex(7)}",
+        "org_id": org_id,
+        "email": (org.get("contact_email") or ""),
+        "role": "org_admin",
+        "token": token,
+        "invited_by": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+        "accepted": False,
+    }
+    await db.org_invites.insert_one(invite)
+    base_url = (os.environ.get("FRONTEND_URL") or "https://trykolo.io").rstrip("/")
+    return {"invite_url": f"{base_url}/join-org/{token}", "token": token, "expires_at": invite["expires_at"]}
+
+
+@api_router.post("/admin/whitelabel/{org_id}/invoice")
+async def whitelabel_generate_invoice(org_id: str, request: Request):
+    """Generate a (mock-for-now) invoice for a white-label org. Stores it in DB so it can be retrieved later.
+    Returns invoice details + bank transfer instructions."""
+    user = await require_auth(request)
+    if not is_super_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Super admin only")
+    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+
+    VAT_BY_COUNTRY = {
+        "FR": 20, "BE": 21, "LU": 17, "CH": 8.1, "MC": 20, "DE": 19, "ES": 21, "IT": 22,
+        "PT": 23, "NL": 21, "GB": 20, "IE": 23, "AT": 20, "DK": 25, "SE": 25, "FI": 24,
+        "PL": 23, "CZ": 21,
+    }
+    seats = int(org.get("seats") or 0)
+    monthly = int(org.get("monthly_price_per_seat_eur") or 0)
+    promo = max(0, min(12, int(org.get("promo_months_free") or 0)))
+    annual_ht = seats * monthly * (12 - promo)
+    country = (org.get("billing_country") or "FR").upper()
+    vat_pct = VAT_BY_COUNTRY.get(country, 20)
+    vat = round((annual_ht * vat_pct) / 100)
+    ttc = annual_ht + vat
+
+    now = datetime.now(timezone.utc)
+    invoice_number = f"KL-{now.strftime('%Y%m')}-{secrets.token_hex(3).upper()}"
+    invoice = {
+        "invoice_id": f"inv_{secrets.token_hex(8)}",
+        "invoice_number": invoice_number,
+        "org_id": org_id,
+        "org_name": org.get("name"),
+        "issued_at": now.isoformat(),
+        "due_at": (now + timedelta(days=30)).isoformat(),
+        "seats": seats,
+        "monthly_price_per_seat_cents": monthly,
+        "promo_months_free": promo,
+        "billed_months": 12 - promo,
+        "amount_ht_cents": annual_ht,
+        "vat_pct": vat_pct,
+        "vat_cents": vat,
+        "amount_ttc_cents": ttc,
+        "currency": "EUR",
+        "billing_country": country,
+        "status": "pending",
+        "payment_method": "bank_transfer",
+        "beneficiary": os.environ.get("KOLO_INVOICE_BENEFICIARY", "KOLO SAS"),
+        "iban": os.environ.get("KOLO_INVOICE_IBAN", "FR76 1010 7001 9300 0123 4567 890"),
+        "bic": os.environ.get("KOLO_INVOICE_BIC", "CCMBFRPP"),
+        "reference": invoice_number,
+        "pdf_url": None,
+        "created_by": user.user_id,
+    }
+    await db.invoices.insert_one(invoice)
+    invoice.pop("_id", None)
+    return {"ok": True, "invoice": invoice}
 
 
 @api_router.get("/orgs/me")
@@ -6152,13 +6303,64 @@ async def update_org(org_id: str, payload: OrgUpdatePayload, request: Request):
 
 @api_router.get("/orgs/{org_id}/members")
 async def list_org_members(org_id: str, request: Request):
-    await _require_org_member(request, org_id, admin_only=False)
+    """List members. Org_managers only see themselves + agents they manage.
+    Org_admins (and super-admin) see everybody."""
+    user, _org = await _require_org_member(request, org_id, admin_only=False)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    role = user_doc.get("org_role")
+    is_admin = is_super_admin_email(user.email) or role == "org_admin"
+
+    query = {"org_id": org_id}
+    if not is_admin and role == "org_manager":
+        # manager sees himself + his agents
+        query = {"org_id": org_id, "$or": [{"user_id": user.user_id}, {"manager_id": user.user_id}]}
+
     cursor = db.users.find(
-        {"org_id": org_id},
-        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "org_role": 1, "phone": 1, "created_at": 1, "subscription_status": 1},
+        query,
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "org_role": 1, "phone": 1,
+         "created_at": 1, "subscription_status": 1, "manager_id": 1},
     ).sort("created_at", 1)
-    members = await cursor.to_list(length=500)
-    return {"count": len(members), "members": members}
+    members = await cursor.to_list(length=1000)
+    return {"count": len(members), "members": members, "viewer_role": role, "viewer_is_admin": is_admin}
+
+
+@api_router.patch("/orgs/{org_id}/members/{user_id}")
+async def update_org_member(org_id: str, user_id: str, payload: MemberUpdatePayload, request: Request):
+    """Update a member's role or manager. Admin-only."""
+    _, org = await _require_org_member(request, org_id, admin_only=True)
+    target = await db.users.find_one({"user_id": user_id, "org_id": org_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Membre introuvable")
+    update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if payload.role is not None:
+        if payload.role not in ("org_agent", "org_manager", "org_admin"):
+            raise HTTPException(status_code=400, detail="Rôle invalide")
+        # Don't allow downgrading the org owner
+        if org.get("owner_user_id") == user_id and payload.role != "org_admin":
+            raise HTTPException(status_code=400, detail="Impossible de rétrograder le propriétaire de l'organisation")
+        update["org_role"] = payload.role
+        # If becoming admin/manager, clear manager_id
+        if payload.role != "org_agent":
+            update["manager_id"] = None
+    if payload.manager_id is not None:
+        if payload.manager_id == "":
+            update["manager_id"] = None
+        else:
+            mgr = await db.users.find_one(
+                {"user_id": payload.manager_id, "org_id": org_id, "org_role": {"$in": ["org_manager", "org_admin"]}},
+                {"_id": 0, "user_id": 1},
+            )
+            if not mgr:
+                raise HTTPException(status_code=400, detail="Manager invalide pour cette organisation")
+            update["manager_id"] = payload.manager_id
+    if payload.name is not None:
+        update["name"] = payload.name
+    await db.users.update_one({"user_id": user_id}, {"$set": update})
+    updated = await db.users.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "org_role": 1, "manager_id": 1},
+    )
+    return {"ok": True, "member": updated}
 
 
 @api_router.post("/orgs/{org_id}/invite")
@@ -6167,7 +6369,17 @@ async def invite_to_org(org_id: str, payload: OrgInvitePayload, request: Request
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="Invalid email")
-    role = payload.role if payload.role in ("org_admin", "org_agent") else "org_agent"
+    role = payload.role if payload.role in ("org_admin", "org_manager", "org_agent") else "org_agent"
+
+    # Validate manager_id (must be a manager/admin in this org)
+    manager_id = payload.manager_id or None
+    if manager_id:
+        mgr = await db.users.find_one(
+            {"user_id": manager_id, "org_id": org_id, "org_role": {"$in": ["org_manager", "org_admin"]}},
+            {"_id": 0, "user_id": 1},
+        )
+        if not mgr:
+            raise HTTPException(status_code=400, detail="Manager invalide pour cette organisation")
 
     token = secrets.token_urlsafe(24)
     invite = {
@@ -6175,6 +6387,7 @@ async def invite_to_org(org_id: str, payload: OrgInvitePayload, request: Request
         "org_id": org_id,
         "email": email,
         "role": role,
+        "manager_id": manager_id if role == "org_agent" else None,
         "token": token,
         "invited_by": user.user_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -6183,7 +6396,8 @@ async def invite_to_org(org_id: str, payload: OrgInvitePayload, request: Request
     }
     await db.org_invites.insert_one(invite)
     invite.pop("_id", None)
-    return {"ok": True, "invite": invite, "accept_url": f"/org/join/{token}"}
+    base_url = (os.environ.get("FRONTEND_URL") or "https://trykolo.io").rstrip("/")
+    return {"ok": True, "invite": invite, "accept_url": f"/join-org/{token}", "invite_url": f"{base_url}/join-org/{token}"}
 
 
 @api_router.get("/orgs/invite/{token}")
@@ -6282,7 +6496,12 @@ async def accept_org_invite(token: str, request: Request):
 
     await db.users.update_one(
         {"user_id": user.user_id},
-        {"$set": {"org_id": invite["org_id"], "org_role": invite["role"], "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "org_id": invite["org_id"],
+            "org_role": invite["role"],
+            "manager_id": invite.get("manager_id") if invite["role"] == "org_agent" else None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
     )
     await db.org_invites.update_one(
         {"token": token},
@@ -6412,10 +6631,40 @@ async def org_billing_checkout(org_id: str, payload: OrgBillingCheckoutPayload, 
 
 
 @api_router.get("/orgs/{org_id}/kpis")
-async def org_kpis(org_id: str, request: Request):
-    """KPIs for the team: prospects, calls, conversions, per-agent breakdown."""
-    await _require_org_member(request, org_id, admin_only=False)
-    members = await db.users.find({"org_id": org_id}, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(length=500)
+async def org_kpis(
+    org_id: str,
+    request: Request,
+    managers: Optional[str] = None,  # comma-separated manager_ids to filter agents
+    search: Optional[str] = None,     # name/email substring search
+):
+    """KPIs for the team. Managers only see their team; admins see everyone.
+    Query params: managers=mid1,mid2 (admin filter) | search=text"""
+    user, _org = await _require_org_member(request, org_id, admin_only=False)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    role = user_doc.get("org_role")
+    is_admin = is_super_admin_email(user.email) or role == "org_admin"
+
+    # Members visible by the viewer
+    base_query = {"org_id": org_id}
+    if not is_admin and role == "org_manager":
+        base_query = {"org_id": org_id, "$or": [{"user_id": user.user_id}, {"manager_id": user.user_id}]}
+
+    # Admin filter by managers
+    if is_admin and managers:
+        mids = [m.strip() for m in managers.split(",") if m.strip()]
+        if mids:
+            base_query["$or"] = [{"user_id": {"$in": mids}}, {"manager_id": {"$in": mids}}]
+
+    # Search filter
+    if search:
+        s = search.strip()
+        if s:
+            base_query["$and"] = [{"$or": [
+                {"name": {"$regex": s, "$options": "i"}},
+                {"email": {"$regex": s, "$options": "i"}},
+            ]}]
+
+    members = await db.users.find(base_query, {"_id": 0, "user_id": 1, "email": 1, "name": 1, "org_role": 1, "manager_id": 1}).to_list(length=1000)
     member_ids = [m["user_id"] for m in members]
 
     total_prospects = await db.prospects.count_documents({"user_id": {"$in": member_ids}}) if member_ids else 0
@@ -6434,6 +6683,8 @@ async def org_kpis(org_id: str, request: Request):
             "user_id": uid,
             "name": m.get("name") or m.get("email"),
             "email": m.get("email"),
+            "org_role": m.get("org_role"),
+            "manager_id": m.get("manager_id"),
             "prospects": await db.prospects.count_documents({"user_id": uid}),
             "chaud": await db.prospects.count_documents({"user_id": uid, "score": "chaud"}),
             "sold": await db.prospects.count_documents({"user_id": uid, "stage": "vendu"}),
@@ -6448,6 +6699,8 @@ async def org_kpis(org_id: str, request: Request):
         "completed_tasks": completed_tasks,
         "calls": calls_count,
         "members_count": len(members),
+        "viewer_role": role,
+        "viewer_is_admin": is_admin,
         "breakdown": sorted(breakdown, key=lambda x: x["prospects"], reverse=True),
     }
 
@@ -6537,10 +6790,11 @@ async def admin_list_orgs(request: Request, limit: int = 200):
 # une 400 explicite. Cela permet à l'UI d'afficher "Connecter <service>".
 # ============================================================================
 
-def _integration_status(env_keys: list, optional: list = None) -> dict:
-    """Return {configured: bool, missing: [...]} given env keys to check."""
+def _integration_status(env_keys: list, optional: list = None, force_true: bool = False) -> dict:
+    """Return {configured: bool, missing: [...]} given env keys to check.
+    force_true=True overrides missing for integrations with hardcoded fallbacks."""
     missing = [k for k in env_keys if not os.environ.get(k, "").strip()]
-    return {"configured": len(missing) == 0, "missing": missing}
+    return {"configured": force_true or len(missing) == 0, "missing": [] if force_true else missing}
 
 
 @api_router.get("/integrations/status")
@@ -6568,7 +6822,7 @@ async def integrations_status(request: Request):
         "twilio_voice_advanced": {"configured": voice_ok, "missing": [k for k in ["TWILIO_FROM_NUMBER"] if not os.environ.get(k, "").strip()], "note": "Optionnel — recording auto + transcription. Sinon, mode natif."},
         "twilio_whatsapp_advanced": {"configured": wa_ok, "missing": [k for k in ["TWILIO_WHATSAPP_FROM"] if not os.environ.get(k, "").strip()], "note": "Optionnel — pour réception webhook. Sinon, mode natif."},
         # Calendar OAuth integrations
-        "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"]),
+        "google_calendar": _integration_status(["GOOGLE_CAL_CLIENT_ID", "GOOGLE_CAL_CLIENT_SECRET"], force_true=True),
         "outlook_calendar": _integration_status(["MS_CLIENT_ID", "MS_CLIENT_SECRET"]),
         "apple_calendar": {"configured": False, "missing": ["APPLE_CALDAV"], "note": "Bientôt disponible"},
     }
@@ -7017,9 +7271,10 @@ GOOGLE_CAL_SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.go
 @api_router.get("/integrations/google-calendar/auth-url")
 async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
     user = await require_auth(request)
-    cid = os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+    cid = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+           or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
     if not cid:
-        raise HTTPException(status_code=400, detail="GOOGLE_CAL_CLIENT_ID missing — ajoute tes credentials dans .env")
+        raise HTTPException(status_code=500, detail="Google Calendar non configuré côté serveur")
     base_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
     redirect_uri = f"{base_url}/api/integrations/google-calendar/callback"
     state = secrets.token_urlsafe(16)
@@ -7044,8 +7299,10 @@ async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
 
 @api_router.get("/integrations/google-calendar/callback")
 async def gcal_callback(request: Request, code: str, state: str):
-    cid = os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-    cs = os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
+    cid = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+           or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
+    cs = (os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
+          or "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")
     if not (cid and cs):
         raise HTTPException(status_code=400, detail="Google Calendar credentials missing")
 

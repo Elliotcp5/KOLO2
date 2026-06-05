@@ -10,8 +10,10 @@ import {
   ChevronRight,
   ArrowLeft,
   Building2,
+  Sparkles,
 } from 'lucide-react';
 import WhiteLabelTab from '../components/WhiteLabelTab';
+import WhiteLabelList from '../components/WhiteLabelList';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 import '../styles/admin.css';
@@ -394,7 +396,8 @@ const AdminDashboard = () => {
           <SidebarItem testid="admin-nav-overview" icon={LayoutDashboard} label="Vue d'ensemble" active={tab === 'overview'} onClick={() => setTab('overview')} />
           <SidebarItem testid="admin-nav-leads" icon={Briefcase} label="Leads B2B" active={tab === 'leads'} onClick={() => setTab('leads')} />
           <SidebarItem testid="admin-nav-users" icon={UsersIcon} label="Utilisateurs" active={tab === 'users'} onClick={() => setTab('users')} />
-          <SidebarItem testid="admin-nav-whitelabel" icon={Building2} label="Marque blanche" active={tab === 'whitelabel'} onClick={() => setTab('whitelabel')} />
+          <SidebarItem testid="admin-nav-whitelabel-create" icon={Sparkles} label="Créer une marque blanche" active={tab === 'whitelabel'} onClick={() => setTab('whitelabel')} />
+          <SidebarItem testid="admin-nav-whitelabel-list" icon={Building2} label="Mes marques blanches" active={tab === 'whitelabel-list'} onClick={() => setTab('whitelabel-list')} />
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -414,6 +417,7 @@ const AdminDashboard = () => {
         {tab === 'leads' && <Leads />}
         {tab === 'users' && <Users />}
         {tab === 'whitelabel' && <WhiteLabelTab />}
+        {tab === 'whitelabel-list' && <WhiteLabelList onCreate={() => setTab('whitelabel')} />}
       </main>
     </div>
   );
