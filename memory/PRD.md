@@ -16,6 +16,15 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Mode "Dieu" Super Admin (iter 36 — Feb 2026)
+- Le Super Admin (`elliot.cohenpressard@trykolo.io`) n'est **rattaché à aucune organisation** en base (`users.org_id = null`).
+- Accès à n'importe quel espace réseau via `/org?org_id=XXX` (god mode).
+- `_require_org_member` bypasse les checks 403 pour les super admins (`is_super_admin_email`).
+- `/api/orgs/me?org_id=X` retourne l'org demandée avec `role="super_admin"` et `is_god_mode=true`.
+- UI : Bouton **« Voir l'espace »** (badge violet) sur chaque carte de `WhiteLabelList`.
+- UI : Banner **« MODE SUPER ADMIN · PILOTAGE »** dans la sidebar quand god mode actif.
+- UI : Sidebar footer affiche **« Retour Admin »** (redirige vers `/kolo-admin`) au lieu de « Retour à l'app ».
+
 ### Auth & Comptes
 - Email/password + Google direct OAuth (no intermediary), Reset Password flow.
 - Super Admin hardcoded fallback (`elliot.cohenpressard@trykolo.io` / `Psychologue75007%!`) avec `lifetime_access=true` + plan `pro_plus`.
@@ -83,6 +92,7 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - iter 30: whitelabel + scheduler + super-admin pro+ + permissions step
 - iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
 - iter 32: 4 lots marque blanche (branding partout + funnel brandé + billing B2B + sous-domaine)
+- iter 36: Mode "Dieu" Super Admin (validé visuellement — bouton Voir l'espace + banner + permissions admin OK)
 
 ## Critical info
 - **Réponse FR exclusive** dans toutes les interactions agent.

@@ -3,7 +3,7 @@ import { API_URL } from '../config/api';
 import { toast } from 'sonner';
 import {
   Building2, ExternalLink, Edit3, Trash2, RefreshCw, Copy, FileText,
-  Sparkles, X, Check, AlertCircle, CreditCard,
+  Sparkles, X, Check, AlertCircle, CreditCard, Eye,
 } from 'lucide-react';
 
 const auth = () => {
@@ -136,6 +136,10 @@ const WhiteLabelList = ({ onCreate }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <a href={`/org?org_id=${o.org_id}`} className="admin-icon-btn" data-testid={`wl-view-space-${o.slug}`} title="Entrer dans l'espace du réseau (Mode super admin)"
+                     style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(236,72,153,0.10))', color: '#6D28D9', textDecoration: 'none', fontWeight: 700, border: '1px solid rgba(139,92,246,0.3)' }}>
+                    <Eye size={13} /> Voir l'espace
+                  </a>
                   <a href={`/register?org=${o.slug}`} target="_blank" rel="noopener noreferrer" className="admin-icon-btn" data-testid={`wl-preview-${o.slug}`} title="Aperçu inscription brandée"
                      style={{ background: 'rgba(139,92,246,0.08)', color: '#6D28D9', textDecoration: 'none' }}>
                     <ExternalLink size={13} /> Aperçu

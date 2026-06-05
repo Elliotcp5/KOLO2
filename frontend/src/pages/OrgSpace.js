@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building2, Users as UsersIcon, BarChart3, FolderOpen, Plug,
   ArrowLeft, Mail, Trash2, RefreshCw, Plus, Phone, MessageCircle,
@@ -699,13 +699,19 @@ const OrgSpace = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [searchParams] = useSearchParams();
+  const godModeOrgId = searchParams.get('org_id');
 
   const loadOrg = useCallback(async () => {
     setLoading(true);
-    try { const r = await api('/api/orgs/me'); setOrg(r.org); setRole(r.role); }
+    try {
+      const path = godModeOrgId ? `/api/orgs/me?org_id=${encodeURIComponent(godModeOrgId)}` : '/api/orgs/me';
+      const r = await api(path);
+      setOrg(r.org); setRole(r.role);
+    }
     catch (e) { toast.error(e.message); }
     finally { setLoading(false); }
-  }, []);
+  }, [godModeOrgId]);
 
   useEffect(() => { if (!authLoading) loadOrg(); }, [authLoading, loadOrg]);
 
@@ -728,7 +734,8 @@ const OrgSpace = () => {
     );
   }
 
-  const isOrgAdmin = role === 'org_admin';
+  const isGodMode = role === 'super_admin';
+  const isOrgAdmin = isGodMode || role === 'org_admin';
 
   return (
     <div className="admin-shell" data-testid="org-space">
@@ -737,6 +744,17 @@ const OrgSpace = () => {
           {org.logo_url ? <img src={org.logo_url} alt={org.name} style={{ height: 32, maxWidth: 120 }} /> : <span>{org.name}</span>}
           <span className="admin-brand-dot" style={{ background: org.primary_color }} />
         </div>
+        {isGodMode && (
+          <div data-testid="god-mode-banner" style={{
+            margin: '0 12px 8px', padding: '8px 12px', borderRadius: 10,
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(236,72,153,0.10))',
+            border: '1px solid rgba(139,92,246,0.3)',
+            fontSize: 11, fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.04em',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            👁️ Mode super admin · pilotage
+          </div>
+        )}
         <nav className="admin-nav">
           <button onClick={() => setTab('overview')} className={`admin-sidebar-item ${tab === 'overview' ? 'is-active' : ''}`} data-testid="org-nav-overview"><Building2 size={18} strokeWidth={1.75} /><span>Vue d'ensemble</span></button>
           <button onClick={() => setTab('team')} className={`admin-sidebar-item ${tab === 'team' ? 'is-active' : ''}`} data-testid="org-nav-team"><UsersIcon size={18} strokeWidth={1.75} /><span>Équipe</span></button>
@@ -746,7 +764,7 @@ const OrgSpace = () => {
           <button onClick={() => navigate('/integrations')} className="admin-sidebar-item" data-testid="org-nav-integrations"><Plug size={18} strokeWidth={1.75} /><span>Intégrations</span></button>
         </nav>
         <div className="admin-sidebar-footer">
-          <button onClick={() => navigate('/app')} className="admin-logout" style={{ color: 'var(--ink-mid)' }}><ArrowLeft size={16} /><span>Retour à l'app</span></button>
+          <button onClick={() => navigate(isGodMode ? '/kolo-admin' : '/app')} className="admin-logout" style={{ color: 'var(--ink-mid)' }}><ArrowLeft size={16} /><span>{isGodMode ? 'Retour Admin' : 'Retour à l\'app'}</span></button>
         </div>
       </aside>
       <main className="admin-main">

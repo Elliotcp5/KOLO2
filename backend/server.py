@@ -6242,13 +6242,23 @@ async def whitelabel_generate_invoice(org_id: str, request: Request):
 
 
 @api_router.get("/orgs/me")
-async def get_my_org(request: Request):
+async def get_my_org(request: Request, org_id: Optional[str] = None):
+    """Returns the current user's org + role. 
+    For SUPER ADMINS: pass ?org_id=X to access any org in 'god mode' without being a member."""
     user = await require_auth(request)
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
-    org_id = user_doc.get("org_id")
-    if not org_id:
+    
+    # Super admin god-mode: can access any org via ?org_id=X
+    if org_id and is_super_admin_email(user.email):
+        org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+        if not org:
+            raise HTTPException(status_code=404, detail="Organisation introuvable")
+        return {"org": org, "role": "super_admin", "is_god_mode": True}
+    
+    my_org_id = user_doc.get("org_id")
+    if not my_org_id:
         return {"org": None, "role": None}
-    org = await db.organizations.find_one({"org_id": org_id}, {"_id": 0})
+    org = await db.organizations.find_one({"org_id": my_org_id}, {"_id": 0})
     return {"org": org, "role": user_doc.get("org_role")}
 
 
