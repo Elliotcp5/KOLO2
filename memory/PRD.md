@@ -93,6 +93,18 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
 - iter 32: 4 lots marque blanche (branding partout + funnel brandé + billing B2B + sous-domaine)
 - iter 36: Mode "Dieu" Super Admin (validé visuellement — bouton Voir l'espace + banner + permissions admin OK)
+- iter 37: Carrousel iPhone live dans wizard marque blanche (3 mockups brandés temps réel — validé visuellement)
+
+## Critical info
+- **Réponse FR exclusive** dans toutes les interactions agent.
+- **REACT_APP_BACKEND_URL** (preview) = `https://responsive-kolo.preview.emergentagent.com`
+- **FRONTEND_URL** (prod) = `https://trykolo.io`
+- Le scheduler tourne dans un thread async daemon initialisé au startup FastAPI.
+- L'org de test `iad-demo` (custom_subdomain=`iad`) ne doit pas être supprimée — fixture de branding pour les tests UI.
+er + super-admin pro+ + permissions step
+- iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
+- iter 32: 4 lots marque blanche (branding partout + funnel brandé + billing B2B + sous-domaine)
+- iter 36: Mode "Dieu" Super Admin (validé visuellement — bouton Voir l'espace + banner + permissions admin OK)
 
 ## Critical info
 - **Réponse FR exclusive** dans toutes les interactions agent.

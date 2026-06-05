@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Loader2, Globe, Check, X, ExternalLink, Copy, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import BrandPreviewCarousel from './BrandPreviewCarousel';
 
 const auth = () => {
   const t = localStorage.getItem('kolo_token');
@@ -167,7 +168,7 @@ const WhiteLabelTab = () => {
       )}
 
       {step === 2 && scan && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 18 }}>
           {/* Form */}
           <div className="admin-stat-card" style={{ padding: 24 }}>
             <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, marginBottom: 16 }}>
@@ -205,31 +206,25 @@ const WhiteLabelTab = () => {
             </div>
           </div>
 
-          {/* Preview */}
+          {/* Live iPhone preview carousel */}
           <div className="admin-stat-card" style={{ padding: 18, alignSelf: 'start', position: 'sticky', top: 16 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6B7280', fontWeight: 700, marginBottom: 10 }}>Aperçu</div>
-            <div style={{
-              borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)',
-              background: `linear-gradient(135deg, ${config.primary_color}, ${config.secondary_color})`,
-              padding: 18, color: 'white',
-              fontFamily: config.font_family,
-              minHeight: 120,
-            }}>
-              {config.logo_url && (
-                <img src={config.logo_url} alt="logo" style={{ maxHeight: 32, marginBottom: 10, filter: 'brightness(0) invert(1)' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              )}
-              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>{config.name || 'Nom marque'}</div>
-              {config.tagline && <div style={{ fontSize: 12, opacity: 0.9 }}>{config.tagline}</div>}
-            </div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 10 }}>
-              <strong>Couleurs détectées :</strong>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {(scan.raw?.colors_found || []).map((c) => (
-                  <button key={c} onClick={() => setConfig({ ...config, primary_color: c })} style={{ width: 22, height: 22, borderRadius: 6, background: c, border: '1px solid rgba(0,0,0,0.1)', cursor: 'pointer' }} title={c} />
-                ))}
+            <BrandPreviewCarousel config={config} />
+            {(scan.raw?.colors_found || []).length > 0 && (
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+                <strong style={{ display: 'block', marginBottom: 6, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9CA3AF' }}>Couleurs détectées sur le site</strong>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {(scan.raw?.colors_found || []).map((c) => (
+                    <button
+                      key={c}
+                      data-testid={`wl-scan-color-${c}`}
+                      onClick={() => setConfig({ ...config, primary_color: c })}
+                      style={{ width: 24, height: 24, borderRadius: 6, background: c, border: '1px solid rgba(0,0,0,0.12)', cursor: 'pointer', boxShadow: '0 2px 4px -2px rgba(0,0,0,0.15)' }}
+                      title={`Utiliser ${c} en couleur primaire`}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            {config.pitch && <div style={{ fontSize: 12, color: 'var(--ink-mid)', marginTop: 12, lineHeight: 1.5 }}>{config.pitch}</div>}
+            )}
           </div>
         </div>
       )}
