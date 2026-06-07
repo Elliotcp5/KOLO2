@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, MessageCircle, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck, Edit3 } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
@@ -441,6 +441,165 @@ const authFetch = (url, options = {}) => {
 };
 
 // ==================== TODAY TAB ====================
+// ==================== NOTIFICATION BELL (calendar-driven push) ====================
+const NotificationBell = ({ locale, c }) => {
+  const [notifs, setNotifs] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
+  const lastSeenIds = useRef(new Set());
+  const initialFetchDone = useRef(false);
+
+  const fetchNotifs = async () => {
+    try {
+      const r = await authFetch(`${API_URL}/api/notifications?limit=30`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const list = d.notifications || [];
+      setNotifs(list);
+      setUnread(d.unread_count || 0);
+      // Show a toast for any newly-arrived unread notif (after initial fetch)
+      if (initialFetchDone.current) {
+        list.filter((n) => !n.read && !lastSeenIds.current.has(n.notification_id)).forEach((n) => {
+          toast.success(n.title, { description: n.body, duration: 6000 });
+        });
+      }
+      lastSeenIds.current = new Set(list.map((n) => n.notification_id));
+      initialFetchDone.current = true;
+    } catch (_e) { /* ignore */ }
+  };
+
+  const triggerPull = async () => {
+    try {
+      await authFetch(`${API_URL}/api/integrations/calendar-pull`, { method: 'POST' });
+    } catch (_e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    // Pull then fetch on mount, then every 90s pull+fetch
+    (async () => { await triggerPull(); await fetchNotifs(); })();
+    const t = setInterval(async () => { await triggerPull(); await fetchNotifs(); }, 90000);
+    return () => clearInterval(t);
+  }, []);
+
+  const markRead = async (id) => {
+    try {
+      await authFetch(`${API_URL}/api/notifications/${id}/read`, { method: 'POST' });
+      setNotifs((arr) => arr.map((n) => n.notification_id === id ? { ...n, read: true } : n));
+      setUnread((u) => Math.max(0, u - 1));
+    } catch (_e) { /* ignore */ }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await authFetch(`${API_URL}/api/notifications/read-all`, { method: 'POST' });
+      setNotifs((arr) => arr.map((n) => ({ ...n, read: true })));
+      setUnread(0);
+    } catch (_e) { /* ignore */ }
+  };
+
+  const relativeTime = (iso) => {
+    try {
+      const d = new Date(iso);
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60) return locale === 'fr' ? 'à l\'instant' : 'just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)} min`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+      return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' });
+    } catch { return ''; }
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        data-testid="notif-bell"
+        aria-label="Notifications"
+        title={locale === 'fr' ? 'Notifications' : 'Notifications'}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 36, height: 36, padding: 0, background: 'transparent',
+          border: `1px solid ${c('border')}`, borderRadius: '50%', cursor: 'pointer', color: c('muted'),
+          position: 'relative',
+        }}
+      >
+        <Bell size={15} strokeWidth={2} />
+        {unread > 0 && (
+          <span data-testid="notif-bell-badge"
+            style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 4px', borderRadius: 999,
+              background: '#EF4444', color: 'white', fontSize: 10.5, fontWeight: 800,
+              display: 'grid', placeItems: 'center', boxShadow: '0 2px 6px rgba(239,68,68,0.4)' }}>
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+          <div data-testid="notif-dropdown"
+            style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 340, maxWidth: 'calc(100vw - 32px)',
+              background: c('cardBg'), border: `1px solid ${c('border')}`, borderRadius: 14,
+              boxShadow: '0 16px 40px -12px rgba(0,0,0,0.18)', zIndex: 51,
+              maxHeight: '70vh', overflowY: 'auto',
+            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${c('border')}` }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: c('text') }}>
+                {locale === 'fr' ? 'Notifications' : 'Notifications'}
+              </div>
+              {unread > 0 && (
+                <button onClick={markAllRead} data-testid="notif-mark-all"
+                  style={{ background: 'transparent', border: 'none', color: c('accent'), fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  {locale === 'fr' ? 'Tout marquer lu' : 'Mark all read'}
+                </button>
+              )}
+            </div>
+            {notifs.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: c('muted'), fontSize: 13 }}>
+                <Bell size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <div>{locale === 'fr' ? 'Aucune notification' : 'No notifications'}</div>
+                <div style={{ fontSize: 11, marginTop: 6, opacity: 0.8 }}>
+                  {locale === 'fr' ? 'KOLO te préviendra dès qu\'un rdv change dans ton agenda.' : 'KOLO alerts you when an event moves in your calendar.'}
+                </div>
+              </div>
+            ) : (
+              notifs.map((n) => (
+                <button
+                  key={n.notification_id}
+                  onClick={() => { if (!n.read) markRead(n.notification_id); }}
+                  data-testid={`notif-item-${n.notification_id}`}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    background: n.read ? 'transparent' : (c('accentSoft') || 'rgba(99,102,241,0.06)'),
+                    border: 'none', borderBottom: `1px solid ${c('border')}`, padding: '12px 16px', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%',
+                      background: n.kind === 'task_moved' ? '#F59E0B22' : n.kind === 'task_deleted_external' ? '#EF444422' : '#6366F122',
+                      color: n.kind === 'task_moved' ? '#D97706' : n.kind === 'task_deleted_external' ? '#DC2626' : '#6366F1',
+                      display: 'grid', placeItems: 'center', flexShrink: 0,
+                    }}>
+                      <Calendar size={14} strokeWidth={2.2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: c('text'), marginBottom: 2 }}>{n.title}</div>
+                      <div style={{ fontSize: 12, color: c('muted'), lineHeight: 1.4 }}>{n.body}</div>
+                      <div style={{ fontSize: 10.5, color: c('muted'), marginTop: 4, opacity: 0.7 }}>{relativeTime(n.created_at)}</div>
+                    </div>
+                    {!n.read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: c('accent') || '#6366F1', flexShrink: 0, marginTop: 6 }} />}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const { t, formatDate, locale } = useLocale();
   const { c, isDark } = useThemeColors();
@@ -1011,6 +1170,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>Admin</span>
             </button>
           )}
+        <NotificationBell locale={locale} c={c} />
         <button 
           style={{ 
             display: 'flex', 

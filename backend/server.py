@@ -4505,6 +4505,253 @@ async def _sync_task_to_calendar(user_id: str, task_id: str, action: str, task_d
         await db.tasks.update_one({"task_id": task_id, "user_id": user_id},
                                   {"$set": {"calendar_events": existing_events}})
 
+
+# ==================== NOTIFICATIONS ====================
+async def _push_notification(user_id: str, kind: str, title: str, body: str, *, task_id: Optional[str] = None, prospect_id: Optional[str] = None):
+    """Insert an in-app notification for the user. Frontend polls /api/notifications."""
+    notif = {
+        "notification_id": f"notif_{uuid.uuid4().hex[:14]}",
+        "user_id": user_id,
+        "kind": kind,  # 'task_moved' | 'task_deleted' | 'task_completed_external' | 'system'
+        "title": title[:200],
+        "body": body[:500],
+        "task_id": task_id,
+        "prospect_id": prospect_id,
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.notifications.insert_one(notif)
+    return notif
+
+
+@api_router.get("/notifications")
+async def list_notifications(request: Request, limit: int = 30, unread_only: bool = False):
+    user = await require_auth(request)
+    q: Dict[str, Any] = {"user_id": user.user_id}
+    if unread_only:
+        q["read"] = False
+    cur = db.notifications.find(q, {"_id": 0}).sort("created_at", -1).limit(min(max(limit, 1), 100))
+    items = await cur.to_list(length=limit)
+    unread = await db.notifications.count_documents({"user_id": user.user_id, "read": False})
+    return {"notifications": items, "unread_count": unread}
+
+
+@api_router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, request: Request):
+    user = await require_auth(request)
+    r = await db.notifications.update_one(
+        {"notification_id": notification_id, "user_id": user.user_id},
+        {"$set": {"read": True}},
+    )
+    return {"updated": r.modified_count > 0}
+
+
+@api_router.post("/notifications/read-all")
+async def mark_all_notifications_read(request: Request):
+    user = await require_auth(request)
+    r = await db.notifications.update_many(
+        {"user_id": user.user_id, "read": False},
+        {"$set": {"read": True}},
+    )
+    return {"updated": r.modified_count}
+
+
+# ==================== CALENDAR → KOLO REVERSE SYNC ====================
+async def _pull_calendar_changes(user_id: str) -> dict:
+    """Inverse sync: detect changes made on the user's calendar (Google/Outlook)
+    on events that originated from KOLO, and mirror them back to the matching tasks.
+    Creates in-app notifications when a task is moved/deleted externally."""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    has_google = bool(user_doc.get("google_calendar_tokens"))
+    has_outlook = bool(user_doc.get("outlook_tokens"))
+    if not (has_google or has_outlook):
+        return {"changed": 0}
+
+    # All KOLO tasks that have ever been synced (have a calendar_events dict)
+    cursor = db.tasks.find(
+        {"user_id": user_id, "calendar_events": {"$exists": True, "$ne": {}}},
+        {"_id": 0, "task_id": 1, "title": 1, "due_date": 1, "completed": 1, "prospect_id": 1, "calendar_events": 1},
+    )
+    tasks_with_events = await cursor.to_list(length=500)
+    changes = 0
+
+    # ----- GOOGLE -----
+    if has_google:
+        try:
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+            tokens = user_doc["google_calendar_tokens"]
+            creds = Credentials(
+                token=tokens.get("access_token"),
+                refresh_token=tokens.get("refresh_token"),
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
+                         or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com",
+                client_secret=os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
+                              or "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",
+                scopes=tokens.get("scopes") or ["https://www.googleapis.com/auth/calendar"],
+            )
+            service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+            for t in tasks_with_events:
+                evid = (t.get("calendar_events") or {}).get("google")
+                if not evid:
+                    continue
+                try:
+                    ev = service.events().get(calendarId="primary", eventId=evid).execute()
+                except Exception as e:
+                    # Event deleted on Google? → mark task as deleted (best-effort)
+                    msg = str(e)
+                    if "404" in msg or "deleted" in msg.lower() or "Not Found" in msg:
+                        prospect_name = ""
+                        if t.get("prospect_id"):
+                            p = await db.prospects.find_one({"prospect_id": t["prospect_id"]}, {"_id": 0, "full_name": 1})
+                            prospect_name = (p or {}).get("full_name", "")
+                        await _push_notification(
+                            user_id, "task_deleted_external",
+                            "Tâche supprimée depuis Google",
+                            f"{prospect_name or t.get('title','')} — l'événement a été supprimé dans ton agenda. KOLO a marqué la tâche comme faite.",
+                            task_id=t["task_id"], prospect_id=t.get("prospect_id"),
+                        )
+                        await db.tasks.update_one(
+                            {"task_id": t["task_id"], "user_id": user_id},
+                            {"$set": {"completed": True, "completed_at": datetime.now(timezone.utc).isoformat()}},
+                        )
+                        changes += 1
+                    continue
+                # Detect time change
+                ev_start = (ev.get("start") or {}).get("dateTime") or (ev.get("start") or {}).get("date")
+                if not ev_start:
+                    continue
+                try:
+                    ev_dt = datetime.fromisoformat(ev_start.replace("Z", "+00:00"))
+                except Exception:
+                    continue
+                task_dt = t.get("due_date")
+                if isinstance(task_dt, str):
+                    try:
+                        task_dt = datetime.fromisoformat(task_dt.replace("Z", "+00:00"))
+                    except Exception:
+                        task_dt = None
+                if task_dt and ev_dt.tzinfo is None:
+                    ev_dt = ev_dt.replace(tzinfo=timezone.utc)
+                if task_dt and task_dt.tzinfo is None:
+                    task_dt = task_dt.replace(tzinfo=timezone.utc)
+                if task_dt and abs((ev_dt - task_dt).total_seconds()) > 60:
+                    # Calendar event was moved → update task + push notif
+                    prospect_name = ""
+                    if t.get("prospect_id"):
+                        p = await db.prospects.find_one({"prospect_id": t["prospect_id"]}, {"_id": 0, "full_name": 1})
+                        prospect_name = (p or {}).get("full_name", "")
+                    when_str = ev_dt.strftime("%d/%m à %Hh%M")
+                    await _push_notification(
+                        user_id, "task_moved",
+                        "Rendez-vous déplacé",
+                        f"{prospect_name or t.get('title','')} a été déplacé au {when_str} dans ton agenda — KOLO a mis à jour la tâche.",
+                        task_id=t["task_id"], prospect_id=t.get("prospect_id"),
+                    )
+                    await db.tasks.update_one(
+                        {"task_id": t["task_id"], "user_id": user_id},
+                        {"$set": {"due_date": ev_dt.isoformat()}},
+                    )
+                    changes += 1
+        except Exception as e:
+            logger.warning(f"Google reverse sync failed for {user_id}: {e}")
+
+    # ----- OUTLOOK -----
+    if has_outlook:
+        try:
+            token = await _ensure_outlook_access_token(user_id)
+            async with httpx.AsyncClient(timeout=12) as hc:
+                for t in tasks_with_events:
+                    evid = (t.get("calendar_events") or {}).get("outlook")
+                    if not evid:
+                        continue
+                    r = await hc.get(f"https://graph.microsoft.com/v1.0/me/events/{evid}",
+                                     headers={"Authorization": f"Bearer {token}"})
+                    if r.status_code == 404:
+                        # Deleted externally
+                        prospect_name = ""
+                        if t.get("prospect_id"):
+                            p = await db.prospects.find_one({"prospect_id": t["prospect_id"]}, {"_id": 0, "full_name": 1})
+                            prospect_name = (p or {}).get("full_name", "")
+                        await _push_notification(
+                            user_id, "task_deleted_external",
+                            "Tâche supprimée depuis Outlook",
+                            f"{prospect_name or t.get('title','')} — l'événement a été supprimé dans ton agenda. KOLO a marqué la tâche comme faite.",
+                            task_id=t["task_id"], prospect_id=t.get("prospect_id"),
+                        )
+                        await db.tasks.update_one(
+                            {"task_id": t["task_id"], "user_id": user_id},
+                            {"$set": {"completed": True, "completed_at": datetime.now(timezone.utc).isoformat()}},
+                        )
+                        changes += 1
+                        continue
+                    if r.status_code != 200:
+                        continue
+                    ev = r.json()
+                    ev_start = (ev.get("start") or {}).get("dateTime")
+                    if not ev_start:
+                        continue
+                    try:
+                        ev_dt = datetime.fromisoformat(ev_start)
+                        if ev_dt.tzinfo is None:
+                            ev_dt = ev_dt.replace(tzinfo=timezone.utc)
+                    except Exception:
+                        continue
+                    task_dt = t.get("due_date")
+                    if isinstance(task_dt, str):
+                        try:
+                            task_dt = datetime.fromisoformat(task_dt.replace("Z", "+00:00"))
+                        except Exception:
+                            task_dt = None
+                    if task_dt and task_dt.tzinfo is None:
+                        task_dt = task_dt.replace(tzinfo=timezone.utc)
+                    if task_dt and abs((ev_dt - task_dt).total_seconds()) > 60:
+                        prospect_name = ""
+                        if t.get("prospect_id"):
+                            p = await db.prospects.find_one({"prospect_id": t["prospect_id"]}, {"_id": 0, "full_name": 1})
+                            prospect_name = (p or {}).get("full_name", "")
+                        when_str = ev_dt.strftime("%d/%m à %Hh%M")
+                        await _push_notification(
+                            user_id, "task_moved",
+                            "Rendez-vous déplacé",
+                            f"{prospect_name or t.get('title','')} a été déplacé au {when_str} dans Outlook — KOLO a mis à jour la tâche.",
+                            task_id=t["task_id"], prospect_id=t.get("prospect_id"),
+                        )
+                        await db.tasks.update_one(
+                            {"task_id": t["task_id"], "user_id": user_id},
+                            {"$set": {"due_date": ev_dt.isoformat()}},
+                        )
+                        changes += 1
+        except Exception as e:
+            logger.warning(f"Outlook reverse sync failed for {user_id}: {e}")
+
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"last_calendar_pull_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"changed": changes}
+
+
+@api_router.post("/integrations/calendar-pull")
+async def trigger_calendar_pull(request: Request):
+    """Trigger a reverse calendar sync for the current user.
+    Throttled to once per 30 seconds per user."""
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    last = user_doc.get("last_calendar_pull_at")
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - last_dt).total_seconds() < 30:
+                return {"throttled": True, "changed": 0}
+        except Exception:
+            pass
+    result = await _pull_calendar_changes(user.user_id)
+    return result
+
 @api_router.put("/tasks/{task_id}")
 async def update_task(request: Request, task_id: str, update_data: UpdateTaskRequest):
     """Update a task"""

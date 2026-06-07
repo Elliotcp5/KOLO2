@@ -16,6 +16,16 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sync Calendrier Bidirectionnelle + Notifications Push (iter 39 — Feb 2026)
+**Effet "wahou"** : KOLO détecte les changements faits côté Google/Outlook sur les events qu'il a créés, met à jour les tâches automatiquement et notifie l'utilisateur.
+
+- **Backend `_pull_calendar_changes(user_id)`** : pour chaque tâche avec `calendar_events.google` ou `.outlook`, récupère l'event distant et compare la date/existence.
+  - Event déplacé sur Google/Outlook → met à jour `task.due_date` + crée notif `task_moved`.
+  - Event supprimé → marque tâche `completed=true` + notif `task_deleted_external`.
+- **Endpoint `POST /api/integrations/calendar-pull`** (throttled 30s/user).
+- **Endpoints notifications** : `GET /api/notifications`, `POST /notifications/{id}/read`, `POST /notifications/read-all`.
+- **Frontend `NotificationBell`** : bell icon dans header avec badge unread count, dropdown élégant (icônes coloriées par type), toast push si nouvelle notif, polling pull+fetch toutes les 90s.
+
 ### Refonte UX Tâches Mobile + Connexions Perso (iter 38 — Feb 2026)
 **Confirmation critique** : Calendrier & WhatsApp sont des **intégrations PERSO par agent**, jamais par réseau. Chaque agent connecte SON compte Google/Outlook/WhatsApp.
 
