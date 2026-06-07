@@ -16,6 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Refonte UX Tâches Mobile + Connexions Perso (iter 38 — Feb 2026)
+**Confirmation critique** : Calendrier & WhatsApp sont des **intégrations PERSO par agent**, jamais par réseau. Chaque agent connecte SON compte Google/Outlook/WhatsApp.
+
+- **Boutons d'action tâche refondus** (mobile-first) :
+  - 1 seul bouton primaire contextuel selon `task_type` : Call (`tel:`), SMS (`sms:`), Email (`mailto:`), Visite (Google Maps)
+  - 1 bouton WhatsApp (rond vert) — ouvre une **action sheet bottom** : "Générer avec IA" (gradient) + "Écrire à la main" + Cancel
+  - Suppression : Calendar, Mail standalone, Sparkles standalone
+- **Sync calendrier auto invisible** : déjà câblé backend (`_sync_task_to_calendar`) sur create/update/done
+- **Onboarding `PermissionsStep` refondu** : 3 cards explicites — Google Calendar / Outlook Calendar / "Je ne souhaite pas connecter"
+- **Section "Mes connexions" dans Profile** (`MyConnectionsCard`) : 3 rangs avec Connect/Disconnect Google + Outlook + WhatsApp (modal numéro)
+- **Hero brandé gradient** quand `userOrg` (aligne rendu réel sur mockup iPhone marketing)
+- Nouvel endpoint backend `GET /api/integrations/my-status` (état per-user)
+- **Facture B2B** : déjà sans Stripe (Virement + PDF uniquement)
+
 ### Mode "Dieu" Super Admin (iter 36 — Feb 2026)
 - Le Super Admin (`elliot.cohenpressard@trykolo.io`) n'est **rattaché à aucune organisation** en base (`users.org_id = null`).
 - Accès à n'importe quel espace réseau via `/org?org_id=XXX` (god mode).

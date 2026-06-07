@@ -255,23 +255,23 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
     } catch (_e) { setPermNotif('denied'); }
   };
 
-  const requestCalendar = async () => {
+  const requestCalendar = async (provider = 'google') => {
     setPermCal('connecting');
     try {
-      // Try to open Google Calendar OAuth flow in popup
-      const r = await authFetch(`${API_URL}/api/integrations/google-calendar/auth-url`);
+      const path = provider === 'outlook' ? 'outlook-calendar' : 'google-calendar';
+      const r = await authFetch(`${API_URL}/api/integrations/${path}/auth-url?redirect_to=${encodeURIComponent('/app')}`);
       if (r && r.ok) {
         const d = await r.json();
-        if (d.auth_url) {
-          window.open(d.auth_url, 'kolo_cal_oauth', 'width=520,height=640');
-          setPermCal('connected'); // optimistic — user can verify in Integrations
-          toast.success(locale === 'fr' ? 'Connectez votre calendrier dans la fenêtre' : 'Connect calendar in popup');
+        const url = d.authorization_url || d.auth_url;
+        if (url) {
+          // Full redirect (cleaner than popup which is often blocked on mobile)
+          window.location.href = url;
           return;
         }
       }
-    } catch (_e) {}
+    } catch (_e) { /* fall through */ }
     setPermCal('idle');
-    toast.info(locale === 'fr' ? 'Configurez ça depuis Intégrations.' : 'Set this up from Integrations.');
+    toast.info(locale === 'fr' ? 'Configure ça depuis ton profil.' : 'Set this up from your profile.');
   };
 
   const isDark = selectedTheme === 'dark';
@@ -519,83 +519,110 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
 
   // Step 3: Permissions (premium request)
   const PermissionsStep = () => {
-    const items = [
-      {
-        key: 'mic', icon: Mic, title: t.permMicTitle, desc: t.permMicDesc,
-        state: permMic, action: requestMic,
-      },
-      {
-        key: 'cal', icon: Calendar, title: t.permCalTitle, desc: t.permCalDesc,
-        state: permCal === 'connecting' ? 'idle' : permCal, action: requestCalendar,
-      },
-      {
-        key: 'notif', icon: Bell, title: t.permNotifTitle, desc: t.permNotifDesc,
-        state: permNotif, action: requestNotif,
-      },
-    ];
     return (
       <div style={contentStyle}>
         <ProgressDots />
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: textColor, textAlign: 'center', marginBottom: '8px' }}>
-          {t.permissionsTitle}
+          {locale === 'fr' ? 'Connecte ton agenda' : 'Connect your calendar'}
         </h2>
-        <p style={{ fontSize: '14px', color: mutedColor, textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
-          {t.permissionsDesc}
+        <p style={{ fontSize: '14px', color: mutedColor, textAlign: 'center', marginBottom: '20px', lineHeight: 1.5 }}>
+          {locale === 'fr'
+            ? 'Tes tâches KOLO se synchronisent automatiquement avec ton calendrier. Choisis le tien :'
+            : 'Your KOLO tasks sync automatically with your calendar. Pick yours:'}
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-          {items.map(({ key, icon: Icon, title, desc, state, action }) => {
-            const granted = state === 'granted' || state === 'connected';
-            return (
-              <div key={key} data-testid={`onb-perm-${key}`} style={{
-                background: cardBg,
-                borderRadius: '16px',
-                padding: '16px',
-                border: granted ? '1.5px solid #22c55e' : `1px solid ${borderColor}`,
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                transition: 'border-color 0.25s ease',
-              }}>
-                <div style={{
-                  width: '44px', height: '44px', borderRadius: '12px',
-                  background: granted ? '#22c55e' : gradient,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                  <Icon size={20} color="white" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: textColor }}>{title}</div>
-                  <div style={{ fontSize: '12.5px', color: mutedColor, lineHeight: 1.4 }}>{desc}</div>
-                </div>
-                <button
-                  onClick={action}
-                  disabled={granted}
-                  data-testid={`onb-perm-${key}-btn`}
-                  style={{
-                    background: granted ? 'transparent' : gradient,
-                    color: granted ? '#22c55e' : 'white',
-                    border: granted ? '1.5px solid #22c55e' : 'none',
-                    borderRadius: '999px',
-                    padding: '8px 14px',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    cursor: granted ? 'default' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  {granted ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={14} /> {t.permEnabled}</span> : t.permEnable}
-                </button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Google Calendar */}
+          <button
+            onClick={() => requestCalendar('google')}
+            disabled={permCal === 'connecting'}
+            data-testid="onb-cal-google"
+            style={{
+              padding: '16px',
+              background: cardBg,
+              borderRadius: '14px',
+              border: `1.5px solid ${borderColor}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'border-color 0.2s ease, transform 0.15s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4285F4'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; }}
+          >
+            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#4285F4', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Calendar size={22} color="white" strokeWidth={2.2} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: textColor }}>Google Calendar</div>
+              <div style={{ fontSize: '12.5px', color: mutedColor, lineHeight: 1.4 }}>
+                {locale === 'fr' ? 'Sync auto avec ton Gmail' : 'Auto-sync with your Gmail'}
               </div>
-            );
-          })}
+            </div>
+            <ChevronRight size={20} color={mutedColor} />
+          </button>
+
+          {/* Outlook Calendar */}
+          <button
+            onClick={() => requestCalendar('outlook')}
+            disabled={permCal === 'connecting'}
+            data-testid="onb-cal-outlook"
+            style={{
+              padding: '16px',
+              background: cardBg,
+              borderRadius: '14px',
+              border: `1.5px solid ${borderColor}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0078D4'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; }}
+          >
+            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#0078D4', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Calendar size={22} color="white" strokeWidth={2.2} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: textColor }}>Outlook Calendar</div>
+              <div style={{ fontSize: '12.5px', color: mutedColor, lineHeight: 1.4 }}>
+                {locale === 'fr' ? 'Sync auto avec ton Office 365' : 'Auto-sync with Office 365'}
+              </div>
+            </div>
+            <ChevronRight size={20} color={mutedColor} />
+          </button>
+
+          {/* No calendar */}
+          <button
+            onClick={nextStep}
+            data-testid="onb-cal-skip"
+            style={{
+              padding: '14px',
+              background: 'transparent',
+              borderRadius: '14px',
+              border: `1px dashed ${borderColor}`,
+              color: mutedColor,
+              fontSize: '13.5px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              textAlign: 'center',
+            }}
+          >
+            {locale === 'fr' ? "Je ne souhaite pas connecter mon calendrier" : "I don't want to connect my calendar"}
+          </button>
         </div>
+
         <div style={{
-          marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px',
+          marginTop: '18px', display: 'flex', alignItems: 'center', gap: '8px',
           color: mutedColor, fontSize: '12px', justifyContent: 'center', textAlign: 'center', lineHeight: 1.4,
         }}>
           <Shield size={14} />
-          <span>{t.permPrivacy}</span>
+          <span>{locale === 'fr'
+            ? 'Tu peux changer d\'avis depuis ton profil à tout moment.'
+            : 'You can change your mind anytime from your profile.'}</span>
         </div>
         <button
           onClick={nextStep}
@@ -614,15 +641,6 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
           }}
         >
           {t.continueBtn}
-        </button>
-        <button
-          onClick={nextStep}
-          style={{
-            background: 'none', border: 'none', color: mutedColor,
-            fontSize: '13px', cursor: 'pointer', padding: '12px', marginTop: 4,
-          }}
-        >
-          {t.permSkip}
         </button>
       </div>
     );

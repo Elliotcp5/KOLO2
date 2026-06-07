@@ -6838,6 +6838,30 @@ async def integrations_status(request: Request):
     }
 
 
+@api_router.get("/integrations/my-status")
+async def get_my_integrations_status(request: Request):
+    """Return per-user connection status (calendar + WhatsApp).
+    Used by the Profile page and the Onboarding flow."""
+    user = await require_auth(request)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    g_tokens = user_doc.get("google_calendar_tokens") or {}
+    o_tokens = user_doc.get("outlook_tokens") or {}
+    return {
+        "google_calendar": {
+            "connected": bool(g_tokens),
+            "email": g_tokens.get("email") if isinstance(g_tokens, dict) else None,
+        },
+        "outlook_calendar": {
+            "connected": bool(o_tokens),
+            "email": o_tokens.get("email") if isinstance(o_tokens, dict) else None,
+        },
+        "whatsapp": {
+            "connected": bool(user_doc.get("phone")),
+            "phone": user_doc.get("phone"),
+        },
+    }
+
+
 # ---- NATIVE DIALER & WHATSAPP (user's own phone, no Twilio cost) ---- #
 
 class CallLogPayload(BaseModel):

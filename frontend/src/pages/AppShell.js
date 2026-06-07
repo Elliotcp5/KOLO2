@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, MessageCircle, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck } from 'lucide-react';
+import { Calendar, Briefcase, Menu, Check, User, Users, Plus, Clock, Phone, Mail, ChevronRight, ChevronDown, X, Sparkles, Loader2, MessageSquare, MessageCircle, RefreshCw, Send, FileText, Home, Search, MapPin, Sun, Moon, Flame, LogOut, Bell, Globe, Crown, TrendingUp, Lightbulb, BadgeCheck, Edit3 } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -470,6 +470,10 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
   const [aiMessage, setAiMessage] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
+
+  // WhatsApp action sheet — opened from any task's WA button
+  const [whatsappActionTask, setWhatsappActionTask] = useState(null);
+  const [whatsappAiLoading, setWhatsappAiLoading] = useState(false);
   
   // Proactive AI message for overdue tasks
   const [proactiveAiTaskId, setProactiveAiTaskId] = useState(null);
@@ -1043,51 +1047,101 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
       </div>
 
       {/* Premium Hero — title + date + overdue badge */}
-      <div className="kolo-hero-mesh" data-testid="today-hero-mesh" style={{ marginBottom: '20px' }}>
-        <h1 style={{ 
-          fontSize: '30px', 
-          fontWeight: '800', 
-          color: c('text'),
-          fontFamily: 'var(--font-heading)',
-          marginBottom: '4px',
-          letterSpacing: '-0.01em',
-          lineHeight: 1.1,
-        }}>
-          {viewMode === 'today' ? labels.today : labels.tasks}
-        </h1>
-
-        <p style={{ 
-          textTransform: 'capitalize', 
-          fontSize: '13px', 
-          color: c('muted'), 
-          marginBottom: stats.totalToday - stats.completedToday > 0 ? '12px' : '0'
-        }}>
-          {formatDate(new Date())}
-        </p>
-
-        {stats.totalToday - stats.completedToday > 0 && (
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            borderRadius: '999px',
-            padding: '7px 14px',
-            color: '#EF4444',
-            fontSize: '13px',
-            fontWeight: '600'
+      {/* Premium Hero — title + date + overdue badge */}
+      {userOrg ? (
+        /* Branded hero gradient — matches the marketing iPhone mockup */
+        <div
+          data-testid="today-branded-hero"
+          style={{
+            marginBottom: '20px',
+            borderRadius: '20px',
+            padding: '20px 22px 22px',
+            background: `linear-gradient(135deg, ${orgBranding.primary_color} 0%, ${orgBranding.secondary_color || orgBranding.primary_color} 100%)`,
+            color: '#fff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: `0 14px 36px -16px ${orgBranding.primary_color}55`,
+          }}
+        >
+          {/* Mesh ornament */}
+          <div style={{ position: 'absolute', top: -40, right: -30, width: 160, height: 160, background: 'rgba(255,255,255,0.15)', borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -30, left: -30, width: 140, height: 140, background: 'rgba(255,255,255,0.08)', borderRadius: '50%', filter: 'blur(36px)', pointerEvents: 'none' }} />
+          <h1 style={{
+            fontSize: '26px',
+            fontWeight: '800',
+            color: '#fff',
+            fontFamily: 'var(--font-heading)',
+            marginBottom: '4px',
+            letterSpacing: '-0.01em',
+            lineHeight: 1.1,
+            position: 'relative',
+            zIndex: 1,
           }}>
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            {stats.totalToday - stats.completedToday} {labels.overdueTasks}
-          </div>
-        )}
-      </div>
+            {locale === 'fr' ? `Bonjour ${(userName || '').split(' ')[0] || ''} 👋` : `Hello ${(userName || '').split(' ')[0] || ''} 👋`}
+          </h1>
+          <p style={{
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.9)',
+            margin: 0,
+            position: 'relative',
+            zIndex: 1,
+          }}>
+            {stats.totalToday - stats.completedToday > 0
+              ? `${stats.totalToday - stats.completedToday} ${labels.overdueTasks.toLowerCase()}`
+              : (locale === 'fr' ? 'Tu es à jour, bravo !' : 'You\'re all caught up!')}
+          </p>
+          {orgBranding.tagline && (
+            <div style={{ fontSize: 11, opacity: 0.75, marginTop: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, position: 'relative', zIndex: 1 }}>
+              {orgBranding.name} — {orgBranding.tagline}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="kolo-hero-mesh" data-testid="today-hero-mesh" style={{ marginBottom: '20px' }}>
+          <h1 style={{ 
+            fontSize: '30px', 
+            fontWeight: '800', 
+            color: c('text'),
+            fontFamily: 'var(--font-heading)',
+            marginBottom: '4px',
+            letterSpacing: '-0.01em',
+            lineHeight: 1.1,
+          }}>
+            {viewMode === 'today' ? labels.today : labels.tasks}
+          </h1>
 
+          <p style={{ 
+            textTransform: 'capitalize', 
+            fontSize: '13px', 
+            color: c('muted'), 
+            marginBottom: stats.totalToday - stats.completedToday > 0 ? '12px' : '0'
+          }}>
+            {formatDate(new Date())}
+          </p>
+
+          {stats.totalToday - stats.completedToday > 0 && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '999px',
+              padding: '7px 14px',
+              color: '#EF4444',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              {stats.totalToday - stats.completedToday} {labels.overdueTasks}
+            </div>
+          )}
+        </div>
+      )}
       {/* Tabs - Today / All Tasks + Add Button — sliding pill */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
         <div className="kolo-tabs" style={{ flex: 1, display: 'flex' }} data-testid="today-segment-tabs">
@@ -1615,70 +1669,86 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                     </div>
                   </div>
                   
-                  {/* Quick action buttons - ALWAYS visible for tasks with a linked prospect */}
+                  {/* Quick action buttons — context-aware: ONE primary button matching the task type + WhatsApp with AI sheet */}
                   {!isCompleted && task.prospect && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      {/* Call button - if prospect has phone */}
-                      {task.prospect.phone && (
-                        <a
-                          href={`tel:${task.prospect.phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="Call"
-                          data-testid={`task-call-${task.task_id}`}
-                          style={{ padding: '8px', color: c('success'), textDecoration: 'none', display: 'flex', alignItems: 'center' }}
-                        >
-                          <Phone size={18} />
-                        </a>
-                      )}
-                      {/* WhatsApp - if prospect has phone */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {/* Primary contextual button — adapts to task_type */}
+                      {(() => {
+                        const phone = task.prospect.phone;
+                        const email = task.prospect.email;
+                        const address = task.prospect.address;
+                        const fullName = task.prospect.full_name || '';
+                        if (task.task_type === 'call' && phone) {
+                          return (
+                            <a href={`tel:${phone}`} onClick={(e) => e.stopPropagation()}
+                              aria-label="Call" data-testid={`task-call-${task.task_id}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
+                                background: '#22C55E', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
+                                boxShadow: '0 4px 12px -4px rgba(34,197,94,0.45)' }}>
+                              <Phone size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Appeler' : 'Call'}
+                            </a>
+                          );
+                        }
+                        if (task.task_type === 'email' && email) {
+                          return (
+                            <a href={`mailto:${email}`} onClick={(e) => e.stopPropagation()}
+                              aria-label="Email" data-testid={`task-email-${task.task_id}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
+                                background: '#3B82F6', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
+                                boxShadow: '0 4px 12px -4px rgba(59,130,246,0.45)' }}>
+                              <Mail size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Écrire' : 'Email'}
+                            </a>
+                          );
+                        }
+                        if (task.task_type === 'visit' && address) {
+                          return (
+                            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
+                              target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                              aria-label="Itinerary" data-testid={`task-visit-${task.task_id}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
+                                background: '#F59E0B', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
+                                boxShadow: '0 4px 12px -4px rgba(245,158,11,0.45)' }}>
+                              <Home size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Itinéraire' : 'Route'}
+                            </a>
+                          );
+                        }
+                        if (task.task_type === 'sms' && phone) {
+                          // Native SMS opens the iOS/Android Messages app
+                          return (
+                            <a href={`sms:${phone}`} onClick={(e) => e.stopPropagation()}
+                              aria-label="SMS" data-testid={`task-sms-${task.task_id}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
+                                background: '#6366F1', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
+                                boxShadow: '0 4px 12px -4px rgba(99,102,241,0.45)' }}>
+                              <MessageSquare size={13} strokeWidth={2.5} /> SMS
+                            </a>
+                          );
+                        }
+                        // Fallback: call if phone, else email
+                        if (phone) {
+                          return (
+                            <a href={`tel:${phone}`} onClick={(e) => e.stopPropagation()}
+                              aria-label="Call" data-testid={`task-call-${task.task_id}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
+                                background: '#22C55E', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700 }}>
+                              <Phone size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Appeler' : 'Call'}
+                            </a>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {/* WhatsApp button — always present if phone. Opens AI suggestion sheet. */}
                       {task.prospect.phone && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const cleaned = task.prospect.phone.replace(/[^\d+]/g, '').replace('+', '');
-                            const greet = locale === 'fr' ? 'Bonjour' : locale === 'de' ? 'Hallo' : locale === 'it' ? 'Ciao' : 'Hi';
-                            const first = (task.prospect.full_name || '').split(' ')[0] || '';
-                            const text = encodeURIComponent(`${greet} ${first}, `);
-                            window.open(`https://wa.me/${cleaned}?text=${text}`, '_blank');
-                          }}
+                          onClick={(e) => { e.stopPropagation(); setWhatsappActionTask(task); }}
                           aria-label="WhatsApp"
                           data-testid={`task-wa-${task.task_id}`}
-                          style={{ padding: '8px', background: 'none', border: 'none', color: '#25D366', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="WhatsApp"
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%',
+                            background: '#25D366', color: 'white', border: 'none', cursor: 'pointer',
+                            boxShadow: '0 4px 12px -4px rgba(37,211,102,0.45)' }}
                         >
-                          <MessageCircle size={18} />
-                        </button>
-                      )}
-                      {/* Email - if prospect has email */}
-                      {task.prospect.email && (
-                        <a
-                          href={`mailto:${task.prospect.email}`}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="Email"
-                          data-testid={`task-email-${task.task_id}`}
-                          style={{ padding: '8px', color: c('text'), textDecoration: 'none', display: 'flex', alignItems: 'center' }}
-                        >
-                          <Mail size={18} />
-                        </a>
-                      )}
-                      {/* Calendar - always available */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSelectProspect && onSelectProspect(task.prospect); }}
-                        aria-label="Calendar"
-                        data-testid={`task-cal-${task.task_id}`}
-                        title={locale === 'fr' ? 'Ajouter à mon agenda' : 'Add to calendar'}
-                        style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <Calendar size={18} />
-                      </button>
-                      {/* SMS AI suggestion - for sms tasks only */}
-                      {task.task_type === 'sms' && task.prospect.phone && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openAiSmsModal(task); }}
-                          aria-label="AI"
-                          data-testid={`task-ai-${task.task_id}`}
-                          style={{ padding: '8px', background: 'none', border: 'none', color: c('accentPurple'), cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        >
-                          <Sparkles size={16} />
+                          <MessageCircle size={16} strokeWidth={2.5} />
                         </button>
                       )}
                     </div>
@@ -2377,11 +2447,120 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Action Sheet — opened from any task WA button.
+          Offers two ultra-simple options: AI-generated message OR write manually. */}
+      {whatsappActionTask && (
+        <div
+          onClick={() => setWhatsappActionTask(null)}
+          data-testid="wa-action-sheet-overlay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="wa-action-sheet"
+            style={{ background: c('cardBg'), borderRadius: '20px 20px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 480,
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.18)', animation: 'slideUp 0.25s cubic-bezier(.4,0,.2,1)' }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: c('border'), margin: '0 auto 18px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#25D366', display: 'grid', placeItems: 'center' }}>
+                <MessageCircle size={18} color="white" strokeWidth={2.5} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: c('text') }}>WhatsApp</div>
+                <div style={{ fontSize: 12, color: c('muted'), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {whatsappActionTask.prospect?.full_name || ''} · {whatsappActionTask.prospect?.phone || ''}
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: c('muted'), margin: '8px 0 18px', lineHeight: 1.4 }}>
+              {locale === 'fr' ? 'Comment veux-tu envoyer ton message ?' : 'How do you want to send your message?'}
+            </p>
+
+            {/* Option 1: Generate with AI */}
+            <button
+              data-testid="wa-action-ai"
+              disabled={whatsappAiLoading}
+              onClick={async () => {
+                const task = whatsappActionTask;
+                setWhatsappAiLoading(true);
+                try {
+                  const r = await authFetch(`${API_URL}/api/prospects/${task.prospect_id}/generate-message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context: task.task_type === 'sms' ? 'sms_followup' : 'whatsapp_followup' }),
+                  });
+                  let msg = '';
+                  if (r.ok) {
+                    const d = await r.json();
+                    msg = d.message || '';
+                  }
+                  const cleaned = (task.prospect.phone || '').replace(/[^\d+]/g, '').replace('+', '');
+                  const greet = locale === 'fr' ? 'Bonjour' : locale === 'de' ? 'Hallo' : locale === 'it' ? 'Ciao' : 'Hi';
+                  const first = (task.prospect.full_name || '').split(' ')[0] || '';
+                  const body = msg || `${greet} ${first}, `;
+                  window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(body)}`, '_blank');
+                  setWhatsappActionTask(null);
+                } catch (_e) {
+                  toast.error(locale === 'fr' ? 'Erreur IA' : 'AI error');
+                } finally {
+                  setWhatsappAiLoading(false);
+                }
+              }}
+              style={{
+                width: '100%', padding: '14px 16px', border: 'none', borderRadius: 14,
+                background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', color: 'white',
+                fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 8px 20px -8px rgba(139,92,246,0.5)',
+                opacity: whatsappAiLoading ? 0.7 : 1,
+              }}
+            >
+              {whatsappAiLoading
+                ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {locale === 'fr' ? 'Génération…' : 'Generating…'}</>
+                : <><Sparkles size={16} strokeWidth={2.5} /> {locale === 'fr' ? 'Générer avec l\'IA' : 'Generate with AI'}</>
+              }
+            </button>
+
+            {/* Option 2: Write manually */}
+            <button
+              data-testid="wa-action-manual"
+              onClick={() => {
+                const task = whatsappActionTask;
+                const cleaned = (task.prospect.phone || '').replace(/[^\d+]/g, '').replace('+', '');
+                const greet = locale === 'fr' ? 'Bonjour' : locale === 'de' ? 'Hallo' : locale === 'it' ? 'Ciao' : 'Hi';
+                const first = (task.prospect.full_name || '').split(' ')[0] || '';
+                window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(`${greet} ${first}, `)}`, '_blank');
+                setWhatsappActionTask(null);
+              }}
+              style={{
+                width: '100%', padding: '14px 16px', borderRadius: 14,
+                background: c('surface'), border: `1.5px solid ${c('border')}`, color: c('text'),
+                fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Edit3 size={16} strokeWidth={2} /> {locale === 'fr' ? 'Écrire à la main' : 'Write manually'}
+            </button>
+
+            <button
+              data-testid="wa-action-cancel"
+              onClick={() => setWhatsappActionTask(null)}
+              style={{
+                width: '100%', padding: '12px', marginTop: 12,
+                background: 'none', border: 'none', color: c('muted'),
+                fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              {locale === 'fr' ? 'Annuler' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-// ==================== PROSPECTS TAB ====================
 const ProspectsTab = ({ onSelectProspect }) => {
   const { t, locale } = useLocale();
   const { c, isDark } = useThemeColors();
@@ -4373,6 +4552,200 @@ const LanguageSelector = ({ c, locale }) => {
   );
 };
 
+// ==================== MY CONNECTIONS CARD (Calendar + WhatsApp) ====================
+const ConnRow = ({ icon, color, title, subtitle, connected, onConnect, onDisconnect, busy, busyKey, testid, locale, c }) => (
+  <div className="settings-row" style={{ borderBottom: 'none', alignItems: 'center', gap: 12 }} data-testid={testid}>
+    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}1A`, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      {icon}
+    </div>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: c('text') }}>{title}</div>
+      <div style={{ fontSize: 12, color: c('muted'), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}</div>
+    </div>
+    {busy === busyKey ? (
+      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: c('muted') }} />
+    ) : connected ? (
+      <button onClick={onDisconnect} data-testid={`${testid}-disconnect`}
+        style={{ background: 'transparent', color: '#DC2626', border: '1.5px solid #DC262633', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+        {locale === 'fr' ? 'Déconnecter' : 'Disconnect'}
+      </button>
+    ) : (
+      <button onClick={onConnect} data-testid={`${testid}-connect`}
+        style={{ background: color, color: 'white', border: 'none', borderRadius: 999, padding: '7px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+        {locale === 'fr' ? 'Connecter' : 'Connect'}
+      </button>
+    )}
+  </div>
+);
+
+const MyConnectionsCard = ({ locale, c }) => {
+  const [status, setStatus] = useState({ google_calendar: { connected: false }, outlook_calendar: { connected: false }, whatsapp: { connected: false } });
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(null);
+  const [showPhone, setShowPhone] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+
+  const refresh = async () => {
+    try {
+      const r = await authFetch(`${API_URL}/api/integrations/my-status`);
+      if (r.ok) setStatus(await r.json());
+    } catch (_e) { /* ignore */ }
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const connectGoogle = async () => {
+    setBusy('google');
+    try {
+      const r = await authFetch(`${API_URL}/api/integrations/google-calendar/auth-url?redirect_to=${encodeURIComponent('/app')}`);
+      if (r.ok) {
+        const { authorization_url } = await r.json();
+        window.location.href = authorization_url;
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur de connexion Google' : 'Google connection error');
+      }
+    } catch (_e) { toast.error('Error'); }
+    setBusy(null);
+  };
+
+  const connectOutlook = async () => {
+    setBusy('outlook');
+    try {
+      const r = await authFetch(`${API_URL}/api/integrations/outlook-calendar/auth-url?redirect_to=${encodeURIComponent('/app')}`);
+      if (r.ok) {
+        const { authorization_url } = await r.json();
+        window.location.href = authorization_url;
+      } else {
+        toast.error(locale === 'fr' ? 'Erreur de connexion Outlook' : 'Outlook connection error');
+      }
+    } catch (_e) { toast.error('Error'); }
+    setBusy(null);
+  };
+
+  const disconnect = async (provider) => {
+    setBusy(provider);
+    try {
+      const path = provider === 'google' ? 'google-calendar' : 'outlook-calendar';
+      const r = await authFetch(`${API_URL}/api/integrations/${path}/disconnect`, { method: 'POST' });
+      if (r.ok) {
+        toast.success(locale === 'fr' ? 'Déconnecté' : 'Disconnected');
+        refresh();
+      }
+    } catch (_e) { toast.error('Error'); }
+    setBusy(null);
+  };
+
+  const saveWaPhone = async () => {
+    if (!phoneInput || phoneInput.length < 6) {
+      toast.error(locale === 'fr' ? 'Numéro invalide' : 'Invalid number');
+      return;
+    }
+    setBusy('wa');
+    try {
+      const r = await authFetch(`${API_URL}/api/auth/update-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneInput }),
+      });
+      if (r.ok) {
+        toast.success(locale === 'fr' ? 'Numéro enregistré' : 'Number saved');
+        setShowPhone(false);
+        setPhoneInput('');
+        refresh();
+      } else {
+        toast.error('Error');
+      }
+    } catch (_e) { toast.error('Error'); }
+    setBusy(null);
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: '24px', padding: '0 16px', background: c('cardBg'), border: `1px solid ${c('border')}` }} data-testid="my-connections-card">
+      {loading ? (
+        <div style={{ padding: 20, textAlign: 'center', color: c('muted'), fontSize: 13 }}>
+          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+          {locale === 'fr' ? 'Chargement…' : 'Loading…'}
+        </div>
+      ) : (
+        <>
+          <ConnRow
+            busy={busy} locale={locale} c={c}
+            icon={<Calendar size={18} strokeWidth={2} />}
+            color="#4285F4"
+            title="Google Calendar"
+            subtitle={status.google_calendar?.connected
+              ? (locale === 'fr' ? 'Tâches synchronisées automatiquement' : 'Tasks sync automatically')
+              : (locale === 'fr' ? 'Synchronise tes tâches avec ton agenda' : 'Sync your tasks with your calendar')}
+            connected={status.google_calendar?.connected}
+            onConnect={connectGoogle}
+            onDisconnect={() => disconnect('google')}
+            busyKey="google"
+            testid="conn-google"
+          />
+          <div style={{ height: 1, background: c('border'), opacity: 0.6 }} />
+          <ConnRow
+            busy={busy} locale={locale} c={c}
+            icon={<Calendar size={18} strokeWidth={2} />}
+            color="#0078D4"
+            title="Outlook Calendar"
+            subtitle={status.outlook_calendar?.connected
+              ? (locale === 'fr' ? 'Tâches synchronisées automatiquement' : 'Tasks sync automatically')
+              : (locale === 'fr' ? 'Synchronise tes tâches avec Outlook' : 'Sync your tasks with Outlook')}
+            connected={status.outlook_calendar?.connected}
+            onConnect={connectOutlook}
+            onDisconnect={() => disconnect('outlook')}
+            busyKey="outlook"
+            testid="conn-outlook"
+          />
+          <div style={{ height: 1, background: c('border'), opacity: 0.6 }} />
+          <ConnRow
+            busy={busy} locale={locale} c={c}
+            icon={<MessageCircle size={18} strokeWidth={2} />}
+            color="#25D366"
+            title="WhatsApp"
+            subtitle={status.whatsapp?.connected
+              ? `${status.whatsapp.phone} · ${locale === 'fr' ? 'Numéro enregistré' : 'Number saved'}`
+              : (locale === 'fr' ? 'Renseigne ton numéro pour envoyer des WhatsApp' : 'Save your number to send WhatsApp')}
+            connected={status.whatsapp?.connected}
+            onConnect={() => { setPhoneInput(status.whatsapp?.phone || ''); setShowPhone(true); }}
+            onDisconnect={() => { setPhoneInput(status.whatsapp?.phone || ''); setShowPhone(true); }}
+            busyKey="wa"
+            testid="conn-wa"
+          />
+        </>
+      )}
+
+      {showPhone && (
+        <div onClick={() => setShowPhone(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: c('cardBg'), borderRadius: 16, padding: 24, maxWidth: 400, width: '100%' }} data-testid="wa-phone-modal">
+            <h3 style={{ fontSize: 17, fontWeight: 800, marginBottom: 12, color: c('text') }}>
+              {locale === 'fr' ? 'Mon numéro WhatsApp' : 'My WhatsApp number'}
+            </h3>
+            <p style={{ fontSize: 13, color: c('muted'), marginBottom: 14, lineHeight: 1.4 }}>
+              {locale === 'fr' ? 'Format international (ex: +33612345678). Le prospect voit TON numéro.' : 'International format (e.g. +33612345678). Prospects see YOUR number.'}
+            </p>
+            <input
+              type="tel" placeholder="+33 6 12 34 56 78"
+              value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)}
+              data-testid="wa-phone-input"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${c('border')}`, background: c('surface'), color: c('text'), fontSize: 15, marginBottom: 14 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setShowPhone(false)} style={{ flex: 1, padding: 12, borderRadius: 10, background: c('surface'), border: `1.5px solid ${c('border')}`, color: c('text'), fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </button>
+              <button onClick={saveWaPhone} disabled={busy === 'wa'} data-testid="wa-phone-save" style={{ flex: 1, padding: 12, borderRadius: 10, background: '#25D366', border: 'none', color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                {busy === 'wa' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : (locale === 'fr' ? 'Enregistrer' : 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== CURRENCY SELECTOR COMPONENT ====================
 const SETTINGS_CURRENCIES = [
   { code: 'EUR', label: 'Euro', symbol: '€' },
@@ -5077,6 +5450,11 @@ const SettingsTab = ({ onClose }) => {
       </div>
 
       {/* Permissions section */}
+      <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
+        {locale === 'fr' ? 'Mes connexions' : 'My connections'}
+      </h3>
+      <MyConnectionsCard locale={locale} c={c} />
+
       <h3 className="text-caption" style={{ marginBottom: '12px', color: c('muted') }}>
         {locale === 'fr' ? 'Autorisations' : 'Permissions'}
       </h3>
