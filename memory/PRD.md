@@ -16,7 +16,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
-### Sprint UX + Admin Powers (iter 40 — Feb 2026)
+### Audit i18n + Vocabulaire "Entreprise" (iter 41 — Feb 2026)
+**Remplacement systématique "réseau immobilier" → "entreprise" partout** :
+- `BusinessPage.js` (FR + EN) : eyebrow, hero, sec2/sec3, CTA → "entreprise" / "business"
+- `OrgSpace.js` : "Nom du réseau" → "Nom de l'entreprise", "ton réseau" → "ton entreprise", Dataroom "du réseau" → "de l'entreprise"
+- `JoinOrgPage.js` : "espace réseau" → "espace entreprise"
+- `AppShell.js` : "Mon espace réseau" → "Mon espace entreprise" (4 langues), source de prospect "Réseau" → "Entreprise" (4 langues)
+- `LandingPageNew.js` : pill "Espace Réseau" → "Espace Entreprise" (4 langues), team-callout "Vous gérez un réseau ?" → "Vous gérez une entreprise ?" (4 langues)
+- `BrandPreviewCarousel.js` : tagline + "Mon réseau" → "Mon entreprise" / "Espace entreprise B2B"
+- `WhiteLabelTab.js` : "URL du site du réseau" → "URL du site de l'entreprise"
+- `WhiteLabelList.js` : "espace du réseau" → "espace de l'entreprise"
+- `AdminDashboard.js` : "Prospects (réseau)" → "Prospects (entreprise)"
+
+**Audit i18n exhaustive FR/EN/IT/DE** :
+- `BusinessPage.js` : ajout des locales **IT** et **DE** complètes (eyebrow, hero, sec1-4, CTA, form labels, sizes, sectors, legal — 100+ strings traduits)
+- `BrandPreviewCarousel.js` : composant entièrement traduit dans les 4 langues (mockup iPhone affiche maintenant la bonne langue selon le contexte utilisateur) — passe `locale` depuis WhiteLabelTab via `useLocale()`. Tous les textes : "Bonjour Thomas", "Prospects chauds", "Aujourd'hui", "Top performers", "powered by", etc. → 4 langues.
+
+### Sprint UX + Admin Powers (iter 40)
 **Demandes utilisateur traitées en bloc** :
 
 🎨 **UX Tâches mobile (refonte épurée)**

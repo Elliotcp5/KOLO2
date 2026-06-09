@@ -304,7 +304,7 @@ const LandingPage = () => {
         <div className="container">
           <div className="kolo-hero-pill" data-testid="hero-pill">
             <span className="dot"></span>
-            <span>{locale === 'fr' ? 'Nouveau · Espace Réseau pour agences' : locale === 'de' ? 'Neu · Netzwerkbereich für Agenturen' : locale === 'it' ? 'Nuovo · Spazio Network per agenzie' : 'New · Network space for agencies'}</span>
+            <span>{locale === 'fr' ? 'Nouveau · Espace Entreprise pour agences' : locale === 'de' ? 'Neu · Unternehmensbereich für Agenturen' : locale === 'it' ? 'Nuovo · Spazio Aziendale per agenzie' : 'New · Business space for agencies'}</span>
           </div>
           <h1>
             {t('heroTitle1')} <br/><span className="grad-text">{t('heroTitle2')}</span>
@@ -653,16 +653,16 @@ const LandingPage = () => {
           <div className="team-callout reveal">
             <div className="team-callout-text">
               <div className="team-callout-eyebrow">
-                {locale === 'fr' ? 'Vous gérez un réseau ?' :
-                 locale === 'de' ? 'Sie verwalten ein Netzwerk?' :
-                 locale === 'it' ? 'Gestisci una rete?' :
-                 'Managing a network?'}
+                {locale === 'fr' ? 'Vous gérez une entreprise ?' :
+                 locale === 'de' ? 'Sie verwalten ein Unternehmen?' :
+                 locale === 'it' ? "Gestisci un'azienda?" :
+                 'Managing a business?'}
               </div>
               <p className="team-callout-body">
-                {locale === 'fr' ? 'Pilotez la performance de vos équipes avec KOLO pour les réseaux.' :
-                 locale === 'de' ? 'Verwalten Sie die Leistung Ihrer Teams mit KOLO für Netzwerke.' :
-                 locale === 'it' ? 'Gestisci le performance dei tuoi team con KOLO per le reti.' :
-                 'Drive your teams\' performance with KOLO for networks.'}
+                {locale === 'fr' ? 'Pilotez la performance de vos équipes avec KOLO pour les entreprises.' :
+                 locale === 'de' ? 'Verwalten Sie die Leistung Ihrer Teams mit KOLO für Unternehmen.' :
+                 locale === 'it' ? 'Gestisci le performance dei tuoi team con KOLO per le aziende.' :
+                 'Drive your teams\' performance with KOLO for businesses.'}
               </p>
             </div>
             <button

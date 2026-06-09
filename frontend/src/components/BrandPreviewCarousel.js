@@ -9,7 +9,143 @@ import {
  * Renders 3 mocked screens (Login → Dashboard → Network space) that re-brand
  * in real-time based on the wizard config (colors, logo, font, name, tagline).
  */
-const BrandPreviewCarousel = ({ config, autoplay = true }) => {
+const I18N = {
+  fr: {
+    livePreview: 'Aperçu live — application mobile',
+    loginScreen: 'Écran d\'accueil brandé',
+    dashboard: 'Tableau de bord agent',
+    network: 'Espace entreprise B2B',
+    login: 'Se connecter',
+    signup: 'Créer un compte',
+    hello: 'Bonjour Thomas 👋',
+    todayTasks: '3 tâches à faire aujourd\'hui',
+    hotProspects: 'Prospects chauds',
+    thisMonth: 'Ce mois',
+    sold: 'Vendus',
+    calls: 'Appels',
+    today: 'Aujourd\'hui',
+    callBack: 'Rappeler Mme Dubois',
+    callBackSub: 'Bien à Neuilly · 14h00',
+    callBtn: 'Appeler',
+    rdvBtn: 'RDV',
+    emailMr: 'Email à M. Lefebvre',
+    emailMrSub: 'Offre acceptée · suite',
+    home: 'Accueil',
+    prospects: 'Prospects',
+    stats: 'Stats',
+    inbox: 'Inbox',
+    myBusiness: 'Mon entreprise',
+    activeAgents: '23 agents actifs · 4 managers',
+    monthRevenue: 'CA généré · mois',
+    topPerformers: 'Top performers',
+    manager: 'Manager',
+    agent: 'Agent',
+    poweredBy: 'powered by',
+    tagline: 'Le CRM qui fait grandir ton entreprise',
+  },
+  en: {
+    livePreview: 'Live preview — mobile app',
+    loginScreen: 'Branded welcome screen',
+    dashboard: 'Agent dashboard',
+    network: 'B2B business space',
+    login: 'Sign in',
+    signup: 'Create account',
+    hello: 'Hello Thomas 👋',
+    todayTasks: '3 tasks for today',
+    hotProspects: 'Hot prospects',
+    thisMonth: 'This month',
+    sold: 'Sold',
+    calls: 'Calls',
+    today: 'Today',
+    callBack: 'Call Mrs. Dubois',
+    callBackSub: 'Property in Neuilly · 2:00 PM',
+    callBtn: 'Call',
+    rdvBtn: 'Meet',
+    emailMr: 'Email to Mr. Lefebvre',
+    emailMrSub: 'Offer accepted · next steps',
+    home: 'Home',
+    prospects: 'Prospects',
+    stats: 'Stats',
+    inbox: 'Inbox',
+    myBusiness: 'My business',
+    activeAgents: '23 active agents · 4 managers',
+    monthRevenue: 'Monthly revenue',
+    topPerformers: 'Top performers',
+    manager: 'Manager',
+    agent: 'Agent',
+    poweredBy: 'powered by',
+    tagline: 'The CRM that grows your business',
+  },
+  it: {
+    livePreview: 'Anteprima live — app mobile',
+    loginScreen: 'Schermata di benvenuto brandizzata',
+    dashboard: 'Dashboard agente',
+    network: 'Spazio aziendale B2B',
+    login: 'Accedi',
+    signup: 'Crea account',
+    hello: 'Ciao Thomas 👋',
+    todayTasks: '3 task per oggi',
+    hotProspects: 'Prospect caldi',
+    thisMonth: 'Questo mese',
+    sold: 'Venduti',
+    calls: 'Chiamate',
+    today: 'Oggi',
+    callBack: 'Chiama Sig.ra Dubois',
+    callBackSub: 'Immobile a Neuilly · 14:00',
+    callBtn: 'Chiama',
+    rdvBtn: 'Appuntamento',
+    emailMr: 'Email a Sig. Lefebvre',
+    emailMrSub: 'Offerta accettata · seguito',
+    home: 'Home',
+    prospects: 'Prospect',
+    stats: 'Stats',
+    inbox: 'Inbox',
+    myBusiness: 'La mia azienda',
+    activeAgents: '23 agenti attivi · 4 manager',
+    monthRevenue: 'Fatturato del mese',
+    topPerformers: 'Top performer',
+    manager: 'Manager',
+    agent: 'Agente',
+    poweredBy: 'powered by',
+    tagline: 'Il CRM che fa crescere la tua azienda',
+  },
+  de: {
+    livePreview: 'Live-Vorschau — Mobile App',
+    loginScreen: 'Gebrandeter Willkommensbildschirm',
+    dashboard: 'Makler-Dashboard',
+    network: 'B2B-Unternehmensbereich',
+    login: 'Anmelden',
+    signup: 'Konto erstellen',
+    hello: 'Hallo Thomas 👋',
+    todayTasks: '3 Aufgaben für heute',
+    hotProspects: 'Heiße Interessenten',
+    thisMonth: 'Diesen Monat',
+    sold: 'Verkauft',
+    calls: 'Anrufe',
+    today: 'Heute',
+    callBack: 'Frau Dubois zurückrufen',
+    callBackSub: 'Immobilie in Neuilly · 14:00',
+    callBtn: 'Anrufen',
+    rdvBtn: 'Termin',
+    emailMr: 'E-Mail an Hrn. Lefebvre',
+    emailMrSub: 'Angebot angenommen · Folge',
+    home: 'Start',
+    prospects: 'Interessenten',
+    stats: 'Stats',
+    inbox: 'Inbox',
+    myBusiness: 'Mein Unternehmen',
+    activeAgents: '23 aktive Makler · 4 Manager',
+    monthRevenue: 'Monatsumsatz',
+    topPerformers: 'Top-Performer',
+    manager: 'Manager',
+    agent: 'Makler',
+    poweredBy: 'powered by',
+    tagline: 'Das CRM, das Ihr Unternehmen wachsen lässt',
+  },
+};
+
+const BrandPreviewCarousel = ({ config, autoplay = true, locale = 'fr' }) => {
+  const T = I18N[locale] || I18N.fr;
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -25,7 +161,7 @@ const BrandPreviewCarousel = ({ config, autoplay = true }) => {
   const secondary = config.secondary_color || '#EC4899';
   const font = config.font_family || 'Inter';
   const brandName = config.name || 'Votre marque';
-  const tagline = config.tagline || 'Le CRM qui fait grandir ton réseau';
+  const tagline = config.tagline || T.tagline;
   const logo = config.logo_url;
   const initials = (brandName || 'KO').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
 
@@ -39,7 +175,7 @@ const BrandPreviewCarousel = ({ config, autoplay = true }) => {
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
     >
       <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6B7280', fontWeight: 700, alignSelf: 'flex-start' }}>
-        Aperçu live — application mobile
+        {T.livePreview}
       </div>
 
       {/* iPhone frame */}
@@ -112,13 +248,13 @@ const BrandPreviewCarousel = ({ config, autoplay = true }) => {
           {/* Screen content */}
           <div style={{ height: 'calc(100% - 30px)', overflow: 'hidden', position: 'relative' }}>
             {currentScreen === 'login' && (
-              <LoginMock primary={primary} secondary={secondary} brandName={brandName} tagline={tagline} logo={logo} initials={initials} font={font} />
+              <LoginMock T={T} primary={primary} secondary={secondary} brandName={brandName} tagline={tagline} logo={logo} initials={initials} font={font} />
             )}
             {currentScreen === 'dashboard' && (
-              <DashboardMock primary={primary} secondary={secondary} brandName={brandName} logo={logo} initials={initials} font={font} />
+              <DashboardMock T={T} primary={primary} secondary={secondary} brandName={brandName} logo={logo} initials={initials} font={font} />
             )}
             {currentScreen === 'network' && (
-              <NetworkMock primary={primary} secondary={secondary} brandName={brandName} logo={logo} initials={initials} font={font} />
+              <NetworkMock T={T} primary={primary} secondary={secondary} brandName={brandName} logo={logo} initials={initials} font={font} />
             )}
           </div>
         </div>
@@ -146,9 +282,9 @@ const BrandPreviewCarousel = ({ config, autoplay = true }) => {
         ))}
       </div>
       <div style={{ fontSize: 10.5, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        {currentScreen === 'login' && 'Écran d\'accueil brandé'}
-        {currentScreen === 'dashboard' && 'Tableau de bord agent'}
-        {currentScreen === 'network' && 'Espace réseau B2B'}
+        {currentScreen === 'login' && T.loginScreen}
+        {currentScreen === 'dashboard' && T.dashboard}
+        {currentScreen === 'network' && T.network}
       </div>
     </div>
   );
@@ -157,7 +293,7 @@ const BrandPreviewCarousel = ({ config, autoplay = true }) => {
 // =========================================================================
 // Mock 1 — Login / Welcome screen (brand colors as full-bleed gradient)
 // =========================================================================
-const LoginMock = ({ primary, secondary, brandName, tagline, logo, initials, font }) => (
+const LoginMock = ({ T, primary, secondary, brandName, tagline, logo, initials, font }) => (
   <div
     style={{
       height: '100%',
@@ -201,16 +337,16 @@ const LoginMock = ({ primary, secondary, brandName, tagline, logo, initials, fon
         border: 'none', fontSize: 13, fontWeight: 800, fontFamily: font,
         boxShadow: '0 10px 24px -8px rgba(0,0,0,0.25)',
         marginBottom: 10,
-      }}>Se connecter</button>
+      }}>{T.login}</button>
       <button style={{
         width: '100%', padding: '12px 16px', borderRadius: 14,
         background: 'rgba(255,255,255,0.12)', color: '#fff',
         border: '1px solid rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 600, fontFamily: font,
         backdropFilter: 'blur(8px)',
-      }}>Créer un compte</button>
+      }}>{T.signup}</button>
     </div>
     <div style={{ textAlign: 'center', fontSize: 9.5, opacity: 0.75, fontWeight: 500, marginTop: 12 }}>
-      {brandName} powered by <span style={{ fontWeight: 800 }}>KOLO</span>
+      {brandName} {T.poweredBy} <span style={{ fontWeight: 800 }}>KOLO</span>
     </div>
   </div>
 );
@@ -218,7 +354,7 @@ const LoginMock = ({ primary, secondary, brandName, tagline, logo, initials, fon
 // =========================================================================
 // Mock 2 — Agent dashboard (light, primary accents on stats + CTA)
 // =========================================================================
-const DashboardMock = ({ primary, secondary, brandName, logo, initials, font }) => (
+const DashboardMock = ({ T, primary, secondary, brandName, logo, initials, font }) => (
   <div style={{ height: '100%', background: '#FAFAFB', display: 'flex', flexDirection: 'column' }}>
     {/* Header */}
     <div style={{
@@ -238,33 +374,33 @@ const DashboardMock = ({ primary, secondary, brandName, logo, initials, font }) 
         </div>
         <Bell size={14} />
       </div>
-      <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12, fontFamily: font }}>Bonjour Thomas 👋</div>
-      <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>3 tâches à faire aujourd'hui</div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12, fontFamily: font }}>{T.hello}</div>
+      <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>{T.todayTasks}</div>
     </div>
 
     {/* Stats grid */}
     <div style={{ padding: '14px 14px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      <StatCard icon={<Flame size={11} color={primary} />} label="Prospects chauds" value="12" accent={primary} font={font} />
-      <StatCard icon={<TrendingUp size={11} color={secondary} />} label="Ce mois" value="+24%" accent={secondary} font={font} />
-      <StatCard icon={<CheckCircle2 size={11} color={primary} />} label="Vendus" value="4" accent={primary} font={font} />
-      <StatCard icon={<Phone size={11} color={secondary} />} label="Appels" value="47" accent={secondary} font={font} />
+      <StatCard icon={<Flame size={11} color={primary} />} label={T.hotProspects} value="12" accent={primary} font={font} />
+      <StatCard icon={<TrendingUp size={11} color={secondary} />} label={T.thisMonth} value="+24%" accent={secondary} font={font} />
+      <StatCard icon={<CheckCircle2 size={11} color={primary} />} label={T.sold} value="4" accent={primary} font={font} />
+      <StatCard icon={<Phone size={11} color={secondary} />} label={T.calls} value="47" accent={secondary} font={font} />
     </div>
 
     {/* Tasks card */}
     <div style={{ padding: '12px 14px 0', flex: 1 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8, fontFamily: font }}>Aujourd'hui</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8, fontFamily: font }}>{T.today}</div>
       <div style={{
         background: '#fff', borderRadius: 12, padding: 12,
         boxShadow: '0 2px 8px -3px rgba(0,0,0,0.06)',
         border: '1px solid rgba(0,0,0,0.04)',
         marginBottom: 8,
       }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#111', fontFamily: font }}>Rappeler Mme Dubois</div>
-        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>Bien à Neuilly · 14h00</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#111', fontFamily: font }}>{T.callBack}</div>
+        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>{T.callBackSub}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <PillBtn icon={<Phone size={10} />} bg={primary} label="Appeler" font={font} />
+          <PillBtn icon={<Phone size={10} />} bg={primary} label={T.callBtn} font={font} />
           <PillBtn icon={<MessageCircle size={10} />} bg="#25D366" label="WhatsApp" font={font} />
-          <PillBtn icon={<Calendar size={10} />} bg={secondary} label="RDV" font={font} />
+          <PillBtn icon={<Calendar size={10} />} bg={secondary} label={T.rdvBtn} font={font} />
         </div>
       </div>
       <div style={{
@@ -272,8 +408,8 @@ const DashboardMock = ({ primary, secondary, brandName, logo, initials, font }) 
         boxShadow: '0 2px 8px -3px rgba(0,0,0,0.06)',
         border: '1px solid rgba(0,0,0,0.04)',
       }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#111', fontFamily: font }}>Email à M. Lefebvre</div>
-        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>Offre acceptée · suite</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#111', fontFamily: font }}>{T.emailMr}</div>
+        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>{T.emailMrSub}</div>
       </div>
     </div>
 
@@ -282,10 +418,10 @@ const DashboardMock = ({ primary, secondary, brandName, logo, initials, font }) 
       display: 'flex', justifyContent: 'space-around', padding: '8px 0 14px',
       background: '#fff', borderTop: '1px solid rgba(0,0,0,0.06)',
     }}>
-      <NavIcon icon={<Home size={16} />} active accent={primary} label="Accueil" font={font} />
-      <NavIcon icon={<Users size={16} />} accent={primary} label="Prospects" font={font} />
-      <NavIcon icon={<BarChart3 size={16} />} accent={primary} label="Stats" font={font} />
-      <NavIcon icon={<Mail size={16} />} accent={primary} label="Inbox" font={font} />
+      <NavIcon icon={<Home size={16} />} active accent={primary} label={T.home} font={font} />
+      <NavIcon icon={<Users size={16} />} accent={primary} label={T.prospects} font={font} />
+      <NavIcon icon={<BarChart3 size={16} />} accent={primary} label={T.stats} font={font} />
+      <NavIcon icon={<Mail size={16} />} accent={primary} label={T.inbox} font={font} />
     </div>
   </div>
 );
@@ -293,7 +429,7 @@ const DashboardMock = ({ primary, secondary, brandName, logo, initials, font }) 
 // =========================================================================
 // Mock 3 — Network space (B2B): admin view with sidebar brand + KPIs
 // =========================================================================
-const NetworkMock = ({ primary, secondary, brandName, logo, initials, font }) => (
+const NetworkMock = ({ T, primary, secondary, brandName, logo, initials, font }) => (
   <div style={{ height: '100%', background: '#FAFAFB', display: 'flex', flexDirection: 'column' }}>
     <div style={{
       padding: '10px 16px',
@@ -316,8 +452,8 @@ const NetworkMock = ({ primary, secondary, brandName, logo, initials, font }) =>
     </div>
 
     <div style={{ padding: '12px 14px 0' }}>
-      <div style={{ fontSize: 15, fontWeight: 800, color: '#111', fontFamily: font, marginBottom: 2 }}>Mon réseau</div>
-      <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 12 }}>23 agents actifs · 4 managers</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: '#111', fontFamily: font, marginBottom: 2 }}>{T.myBusiness}</div>
+      <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 12 }}>{T.activeAgents}</div>
 
       {/* Highlight metric */}
       <div style={{
@@ -327,7 +463,7 @@ const NetworkMock = ({ primary, secondary, brandName, logo, initials, font }) =>
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 9.5, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>CA généré · mois</div>
+            <div style={{ fontSize: 9.5, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>{T.monthRevenue}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: primary, fontFamily: font, marginTop: 2 }}>284 K€</div>
           </div>
           <div style={{
@@ -339,14 +475,14 @@ const NetworkMock = ({ primary, secondary, brandName, logo, initials, font }) =>
       </div>
 
       {/* Agent list */}
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, fontFamily: font }}>Top performers</div>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, fontFamily: font }}>{T.topPerformers}</div>
     </div>
 
     <div style={{ flex: 1, overflow: 'hidden', padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
       {[
-        { name: 'Sophie Martel', score: 92, color: primary, role: 'Manager' },
-        { name: 'Lucas Bernard', score: 87, color: secondary, role: 'Agent' },
-        { name: 'Emma Lefèvre', score: 81, color: primary, role: 'Agent' },
+        { name: 'Sophie Martel', score: 92, color: primary, role: T.manager },
+        { name: 'Lucas Bernard', score: 87, color: secondary, role: T.agent },
+        { name: 'Emma Lefèvre', score: 81, color: primary, role: T.agent },
       ].map((a, i) => (
         <div key={i} style={{
           background: '#fff', borderRadius: 10, padding: '8px 10px',
@@ -381,7 +517,7 @@ const NetworkMock = ({ primary, secondary, brandName, logo, initials, font }) =>
       gap: 8,
     }}>
       <Sparkles size={12} color={primary} />
-      <span style={{ fontSize: 9.5, color: '#6B7280', fontWeight: 600 }}>{brandName} powered by <span style={{ fontWeight: 800, color: '#111' }}>KOLO</span></span>
+      <span style={{ fontSize: 9.5, color: '#6B7280', fontWeight: 600 }}>{brandName} {T.poweredBy} <span style={{ fontWeight: 800, color: '#111' }}>KOLO</span></span>
     </div>
   </div>
 );
@@ -422,3 +558,4 @@ const NavIcon = ({ icon, label, active, accent, font }) => (
 );
 
 export default BrandPreviewCarousel;
+ BrandPreviewCarousel;

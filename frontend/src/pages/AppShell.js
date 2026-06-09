@@ -1153,8 +1153,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <button
               onClick={() => navigate('/org')}
               data-testid="header-org-btn"
-              title={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
-              aria-label={locale === 'fr' ? 'Mon espace réseau' : 'My network'}
+              title={locale === 'fr' ? 'Mon espace entreprise' : locale === 'de' ? 'Mein Unternehmensbereich' : locale === 'it' ? 'Il mio spazio aziendale' : 'My business space'}
+              aria-label={locale === 'fr' ? 'Mon espace entreprise' : locale === 'de' ? 'Mein Unternehmensbereich' : locale === 'it' ? 'Il mio spazio aziendale' : 'My business space'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -2895,7 +2895,7 @@ const ProspectsTab = ({ onSelectProspect }) => {
                 { value: 'manual', label: locale === 'fr' ? 'Manuel' : 'Manual' },
                 { value: 'leboncoin', label: 'Leboncoin' },
                 { value: 'seloger', label: 'SeLoger' },
-                { value: 'reseau', label: locale === 'fr' ? 'Réseau' : 'Network' },
+                { value: 'reseau', label: locale === 'fr' ? 'Entreprise' : locale === 'de' ? 'Unternehmen' : locale === 'it' ? 'Azienda' : 'Business' },
                 { value: 'recommandation', label: locale === 'fr' ? 'Recommandation' : 'Referral' }
               ].map(opt => (
                 <button

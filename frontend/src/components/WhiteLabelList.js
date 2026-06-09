@@ -136,7 +136,7 @@ const WhiteLabelList = ({ onCreate }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <a href={`/org?org_id=${o.org_id}`} className="admin-icon-btn" data-testid={`wl-view-space-${o.slug}`} title="Entrer dans l'espace du réseau (Mode super admin)"
+                  <a href={`/org?org_id=${o.org_id}`} className="admin-icon-btn" data-testid={`wl-view-space-${o.slug}`} title={"Entrer dans l'espace de l'entreprise (Mode super admin)"}
                      style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(236,72,153,0.10))', color: '#6D28D9', textDecoration: 'none', fontWeight: 700, border: '1px solid rgba(139,92,246,0.3)' }}>
                     <Eye size={13} /> Voir l'espace
                   </a>

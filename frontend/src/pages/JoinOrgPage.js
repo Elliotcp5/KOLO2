@@ -171,7 +171,7 @@ const JoinOrgPage = () => {
               Quitte-la depuis ton espace pour rejoindre <strong>{info.org?.name}</strong>.
             </p>
             <button onClick={() => navigate('/org')} style={{ background: 'var(--grad)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Aller à mon espace réseau
+              Aller à mon espace entreprise
             </button>
           </>
         )}

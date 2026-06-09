@@ -16,6 +16,7 @@ const auth = () => {
  * Step 3: create the org + invite link for the client admin.
  */
 const WhiteLabelTab = () => {
+  const { locale } = useLocale();
   const [step, setStep] = useState(1);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -134,7 +135,7 @@ const WhiteLabelTab = () => {
             Analyser un site web
           </h2>
           <p style={{ fontSize: 13, color: 'var(--ink-mid)', marginBottom: 16 }}>
-            Colle l'URL du site du réseau ou de l'agence. L'IA extrait automatiquement les couleurs, logo, polices et secteur.
+            {"Colle l'URL du site de l'entreprise ou de l'agence. L'IA extrait automatiquement les couleurs, logo, polices et secteur."}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ position: 'relative', flex: 1 }}>
@@ -208,7 +209,7 @@ const WhiteLabelTab = () => {
 
           {/* Live iPhone preview carousel */}
           <div className="admin-stat-card" style={{ padding: 18, alignSelf: 'start', position: 'sticky', top: 16 }}>
-            <BrandPreviewCarousel config={config} />
+            <BrandPreviewCarousel config={config} locale={locale} />
             {(scan.raw?.colors_found || []).length > 0 && (
               <div style={{ fontSize: 11, color: '#6B7280', marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
                 <strong style={{ display: 'block', marginBottom: 6, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9CA3AF' }}>Couleurs détectées sur le site</strong>

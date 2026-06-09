@@ -113,7 +113,7 @@ const Overview = ({ stats, loading, onRefresh }) => (
       <StatCard testid="stat-total-users" label="Utilisateurs" value={stats?.users?.total ?? '—'} sub={`+${stats?.users?.recent_signups_7d ?? 0} cette semaine`} />
       <StatCard testid="stat-active-subs" label="Abonnements actifs" value={stats?.users?.active ?? '—'} sub={`${stats?.users?.trialing ?? 0} en trial`} />
       <StatCard testid="stat-leads-new" label="Leads B2B à traiter" value={stats?.leads?.new ?? '—'} sub={`${stats?.leads?.total ?? 0} au total`} />
-      <StatCard testid="stat-prospects" label="Prospects (réseau)" value={stats?.prospects_total ?? '—'} />
+      <StatCard testid="stat-prospects" label="Prospects (entreprise)" value={stats?.prospects_total ?? '—'} />
     </div>
 
     <div className="admin-stat-grid" style={{ marginTop: 16 }}>

@@ -61,10 +61,10 @@ const CreateOrgModal = ({ onCreated, onClose }) => {
     <div className="org-modal-backdrop" onClick={onClose}>
       <div className="org-modal" onClick={(e) => e.stopPropagation()}>
         <h2>Créer votre organisation</h2>
-        <p className="org-modal-sub">Un espace dédié pour ton réseau. Tu pourras inviter tes agents juste après.</p>
+        <p className="org-modal-sub">Un espace dédié pour ton entreprise. Tu pourras inviter tes agents juste après.</p>
         <form onSubmit={submit} className="org-form">
           <label>
-            <span>Nom du réseau</span>
+            <span>{"Nom de l'entreprise"}</span>
             <input data-testid="org-create-name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Mon Agence Immo" />
           </label>
           <label>
@@ -518,7 +518,7 @@ const DataroomTab = ({ org, isOrgAdmin }) => {
 
   return (
     <div>
-      <div className="admin-section-header"><div><h1>Dataroom</h1><p className="admin-section-sub">Documents partagés du réseau (URL, drive, etc.)</p></div></div>
+      <div className="admin-section-header"><div><h1>Dataroom</h1><p className="admin-section-sub">{"Documents partagés de l'entreprise (URL, drive, etc.)"}</p></div></div>
       {isOrgAdmin && (
         <form onSubmit={add} className="org-invite-card" data-testid="dataroom-add-form">
           <h3>Ajouter un document</h3>
