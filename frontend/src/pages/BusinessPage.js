@@ -303,12 +303,9 @@ const BusinessPage = () => {
           <span>{t.navBack}</span>
         </button>
         <a href="/" className="biz-nav-logo"><span className="biz-logo-dot"></span>KOLO</a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
-          <LanguageSwitcher variant="light" testid="lang-biz" />
-          <a href="#contact" className="biz-nav-cta" data-testid="biz-nav-contact">
+        <a href="#contact" className="biz-nav-cta" data-testid="biz-nav-contact">
             {t.navContact}
           </a>
-        </div>
       </nav>
 
       {/* HERO */}

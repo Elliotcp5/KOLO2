@@ -1203,7 +1203,6 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             </button>
           )}
         <NotificationBell locale={locale} c={c} />
-        <LanguageSwitcher variant="light" testid="lang-app" />
         <button 
           style={{ 
             display: 'flex', 
@@ -1793,34 +1792,33 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                 >
                   {/* Task header - always visible */}
                   <div style={{ position: 'relative' }}>
-                    {/* "En retard" badge — small pill in top-right corner */}
+                    {/* "En retard" badge — discreet pill at the top-left, above the title (mobile-safe) */}
                     {isOverdue && !isCompleted && (
-                      <span
-                        data-testid={`task-overdue-${task.task_id}`}
-                        style={{
-                          position: 'absolute',
-                          top: 10,
-                          right: 12,
-                          background: 'rgba(245,158,11,0.12)',
-                          color: '#D97706',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          padding: '3px 9px',
-                          borderRadius: 999,
-                          letterSpacing: '0.02em',
-                          textTransform: 'uppercase',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        {locale === 'fr' ? 'En retard' : locale === 'de' ? 'Verspätet' : locale === 'it' ? 'In ritardo' : 'Overdue'}
-                      </span>
+                      <div style={{ padding: '8px 16px 0' }}>
+                        <span
+                          data-testid={`task-overdue-${task.task_id}`}
+                          style={{
+                            display: 'inline-block',
+                            background: 'rgba(245,158,11,0.12)',
+                            color: '#D97706',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {locale === 'fr' ? 'En retard' : locale === 'de' ? 'Verspätet' : locale === 'it' ? 'In ritardo' : 'Overdue'}
+                        </span>
+                      </div>
                     )}
                 <div 
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '12px',
-                    padding: '14px 16px'
+                    padding: isOverdue && !isCompleted ? '6px 16px 14px' : '14px 16px'
                   }}
                 >
                   {/* Task content - clickable to expand */}
@@ -5780,41 +5778,43 @@ const SettingsTab = ({ onClose }) => {
         {t('logout')}
       </button>
 
-      {/* Cancel subscription button */}
+      {/* Cancel subscription button — discreet grey text link */}
       <button 
         onClick={() => setShowCancelSubscriptionModal(true)}
         style={{ 
           background: 'none', 
           border: 'none', 
-          color: '#DC2626', 
-          fontSize: '14px', 
+          color: c('muted'), 
+          fontSize: '12px',
+          fontWeight: 400,
           cursor: 'pointer',
-          marginTop: '16px',
-          padding: '8px 0',
+          marginTop: '24px',
+          padding: '6px 0',
           width: '100%',
-          textAlign: 'center'
+          textAlign: 'center',
+          opacity: 0.7,
         }}
         data-testid="cancel-subscription-final"
       >
-        {locale === 'fr' ? 'Resilier l\'abonnement' : 'Cancel subscription'}
+        {locale === 'fr' ? 'Résilier l\'abonnement' : locale === 'de' ? 'Abonnement kündigen' : locale === 'it' ? "Annulla l'abbonamento" : 'Cancel subscription'}
       </button>
 
-      {/* Delete account — REQUIRED by Apple App Store Guideline 5.1.1(v) */}
+      {/* Delete account — REQUIRED by Apple App Store Guideline 5.1.1(v) — kept discreet */}
       <button
         onClick={handleDeleteAccount}
         data-testid="delete-account-button"
         style={{
           background: 'none',
           border: 'none',
-          color: '#DC2626',
-          fontSize: '14px',
-          fontWeight: 600,
+          color: c('muted'),
+          fontSize: '12px',
+          fontWeight: 400,
           cursor: 'pointer',
-          marginTop: '24px',
-          padding: '12px 0',
+          marginTop: '4px',
+          padding: '6px 0 28px',
           width: '100%',
           textAlign: 'center',
-          textDecoration: 'underline',
+          opacity: 0.7,
         }}
       >
         {locale === 'fr' ? 'Supprimer mon compte' :

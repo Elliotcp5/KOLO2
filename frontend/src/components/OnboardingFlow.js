@@ -113,7 +113,7 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
   };
 
   const t = content[locale] || content.fr;
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   // Animation on step change - smoother transition
   useEffect(() => {
@@ -847,7 +847,191 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
     </div>
   );
 
-  // Step 5: Ready
+  // Step 6: Install (Add to Home Screen — iPhone / Android-specific guide)
+  const [installPlatform, setInstallPlatform] = useState(() => {
+    if (typeof navigator === 'undefined') return null;
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+    if (/android/.test(ua)) return 'android';
+    return null;
+  });
+
+  const installCopy = {
+    fr: {
+      title: 'Installe KOLO sur ton écran d\'accueil',
+      sub: 'Comme une vraie app, en 3 secondes. Choisis ton téléphone :',
+      iphone: 'iPhone',
+      android: 'Android',
+      iosTitle: 'Sur iPhone (Safari)',
+      iosSteps: [
+        { icon: '1', text: 'Ouvre cette page dans Safari' },
+        { icon: '2', text: 'Touche le bouton Partager ⬆️ en bas' },
+        { icon: '3', text: 'Choisis "Sur l\'écran d\'accueil" puis "Ajouter"' },
+      ],
+      androidTitle: 'Sur Android (Chrome)',
+      androidSteps: [
+        { icon: '1', text: 'Ouvre cette page dans Chrome' },
+        { icon: '2', text: 'Touche le menu ⋮ en haut à droite' },
+        { icon: '3', text: 'Choisis "Ajouter à l\'écran d\'accueil" puis "Ajouter"' },
+      ],
+      done: 'Plus tard',
+      gotIt: 'C\'est fait',
+      changePhone: 'Changer de téléphone',
+    },
+    en: {
+      title: 'Install KOLO on your home screen',
+      sub: 'Like a real app, in 3 seconds. Pick your phone:',
+      iphone: 'iPhone',
+      android: 'Android',
+      iosTitle: 'On iPhone (Safari)',
+      iosSteps: [
+        { icon: '1', text: 'Open this page in Safari' },
+        { icon: '2', text: 'Tap the Share button ⬆️ at the bottom' },
+        { icon: '3', text: 'Choose "Add to Home Screen" then "Add"' },
+      ],
+      androidTitle: 'On Android (Chrome)',
+      androidSteps: [
+        { icon: '1', text: 'Open this page in Chrome' },
+        { icon: '2', text: 'Tap the ⋮ menu in the top right' },
+        { icon: '3', text: 'Choose "Add to Home screen" then "Add"' },
+      ],
+      done: 'Later',
+      gotIt: 'Done',
+      changePhone: 'Change phone',
+    },
+    it: {
+      title: 'Installa KOLO sulla tua schermata home',
+      sub: 'Come una vera app, in 3 secondi. Scegli il tuo telefono:',
+      iphone: 'iPhone',
+      android: 'Android',
+      iosTitle: 'Su iPhone (Safari)',
+      iosSteps: [
+        { icon: '1', text: 'Apri questa pagina in Safari' },
+        { icon: '2', text: 'Tocca il pulsante Condividi ⬆️ in basso' },
+        { icon: '3', text: 'Scegli "Aggiungi a Home" poi "Aggiungi"' },
+      ],
+      androidTitle: 'Su Android (Chrome)',
+      androidSteps: [
+        { icon: '1', text: 'Apri questa pagina in Chrome' },
+        { icon: '2', text: 'Tocca il menu ⋮ in alto a destra' },
+        { icon: '3', text: 'Scegli "Aggiungi a schermata Home" poi "Aggiungi"' },
+      ],
+      done: 'Più tardi',
+      gotIt: 'Fatto',
+      changePhone: 'Cambia telefono',
+    },
+    de: {
+      title: 'Installiere KOLO auf deinem Startbildschirm',
+      sub: 'Wie eine echte App, in 3 Sekunden. Wähle dein Handy:',
+      iphone: 'iPhone',
+      android: 'Android',
+      iosTitle: 'Auf iPhone (Safari)',
+      iosSteps: [
+        { icon: '1', text: 'Öffne diese Seite in Safari' },
+        { icon: '2', text: 'Tippe auf den Teilen-Button ⬆️ unten' },
+        { icon: '3', text: 'Wähle "Zum Home-Bildschirm" dann "Hinzufügen"' },
+      ],
+      androidTitle: 'Auf Android (Chrome)',
+      androidSteps: [
+        { icon: '1', text: 'Öffne diese Seite in Chrome' },
+        { icon: '2', text: 'Tippe auf das ⋮ Menü oben rechts' },
+        { icon: '3', text: 'Wähle "Zum Startbildschirm zufügen" dann "Hinzufügen"' },
+      ],
+      done: 'Später',
+      gotIt: 'Fertig',
+      changePhone: 'Handy ändern',
+    },
+  };
+
+  const InstallStep = () => {
+    const C = installCopy[locale] || installCopy.en;
+    const showGuide = installPlatform === 'ios' || installPlatform === 'android';
+
+    return (
+      <div style={contentStyle}>
+        <ProgressDots />
+        <h2 style={{ fontSize: '24px', fontWeight: '700', color: textColor, textAlign: 'center', marginBottom: '8px' }}>
+          {C.title}
+        </h2>
+        <p style={{ fontSize: '14px', color: mutedColor, textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
+          {C.sub}
+        </p>
+
+        {!showGuide && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <button
+              onClick={() => setInstallPlatform('ios')}
+              data-testid="onb-install-ios"
+              style={{
+                padding: '24px 16px', borderRadius: 16,
+                background: cardBg, border: `1.5px solid ${borderColor}`,
+                cursor: 'pointer', textAlign: 'center',
+                transition: 'all 200ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#007AFF'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; }}
+            >
+              <div style={{ fontSize: 36, marginBottom: 6 }}>🍎</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: textColor }}>{C.iphone}</div>
+            </button>
+            <button
+              onClick={() => setInstallPlatform('android')}
+              data-testid="onb-install-android"
+              style={{
+                padding: '24px 16px', borderRadius: 16,
+                background: cardBg, border: `1.5px solid ${borderColor}`,
+                cursor: 'pointer', textAlign: 'center',
+                transition: 'all 200ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3DDC84'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; }}
+            >
+              <div style={{ fontSize: 36, marginBottom: 6 }}>🤖</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: textColor }}>{C.android}</div>
+            </button>
+          </div>
+        )}
+
+        {showGuide && (
+          <div style={{ background: cardBg, borderRadius: 16, padding: 20, border: `1px solid ${borderColor}`, marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: textColor, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{installPlatform === 'ios' ? C.iosTitle : C.androidTitle}</span>
+              <button onClick={() => setInstallPlatform(null)} data-testid="onb-install-change"
+                style={{ background: 'transparent', border: 'none', color: mutedColor, fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}>
+                {C.changePhone}
+              </button>
+            </div>
+            {(installPlatform === 'ios' ? C.iosSteps : C.androidSteps).map((s) => (
+              <div key={s.icon} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: gradient, color: '#fff',
+                  display: 'grid', placeItems: 'center',
+                  fontSize: 13, fontWeight: 800, flexShrink: 0,
+                }}>{s.icon}</div>
+                <div style={{ fontSize: 14, color: textColor, lineHeight: 1.5, paddingTop: 4 }}>{s.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={nextStep}
+          data-testid="onboarding-install-continue"
+          style={{
+            width: '100%', padding: '16px',
+            background: gradient, border: 'none', borderRadius: '999px',
+            color: 'white', fontSize: '16px', fontWeight: '600', cursor: 'pointer',
+            marginTop: '16px',
+          }}
+        >
+          {showGuide ? C.gotIt : C.done}
+        </button>
+      </div>
+    );
+  };
+
+  // Step 7: Ready
   const ReadyStep = () => (
     <div style={contentStyle}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
@@ -953,7 +1137,8 @@ const OnboardingFlow = ({ onComplete, authFetch }) => {
       {step === 3 && <PermissionsStep />}
       {step === 4 && <ImportStep />}
       {step === 5 && <ThemeStep />}
-      {step === 6 && <ReadyStep />}
+      {step === 6 && <InstallStep />}
+      {step === 7 && <ReadyStep />}
     </div>
   );
 };

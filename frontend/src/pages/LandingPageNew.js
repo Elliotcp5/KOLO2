@@ -280,7 +280,6 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
-          <LanguageSwitcher variant="light" testid="lang-landing" />
           <button
             className="nav-pricing nav-business"
             onClick={() => navigate('/business')}
@@ -304,10 +303,6 @@ const LandingPage = () => {
       {/* HERO — radically simplified, leedflow style */}
       <section className="hero">
         <div className="container">
-          <div className="kolo-hero-pill" data-testid="hero-pill">
-            <span className="dot"></span>
-            <span>{locale === 'fr' ? 'Nouveau · Espace Entreprise pour agences' : locale === 'de' ? 'Neu · Unternehmensbereich für Agenturen' : locale === 'it' ? 'Nuovo · Spazio Aziendale per agenzie' : 'New · Business space for agencies'}</span>
-          </div>
           <h1>
             {t('heroTitle1')} <br/><span className="grad-text">{t('heroTitle2')}</span>
           </h1>

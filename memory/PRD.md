@@ -16,7 +16,32 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
-### Sélecteur de langue + Détection IP (iter 42 — Feb 2026)
+### Sprint correctifs & polish (iter 43 — Feb 2026)
+🔴 **Bug bloquant fixé** : "Créer une marque blanche" affichait page blanche → `useLocale is not defined` dans `WhiteLabelTab.js`. Import manquant restauré.
+
+🎨 **Polish landing/UX** :
+- **Suppression du badge "Nouveau · Espace Entreprise pour agences"** sur la landing.
+- **Suppression du sélecteur de drapeau dans les headers** (landing, business, app) — design trop "cheap". Le sélecteur reste accessible **dans le footer** uniquement.
+- **Détection IP auto refinée** : Suisse (CH) → utilise `navigator.language` pour détecter le canton (fr-CH → FR, de-CH → DE, it-CH → IT, default FR). FR/IT/DE/Autriche/Liechtenstein/Belgique automatiques. Reste du monde → EN.
+- **Pastille "En retard"** : passe d'un overlay absolu en haut-droite (qui chevauchait les boutons) à un **bloc inline en haut-gauche** au-dessus du titre. Plus de chevauchement mobile.
+- **"Résilier l'abonnement" / "Supprimer mon compte"** : rendus **gris discret** (font 12px, opacity 0.7, couleur muted) au lieu du rouge bold underline. Plus de risque de clic accidentel.
+
+📧 **Sender email admin invites** : `contact@trykolo.io` au lieu de `onboarding@resend.dev`.
+
+🔍 **SEO meta tags améliorés** :
+- `<title>` + `<meta description>` réécrits en français accrocheur ("KOLO — Le copilote IA des agents immobiliers | Closez 2x plus").
+- `<meta property="og:*>` cohérents en FR.
+- Ajout `<link rel="icon" sizes="192x192">` et `<link rel="icon" sizes="512x512">` pour Google qui exige ≥96px pour l'icône à côté de l'URL dans les résultats.
+- Note : "Autre page avec balise canonique correcte" = message informatif Google, pas un bug (les `?lang=xx` renvoient bien vers canonical `/`).
+
+📱 **Onboarding : choix iPhone/Android + guide signet** :
+- Nouvelle étape 6/7 dans `OnboardingFlow.js`.
+- 2 cards "iPhone 🍎" / "Android 🤖" (auto-détection du UA pour pré-sélectionner).
+- Guide en 3 étapes selon la plateforme (Safari → Partager → "Sur l'écran d'accueil" pour iOS ; Chrome → ⋮ → "Ajouter à l'écran d'accueil" pour Android).
+- Traduit FR/EN/IT/DE.
+- Bouton "Plus tard" / "C'est fait" + lien "Changer de téléphone".
+
+### Sélecteur de langue + Détection IP (iter 42)
 - Nouveau composant **`LanguageSwitcher.js`** : pill compact avec drapeau emoji (🇫🇷🇬🇧🇮🇹🇩🇪) + code langue + chevron, ouvre un dropdown élégant avec 4 langues + checkmark violet sur l'active.
 - Installé dans **3 endroits** : header LandingPageNew, header BusinessPage, header AppShell (à côté de la bell).
 - **Détection IP automatique** déjà en place dans `LocaleContext.js` (priorité : URL param → choix manuel localStorage → backend `/api/geo` → ipapi.co fallback → navigator.language → EN par défaut).

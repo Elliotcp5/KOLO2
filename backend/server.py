@@ -2264,7 +2264,7 @@ async def admin_invite_admin(payload: AdminInvitePayload, request: Request):
     try:
         import resend as _resend
         api_key = os.environ.get("RESEND_API_KEY", "").strip()
-        sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev").strip()
+        sender = os.environ.get("SENDER_EMAIL", "contact@trykolo.io").strip()
         if api_key:
             _resend.api_key = api_key
             html = (

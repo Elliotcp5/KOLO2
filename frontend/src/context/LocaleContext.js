@@ -26,10 +26,28 @@ const COUNTRY_LANGUAGES = {
   // Italian
   'IT': 'it', 'SM': 'it', 'VA': 'it',
   // German-speaking
-  'DE': 'de', 'AT': 'de', 'LI': 'de', 'CH': 'de',
+  'DE': 'de', 'AT': 'de', 'LI': 'de',
+  // Switzerland → defer to browser language (handled separately for cantons)
+  'CH': null,
   // English
   'GB': 'en', 'IE': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
 };
+
+// Resolve a country code + browser language to our locale.
+// Special handling for Switzerland: pick fr/de/it based on the user's
+// browser language (which reflects the canton's preferred language).
+function resolveCountryAndBrowserToLocale(countryCode, browserLang) {
+  if (!countryCode) return 'en';
+  const cc = countryCode.toUpperCase();
+  if (cc === 'CH') {
+    const bl = (browserLang || '').toLowerCase();
+    if (bl.startsWith('fr')) return 'fr';
+    if (bl.startsWith('it')) return 'it';
+    if (bl.startsWith('de')) return 'de';
+    return 'fr'; // default Swiss = French canton (largest French-speaking SaaS market)
+  }
+  return COUNTRY_LANGUAGES[cc] || 'en';
+}
 
 // Currency + symbol mapping by country
 const COUNTRY_CURRENCY = {
@@ -43,7 +61,16 @@ const COUNTRY_CURRENCY = {
 
 function resolveCountryToLocale(countryCode) {
   if (!countryCode) return 'en';
-  return COUNTRY_LANGUAGES[countryCode.toUpperCase()] || 'en';
+  const cc = countryCode.toUpperCase();
+  if (cc === 'CH') {
+    // For Switzerland, use the browser language to pick the canton's locale
+    const bl = (typeof navigator !== 'undefined' && (navigator.language || '')).toLowerCase();
+    if (bl.startsWith('fr')) return 'fr';
+    if (bl.startsWith('it')) return 'it';
+    if (bl.startsWith('de')) return 'de';
+    return 'fr';
+  }
+  return COUNTRY_LANGUAGES[cc] || 'en';
 }
 
 function resolveCountryToCurrency(countryCode) {

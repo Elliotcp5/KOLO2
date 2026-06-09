@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Loader2, Globe, Check, X, ExternalLink, Copy, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_URL } from '../config/api';
+import { useLocale } from '../context/LocaleContext';
 import BrandPreviewCarousel from './BrandPreviewCarousel';
 
 const auth = () => {
