@@ -636,40 +636,17 @@ const BillingTab = ({ org, isOrgAdmin }) => {
         </div>
 
         <div className="admin-stat-card">
-          <div className="admin-stat-label">Statut</div>
-          <div className="admin-stat-value" style={{ color: isPaid ? '#22C55E' : '#F59E0B', fontSize: 18 }}>
-            {isPaid ? 'Active' : (billing.billing_status === 'trialing' ? 'Essai' : billing.billing_status)}
+          <div className="admin-stat-label">Fin d'abonnement</div>
+          <div className="admin-stat-value" style={{ fontSize: 18 }} data-testid="billing-end-date">
+            {billing.expires_at
+              ? new Date(billing.expires_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+              : (billing.current_period_end
+                  ? new Date(billing.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : '—')}
           </div>
-          {billing.stripe_subscription_id && (
-            <div className="admin-stat-sub" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-              {billing.stripe_subscription_id.slice(0, 16)}…
-            </div>
-          )}
+          <div className="admin-stat-sub">renouvellement annuel</div>
         </div>
       </div>
-
-      {isOrgAdmin && !isPaid && (
-        <div className="admin-stat-card" style={{ padding: 24, textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
-            Activer l'abonnement annuel
-          </h2>
-          <p style={{ fontSize: 14, color: 'var(--ink-mid)', marginBottom: 20 }}>
-            Paye {billing.yearly_total_eur || billing.monthly_total_eur * 12}€/an pour débloquer {billing.seats_max} sièges et accéder à toutes les fonctionnalités KOLO en marque blanche.
-            {billing.promo_months_free > 0 && (
-              <> Promotion appliquée : <strong>{billing.promo_months_free} mois offert{billing.promo_months_free > 1 ? 's' : ''}</strong>.</>
-            )}
-          </p>
-          <button
-            onClick={checkout}
-            disabled={checkingOut}
-            data-testid="billing-checkout-btn"
-            className="org-btn-primary"
-            style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', minWidth: 220 }}
-          >
-            {checkingOut ? 'Redirection…' : (<><CreditCard size={16} /> Payer avec Stripe</>)}
-          </button>
-        </div>
-      )}
 
       {isOrgAdmin && isPaid && (
         <div className="admin-stat-card" style={{ padding: 18 }}>

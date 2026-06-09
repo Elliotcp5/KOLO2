@@ -6446,7 +6446,7 @@ class WhiteLabelCreatePayload(BaseModel):
     seats: Optional[int] = 50
     plan: Optional[str] = "enterprise"
     custom_subdomain: Optional[str] = None
-    monthly_price_per_seat_eur: Optional[int] = 1900  # in cents (per seat per month)
+    monthly_price_per_seat_eur: Optional[int] = 2499  # in cents (per seat per month, default €24.99)
     billing_country: Optional[str] = "FR"  # ISO-2 country code for VAT
     promo_months_free: Optional[int] = 0  # 0-12 months offered on annual subscription
     billing_period: Optional[str] = "annual"  # white-label is annual-only
@@ -6484,7 +6484,7 @@ async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
         "seats_used": 0,
         "plan": payload.plan or "enterprise",
         "custom_subdomain": (payload.custom_subdomain or "").strip().lower() or None,
-        "monthly_price_per_seat_eur": payload.monthly_price_per_seat_eur or 1900,
+        "monthly_price_per_seat_eur": payload.monthly_price_per_seat_eur or 2499,
         "billing_country": (payload.billing_country or "FR").upper(),
         "promo_months_free": max(0, min(12, int(payload.promo_months_free or 0))),
         "billing_period": "annual",  # white-label B2B is annual-only
@@ -6946,6 +6946,12 @@ async def accept_org_invite(token: str, request: Request):
             "org_role": invite["role"],
             "manager_id": invite.get("manager_id") if invite["role"] == "org_agent" else None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
+            # === Grant Pro+ 1 year (paid by the inviting organization) ===
+            "subscription_plan": "pro_plus",
+            "subscription_status": "active",
+            "subscription_expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
+            "subscription_granted_by": f"org:{invite['org_id']}",
+            "subscription_note": "Granted via org invite — paid by inviting organization",
         }}
     )
     await db.org_invites.update_one(
@@ -6985,7 +6991,7 @@ async def org_billing_info(org_id: str, request: Request):
     _, org = await _require_org_member(request, org_id, admin_only=False)
     seats_used = await db.users.count_documents({"org_id": org_id})
     seats_max = int(org.get("seats") or 0)
-    price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    price_cents = int(org.get("monthly_price_per_seat_eur") or 2499)
     promo_months_free = max(0, min(12, int(org.get("promo_months_free") or 0)))
     billed_months = max(0, 12 - promo_months_free)
     yearly_total_cents = price_cents * seats_max * billed_months
@@ -7025,7 +7031,7 @@ async def org_billing_checkout(org_id: str, payload: OrgBillingCheckoutPayload, 
     seats = int(payload.seats or org.get("seats") or 0)
     if seats <= 0:
         raise HTTPException(status_code=400, detail="Seats must be > 0")
-    monthly_price_cents = int(org.get("monthly_price_per_seat_eur") or 1900)
+    monthly_price_cents = int(org.get("monthly_price_per_seat_eur") or 2499)
     promo_months_free = max(0, min(12, int(org.get("promo_months_free") or 0)))
     billed_months = max(1, 12 - promo_months_free)
     # Annual unit price per seat (cents) with promo months removed

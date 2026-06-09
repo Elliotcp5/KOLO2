@@ -440,17 +440,12 @@ const IntegrationsPage = () => {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 0' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <button onClick={() => navigate(-1)} className="admin-icon-btn" style={{ marginBottom: 24 }}><ArrowLeft size={16} /> Retour</button>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 800, margin: '0 0 8px' }}>Intégrations</h1>
+        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 800, margin: '0 0 8px' }}>Intégrations entreprise</h1>
         <p style={{ color: 'var(--ink-mid)', marginBottom: 12, maxWidth: 640, lineHeight: 1.55 }}>
-          KOLO ne se met jamais entre toi et tes prospects. Tu utilises <strong>ton propre numéro</strong> de téléphone et <strong>ton WhatsApp</strong> — KOLO sert juste à logger les échanges, transcrire et synchroniser ton agenda.
+          Intégrations à l'échelle de l'entreprise uniquement. <strong>Calendrier et WhatsApp se connectent au niveau individuel</strong> depuis "Mon profil → Mes connexions" — chaque agent connecte ses propres comptes.
         </p>
-        <p style={{ color: 'var(--ink-soft)', marginBottom: 40, fontSize: 13 }}>Pas de coût Twilio par minute. Pas de numéro tiers. Le prospect voit ton numéro.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 20 }} data-testid="integrations-grid">
-          <NativeCallCard />
-          <NativeWhatsAppCard />
-          <GoogleCalendarCard status={statuses?.google_calendar} />
-          <OutlookCalendarCard status={statuses?.outlook_calendar} />
           <Card
             icon={Plug}
             title="Intégration CRM"

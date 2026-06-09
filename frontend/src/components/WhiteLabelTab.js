@@ -27,7 +27,7 @@ const WhiteLabelTab = () => {
     name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899',
     logo_url: '', sector: 'immobilier', font_family: 'Inter',
     tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise',
-    custom_subdomain: '', monthly_price_per_seat_eur: 1900,
+    custom_subdomain: '', monthly_price_per_seat_eur: 2499,
     billing_country: 'FR', promo_months_free: 0,
   });
   const [createdOrg, setCreatedOrg] = useState(null);
@@ -90,7 +90,7 @@ const WhiteLabelTab = () => {
 
   const reset = () => {
     setStep(1); setWebsiteUrl(''); setScan(null); setCreatedOrg(null);
-    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise', custom_subdomain: '', monthly_price_per_seat_eur: 1900, billing_country: 'FR', promo_months_free: 0 });
+    setConfig({ name: '', primary_color: '#8B5CF6', secondary_color: '#EC4899', logo_url: '', sector: 'immobilier', font_family: 'Inter', tagline: '', pitch: '', contact_email: '', seats: 50, plan: 'enterprise', custom_subdomain: '', monthly_price_per_seat_eur: 2499, billing_country: 'FR', promo_months_free: 0 });
   };
 
   return (
@@ -186,7 +186,7 @@ const WhiteLabelTab = () => {
               <Field label="Email contact admin" value={config.contact_email} onChange={(v) => setConfig({ ...config, contact_email: v })} type="email" testid="wl-email" />
               <Field label="Sièges (collaborateurs)" value={config.seats} onChange={(v) => setConfig({ ...config, seats: parseInt(v) || 0 })} type="number" testid="wl-seats" />
               <Field label="Sous-domaine (ex: iad)" value={config.custom_subdomain} onChange={(v) => setConfig({ ...config, custom_subdomain: v.toLowerCase().replace(/[^a-z0-9-]/g, '') })} testid="wl-subdomain" />
-              <Field label="Prix par siège / mois (€)" value={config.monthly_price_per_seat_eur ? (config.monthly_price_per_seat_eur / 100) : 19} onChange={(v) => setConfig({ ...config, monthly_price_per_seat_eur: Math.round((parseFloat(v) || 0) * 100) })} type="number" testid="wl-price" />
+              <Field label="Prix par siège / mois (€)" value={config.monthly_price_per_seat_eur ? (config.monthly_price_per_seat_eur / 100) : 24.99} onChange={(v) => setConfig({ ...config, monthly_price_per_seat_eur: Math.round((parseFloat(v) || 0) * 100) })} type="number" testid="wl-price" />
               <div style={{ gridColumn: '1/-1' }}><Field label="Tagline" value={config.tagline} onChange={(v) => setConfig({ ...config, tagline: v })} testid="wl-tagline" /></div>
               <div style={{ gridColumn: '1/-1' }}><Field label="Pitch / présentation courte" value={config.pitch} onChange={(v) => setConfig({ ...config, pitch: v })} testid="wl-pitch" multiline /></div>
             </div>

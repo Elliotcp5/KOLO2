@@ -70,6 +70,42 @@ const applyBranding = (org) => {
     root.style.removeProperty('--font-body');
     root.style.removeProperty('--font-heading');
   }
+  // Mark body so global CSS can override hardcoded KOLO purple/pink gradients
+  if (org) document.body.setAttribute('data-org-branded', 'true');
+  else document.body.removeAttribute('data-org-branded');
+
+  // Inject (or refresh) a stylesheet that forces brand colors onto KOLO-hardcoded gradient/violet/pink elements
+  let styleEl = document.getElementById('kolo-brand-overrides');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'kolo-brand-overrides';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = org ? `
+    body[data-org-branded="true"] .org-btn-primary,
+    body[data-org-branded="true"] button[style*="linear-gradient(135deg, rgb(139, 92, 246)"],
+    body[data-org-branded="true"] [class*="gradient-violet"],
+    body[data-org-branded="true"] [class*="kolo-gradient"] {
+      background: var(--brand-gradient) !important;
+    }
+    body[data-org-branded="true"] [style*="background: linear-gradient(135deg, #8B5CF6"],
+    body[data-org-branded="true"] [style*="background-image: linear-gradient(135deg, #8B5CF6"] {
+      background: var(--brand-gradient) !important;
+    }
+    body[data-org-branded="true"] [style*="color: rgb(139, 92, 246)"],
+    body[data-org-branded="true"] [style*="color: #8B5CF6"],
+    body[data-org-branded="true"] [style*="color:#8B5CF6"] {
+      color: var(--brand-primary) !important;
+    }
+    body[data-org-branded="true"] [style*="rgba(139, 92, 246"],
+    body[data-org-branded="true"] [style*="rgba(139,92,246"] {
+      /* keep transparency level but tint with brand primary */
+      filter: hue-rotate(0deg);
+    }
+    body[data-org-branded="true"] [style*="background: #8B5CF6"] {
+      background: var(--brand-primary) !important;
+    }
+  ` : '';
   // Dynamically load the brand's Google Font (idempotent)
   loadGoogleFont(conf.font_family);
 };

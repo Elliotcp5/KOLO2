@@ -1083,9 +1083,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <img
               src={orgBranding.logo_url}
               alt={orgBranding.name}
-              style={{ height: '46px', maxWidth: '180px', objectFit: 'contain' }}
+              style={{ height: '64px', maxWidth: '240px', objectFit: 'contain' }}
               onError={(e) => {
-                // Fallback to brand name if image fails to load
                 e.currentTarget.style.display = 'none';
                 if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline-block';
               }}
@@ -1093,23 +1092,12 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             <span style={{
               display: 'none',
               fontFamily: orgBranding.font_family || 'var(--font-heading)',
-              fontSize: '20px',
+              fontSize: '24px',
               fontWeight: 800,
               color: orgBranding.primary_color || c('text'),
             }}>{orgBranding.name}</span>
-            <span style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: c('muted'),
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              borderLeft: `1px solid ${c('border')}`,
-              paddingLeft: '10px',
-            }}>by KOLO</span>
           </div>
         ) : userOrg ? (
-          /* No logo URL → show brand name with primary color & custom font */
           <div
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
             onClick={() => navigate('/org')}
@@ -1117,16 +1105,11 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
           >
             <span style={{
               fontFamily: orgBranding.font_family || 'var(--font-heading)',
-              fontSize: '22px',
+              fontSize: '26px',
               fontWeight: 800,
               color: orgBranding.primary_color || c('text'),
               letterSpacing: '-0.01em',
             }}>{orgBranding.name}</span>
-            <span style={{
-              fontSize: '11px', fontWeight: 600, color: c('muted'),
-              letterSpacing: '0.04em', textTransform: 'uppercase',
-              borderLeft: `1px solid ${c('border')}`, paddingLeft: '10px',
-            }}>by KOLO</span>
           </div>
         ) : (
           <div style={{ 
