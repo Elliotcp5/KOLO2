@@ -109,6 +109,12 @@ api_router = APIRouter(prefix="/api")
 # session authentication (no shared key required).
 KOLO_SUPER_ADMIN_EMAILS = {
     "elliot.cohenpressard@trykolo.io",
+    "pressardhugo@gmail.com",
+}
+
+# "Simple Admin" allowlist — can ONLY create white-label brands, nothing else.
+KOLO_SIMPLE_ADMIN_EMAILS = {
+    "alessio.arduca@trykolo.io",
 }
 
 def is_super_admin_email(email: Optional[str]) -> bool:
@@ -116,6 +122,16 @@ def is_super_admin_email(email: Optional[str]) -> bool:
     if not email:
         return False
     return email.lower().strip() in KOLO_SUPER_ADMIN_EMAILS
+
+def is_simple_admin_email(email: Optional[str]) -> bool:
+    """True if the email is a 'simple admin' (white-label creation only)."""
+    if not email:
+        return False
+    e = email.lower().strip()
+    return e in KOLO_SIMPLE_ADMIN_EMAILS or e in KOLO_SUPER_ADMIN_EMAILS
+
+def is_any_admin_email(email: Optional[str]) -> bool:
+    return is_super_admin_email(email) or is_simple_admin_email(email)
 
 # Configure logging with immediate flush
 logging.basicConfig(
@@ -1886,6 +1902,7 @@ class EnterpriseDemoRequest(BaseModel):
     phone: str
     company: str
     size: str
+    business_sector: Optional[str] = None  # network / agency / group / property_fund / developer / land_developer / other
     message: Optional[str] = ""
     locale: Optional[str] = "fr"
 
@@ -1916,6 +1933,7 @@ async def submit_enterprise_demo_request(payload: EnterpriseDemoRequest, request
         "phone": payload.phone.strip(),
         "company": payload.company.strip(),
         "size": payload.size,
+        "business_sector": (payload.business_sector or "").strip() or None,
         "message": (payload.message or "").strip(),
         "locale": payload.locale or "fr",
         "source_ip": request.client.host if request.client else None,
@@ -2045,14 +2063,26 @@ async def require_super_admin(request: Request) -> User:
     return user
 
 
-@api_router.get("/admin/check")
-async def admin_check(request: Request):
-    """Lightweight endpoint a frontend can call to confirm super admin status."""
+async def require_whitelabel_creator(request: Request) -> User:
+    """Allows super admins AND simple admins (white-label creation only)."""
     user = await get_user_from_session(request)
     if not user:
-        return {"is_super_admin": False, "authenticated": False}
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not is_any_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Forbidden — admin only")
+    return user
+
+
+@api_router.get("/admin/check")
+async def admin_check(request: Request):
+    """Lightweight endpoint a frontend can call to confirm admin status."""
+    user = await get_user_from_session(request)
+    if not user:
+        return {"is_super_admin": False, "is_simple_admin": False, "authenticated": False}
     return {
         "is_super_admin": is_super_admin_email(user.email),
+        "is_simple_admin": is_simple_admin_email(user.email) and not is_super_admin_email(user.email),
+        "is_any_admin": is_any_admin_email(user.email),
         "authenticated": True,
         "email": user.email,
     }
@@ -2142,6 +2172,161 @@ async def admin_update_lead(lead_id: str, payload: AdminLeadUpdate, request: Req
 
     lead = await db.enterprise_leads.find_one({"lead_id": lead_id}, {"_id": 0})
     return {"ok": True, "lead": lead}
+
+
+# ==================== ADMIN — User plan attribution ====================
+class AdminSetPlanPayload(BaseModel):
+    plan: str  # 'free' | 'pro' | 'pro_plus' | 'enterprise'
+    months: int = 12  # duration in months
+    note: Optional[str] = None
+
+
+@api_router.post("/admin/users/{user_id}/set-plan")
+async def admin_set_plan(user_id: str, payload: AdminSetPlanPayload, request: Request):
+    """Super admin grants a subscription plan to a specific user for N months."""
+    admin = await require_super_admin(request)
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    plan = (payload.plan or "").strip().lower()
+    if plan not in {"free", "pro", "pro_plus", "enterprise"}:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    months = max(1, min(36, int(payload.months or 12)))
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=30 * months)).isoformat()
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "subscription_plan": plan,
+            "subscription_expires_at": expires_at,
+            "subscription_granted_by": admin.email,
+            "subscription_note": (payload.note or "").strip() or None,
+            "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    updated = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0})
+    return {"ok": True, "user": updated}
+
+
+# ==================== ADMIN — Admin management (super admins manage other admins) ====================
+@api_router.get("/admin/admins")
+async def admin_list_admins(request: Request):
+    """List all super admins and simple admins (allowlists + DB overrides)."""
+    await require_super_admin(request)
+    # DB-stored admin grants (in case we later want a fully dynamic allowlist)
+    db_admins = await db.admin_grants.find({}, {"_id": 0}).to_list(200)
+    out = []
+    for em in sorted(KOLO_SUPER_ADMIN_EMAILS):
+        out.append({"email": em, "role": "super_admin", "source": "allowlist"})
+    for em in sorted(KOLO_SIMPLE_ADMIN_EMAILS):
+        out.append({"email": em, "role": "simple_admin", "source": "allowlist"})
+    for g in db_admins:
+        if g.get("email") and not any(o["email"] == g["email"] for o in out):
+            out.append({"email": g["email"], "role": g.get("role", "simple_admin"), "source": "db"})
+    return {"admins": out}
+
+
+class AdminInvitePayload(BaseModel):
+    email: str
+    role: str = "simple_admin"  # 'super_admin' or 'simple_admin'
+
+
+@api_router.post("/admin/admins/invite")
+async def admin_invite_admin(payload: AdminInvitePayload, request: Request):
+    """Super admin invites another admin (sends a magic invite link)."""
+    inviter = await require_super_admin(request)
+    email = (payload.email or "").strip().lower()
+    if not email or not validate_email_format(email):
+        raise HTTPException(status_code=400, detail="Invalid email")
+    role = payload.role.strip().lower()
+    if role not in {"super_admin", "simple_admin"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    # Persist DB grant + generate magic link
+    token = uuid.uuid4().hex
+    await db.admin_grants.update_one(
+        {"email": email},
+        {"$set": {
+            "email": email,
+            "role": role,
+            "invited_by": inviter.email,
+            "invite_token": token,
+            "invited_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    # Add to in-memory allowlist for immediate access
+    if role == "super_admin":
+        KOLO_SUPER_ADMIN_EMAILS.add(email)
+    else:
+        KOLO_SIMPLE_ADMIN_EMAILS.add(email)
+    base = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or "https://trykolo.io"
+    invite_url = f"{base}/register?admin_invite={token}"
+    # Optionally email the invite
+    try:
+        import resend as _resend
+        api_key = os.environ.get("RESEND_API_KEY", "").strip()
+        sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev").strip()
+        if api_key:
+            _resend.api_key = api_key
+            html = (
+                f"<div style='font-family:system-ui;padding:24px;max-width:560px;margin:0 auto;'>"
+                f"<h2 style='color:#0B0B0F;'>Tu es invité en tant que {('Super admin' if role=='super_admin' else 'Admin')} KOLO</h2>"
+                f"<p>Inscris-toi avec <strong>{email}</strong> pour activer ton accès :</p>"
+                f"<p><a href='{invite_url}' style='background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;'>Activer mon accès</a></p>"
+                f"<p style='color:#6B7280;font-size:12px;'>Invité par {inviter.email}</p></div>"
+            )
+            _resend.Emails.send({"from": sender, "to": [email], "subject": "Invitation admin KOLO", "html": html})
+    except Exception as e:
+        logger.warning(f"Admin invite email failed: {e}")
+    return {"ok": True, "invite_url": invite_url, "email": email, "role": role}
+
+
+class AdminRolePayload(BaseModel):
+    role: str  # 'super_admin' or 'simple_admin'
+
+
+@api_router.patch("/admin/admins/{email}")
+async def admin_update_admin_role(email: str, payload: AdminRolePayload, request: Request):
+    """Promote/demote an admin between super_admin and simple_admin."""
+    inviter = await require_super_admin(request)
+    target = (email or "").strip().lower()
+    if not target:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    if target == inviter.email.lower().strip():
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+    new_role = payload.role.strip().lower()
+    if new_role not in {"super_admin", "simple_admin"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    KOLO_SUPER_ADMIN_EMAILS.discard(target)
+    KOLO_SIMPLE_ADMIN_EMAILS.discard(target)
+    if new_role == "super_admin":
+        KOLO_SUPER_ADMIN_EMAILS.add(target)
+    else:
+        KOLO_SIMPLE_ADMIN_EMAILS.add(target)
+    await db.admin_grants.update_one(
+        {"email": target},
+        {"$set": {"role": new_role, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": inviter.email}},
+        upsert=True,
+    )
+    # Sync user flag if user exists
+    await db.users.update_one({"email": target}, {"$set": {"is_super_admin": new_role == "super_admin"}})
+    return {"ok": True, "email": target, "role": new_role}
+
+
+@api_router.delete("/admin/admins/{email}")
+async def admin_remove_admin(email: str, request: Request):
+    """Revoke admin status for an email."""
+    inviter = await require_super_admin(request)
+    target = (email or "").strip().lower()
+    if target == inviter.email.lower().strip():
+        raise HTTPException(status_code=400, detail="Cannot remove yourself")
+    # Don't allow removal of the bootstrap admin
+    if target == "elliot.cohenpressard@trykolo.io":
+        raise HTTPException(status_code=400, detail="Cannot remove the founder account")
+    KOLO_SUPER_ADMIN_EMAILS.discard(target)
+    KOLO_SIMPLE_ADMIN_EMAILS.discard(target)
+    await db.admin_grants.delete_one({"email": target})
+    await db.users.update_one({"email": target}, {"$set": {"is_super_admin": False}})
+    return {"ok": True, "removed": target}
 
 
 @api_router.get("/admin/users")
@@ -6124,11 +6309,10 @@ class WhiteLabelScanPayload(BaseModel):
 
 @api_router.post("/admin/whitelabel/scan")
 async def whitelabel_scan(payload: WhiteLabelScanPayload, request: Request):
-    """Super-admin only. Scrapes a website and extracts brand assets via LLM:
-    colors, logo URL, font family, sector, suggested KOLO config."""
+    """Allows super admin AND simple admin. Scrapes a website and extracts brand assets via LLM."""
     user = await require_auth(request)
-    if not is_super_admin_email(user.email):
-        raise HTTPException(status_code=403, detail="Super admin only")
+    if not is_any_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Admin only")
 
     url = payload.website_url.strip()
     if not url.startswith("http"):
@@ -6270,10 +6454,10 @@ class WhiteLabelCreatePayload(BaseModel):
 
 @api_router.post("/admin/whitelabel/create")
 async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
-    """Super-admin only. Creates an organization with full white-label config."""
+    """Allows super admin AND simple admin. Creates an organization with white-label config."""
     user = await require_auth(request)
-    if not is_super_admin_email(user.email):
-        raise HTTPException(status_code=403, detail="Super admin only")
+    if not is_any_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Admin only")
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Name is required")
 
@@ -6338,9 +6522,13 @@ async def whitelabel_create(payload: WhiteLabelCreatePayload, request: Request):
 @api_router.get("/admin/whitelabel/list")
 async def whitelabel_list(request: Request):
     user = await require_auth(request)
+    if not is_any_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Admin only")
+    q = {"white_label": True}
+    # Simple admins only see brands they created themselves
     if not is_super_admin_email(user.email):
-        raise HTTPException(status_code=403, detail="Super admin only")
-    orgs = await db.organizations.find({"white_label": True}, {"_id": 0}).sort("created_at", -1).to_list(100)
+        q["created_by"] = user.email
+    orgs = await db.organizations.find(q, {"_id": 0}).sort("created_at", -1).to_list(100)
     # Refresh seats_used live for each org
     for o in orgs:
         o["seats_used"] = await db.users.count_documents({"org_id": o["org_id"]})
@@ -8023,6 +8211,20 @@ async def startup_event():
     logger.info("Starting KOLO API...")
     logger.info(f"Database: {os.environ.get('DB_NAME', 'unknown')}")
     
+    # === Hydrate admin allowlists from DB grants ===
+    try:
+        async for g in db.admin_grants.find({}, {"_id": 0, "email": 1, "role": 1}):
+            em = (g.get("email") or "").strip().lower()
+            if not em:
+                continue
+            if g.get("role") == "super_admin":
+                KOLO_SUPER_ADMIN_EMAILS.add(em)
+            else:
+                KOLO_SIMPLE_ADMIN_EMAILS.add(em)
+        logger.info(f"Loaded {len(KOLO_SUPER_ADMIN_EMAILS)} super admins, {len(KOLO_SIMPLE_ADMIN_EMAILS)} simple admins")
+    except Exception as e:
+        logger.warning(f"Failed to hydrate admin grants: {e}")
+
     # === Idempotent super admin seed ===
     # Ensures elliot.cohenpressard@trykolo.io exists with the configured password
     # in EVERY environment (preview + production) without requiring env vars.

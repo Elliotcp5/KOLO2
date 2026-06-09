@@ -11,9 +11,15 @@ import {
   ArrowLeft,
   Building2,
   Sparkles,
+  ShieldCheck,
+  Trash2,
+  Copy,
+  Plus,
+  X,
 } from 'lucide-react';
 import WhiteLabelTab from '../components/WhiteLabelTab';
 import WhiteLabelList from '../components/WhiteLabelList';
+import AdminsTab from '../components/AdminsTab';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 import '../styles/admin.css';
@@ -39,9 +45,10 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const fetchAdmin = async (path) => {
+const fetchAdmin = async (path, options = {}) => {
   const resp = await fetch(`${API_URL}${path}`, {
-    headers: authHeaders(),
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers || {}) },
   });
   if (!resp.ok) throw new Error(`Failed: ${path}`);
   return resp.json();
@@ -260,6 +267,9 @@ const Users = () => {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [planFor, setPlanFor] = useState(null);
+  const [planChoice, setPlanChoice] = useState({ plan: 'pro_plus', months: 12, note: '' });
+  const [planBusy, setPlanBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -324,6 +334,7 @@ const Users = () => {
                 <th>Plan</th>
                 <th>Pays</th>
                 <th>Inscrit</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -333,13 +344,80 @@ const Users = () => {
                   <td>{u.name || '—'}</td>
                   <td>{u.auth_provider || '—'}</td>
                   <td><StatusPill value={u.subscription_status || 'none'} mapping={SUB_LABELS} /></td>
-                  <td>{u.plan || 'free'}</td>
+                  <td>{u.subscription_plan || u.plan || 'free'}</td>
                   <td>{u.country || '—'}</td>
                   <td>{formatDate(u.created_at)}</td>
+                  <td>
+                    <button
+                      onClick={() => setPlanFor(u)}
+                      data-testid={`user-set-plan-${u.user_id}`}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#7C3AED', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Attribuer un plan
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {planFor && (
+        <div onClick={() => setPlanFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} data-testid="set-plan-modal">
+            <h3 style={{ fontSize: 17, fontWeight: 800, marginBottom: 4, fontFamily: 'var(--font-heading)' }}>Attribuer un plan</h3>
+            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>{planFor.email}</p>
+            <label style={{ display: 'block', fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 6 }}>Plan</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 14 }}>
+              {['free', 'pro', 'pro_plus', 'enterprise'].map(p => (
+                <button key={p} onClick={() => setPlanChoice({ ...planChoice, plan: p })}
+                  style={{
+                    padding: '10px', borderRadius: 10,
+                    border: `1.5px solid ${planChoice.plan === p ? '#8B5CF6' : 'var(--border)'}`,
+                    background: planChoice.plan === p ? 'rgba(139,92,246,0.08)' : 'transparent',
+                    cursor: 'pointer', fontWeight: 700, fontSize: 13, textAlign: 'left',
+                  }}>
+                  {p === 'pro_plus' ? 'Pro+' : p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
+            <label style={{ display: 'block', fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 6 }}>Durée (mois)</label>
+            <input type="number" min={1} max={36} value={planChoice.months}
+              onChange={(e) => setPlanChoice({ ...planChoice, months: parseInt(e.target.value) || 12 })}
+              data-testid="set-plan-months"
+              style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, marginBottom: 14 }}
+            />
+            <label style={{ display: 'block', fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 6 }}>Note (optionnelle)</label>
+            <input type="text" placeholder="Ex: cadeau de bienvenue 2026"
+              value={planChoice.note}
+              onChange={(e) => setPlanChoice({ ...planChoice, note: e.target.value })}
+              style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, marginBottom: 18 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setPlanFor(null)} style={{ flex: 1, padding: '12px', borderRadius: 10, background: 'var(--surface)', border: '1.5px solid var(--border)', fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button
+                onClick={async () => {
+                  setPlanBusy(true);
+                  try {
+                    await fetchAdmin(`/api/admin/users/${planFor.user_id}/set-plan`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(planChoice),
+                    });
+                    setPlanFor(null);
+                    setPlanChoice({ plan: 'pro_plus', months: 12, note: '' });
+                    load();
+                  } catch (e) { /* noop */ }
+                  setPlanBusy(false);
+                }}
+                data-testid="set-plan-submit"
+                style={{ flex: 1, padding: '12px', borderRadius: 10, background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', border: 'none', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+              >
+                {planBusy ? 'Application…' : 'Appliquer'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -355,6 +433,22 @@ const AdminDashboard = () => {
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = localStorage.getItem('kolo_token');
+        const r = await fetch(`${API_URL}/api/admin/check`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (r.ok) {
+          const d = await r.json();
+          setIsSuperAdmin(!!d.is_super_admin);
+        }
+      } catch (_e) { /* ignore */ }
+    })();
+  }, []);
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -398,6 +492,7 @@ const AdminDashboard = () => {
           <SidebarItem testid="admin-nav-users" icon={UsersIcon} label="Utilisateurs" active={tab === 'users'} onClick={() => setTab('users')} />
           <SidebarItem testid="admin-nav-whitelabel-create" icon={Sparkles} label="Créer une marque blanche" active={tab === 'whitelabel'} onClick={() => setTab('whitelabel')} />
           <SidebarItem testid="admin-nav-whitelabel-list" icon={Building2} label="Mes marques blanches" active={tab === 'whitelabel-list'} onClick={() => setTab('whitelabel-list')} />
+          {isSuperAdmin && <SidebarItem testid="admin-nav-admins" icon={ShieldCheck} label="Administrateurs" active={tab === 'admins'} onClick={() => setTab('admins')} />}
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -418,6 +513,7 @@ const AdminDashboard = () => {
         {tab === 'users' && <Users />}
         {tab === 'whitelabel' && <WhiteLabelTab />}
         {tab === 'whitelabel-list' && <WhiteLabelList onCreate={() => setTab('whitelabel')} />}
+        {tab === 'admins' && isSuperAdmin && <AdminsTab />}
       </main>
     </div>
   );

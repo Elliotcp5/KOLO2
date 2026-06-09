@@ -12,6 +12,17 @@
 - **Allowlist super admin**: hard-coded dans `server.py` (`KOLO_SUPER_ADMIN_EMAILS`)
 - **Plan**: pro_plus (active subscription)
 
+## Super Admin 2 (allowlist — pas seedé)
+- **Email**: pressardhugo@gmail.com
+- **Mot de passe**: doit s'inscrire via /register puis se connecter (allowlist le promeut automatiquement)
+- **Allowlist**: `KOLO_SUPER_ADMIN_EMAILS`
+
+## Admin Simple (allowlist — création marques blanches uniquement)
+- **Email**: alessio.arduca@trykolo.io
+- **Mot de passe**: doit s'inscrire via /register puis se connecter
+- **Allowlist**: `KOLO_SIMPLE_ADMIN_EMAILS`
+- **Permissions**: peut voir l'onglet "Créer une marque blanche" + "Mes marques blanches" (filtrées sur celles qu'il a créées). RIEN d'autre.
+
 ## Apple Sign-In (Web)
 - Statut: **placeholders** dans `backend/.env` (bouton désactivé "Bientôt disponible")
 - Variables: `APPLE_SIGNIN_CLIENT_ID`, `APPLE_SIGNIN_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY`, `APPLE_SIGNIN_ENABLED=false`

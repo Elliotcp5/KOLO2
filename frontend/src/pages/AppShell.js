@@ -1075,16 +1075,27 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         {userOrg && orgBranding.logo_url ? (
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
             onClick={() => navigate('/org')}
             data-testid="appshell-org-logo"
           >
             <img
               src={orgBranding.logo_url}
               alt={orgBranding.name}
-              style={{ height: '32px', maxWidth: '120px', objectFit: 'contain' }}
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              style={{ height: '46px', maxWidth: '180px', objectFit: 'contain' }}
+              onError={(e) => {
+                // Fallback to brand name if image fails to load
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline-block';
+              }}
             />
+            <span style={{
+              display: 'none',
+              fontFamily: orgBranding.font_family || 'var(--font-heading)',
+              fontSize: '20px',
+              fontWeight: 800,
+              color: orgBranding.primary_color || c('text'),
+            }}>{orgBranding.name}</span>
             <span style={{
               fontFamily: 'var(--font-heading)',
               fontSize: '11px',
@@ -1094,6 +1105,26 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
               textTransform: 'uppercase',
               borderLeft: `1px solid ${c('border')}`,
               paddingLeft: '10px',
+            }}>by KOLO</span>
+          </div>
+        ) : userOrg ? (
+          /* No logo URL → show brand name with primary color & custom font */
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            onClick={() => navigate('/org')}
+            data-testid="appshell-org-name"
+          >
+            <span style={{
+              fontFamily: orgBranding.font_family || 'var(--font-heading)',
+              fontSize: '22px',
+              fontWeight: 800,
+              color: orgBranding.primary_color || c('text'),
+              letterSpacing: '-0.01em',
+            }}>{orgBranding.name}</span>
+            <span style={{
+              fontSize: '11px', fontWeight: 600, color: c('muted'),
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              borderLeft: `1px solid ${c('border')}`, paddingLeft: '10px',
             }}>by KOLO</span>
           </div>
         ) : (
@@ -1758,7 +1789,30 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                   }}
                   data-testid={`task-${task.task_id}`}
                 >
-                {/* Task header - always visible */}
+                  {/* Task header - always visible */}
+                  <div style={{ position: 'relative' }}>
+                    {/* "En retard" badge — small pill in top-right corner */}
+                    {isOverdue && !isCompleted && (
+                      <span
+                        data-testid={`task-overdue-${task.task_id}`}
+                        style={{
+                          position: 'absolute',
+                          top: 10,
+                          right: 12,
+                          background: 'rgba(245,158,11,0.12)',
+                          color: '#D97706',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: 999,
+                          letterSpacing: '0.02em',
+                          textTransform: 'uppercase',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {locale === 'fr' ? 'En retard' : locale === 'de' ? 'Verspätet' : locale === 'it' ? 'In ritardo' : 'Overdue'}
+                      </span>
+                    )}
                 <div 
                   style={{ 
                     display: 'flex', 
@@ -1800,52 +1854,35 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                         </span>
                       )}
                       <span style={{ color: c('mutedDark') }}>•</span>
-                      <span style={{ color: isOverdue ? c('warning') : (isCompleted ? c('success') : c('muted')) }}>
+                      <span style={{ color: isOverdue ? c('warning') : (isCompleted ? c('success') : c('muted')), fontWeight: isOverdue ? 600 : 400 }}>
                         {viewMode === 'all' && taskDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' }) + ' '}
                         {taskTime}
                       </span>
-                      {isOverdue && !isCompleted && (
-                        <button
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            if (task.prospect) {
-                              openAiSmsModal(task);
-                            }
-                          }}
-                          style={{ 
-                            color: c('warning'), 
-                            background: 'none', 
-                            border: 'none', 
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            textDecoration: 'underline',
-                            padding: 0
-                          }}
-                        >
-                          {locale === 'fr' ? 'En retard — Relancer maintenant' : locale === 'de' ? 'Überfällig — Jetzt nachfassen' : locale === 'it' ? 'In ritardo — Ricontatta ora' : 'Overdue — Follow up now'}
-                        </button>
-                      )}
                       {isCompleted && <span style={{ color: 'var(--success)' }}>({locale === 'fr' ? 'Fait' : locale === 'de' ? 'Erledigt' : locale === 'it' ? 'Fatto' : 'Done'})</span>}
                     </div>
                   </div>
                   
-                  {/* Quick action buttons — context-aware: ONE primary button matching the task type + WhatsApp with AI sheet */}
+                  {/* Quick action buttons — context-aware, ÉPURÉ style (soft pill, no heavy shadow) */}
                   {!isCompleted && task.prospect && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {/* Primary contextual button — adapts to task_type */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       {(() => {
                         const phone = task.prospect.phone;
                         const email = task.prospect.email;
                         const address = task.prospect.address;
-                        const fullName = task.prospect.full_name || '';
+                        const baseStyle = {
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          height: 34, padding: '0 12px', borderRadius: 999,
+                          fontSize: 13, fontWeight: 600,
+                          textDecoration: 'none', border: '1px solid transparent',
+                          transition: 'transform 0.15s ease',
+                          cursor: 'pointer',
+                        };
                         if (task.task_type === 'call' && phone) {
                           return (
                             <a href={`tel:${phone}`} onClick={(e) => e.stopPropagation()}
                               aria-label="Call" data-testid={`task-call-${task.task_id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
-                                background: '#22C55E', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
-                                boxShadow: '0 4px 12px -4px rgba(34,197,94,0.45)' }}>
-                              <Phone size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Appeler' : 'Call'}
+                              style={{ ...baseStyle, background: 'rgba(34,197,94,0.12)', color: '#15803D', borderColor: 'rgba(34,197,94,0.22)' }}>
+                              <Phone size={13} strokeWidth={2.4} /> {locale === 'fr' ? 'Appeler' : locale === 'de' ? 'Anrufen' : locale === 'it' ? 'Chiama' : 'Call'}
                             </a>
                           );
                         }
@@ -1853,10 +1890,8 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                           return (
                             <a href={`mailto:${email}`} onClick={(e) => e.stopPropagation()}
                               aria-label="Email" data-testid={`task-email-${task.task_id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
-                                background: '#3B82F6', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
-                                boxShadow: '0 4px 12px -4px rgba(59,130,246,0.45)' }}>
-                              <Mail size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Écrire' : 'Email'}
+                              style={{ ...baseStyle, background: 'rgba(59,130,246,0.12)', color: '#1D4ED8', borderColor: 'rgba(59,130,246,0.22)' }}>
+                              <Mail size={13} strokeWidth={2.4} /> {locale === 'fr' ? 'Écrire' : locale === 'de' ? 'Mail' : locale === 'it' ? 'Email' : 'Email'}
                             </a>
                           );
                         }
@@ -1865,50 +1900,39 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                             <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
                               target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                               aria-label="Itinerary" data-testid={`task-visit-${task.task_id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
-                                background: '#F59E0B', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
-                                boxShadow: '0 4px 12px -4px rgba(245,158,11,0.45)' }}>
-                              <Home size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Itinéraire' : 'Route'}
+                              style={{ ...baseStyle, background: 'rgba(245,158,11,0.14)', color: '#B45309', borderColor: 'rgba(245,158,11,0.25)' }}>
+                              <Home size={13} strokeWidth={2.4} /> {locale === 'fr' ? 'Itinéraire' : locale === 'de' ? 'Route' : locale === 'it' ? 'Percorso' : 'Route'}
                             </a>
                           );
                         }
-                        if (task.task_type === 'sms' && phone) {
-                          // Native SMS opens the iOS/Android Messages app
-                          return (
-                            <a href={`sms:${phone}`} onClick={(e) => e.stopPropagation()}
-                              aria-label="SMS" data-testid={`task-sms-${task.task_id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
-                                background: '#6366F1', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700,
-                                boxShadow: '0 4px 12px -4px rgba(99,102,241,0.45)' }}>
-                              <MessageSquare size={13} strokeWidth={2.5} /> SMS
-                            </a>
-                          );
-                        }
-                        // Fallback: call if phone, else email
-                        if (phone) {
+                        // task_type === 'sms' or any other → no primary button; WhatsApp covers it
+                        // Fallback: call if phone
+                        if (phone && task.task_type !== 'sms') {
                           return (
                             <a href={`tel:${phone}`} onClick={(e) => e.stopPropagation()}
                               aria-label="Call" data-testid={`task-call-${task.task_id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 999,
-                                background: '#22C55E', color: 'white', textDecoration: 'none', fontSize: 12.5, fontWeight: 700 }}>
-                              <Phone size={13} strokeWidth={2.5} /> {locale === 'fr' ? 'Appeler' : 'Call'}
+                              style={{ ...baseStyle, background: 'rgba(34,197,94,0.12)', color: '#15803D', borderColor: 'rgba(34,197,94,0.22)' }}>
+                              <Phone size={13} strokeWidth={2.4} /> {locale === 'fr' ? 'Appeler' : locale === 'de' ? 'Anrufen' : locale === 'it' ? 'Chiama' : 'Call'}
                             </a>
                           );
                         }
                         return null;
                       })()}
-                      {/* WhatsApp button — always present if phone. Opens AI suggestion sheet. */}
+                      {/* WhatsApp button — always present if phone */}
                       {task.prospect.phone && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setWhatsappActionTask(task); }}
                           aria-label="WhatsApp"
                           data-testid={`task-wa-${task.task_id}`}
                           title="WhatsApp"
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%',
-                            background: '#25D366', color: 'white', border: 'none', cursor: 'pointer',
-                            boxShadow: '0 4px 12px -4px rgba(37,211,102,0.45)' }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 34, height: 34, borderRadius: '50%',
+                            background: 'rgba(37,211,102,0.13)', color: '#15803D',
+                            border: '1px solid rgba(37,211,102,0.22)', cursor: 'pointer',
+                          }}
                         >
-                          <MessageCircle size={16} strokeWidth={2.5} />
+                          <MessageCircle size={15} strokeWidth={2.4} />
                         </button>
                       )}
                     </div>
@@ -1917,7 +1941,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                   {/* Expand arrow */}
                   <div
                     onClick={() => setExpandedTaskId(isExpanded ? null : task.task_id)}
-                    style={{ padding: '4px', cursor: 'pointer' }}
+                    style={{ padding: '4px', cursor: 'pointer', flexShrink: 0 }}
                   >
                     <ChevronDown 
                       size={18} 
@@ -1928,6 +1952,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
                       }} 
                     />
                   </div>
+                </div>
                 </div>
                 
                 {/* Expanded details */}

@@ -16,7 +16,38 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
-### Sync Calendrier Bidirectionnelle + Notifications Push (iter 39 — Feb 2026)
+### Sprint UX + Admin Powers (iter 40 — Feb 2026)
+**Demandes utilisateur traitées en bloc** :
+
+🎨 **UX Tâches mobile (refonte épurée)**
+- Pastille **"OVERDUE"** compacte (orange douce) en haut à droite de chaque carte tâche.
+- Suppression du long texte "En retard — Relancer maintenant" qui chevauchait.
+- **Bouton SMS supprimé** : `task_type='sms'` n'affiche plus de bouton primaire, seul WhatsApp (cohérent avec la philo : WhatsApp = SMS chez KOLO).
+- Boutons d'action **épurés** : soft fills pastel (vert/bleu/orange) au lieu des pills flashy avec ombres lourdes, alignement propre, plus de chevauchement.
+
+🛡️ **Système admin avancé**
+- **Super admins** : `elliot.cohenpressard@trykolo.io` + **pressardhugo@gmail.com** (nouveau).
+- **Simple admin** (nouveau rôle) : `alessio.arduca@trykolo.io` — peut UNIQUEMENT créer des marques blanches, rien d'autre.
+- **Onglet "Administrateurs"** dans le panel super admin : liste avec badges colorés (Super admin violet / Admin simple bleu), boutons Promouvoir/Rétrograder/Supprimer.
+- **Modal "Ajouter un admin"** : email + 2 cards (Admin simple / Super admin) + envoi de magic-link via Resend + affichage URL d'activation copiable.
+- Endpoints : `GET /admin/admins`, `POST /admin/admins/invite`, `PATCH /admin/admins/{email}`, `DELETE /admin/admins/{email}`. Hydratation au boot depuis `db.admin_grants`.
+
+💎 **Attribution de plans (set-plan)**
+- Colonne **"Actions"** dans la table Users avec bouton **"Attribuer un plan"** violet.
+- Modal : choix entre Free / Pro / Pro+ / Enterprise + durée en mois (1–36) + note optionnelle.
+- Endpoint `POST /admin/users/{user_id}/set-plan` : pose `subscription_plan` + `subscription_expires_at` + `subscription_granted_by`.
+
+📋 **Formulaire contact B2B enrichi**
+- Nouveau champ **"Secteur d'activité"** (7 options) : Réseau immobilier, Agence, Groupement, Foncière, Promoteur, Développeur foncier, Autre.
+- Backend `EnterpriseDemoRequest.business_sector` stocké dans `enterprise_leads`.
+- Vocabulaire : "Nom du réseau" → **"Nom de l'entreprise"**.
+
+✨ **Rendu marque blanche (alignement avec mockup)**
+- Logo brandé dans header AppShell **passé de 32px à 46px** (plus grand, plus présent).
+- Fallback automatique sur le nom de la marque (avec couleur primaire et police custom) si le logo échoue à charger.
+- Hero gradient brandé déjà en place (iter 38).
+
+### Sync Calendrier Bidirectionnelle + Notifications Push (iter 39)
 **Effet "wahou"** : KOLO détecte les changements faits côté Google/Outlook sur les events qu'il a créés, met à jour les tâches automatiquement et notifie l'utilisateur.
 
 - **Backend `_pull_calendar_changes(user_id)`** : pour chaque tâche avec `calendar_events.google` ou `.outlook`, récupère l'event distant et compare la date/existence.

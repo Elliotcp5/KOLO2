@@ -41,9 +41,11 @@ const TEXT = {
     formLastName: 'Nom',
     formEmail: 'Email professionnel',
     formPhone: 'Téléphone',
-    formCompany: 'Nom du réseau',
+    formCompany: 'Nom de l\'entreprise',
     formSize: 'Nombre d\'agents',
     formSizePh: 'Sélectionner',
+    formSector: 'Secteur d\'activité',
+    formSectorPh: 'Sélectionner',
     formMessage: 'Message (optionnel)',
     formMessagePh: 'Parlez-nous de vos besoins…',
     formSubmit: 'Envoyer',
@@ -51,6 +53,15 @@ const TEXT = {
     formSuccess: 'Merci. Votre demande a bien été reçue, notre équipe revient vers vous sous 48 h.',
     formError: 'Une erreur est survenue. Réessayez ou écrivez-nous à contact@trykolo.io',
     sizes: ['0 à 50 agents', '50 à 100 agents', '100 à 500 agents', '500 à 5 000 agents', '5 000 à 10 000 agents', '10 000+ agents'],
+    sectors: [
+      { key: 'network', label: 'Réseau Immobilier' },
+      { key: 'agency', label: 'Agence Immobilière' },
+      { key: 'group', label: 'Groupement d\'agences immobilières' },
+      { key: 'property_fund', label: 'Foncière' },
+      { key: 'developer', label: 'Promoteur Immobilier' },
+      { key: 'land_developer', label: 'Développeur Foncier' },
+      { key: 'other', label: 'Autre' },
+    ],
     legal: 'Vos données ne sont jamais cédées à des tiers.',
   },
   en: {
@@ -85,9 +96,11 @@ const TEXT = {
     formLastName: 'Last name',
     formEmail: 'Work email',
     formPhone: 'Phone',
-    formCompany: 'Network name',
+    formCompany: 'Company name',
     formSize: 'Number of agents',
     formSizePh: 'Select',
+    formSector: 'Business sector',
+    formSectorPh: 'Select',
     formMessage: 'Message (optional)',
     formMessagePh: 'Tell us about your needs…',
     formSubmit: 'Send',
@@ -95,6 +108,15 @@ const TEXT = {
     formSuccess: 'Thank you. Your request has been received, our team will come back to you within 48 hours.',
     formError: 'Something went wrong. Try again or email us at contact@trykolo.io',
     sizes: ['0 to 50 agents', '50 to 100 agents', '100 to 500 agents', '500 to 5,000 agents', '5,000 to 10,000 agents', '10,000+ agents'],
+    sectors: [
+      { key: 'network', label: 'Real estate network' },
+      { key: 'agency', label: 'Real estate agency' },
+      { key: 'group', label: 'Group of real estate agencies' },
+      { key: 'property_fund', label: 'Property fund' },
+      { key: 'developer', label: 'Real estate developer' },
+      { key: 'land_developer', label: 'Land developer' },
+      { key: 'other', label: 'Other' },
+    ],
     legal: 'Your data is never shared with third parties.',
   },
 };
@@ -105,27 +127,30 @@ const BusinessPage = () => {
   const t = TEXT[locale] || TEXT.en;
 
   const [form, setForm] = useState({
-    first_name: '', last_name: '', email: '', phone: '', company: '', size: '', message: '',
+    first_name: '', last_name: '', email: '', phone: '', company: '', size: '', business_sector: '', message: '',
   });
   const [status, setStatus] = useState('idle');
 
   // Custom dropdown state (replaces broken native <select>)
   const [sizeOpen, setSizeOpen] = useState(false);
   const sizeRef = useRef(null);
+  const [sectorOpen, setSectorOpen] = useState(false);
+  const sectorRef = useRef(null);
 
   useEffect(() => {
-    if (!sizeOpen) return;
+    if (!sizeOpen && !sectorOpen) return;
     const onDocClick = (e) => {
       if (sizeRef.current && !sizeRef.current.contains(e.target)) setSizeOpen(false);
+      if (sectorRef.current && !sectorRef.current.contains(e.target)) setSectorOpen(false);
     };
-    const onKey = (e) => { if (e.key === 'Escape') setSizeOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { setSizeOpen(false); setSectorOpen(false); } };
     document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDocClick);
       document.removeEventListener('keydown', onKey);
     };
-  }, [sizeOpen]);
+  }, [sizeOpen, sectorOpen]);
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -145,7 +170,7 @@ const BusinessPage = () => {
       });
       if (!res.ok) throw new Error('Request failed');
       setStatus('success');
-      setForm({ first_name: '', last_name: '', email: '', phone: '', company: '', size: '', message: '' });
+      setForm({ first_name: '', last_name: '', email: '', phone: '', company: '', size: '', business_sector: '', message: '' });
     } catch (_) {
       setStatus('error');
     }
@@ -276,6 +301,41 @@ const BusinessPage = () => {
                         >
                           {s}
                           {form.size === s && <Check size={16} strokeWidth={2.4} />}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="biz-form-field biz-form-full" ref={sectorRef}>
+                  <label htmlFor="biz-sector-trigger">{t.formSector}</label>
+                  <button
+                    type="button"
+                    id="biz-sector-trigger"
+                    className={`biz-select-trigger ${sectorOpen ? 'open' : ''} ${form.business_sector ? 'has-value' : ''}`}
+                    onClick={() => setSectorOpen(o => !o)}
+                    aria-haspopup="listbox"
+                    aria-expanded={sectorOpen}
+                    data-testid="biz-form-sector"
+                  >
+                    <span>{(t.sectors.find(s => s.key === form.business_sector) || {}).label || t.formSectorPh}</span>
+                    <ChevronDown size={18} strokeWidth={2} />
+                  </button>
+                  {sectorOpen && (
+                    <ul className="biz-select-menu" role="listbox" data-testid="biz-form-sector-menu">
+                      {t.sectors.map(s => (
+                        <li
+                          key={s.key}
+                          role="option"
+                          aria-selected={form.business_sector === s.key}
+                          className={form.business_sector === s.key ? 'selected' : ''}
+                          onClick={() => {
+                            setForm({ ...form, business_sector: s.key });
+                            setSectorOpen(false);
+                          }}
+                          data-testid={`biz-form-sector-opt-${s.key}`}
+                        >
+                          {s.label}
+                          {form.business_sector === s.key && <Check size={16} strokeWidth={2.4} />}
                         </li>
                       ))}
                     </ul>
