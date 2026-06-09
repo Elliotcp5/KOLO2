@@ -4,6 +4,7 @@ import { ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { useLocale } from '../context/LocaleContext';
 import PremiumBackdrop from '../components/PremiumBackdrop';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import '../styles/landing.css';
 import '../styles/premium-backdrop.css';
 import '../styles/business.css';
@@ -302,9 +303,12 @@ const BusinessPage = () => {
           <span>{t.navBack}</span>
         </button>
         <a href="/" className="biz-nav-logo"><span className="biz-logo-dot"></span>KOLO</a>
-        <a href="#contact" className="biz-nav-cta" data-testid="biz-nav-contact">
-          {t.navContact}
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+          <LanguageSwitcher variant="light" testid="lang-biz" />
+          <a href="#contact" className="biz-nav-cta" data-testid="biz-nav-contact">
+            {t.navContact}
+          </a>
+        </div>
       </nav>
 
       {/* HERO */}

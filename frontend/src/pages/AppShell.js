@@ -8,6 +8,7 @@ import { usePlan } from '../context/PlanContext';
 import { useOrg } from '../context/OrgContext';
 import { toast } from 'sonner';
 import NotificationPrompt from '../components/NotificationPrompt';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import OnboardingFlow from '../components/OnboardingFlow';
 import { WelcomePROOnboarding } from '../components/WelcomePROOnboarding';
 import { AddProspectSheet } from '../components/AddProspectSheet';
@@ -1202,6 +1203,7 @@ const TodayTab = ({ onOpenProfile, onSelectProspect, userName }) => {
             </button>
           )}
         <NotificationBell locale={locale} c={c} />
+        <LanguageSwitcher variant="light" testid="lang-app" />
         <button 
           style={{ 
             display: 'flex', 

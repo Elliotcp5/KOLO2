@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { useLocale } from '../context/LocaleContext';
 import PremiumBackdrop from '../components/PremiumBackdrop';
 import PhoneMockup from '../components/PhoneMockup';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import '../styles/landing.css';
 import '../styles/premium-backdrop.css';
 import '../styles/iphone-mockup.css';
@@ -279,6 +280,7 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
+          <LanguageSwitcher variant="light" testid="lang-landing" />
           <button
             className="nav-pricing nav-business"
             onClick={() => navigate('/business')}

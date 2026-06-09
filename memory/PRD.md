@@ -16,7 +16,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
-### Audit i18n + Vocabulaire "Entreprise" (iter 41 — Feb 2026)
+### Sélecteur de langue + Détection IP (iter 42 — Feb 2026)
+- Nouveau composant **`LanguageSwitcher.js`** : pill compact avec drapeau emoji (🇫🇷🇬🇧🇮🇹🇩🇪) + code langue + chevron, ouvre un dropdown élégant avec 4 langues + checkmark violet sur l'active.
+- Installé dans **3 endroits** : header LandingPageNew, header BusinessPage, header AppShell (à côté de la bell).
+- **Détection IP automatique** déjà en place dans `LocaleContext.js` (priorité : URL param → choix manuel localStorage → backend `/api/geo` → ipapi.co fallback → navigator.language → EN par défaut).
+- Le choix utilisateur via le drapeau marque `kolo_locale_manual=true` → survit aux sessions et override la géoloc.
+- Validé visuellement : visite `/?locale=de` → toute la landing en allemand (hero, eyebrow "Neu · Unternehmensbereich für Agenturen", nav "Unternehmen / Anmelden / Kostenlos testen").
+
+### Audit i18n + Vocabulaire "Entreprise" (iter 41)
 **Remplacement systématique "réseau immobilier" → "entreprise" partout** :
 - `BusinessPage.js` (FR + EN) : eyebrow, hero, sec2/sec3, CTA → "entreprise" / "business"
 - `OrgSpace.js` : "Nom du réseau" → "Nom de l'entreprise", "ton réseau" → "ton entreprise", Dataroom "du réseau" → "de l'entreprise"
