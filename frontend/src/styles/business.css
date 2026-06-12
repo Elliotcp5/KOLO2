@@ -486,26 +486,27 @@
 }
 .biz-rotator-word {
   position: absolute;
-  left: 0;
+  left: 50%;
   top: 0;
+  transform: translateX(-50%);
   white-space: nowrap;
   background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: opacity 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
-              filter 380ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: opacity 320ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 320ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              filter 320ms cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity, transform;
 }
 .biz-rotator-word.in {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
   filter: blur(0);
 }
 .biz-rotator-word.out {
   opacity: 0;
-  transform: translateY(-14px);
+  transform: translateX(-50%) translateY(-14px);
   filter: blur(4px);
 }
 

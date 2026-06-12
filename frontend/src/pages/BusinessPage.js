@@ -24,7 +24,7 @@ const TEXT = {
       'agence immobilière',
       'développeur foncier',
     ],
-    heroSub: "Plus de ventes pour vos commerciaux. La solution la plus simple et la plus compétitive du marché.",
+    heroSub: "Plus de ventes pour vos commerciaux. La solution la plus complète et la plus compétitive du marché.",
     heroCTA: 'Demander une offre',
 
     sec1TitleStart: 'Plus de ventes.',
@@ -87,7 +87,7 @@ const TEXT = {
       'real estate agency',
       'land developer',
     ],
-    heroSub: "More sales for your sales reps. The simplest and most competitive solution on the market.",
+    heroSub: "More sales for your sales reps. The most complete and competitive solution on the market.",
     heroCTA: 'Request an offer',
 
     sec1TitleStart: 'More sales.',
@@ -150,7 +150,7 @@ const TEXT = {
       'agenzia immobiliare',
       'sviluppatore fondiario',
     ],
-    heroSub: "Più vendite per i tuoi commerciali. La soluzione più semplice e competitiva sul mercato.",
+    heroSub: "Più vendite per i tuoi commerciali. La soluzione più completa e competitiva sul mercato.",
     heroCTA: 'Richiedi un\'offerta',
 
     sec1TitleStart: 'Più vendite.',
@@ -213,7 +213,7 @@ const TEXT = {
       'Immobilienbüro',
       'Bodenentwickler',
     ],
-    heroSub: "Mehr Verkäufe für Ihre Vertriebsmitarbeiter. Die einfachste und wettbewerbsfähigste Lösung am Markt.",
+    heroSub: "Mehr Verkäufe für Ihre Vertriebsmitarbeiter. Die umfassendste und wettbewerbsfähigste Lösung am Markt.",
     heroCTA: 'Angebot anfordern',
 
     sec1TitleStart: 'Mehr Verkäufe.',
@@ -331,11 +331,11 @@ const BusinessPage = () => {
     const [idx, setIdx] = useState(0);
     const [phase, setPhase] = useState('in');
     useEffect(() => {
-      const t1 = setTimeout(() => setPhase('out'), 1700);
+      const t1 = setTimeout(() => setPhase('out'), 1420);
       const t2 = setTimeout(() => {
         setIdx((i) => (i + 1) % words.length);
         setPhase('in');
-      }, 2000);
+      }, 1670);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [idx, words.length]);
     const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), '');
