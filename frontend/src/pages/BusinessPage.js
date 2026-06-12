@@ -14,8 +14,8 @@ const TEXT = {
     navBack: 'Retour',
     navContact: 'Nous contacter',
     eyebrow: 'KOLO pour les entreprises',
-    heroTitleStart: "Le suivi client IA ultime pour votre",
-    heroTitleGrad: '.',
+    heroTitleStart: "Le suivi client IA ultime pour",
+    heroTitleGrad: '',
     heroRotators: [
       'réseau immobilier',
       'promoteur immobilier',
@@ -24,20 +24,20 @@ const TEXT = {
       'agence immobilière',
       'développeur foncier',
     ],
-    heroSub: "Plus de ventes pour vos agents. La solution la plus simple et la plus compétitive du marché.",
+    heroSub: "Plus de ventes pour vos commerciaux. La solution la plus simple et la plus compétitive du marché.",
     heroCTA: 'Demander une offre',
 
     sec1TitleStart: 'Plus de ventes.',
     sec1TitleGrad: 'Mécaniquement.',
-    sec1Body: "Chaque agent suit le bon prospect, au bon moment, avec le bon message. Un agent qui n'oublie plus une relance signe en moyenne 2 à 3 ventes de plus par mois. Multipliez par tous vos agents.",
+    sec1Body: "Chaque commercial suit le bon prospect, au bon moment, avec le bon message. Un commercial qui n'oublie plus une relance signe en moyenne 2 à 3 ventes de plus par mois. Multipliez par tous vos commerciaux.",
 
     sec2TitleStart: "L'entreprise qu'ils",
     sec2TitleGrad: 'veulent rejoindre.',
-    sec2Body: "Offrez à vos agents un outil moderne, mobile, qui leur simplifie vraiment la vie. Un argument différenciant pour attirer les meilleurs profils et fidéliser ceux qui font tourner votre entreprise.",
+    sec2Body: "Offrez à vos commerciaux un outil moderne, mobile, qui leur simplifie vraiment la vie. Un argument différenciant pour attirer les meilleurs profils et fidéliser ceux qui font tourner votre entreprise.",
 
     sec3TitleStart: 'L\'offre la plus compétitive',
     sec3TitleGrad: 'et la plus rapide à déployer.',
-    sec3Body: "Tarif unique négocié pour votre entreprise, sans engagement long, sans coût caché. Déploiement en quelques jours, formation des agents en 15 minutes. Vous activez quand vous voulez.",
+    sec3Body: "Tarif unique négocié pour votre entreprise, sans engagement long, sans coût caché. Déploiement en quelques jours, formation des commerciaux en 15 minutes. Vous activez quand vous voulez.",
 
     sec4TitleStart: 'Sécurisé,',
     sec4TitleGrad: 'souverain, RGPD.',
@@ -77,8 +77,8 @@ const TEXT = {
     navBack: 'Back',
     navContact: 'Contact us',
     eyebrow: 'KOLO for businesses',
-    heroTitleStart: 'The ultimate AI client follow-up for your',
-    heroTitleGrad: '.',
+    heroTitleStart: 'The ultimate AI client follow-up for',
+    heroTitleGrad: '',
     heroRotators: [
       'real estate network',
       'property developer',
@@ -87,20 +87,20 @@ const TEXT = {
       'real estate agency',
       'land developer',
     ],
-    heroSub: "More sales for your agents. The simplest and most competitive solution on the market.",
+    heroSub: "More sales for your sales reps. The simplest and most competitive solution on the market.",
     heroCTA: 'Request an offer',
 
     sec1TitleStart: 'More sales.',
     sec1TitleGrad: 'Mechanically.',
-    sec1Body: "Each agent follows the right prospect, at the right moment, with the right message. An agent who never forgets a follow-up closes on average 2-3 more deals per month. Multiply that by all your agents.",
+    sec1Body: "Each sales rep follows the right prospect, at the right moment, with the right message. A sales rep who never forgets a follow-up closes on average 2-3 more deals per month. Multiply that by all your sales reps.",
 
     sec2TitleStart: 'The business they',
     sec2TitleGrad: 'want to join.',
-    sec2Body: "Give your agents a modern, mobile tool that actually makes their life easier. A real differentiator to attract top talent and retain those who drive your business.",
+    sec2Body: "Give your sales reps a modern, mobile tool that actually makes their life easier. A real differentiator to attract top talent and retain those who drive your business.",
 
     sec3TitleStart: 'The most competitive offer',
     sec3TitleGrad: 'and the fastest to deploy.',
-    sec3Body: "Single negotiated rate for your business, no long-term commitment, no hidden costs. Deployed in a few days, agents trained in 15 minutes. Activate whenever you want.",
+    sec3Body: "Single negotiated rate for your business, no long-term commitment, no hidden costs. Deployed in a few days, sales reps trained in 15 minutes. Activate whenever you want.",
 
     sec4TitleStart: 'Secure,',
     sec4TitleGrad: 'sovereign, GDPR.',
@@ -140,8 +140,8 @@ const TEXT = {
     navBack: 'Indietro',
     navContact: 'Contattaci',
     eyebrow: 'KOLO per le aziende',
-    heroTitleStart: "Il follow-up clienti IA definitivo per la tua",
-    heroTitleGrad: '.',
+    heroTitleStart: "Il follow-up clienti IA definitivo per",
+    heroTitleGrad: '',
     heroRotators: [
       'rete immobiliare',
       'promotore immobiliare',
@@ -150,20 +150,20 @@ const TEXT = {
       'agenzia immobiliare',
       'sviluppatore fondiario',
     ],
-    heroSub: "Più vendite per i tuoi agenti. La soluzione più semplice e competitiva sul mercato.",
+    heroSub: "Più vendite per i tuoi commerciali. La soluzione più semplice e competitiva sul mercato.",
     heroCTA: 'Richiedi un\'offerta',
 
     sec1TitleStart: 'Più vendite.',
     sec1TitleGrad: 'Meccanicamente.',
-    sec1Body: "Ogni agente segue il prospect giusto, nel momento giusto, con il messaggio giusto. Un agente che non dimentica mai un follow-up chiude in media 2-3 affari in più al mese. Moltiplicalo per tutti i tuoi agenti.",
+    sec1Body: "Ogni commerciale segue il prospect giusto, nel momento giusto, con il messaggio giusto. Un commerciale che non dimentica mai un follow-up chiude in media 2-3 affari in più al mese. Moltiplicalo per tutti i tuoi commerciali.",
 
     sec2TitleStart: "L'azienda che",
     sec2TitleGrad: 'vogliono in.',
-    sec2Body: "Offri ai tuoi agenti uno strumento moderno e mobile che semplifica davvero la loro vita. Un vero elemento di differenziazione per attrarre i migliori talenti e fidelizzare chi fa girare la tua azienda.",
+    sec2Body: "Offri ai tuoi commerciali uno strumento moderno e mobile che semplifica davvero la loro vita. Un vero elemento di differenziazione per attrarre i migliori talenti e fidelizzare chi fa girare la tua azienda.",
 
     sec3TitleStart: "L'offerta più competitiva",
     sec3TitleGrad: 'e la più rapida da implementare.',
-    sec3Body: "Tariffa unica negoziata per la tua azienda, senza vincoli a lungo termine, senza costi nascosti. Operativo in pochi giorni, agenti formati in 15 minuti. Attivi quando vuoi.",
+    sec3Body: "Tariffa unica negoziata per la tua azienda, senza vincoli a lungo termine, senza costi nascosti. Operativo in pochi giorni, commerciali formati in 15 minuti. Attivi quando vuoi.",
 
     sec4TitleStart: 'Sicuro,',
     sec4TitleGrad: 'sovrano, GDPR.',
@@ -203,8 +203,8 @@ const TEXT = {
     navBack: 'Zurück',
     navContact: 'Kontakt aufnehmen',
     eyebrow: 'KOLO für Unternehmen',
-    heroTitleStart: 'Das ultimative KI-Kundenmanagement für Ihr',
-    heroTitleGrad: '.',
+    heroTitleStart: 'Das ultimative KI-Kundenmanagement für',
+    heroTitleGrad: '',
     heroRotators: [
       'Immobilienunternehmen',
       'Immobilienentwickler',
@@ -213,12 +213,12 @@ const TEXT = {
       'Immobilienbüro',
       'Bodenentwickler',
     ],
-    heroSub: "Mehr Verkäufe für Ihre Makler. Die einfachste und wettbewerbsfähigste Lösung am Markt.",
+    heroSub: "Mehr Verkäufe für Ihre Vertriebsmitarbeiter. Die einfachste und wettbewerbsfähigste Lösung am Markt.",
     heroCTA: 'Angebot anfordern',
 
     sec1TitleStart: 'Mehr Verkäufe.',
     sec1TitleGrad: 'Mechanisch.',
-    sec1Body: "Jeder Makler verfolgt den richtigen Interessenten, im richtigen Moment, mit der richtigen Nachricht. Ein Makler, der nie ein Follow-up vergisst, schließt durchschnittlich 2-3 Deals mehr pro Monat ab. Multipliziert mit allen Ihren Maklern.",
+    sec1Body: "Jeder Vertriebsmitarbeiter verfolgt den richtigen Interessenten, im richtigen Moment, mit der richtigen Nachricht. Ein Mitarbeiter, der nie ein Follow-up vergisst, schließt durchschnittlich 2-3 Deals mehr pro Monat ab. Multipliziert mit allen Ihren Mitarbeitern.",
 
     sec2TitleStart: 'Das Unternehmen, in das',
     sec2TitleGrad: 'sie wollen.',
@@ -226,7 +226,7 @@ const TEXT = {
 
     sec3TitleStart: 'Das wettbewerbsfähigste Angebot',
     sec3TitleGrad: 'und das am schnellsten einsetzbare.',
-    sec3Body: "Einheitlicher verhandelter Tarif für Ihr Unternehmen, keine langfristige Verpflichtung, keine versteckten Kosten. Einsatzbereit in wenigen Tagen, Makler in 15 Minuten geschult. Sie aktivieren, wann Sie wollen.",
+    sec3Body: "Einheitlicher verhandelter Tarif für Ihr Unternehmen, keine langfristige Verpflichtung, keine versteckten Kosten. Einsatzbereit in wenigen Tagen, Mitarbeiter in 15 Minuten geschult. Sie aktivieren, wann Sie wollen.",
 
     sec4TitleStart: 'Sicher,',
     sec4TitleGrad: 'souverän, DSGVO.',
@@ -372,7 +372,6 @@ const BusinessPage = () => {
             <span className="biz-grad biz-rotator-wrap">
               <RotatingWord words={t.heroRotators} />
             </span>
-            <span className="biz-grad">{t.heroTitleGrad}</span>
           </h1>
           <p className="biz-hero-sub">{t.heroSub}</p>
           <a href="#contact" className="biz-btn-primary" data-testid="biz-hero-cta">
