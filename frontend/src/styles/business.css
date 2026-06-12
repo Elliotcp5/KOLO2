@@ -494,9 +494,9 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: opacity 320ms cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 320ms cubic-bezier(0.25, 0.1, 0.25, 1),
-              filter 320ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: opacity 267ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 267ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              filter 267ms cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity, transform;
 }
 .biz-rotator-word.in {

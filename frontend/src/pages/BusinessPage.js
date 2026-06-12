@@ -331,11 +331,12 @@ const BusinessPage = () => {
     const [idx, setIdx] = useState(0);
     const [phase, setPhase] = useState('in');
     useEffect(() => {
-      const t1 = setTimeout(() => setPhase('out'), 1420);
+      // Speed: 1.20x faster than previous (1420ms / 1.2 ≈ 1183ms, 250ms gap / 1.2 ≈ 208ms)
+      const t1 = setTimeout(() => setPhase('out'), 1183);
       const t2 = setTimeout(() => {
         setIdx((i) => (i + 1) % words.length);
         setPhase('in');
-      }, 1670);
+      }, 1391);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [idx, words.length]);
     const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), '');

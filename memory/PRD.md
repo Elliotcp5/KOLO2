@@ -16,6 +16,12 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Hero Rotatif tuning (iter 44 — Feb 2026)
+🎯 **Hero rotatif BusinessPage** :
+- Animation accélérée de **1.20x** : `t1` 1420 → 1183ms, `t2` 1670 → 1391ms, transition CSS 320 → 267ms.
+- Centrage parfait du mot rotatif vérifié visuellement (foncière / agency group / property developer / property fund tous centrés sur le ghost word).
+- Sous-titre : "la solution la plus complète et la plus compétitive du marché" (FR/EN/IT/DE).
+
 ### Sprint correctifs & polish (iter 43 — Feb 2026)
 🔴 **Bug bloquant fixé** : "Créer une marque blanche" affichait page blanche → `useLocale is not defined` dans `WhiteLabelTab.js`. Import manquant restauré.
 
