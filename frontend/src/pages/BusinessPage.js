@@ -14,7 +14,7 @@ const TEXT = {
     navBack: 'Retour',
     navContact: 'Nous contacter',
     eyebrow: 'KOLO pour les entreprises',
-    heroTitleStart: "L'assistant IA quotidien pour votre",
+    heroTitleStart: "Le suivi client IA ultime pour votre",
     heroTitleGrad: '.',
     heroRotators: [
       'réseau immobilier',
@@ -77,7 +77,7 @@ const TEXT = {
     navBack: 'Back',
     navContact: 'Contact us',
     eyebrow: 'KOLO for businesses',
-    heroTitleStart: 'The daily AI assistant for your',
+    heroTitleStart: 'The ultimate AI client follow-up for your',
     heroTitleGrad: '.',
     heroRotators: [
       'real estate network',
@@ -140,7 +140,7 @@ const TEXT = {
     navBack: 'Indietro',
     navContact: 'Contattaci',
     eyebrow: 'KOLO per le aziende',
-    heroTitleStart: "L'assistente IA quotidiano per la tua",
+    heroTitleStart: "Il follow-up clienti IA definitivo per la tua",
     heroTitleGrad: '.',
     heroRotators: [
       'rete immobiliare',
@@ -203,7 +203,7 @@ const TEXT = {
     navBack: 'Zurück',
     navContact: 'Kontakt aufnehmen',
     eyebrow: 'KOLO für Unternehmen',
-    heroTitleStart: 'Der tägliche KI-Assistent für Ihr',
+    heroTitleStart: 'Das ultimative KI-Kundenmanagement für Ihr',
     heroTitleGrad: '.',
     heroRotators: [
       'Immobilienunternehmen',
@@ -331,11 +331,11 @@ const BusinessPage = () => {
     const [idx, setIdx] = useState(0);
     const [phase, setPhase] = useState('in');
     useEffect(() => {
-      const t1 = setTimeout(() => setPhase('out'), 2600);
+      const t1 = setTimeout(() => setPhase('out'), 1700);
       const t2 = setTimeout(() => {
         setIdx((i) => (i + 1) % words.length);
         setPhase('in');
-      }, 3000);
+      }, 2000);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [idx, words.length]);
     const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), '');
