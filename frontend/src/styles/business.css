@@ -467,3 +467,54 @@
   .biz-form-row { grid-template-columns: 1fr; gap: 14px; }
   .biz-form-success { padding: 28px; }
 }
+
+/* ============ Hero rotating word (premium minimalist) ============ */
+.biz-rotator-wrap {
+  display: inline-block;
+}
+.biz-rotator {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+  text-align: left;
+  min-height: 1.1em;
+}
+.biz-rotator-ghost {
+  visibility: hidden;
+  white-space: nowrap;
+  display: inline-block;
+}
+.biz-rotator-word {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: opacity 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              filter 380ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: opacity, transform;
+}
+.biz-rotator-word.in {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+.biz-rotator-word.out {
+  opacity: 0;
+  transform: translateY(-14px);
+  filter: blur(4px);
+}
+
+@media (max-width: 720px) {
+  .biz-rotator { display: block; }
+  .biz-rotator-ghost { white-space: normal; }
+  .biz-rotator-word { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biz-rotator-word { transition: none; }
+}

@@ -14,8 +14,16 @@ const TEXT = {
     navBack: 'Retour',
     navContact: 'Nous contacter',
     eyebrow: 'KOLO pour les entreprises',
-    heroTitleStart: "L'assistant IA quotidien",
-    heroTitleGrad: 'pour votre réseau immobilier.',
+    heroTitleStart: "L'assistant IA quotidien pour votre",
+    heroTitleGrad: '.',
+    heroRotators: [
+      'réseau immobilier',
+      'promoteur immobilier',
+      'foncière',
+      'groupement d\'agences',
+      'agence immobilière',
+      'développeur foncier',
+    ],
     heroSub: "Plus de ventes pour vos agents. La solution la plus simple et la plus compétitive du marché.",
     heroCTA: 'Demander une offre',
 
@@ -43,7 +51,7 @@ const TEXT = {
     formEmail: 'Email professionnel',
     formPhone: 'Téléphone',
     formCompany: 'Nom de l\'entreprise',
-    formSize: 'Nombre d\'agents',
+    formSize: 'Nombre d\'agents / commerciaux',
     formSizePh: 'Sélectionner',
     formSector: 'Secteur d\'activité',
     formSectorPh: 'Sélectionner',
@@ -69,8 +77,16 @@ const TEXT = {
     navBack: 'Back',
     navContact: 'Contact us',
     eyebrow: 'KOLO for businesses',
-    heroTitleStart: 'The daily AI assistant',
-    heroTitleGrad: 'for your real estate business.',
+    heroTitleStart: 'The daily AI assistant for your',
+    heroTitleGrad: '.',
+    heroRotators: [
+      'real estate network',
+      'property developer',
+      'property fund',
+      'agency group',
+      'real estate agency',
+      'land developer',
+    ],
     heroSub: "More sales for your agents. The simplest and most competitive solution on the market.",
     heroCTA: 'Request an offer',
 
@@ -98,7 +114,7 @@ const TEXT = {
     formEmail: 'Work email',
     formPhone: 'Phone',
     formCompany: 'Company name',
-    formSize: 'Number of agents',
+    formSize: 'Number of agents / sales reps',
     formSizePh: 'Select',
     formSector: 'Business sector',
     formSectorPh: 'Select',
@@ -124,8 +140,16 @@ const TEXT = {
     navBack: 'Indietro',
     navContact: 'Contattaci',
     eyebrow: 'KOLO per le aziende',
-    heroTitleStart: "L'assistente IA quotidiano",
-    heroTitleGrad: 'per la tua azienda immobiliare.',
+    heroTitleStart: "L'assistente IA quotidiano per la tua",
+    heroTitleGrad: '.',
+    heroRotators: [
+      'rete immobiliare',
+      'promotore immobiliare',
+      'fondo immobiliare',
+      'gruppo di agenzie',
+      'agenzia immobiliare',
+      'sviluppatore fondiario',
+    ],
     heroSub: "Più vendite per i tuoi agenti. La soluzione più semplice e competitiva sul mercato.",
     heroCTA: 'Richiedi un\'offerta',
 
@@ -153,7 +177,7 @@ const TEXT = {
     formEmail: 'Email professionale',
     formPhone: 'Telefono',
     formCompany: "Nome dell'azienda",
-    formSize: 'Numero di agenti',
+    formSize: 'Numero di agenti / commerciali',
     formSizePh: 'Seleziona',
     formSector: 'Settore di attività',
     formSectorPh: 'Seleziona',
@@ -179,8 +203,16 @@ const TEXT = {
     navBack: 'Zurück',
     navContact: 'Kontakt aufnehmen',
     eyebrow: 'KOLO für Unternehmen',
-    heroTitleStart: 'Der tägliche KI-Assistent',
-    heroTitleGrad: 'für Ihr Immobilienunternehmen.',
+    heroTitleStart: 'Der tägliche KI-Assistent für Ihr',
+    heroTitleGrad: '.',
+    heroRotators: [
+      'Immobilienunternehmen',
+      'Immobilienentwickler',
+      'Immobilienfonds',
+      'Agenturgruppe',
+      'Immobilienbüro',
+      'Bodenentwickler',
+    ],
     heroSub: "Mehr Verkäufe für Ihre Makler. Die einfachste und wettbewerbsfähigste Lösung am Markt.",
     heroCTA: 'Angebot anfordern',
 
@@ -208,7 +240,7 @@ const TEXT = {
     formEmail: 'Geschäftliche E-Mail',
     formPhone: 'Telefon',
     formCompany: 'Firmenname',
-    formSize: 'Anzahl der Makler',
+    formSize: 'Anzahl der Makler / Vertriebsmitarbeiter',
     formSizePh: 'Auswählen',
     formSector: 'Tätigkeitsbereich',
     formSectorPh: 'Auswählen',
@@ -294,6 +326,29 @@ const BusinessPage = () => {
     </h2>
   );
 
+  // Premium rotating word: cycles through audience types with a smooth Apple-style transition.
+  const RotatingWord = ({ words }) => {
+    const [idx, setIdx] = useState(0);
+    const [phase, setPhase] = useState('in');
+    useEffect(() => {
+      const t1 = setTimeout(() => setPhase('out'), 2600);
+      const t2 = setTimeout(() => {
+        setIdx((i) => (i + 1) % words.length);
+        setPhase('in');
+      }, 3000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }, [idx, words.length]);
+    const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), '');
+    return (
+      <span className="biz-rotator">
+        <span className="biz-rotator-ghost" aria-hidden="true">{longest}</span>
+        <span className={`biz-rotator-word ${phase}`} key={idx} data-testid="hero-rotator-word">
+          {words[idx]}
+        </span>
+      </span>
+    );
+  };
+
   return (
     <div className="biz-page landing-page">
       <PremiumBackdrop />
@@ -313,7 +368,11 @@ const BusinessPage = () => {
         <div className="biz-container">
           <div className="biz-eyebrow">{t.eyebrow}</div>
           <h1 className="biz-hero-title">
-            {t.heroTitleStart}<br/><span className="biz-grad">{t.heroTitleGrad}</span>
+            {t.heroTitleStart}{' '}
+            <span className="biz-grad biz-rotator-wrap">
+              <RotatingWord words={t.heroRotators} />
+            </span>
+            <span className="biz-grad">{t.heroTitleGrad}</span>
           </h1>
           <p className="biz-hero-sub">{t.heroSub}</p>
           <a href="#contact" className="biz-btn-primary" data-testid="biz-hero-cta">
