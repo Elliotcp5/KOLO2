@@ -16,6 +16,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Favicon rond (iter 45 — Feb 2026)
+🎨 **Refonte complète du favicon** : passage d'un favicon carré (qui apparaissait étiré/oval quand Google le rognait en cercle dans les SERP) à un favicon **rond natif** avec fond transparent.
+- Génération PIL/Pillow : cercle de dégradé `#004AAD → #CB6CE6` (diagonal), K blanc DejaVu-Bold à 62% du diamètre, anti-aliasing par super-sampling.
+- Tailles produites : 32 (favicon-v3.png), 48 (favicon-v3.ico multi-size 16/32/48), 64, 128, 180 (apple-touch-icon-v3.png), 192 (logo192.png), 512 (logo512.png).
+- `index.html` mis à jour pour pointer vers les fichiers `v3`.
+- Fichiers legacy (favicon.ico, favicon.png, apple-touch-icon.png) écrasés avec le nouveau design pour les caches/anciens liens.
+- Master PNG 1024x1024 conservé dans `og-mark-1024.png` pour futures déclinaisons.
+
 ### Sprint Hero Rotatif tuning (iter 44 — Feb 2026)
 🎯 **Hero rotatif BusinessPage** :
 - Animation accélérée de **1.20x** : `t1` 1420 → 1183ms, `t2` 1670 → 1391ms, transition CSS 320 → 267ms.
