@@ -33,6 +33,8 @@ import OrgSpace from "./pages/OrgSpace";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import JoinOrgPage from "./pages/JoinOrgPage";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
+import BlogIndex from "./pages/BlogIndex";
+import BlogPost from "./pages/BlogPost";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -118,6 +120,8 @@ const AppRouter = () => {
       <Route path="/privacy-policy" element={<PrivacyPage />} />
       <Route path="/business" element={<BusinessPage />} />
       <Route path="/entreprise" element={<BusinessPage />} />
+      <Route path="/blog" element={<BlogIndex />} />
+      <Route path="/blog/:slug" element={<BlogPost />} />
 
       {/* Protected routes */}
       <Route 

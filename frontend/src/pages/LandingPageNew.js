@@ -131,7 +131,8 @@ const LANDING_TEXTS = {
     commissionTracking: "Suivi de vos commissions",
     weeklyEmailReport: "Rapport hebdo par email",
     prioritySupport: "Support prioritaire",
-    legalNotice: "Mentions légales"
+    legalNotice: "Mentions légales",
+    blogLink: "Blog"
   },
   en: {
     upTo30Prospects: "Up to 30 prospects",
@@ -149,7 +150,8 @@ const LANDING_TEXTS = {
     commissionTracking: "Commission tracking",
     weeklyEmailReport: "Weekly email report",
     prioritySupport: "Priority support",
-    legalNotice: "Legal Notice"
+    legalNotice: "Legal Notice",
+    blogLink: "Blog"
   },
   de: {
     upTo30Prospects: "Bis zu 30 Interessenten",
@@ -167,7 +169,8 @@ const LANDING_TEXTS = {
     commissionTracking: "Provisionsverfolgung",
     weeklyEmailReport: "Wöchentlicher E-Mail-Bericht",
     prioritySupport: "Prioritäts-Support",
-    legalNotice: "Impressum"
+    legalNotice: "Impressum",
+    blogLink: "Blog"
   },
   it: {
     upTo30Prospects: "Fino a 30 prospect",
@@ -185,7 +188,8 @@ const LANDING_TEXTS = {
     commissionTracking: "Monitoraggio commissioni",
     weeklyEmailReport: "Report settimanale via email",
     prioritySupport: "Supporto prioritario",
-    legalNotice: "Note legali"
+    legalNotice: "Note legali",
+    blogLink: "Blog"
   }
 };
 
@@ -802,6 +806,14 @@ const LandingPage = () => {
               >
                 {lt.legalNotice}
               </button>
+              <a
+                href="/blog"
+                className="legal-notice-btn"
+                data-testid="footer-blog-link"
+                style={{ textDecoration: 'none' }}
+              >
+                {lt.blogLink}
+              </a>
             </div>
           </div>
         </div>

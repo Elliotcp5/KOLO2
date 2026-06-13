@@ -16,6 +16,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Blog SEO (iter 46 — Feb 2026)
+📰 **Système de blog complet pour SEO ultime** :
+- **5 articles de fond** rédigés en 4 langues (FR/EN/IT/DE) — 20 articles au total, contenu à vraie valeur ajoutée (pas de pub) :
+  1. Suivi client en 2026 : pourquoi 80% des ventes se jouent après le premier contact
+  2. Les 7 techniques de relance prospect qui fonctionnent vraiment
+  3. Pipeline commercial : les 6 KPIs indispensables pour piloter une équipe
+  4. L'IA dans la prospection : guide pratique pour intégrer sans casser le process
+  5. WhatsApp / SMS / Email / Appel : quel canal de relance selon le secteur
+- **Routes** : `/blog` (index) + `/blog/:slug` (article)
+- **Design éditorial premium** : `blog.css` — typo serif Fraunces pour les titres, Inter pour le corps, max-width 720px, large whitespace, breadcrumb, reading time, blockquote stylé
+- **CTA premium en fin d'article** : card dégradée bleu/violet avec halo radial, bouton "Contacter le team KOLO" → `/business#contact`
+- **SEO complet** : `useDocumentHead` hook qui injecte dynamiquement title, meta description, OG, Twitter Card, canonical, JSON-LD `BlogPosting` (article) / `Blog` (index)
+- **i18n** : détection automatique langue user (FR/EN/IT/DE) sur tous les articles
+- **Lien "Blog" discret** dans le footer landing (à côté de "Mentions légales") — pas dans le header par choix UX
+- **sitemap.xml** étendu avec les 5 URLs articles + page index + hreflang alternates
+- Fichiers : `data/blogPosts.js`, `pages/BlogIndex.js`, `pages/BlogPost.js`, `hooks/useDocumentHead.js`, `styles/blog.css`
+
 ### Sprint Favicon rond (iter 45 — Feb 2026)
 🎨 **Refonte complète du favicon** : passage d'un favicon carré (qui apparaissait étiré/oval quand Google le rognait en cercle dans les SERP) à un favicon **rond natif** avec fond transparent.
 - Génération PIL/Pillow : cercle de dégradé `#004AAD → #CB6CE6` (diagonal), K blanc DejaVu-Bold à 62% du diamètre, anti-aliasing par super-sampling.
