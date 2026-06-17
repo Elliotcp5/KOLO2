@@ -27,11 +27,23 @@ const COUNTRY_LANGUAGES = {
   'IT': 'it', 'SM': 'it', 'VA': 'it',
   // German-speaking
   'DE': 'de', 'AT': 'de', 'LI': 'de',
+  // Spanish-speaking
+  'ES': 'es',
+  'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es',
+  'VE': 'es', 'EC': 'es', 'GT': 'es', 'CU': 'es', 'BO': 'es',
+  'DO': 'es', 'HN': 'es', 'PY': 'es', 'SV': 'es', 'NI': 'es',
+  'CR': 'es', 'PA': 'es', 'UY': 'es', 'PR': 'es',
+  // Portuguese-speaking
+  'PT': 'pt', 'BR': 'pt', 'AO': 'pt', 'MZ': 'pt', 'CV': 'pt',
+  // Polish
+  'PL': 'pl',
   // Switzerland → defer to browser language (handled separately for cantons)
   'CH': null,
   // English
   'GB': 'en', 'IE': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
 };
+
+const SUPPORTED_LOCALES = ['en', 'fr', 'de', 'it', 'es', 'pt', 'pl'];
 
 // Resolve a country code + browser language to our locale.
 // Special handling for Switzerland: pick fr/de/it based on the user's
@@ -118,13 +130,13 @@ export const LocaleProvider = ({ children }) => {
       (userChangedLang && savedLocale) ||
       (guessedRegion ? resolveCountryToLocale(guessedRegion) : null) ||
       browserLang;
-    const supportedLocale = ['en', 'fr', 'de', 'it'].includes(guessedLang) ? guessedLang : 'en';
+    const supportedLocale = SUPPORTED_LOCALES.includes(guessedLang) ? guessedLang : 'en';
     setLocale(supportedLocale);
     if (!userChangedLang) localStorage.setItem('kolo_locale', supportedLocale);
 
     // If locale was set via URL param, persist it as a manual choice so it survives
     // post-login redirects (which strip query strings).
-    if (localeOverride && ['en', 'fr', 'de', 'it'].includes(localeOverride)) {
+    if (localeOverride && SUPPORTED_LOCALES.includes(localeOverride)) {
       localStorage.setItem('kolo_locale', localeOverride);
       localStorage.setItem('kolo_locale_manual', 'true');
     }
@@ -148,7 +160,7 @@ export const LocaleProvider = ({ children }) => {
 
       if (!userChangedLang) {
         const lang = resolveCountryToLocale(cc);
-        if (['en', 'fr', 'de', 'it'].includes(lang)) {
+        if (SUPPORTED_LOCALES.includes(lang)) {
           setLocale(lang);
           localStorage.setItem('kolo_locale', lang);
         }
@@ -199,7 +211,7 @@ export const LocaleProvider = ({ children }) => {
 
   // Change language manually
   const changeLanguage = (newLocale) => {
-    if (['en', 'fr', 'de', 'it'].includes(newLocale)) {
+    if (SUPPORTED_LOCALES.includes(newLocale)) {
       setLocale(newLocale);
       localStorage.setItem('kolo_locale', newLocale);
       localStorage.setItem('kolo_locale_manual', 'true'); // Mark as manually changed

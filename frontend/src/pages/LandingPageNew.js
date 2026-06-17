@@ -91,6 +91,9 @@ const LANGUAGES = [
   { code: 'en', label: 'EN' },
   { code: 'de', label: 'DE' },
   { code: 'it', label: 'IT' },
+  { code: 'es', label: 'ES' },
+  { code: 'pt', label: 'PT' },
+  { code: 'pl', label: 'PL' },
 ];
 
 const CURRENCIES = [
@@ -244,13 +247,168 @@ const LandingPage = () => {
 
   const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
 
-  const faqs = [
-    { q: t('landingFaq1Q'), a: t('landingFaq1A') },
-    { q: t('landingFaq2Q'), a: t('landingFaq2A') },
-    { q: t('landingFaq3Q'), a: t('landingFaq3A') },
-    { q: t('landingFaq4Q'), a: t('landingFaq4A') },
-    { q: t('landingFaq5Q'), a: t('landingFaq5A') }
-  ];
+  // ====================================================================
+  // FAQ B2B — orienté entreprises (foncières, promoteurs, réseaux)
+  // Inline multilingue pour ne pas dépendre de translations.js
+  // ====================================================================
+  const B2B_FAQ = {
+    fr: [
+      {
+        q: "KOLO remplace-t-il notre CRM existant (Salesforce, HubSpot, etc.) ?",
+        a: "Non. KOLO est complémentaire à votre CRM. Il s'occupe spécifiquement de la couche que les CRM gèrent mal : le suivi commercial intelligent — relances automatisées, priorisation des prospects chauds, prise de notes IA. KOLO se connecte à votre CRM via API et enrichit la donnée sans la dupliquer."
+      },
+      {
+        q: "Combien de temps pour déployer KOLO sur une équipe de 20 commerciaux ?",
+        a: "Le pilote complet (onboarding équipe, paramétrage des canaux, formation manager) prend en moyenne 5 à 7 jours ouvrés. L'adoption complète atteint 80% en 3 semaines. Nous accompagnons chaque déploiement avec un Customer Success Manager dédié."
+      },
+      {
+        q: "Quel ROI attendre la première année ?",
+        a: "Sur la base de nos déploiements 2025, nos clients constatent : +15 à +25% de CA par commercial, +30 à +40% de taux de réponse sur les relances, et 6 à 9 heures gagnées par semaine et par commercial sur les tâches administratives."
+      },
+      {
+        q: "Les données de nos commerciaux sont-elles sécurisées ?",
+        a: "Oui. Toutes les données sont hébergées en Europe (Francfort, Paris) sur infrastructure conforme RGPD. Chiffrement AES-256 au repos, TLS 1.3 en transit, certifications SOC 2 Type II en cours. Vous gardez la pleine propriété de vos données et pouvez les exporter à tout moment."
+      },
+      {
+        q: "Quelle est la tarification pour une entreprise ?",
+        a: "La tarification est sur devis et dépend du nombre de commerciaux, du niveau d'intégration avec vos outils existants (CRM, Google Workspace, Outlook, WhatsApp Business) et des options Marque Blanche. Réservez une démo de 30 minutes — nous établirons une proposition adaptée à votre contexte sous 48h."
+      }
+    ],
+    en: [
+      {
+        q: "Does KOLO replace our existing CRM (Salesforce, HubSpot, etc.)?",
+        a: "No. KOLO is complementary to your CRM. It specifically handles the layer that CRMs handle poorly: intelligent sales follow-up — automated nudges, hot-lead prioritization, AI note-taking. KOLO connects to your CRM via API and enriches the data without duplicating it."
+      },
+      {
+        q: "How long does it take to roll out KOLO to a 20-person sales team?",
+        a: "The full pilot (team onboarding, channel setup, manager training) takes on average 5 to 7 business days. Full adoption hits 80% within 3 weeks. Every rollout is supported by a dedicated Customer Success Manager."
+      },
+      {
+        q: "What ROI should we expect in the first year?",
+        a: "Based on our 2025 deployments, our clients observe: +15 to +25% revenue per rep, +30 to +40% reply rate on follow-ups, and 6 to 9 hours saved per week per rep on administrative tasks."
+      },
+      {
+        q: "Is our reps' data secure?",
+        a: "Yes. All data is hosted in Europe (Frankfurt, Paris) on GDPR-compliant infrastructure. AES-256 encryption at rest, TLS 1.3 in transit, SOC 2 Type II certification in progress. You retain full ownership and can export your data anytime."
+      },
+      {
+        q: "What is the pricing for an enterprise?",
+        a: "Pricing is on a quote basis, depending on the number of reps, the level of integration with your existing tools (CRM, Google Workspace, Outlook, WhatsApp Business) and White-Label options. Book a 30-minute demo — we'll send a tailored proposal within 48 hours."
+      }
+    ],
+    it: [
+      {
+        q: "KOLO sostituisce il nostro CRM esistente (Salesforce, HubSpot, ecc.)?",
+        a: "No. KOLO è complementare al tuo CRM. Si occupa specificamente del livello che i CRM gestiscono male: il follow-up commerciale intelligente — solleciti automatici, prioritizzazione dei lead caldi, presa di note IA. KOLO si collega al tuo CRM via API e arricchisce i dati senza duplicarli."
+      },
+      {
+        q: "Quanto tempo per implementare KOLO su un team di 20 commerciali?",
+        a: "Il pilota completo (onboarding team, configurazione canali, formazione manager) richiede in media 5-7 giorni lavorativi. L'adozione completa raggiunge l'80% in 3 settimane. Accompagniamo ogni implementazione con un Customer Success Manager dedicato."
+      },
+      {
+        q: "Quale ROI aspettarsi il primo anno?",
+        a: "Sulla base delle nostre implementazioni 2025, i nostri clienti constatano: +15/+25% di fatturato per commerciale, +30/+40% di tasso di risposta sui follow-up, e 6-9 ore risparmiate a settimana per commerciale sulle attività amministrative."
+      },
+      {
+        q: "I dati dei nostri commerciali sono al sicuro?",
+        a: "Sì. Tutti i dati sono ospitati in Europa (Francoforte, Parigi) su infrastruttura conforme GDPR. Crittografia AES-256 a riposo, TLS 1.3 in transito, certificazione SOC 2 Type II in corso. Mantieni la piena proprietà dei tuoi dati e puoi esportarli in qualsiasi momento."
+      },
+      {
+        q: "Qual è il prezzo per un'azienda?",
+        a: "Il prezzo è su preventivo e dipende dal numero di commerciali, dal livello di integrazione con i tuoi strumenti (CRM, Google Workspace, Outlook, WhatsApp Business) e dalle opzioni White-Label. Prenota una demo di 30 minuti — invieremo una proposta personalizzata entro 48 ore."
+      }
+    ],
+    de: [
+      {
+        q: "Ersetzt KOLO unser bestehendes CRM (Salesforce, HubSpot usw.)?",
+        a: "Nein. KOLO ergänzt Ihr CRM. Es kümmert sich speziell um die Schicht, die CRMs schlecht handhaben: intelligentes Vertriebs-Follow-up — automatisierte Erinnerungen, Priorisierung heißer Leads, KI-Notizen. KOLO verbindet sich per API mit Ihrem CRM und reichert die Daten an, ohne sie zu duplizieren."
+      },
+      {
+        q: "Wie lange dauert das Rollout für ein 20-köpfiges Vertriebsteam?",
+        a: "Der vollständige Pilot (Team-Onboarding, Kanal-Setup, Manager-Schulung) dauert durchschnittlich 5 bis 7 Werktage. Die volle Akzeptanz erreicht 80% in 3 Wochen. Jedes Rollout wird von einem dedizierten Customer Success Manager begleitet."
+      },
+      {
+        q: "Welcher ROI ist im ersten Jahr zu erwarten?",
+        a: "Basierend auf unseren Implementierungen 2025 beobachten unsere Kunden: +15 bis +25% Umsatz pro Vertriebler, +30 bis +40% Antwortrate bei Follow-ups, und 6 bis 9 Stunden pro Woche und Vertriebler bei administrativen Aufgaben eingespart."
+      },
+      {
+        q: "Sind die Daten unserer Vertriebler sicher?",
+        a: "Ja. Alle Daten werden in Europa (Frankfurt, Paris) auf DSGVO-konformer Infrastruktur gehostet. AES-256-Verschlüsselung im Ruhezustand, TLS 1.3 in Transit, SOC 2 Type II-Zertifizierung in Arbeit. Sie behalten die volle Eigentumsrechte und können Ihre Daten jederzeit exportieren."
+      },
+      {
+        q: "Wie ist die Preisgestaltung für ein Unternehmen?",
+        a: "Die Preise sind auf Anfrage und hängen von der Anzahl der Vertriebler, dem Integrationsgrad mit Ihren bestehenden Tools (CRM, Google Workspace, Outlook, WhatsApp Business) und den White-Label-Optionen ab. Buchen Sie eine 30-minütige Demo — wir senden Ihnen ein maßgeschneidertes Angebot innerhalb von 48 Stunden."
+      }
+    ],
+    es: [
+      {
+        q: "¿KOLO reemplaza nuestro CRM existente (Salesforce, HubSpot, etc.)?",
+        a: "No. KOLO es complementario a tu CRM. Se ocupa específicamente de la capa que los CRM gestionan mal: el seguimiento comercial inteligente — recordatorios automáticos, priorización de leads calientes, toma de notas con IA. KOLO se conecta a tu CRM vía API y enriquece los datos sin duplicarlos."
+      },
+      {
+        q: "¿Cuánto tiempo lleva implementar KOLO en un equipo de 20 comerciales?",
+        a: "El piloto completo (onboarding del equipo, configuración de canales, formación de manager) tarda en promedio 5-7 días laborables. La adopción completa alcanza el 80% en 3 semanas. Acompañamos cada implementación con un Customer Success Manager dedicado."
+      },
+      {
+        q: "¿Qué ROI esperar el primer año?",
+        a: "Basado en nuestros despliegues 2025, nuestros clientes constatan: +15 a +25% de facturación por comercial, +30 a +40% de tasa de respuesta en follow-ups, y 6 a 9 horas ahorradas a la semana por comercial en tareas administrativas."
+      },
+      {
+        q: "¿Están seguros los datos de nuestros comerciales?",
+        a: "Sí. Todos los datos están alojados en Europa (Fráncfort, París) en infraestructura conforme al RGPD. Cifrado AES-256 en reposo, TLS 1.3 en tránsito, certificación SOC 2 Type II en curso. Conservas la plena propiedad de tus datos y puedes exportarlos en cualquier momento."
+      },
+      {
+        q: "¿Cuál es el precio para una empresa?",
+        a: "El precio es bajo cotización y depende del número de comerciales, el nivel de integración con tus herramientas existentes (CRM, Google Workspace, Outlook, WhatsApp Business) y las opciones White-Label. Reserva una demo de 30 minutos — enviaremos una propuesta personalizada en 48 horas."
+      }
+    ],
+    pt: [
+      {
+        q: "O KOLO substitui o nosso CRM existente (Salesforce, HubSpot, etc.)?",
+        a: "Não. O KOLO é complementar ao seu CRM. Trata especificamente da camada que os CRMs gerem mal: o follow-up comercial inteligente — lembretes automáticos, priorização de leads quentes, toma de notas com IA. O KOLO conecta-se ao seu CRM via API e enriquece os dados sem duplicá-los."
+      },
+      {
+        q: "Quanto tempo demora a implementar o KOLO numa equipa de 20 comerciais?",
+        a: "O piloto completo (onboarding da equipa, configuração de canais, formação de manager) demora em média 5-7 dias úteis. A adoção completa atinge 80% em 3 semanas. Acompanhamos cada implementação com um Customer Success Manager dedicado."
+      },
+      {
+        q: "Que ROI esperar no primeiro ano?",
+        a: "Com base nas nossas implementações de 2025, os nossos clientes constatam: +15 a +25% de faturação por comercial, +30 a +40% de taxa de resposta em follow-ups, e 6 a 9 horas poupadas por semana por comercial em tarefas administrativas."
+      },
+      {
+        q: "Os dados dos nossos comerciais estão seguros?",
+        a: "Sim. Todos os dados são hospedados na Europa (Frankfurt, Paris) em infraestrutura conforme o RGPD. Encriptação AES-256 em repouso, TLS 1.3 em trânsito, certificação SOC 2 Type II em curso. Mantém a propriedade total dos seus dados e pode exportá-los a qualquer momento."
+      },
+      {
+        q: "Qual é o preço para uma empresa?",
+        a: "O preço é sob orçamento e depende do número de comerciais, do nível de integração com as suas ferramentas existentes (CRM, Google Workspace, Outlook, WhatsApp Business) e das opções White-Label. Reserve uma demo de 30 minutos — enviaremos uma proposta personalizada em 48 horas."
+      }
+    ],
+    pl: [
+      {
+        q: "Czy KOLO zastępuje nasz istniejący CRM (Salesforce, HubSpot itp.)?",
+        a: "Nie. KOLO jest komplementarne do Twojego CRM. Zajmuje się konkretnie warstwą, którą CRM-y obsługują słabo: inteligentnym follow-upem sprzedażowym — automatycznymi przypomnieniami, priorytetyzacją gorących leadów, notatkami AI. KOLO łączy się z Twoim CRM przez API i wzbogaca dane bez duplikowania ich."
+      },
+      {
+        q: "Ile czasu zajmuje wdrożenie KOLO w zespole 20 handlowców?",
+        a: "Pełny pilotaż (onboarding zespołu, konfiguracja kanałów, szkolenie managera) trwa średnio 5-7 dni roboczych. Pełna adopcja osiąga 80% w 3 tygodnie. Każde wdrożenie wspieramy dedykowanym Customer Success Managerem."
+      },
+      {
+        q: "Jakiego ROI oczekiwać w pierwszym roku?",
+        a: "Na podstawie naszych wdrożeń z 2025, nasi klienci obserwują: +15 do +25% przychodu na handlowca, +30 do +40% wzrostu wskaźnika odpowiedzi przy follow-upach, oraz 6-9 godzin tygodniowo oszczędzonych przez handlowca na zadaniach administracyjnych."
+      },
+      {
+        q: "Czy dane naszych handlowców są bezpieczne?",
+        a: "Tak. Wszystkie dane są hostowane w Europie (Frankfurt, Paryż) na infrastrukturze zgodnej z RODO. Szyfrowanie AES-256 w spoczynku, TLS 1.3 w tranzycie, certyfikacja SOC 2 Type II w toku. Zachowujesz pełną własność i możesz wyeksportować dane w dowolnym momencie."
+      },
+      {
+        q: "Jaka jest cena dla firmy?",
+        a: "Cena jest na zapytanie i zależy od liczby handlowców, poziomu integracji z istniejącymi narzędziami (CRM, Google Workspace, Outlook, WhatsApp Business) i opcji White-Label. Zarezerwuj 30-minutowe demo — prześlemy dopasowaną propozycję w ciągu 48 godzin."
+      }
+    ]
+  };
+
+  const faqs = B2B_FAQ[locale] || B2B_FAQ.en;
 
   const features = [
     { icon: '✓', text: t('landingFeature1') },
@@ -286,46 +444,101 @@ const LandingPage = () => {
         <div className="nav-actions">
           <button
             className="nav-pricing nav-business"
-            onClick={() => navigate('/business')}
+            onClick={() => navigate('/business#contact')}
             data-testid="nav-business-link"
           >
-            {locale === 'fr' ? 'Entreprises' :
-             locale === 'de' ? 'Unternehmen' :
-             locale === 'it' ? 'Aziende' :
-             'Business'}
+            {(() => {
+              const T = { fr: 'Réserver une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
+              return T[locale] || T.en;
+            })()}
           </button>
           <button className="nav-login" onClick={() => navigate('/login')}>
             {t('loginButton')}
           </button>
-          <button className="nav-cta" onClick={() => navigate('/register')}>
-            <span className="cta-full">{t('tryForFree')}</span>
-            <span className="cta-short">{t('tryShort')}</span>
+          <button className="nav-cta" onClick={() => navigate('/business#contact')}>
+            <span className="cta-full">
+              {(() => {
+                const T = { fr: 'Démo entreprise', en: 'Enterprise demo', it: 'Demo aziendale', de: 'Enterprise-Demo', es: 'Demo empresa', pt: 'Demo empresa', pl: 'Demo dla firm' };
+                return T[locale] || T.en;
+              })()}
+            </span>
+            <span className="cta-short">
+              {(() => {
+                const T = { fr: 'Démo', en: 'Demo', it: 'Demo', de: 'Demo', es: 'Demo', pt: 'Demo', pl: 'Demo' };
+                return T[locale] || T.en;
+              })()}
+            </span>
           </button>
         </div>
       </nav>
 
-      {/* HERO — radically simplified, leedflow style */}
+      {/* HERO — B2B first: foncières, promoteurs, réseaux d'agents */}
       <section className="hero">
         <div className="container">
           <h1>
-            {t('heroTitle1')} <br/><span className="grad-text">{t('heroTitle2')}</span>
+            {(() => {
+              const HERO_TITLE = {
+                fr: { l1: "Le suivi commercial intelligent", l2: "pour les entreprises qui vendent." },
+                en: { l1: "Smart sales follow-up", l2: "for companies that sell." },
+                it: { l1: "Il follow-up commerciale intelligente", l2: "per le aziende che vendono." },
+                de: { l1: "Intelligentes Vertriebs-Follow-up", l2: "für Unternehmen, die verkaufen." },
+                es: { l1: "El seguimiento comercial inteligente", l2: "para empresas que venden." },
+                pt: { l1: "O seguimento comercial inteligente", l2: "para empresas que vendem." },
+                pl: { l1: "Inteligentny follow-up sprzedażowy", l2: "dla firm, które sprzedają." }
+              };
+              const h = HERO_TITLE[locale] || HERO_TITLE.en;
+              return <>{h.l1} <br/><span className="grad-text">{h.l2}</span></>;
+            })()}
           </h1>
           <p className="hero-sub">
-            {t('heroSubtitle')}
+            {(() => {
+              const HERO_SUB = {
+                fr: "Foncières, promoteurs, réseaux d'agents : pilotez votre force commerciale avec une IA qui relance, priorise et accélère le closing — sans remplacer votre CRM.",
+                en: "Real-estate funds, developers, agency networks: steer your sales force with an AI that follows up, prioritizes and accelerates closing — without replacing your CRM.",
+                it: "Fondi immobiliari, sviluppatori, reti di agenti: guida la tua forza commerciale con un'IA che fa follow-up, prioritizza e accelera la chiusura — senza sostituire il tuo CRM.",
+                de: "Immobilienfonds, Bauträger, Agenturnetzwerke: Steuern Sie Ihre Vertriebsmannschaft mit einer KI, die nachfasst, priorisiert und Abschlüsse beschleunigt — ohne Ihr CRM zu ersetzen.",
+                es: "Fondos inmobiliarios, promotores, redes de agentes: pilota tu fuerza comercial con una IA que hace follow-up, prioriza y acelera el cierre — sin reemplazar tu CRM.",
+                pt: "Fundos imobiliários, promotores, redes de agentes: pilote a sua força comercial com uma IA que faz follow-up, prioriza e acelera o fecho — sem substituir o seu CRM.",
+                pl: "Fundusze nieruchomości, deweloperzy, sieci agentów: zarządzaj zespołem sprzedaży z AI, które robi follow-up, priorytetyzuje i przyspiesza zamykanie — bez zastępowania CRM."
+              };
+              return HERO_SUB[locale] || HERO_SUB.en;
+            })()}
           </p>
           <div className="hero-cta-row">
             <button
               className="hero-btn-main"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/business#contact')}
               data-testid="hero-cta-btn"
             >
-              {t('tryForFree')} <ArrowRight size={18} />
+              {(() => {
+                const BTN = {
+                  fr: 'Réserver une démo',
+                  en: 'Book a demo',
+                  it: 'Prenota una demo',
+                  de: 'Demo buchen',
+                  es: 'Reservar una demo',
+                  pt: 'Reservar uma demo',
+                  pl: 'Zarezerwuj demo'
+                };
+                return BTN[locale] || BTN.en;
+              })()}
+              <ArrowRight size={18} />
             </button>
             <span className="hero-micro-inline">
-              {t('noCreditCard')}
+              {(() => {
+                const MICRO = {
+                  fr: '30 min · sans engagement · réponse sous 48h',
+                  en: '30 min · no commitment · response in 48h',
+                  it: '30 min · senza impegno · risposta entro 48h',
+                  de: '30 Min · unverbindlich · Antwort in 48h',
+                  es: '30 min · sin compromiso · respuesta en 48h',
+                  pt: '30 min · sem compromisso · resposta em 48h',
+                  pl: '30 min · bez zobowiązań · odpowiedź w 48h'
+                };
+                return MICRO[locale] || MICRO.en;
+              })()}
             </span>
           </div>
-          <AppStoreBadge locale={locale} variant="default" />
         </div>
       </section>
 
@@ -576,107 +789,168 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* PRICING */}
+      {/* PRICING / DEMO — B2B-first: no public price, book a demo */}
       <section className="section" id="pricing">
         <div className="container">
           <div className="centered reveal">
-            <div className="section-tag">{t('pricingTag')}</div>
+            <div className="section-tag">
+              {(() => {
+                const TAG = { fr: 'Pour votre entreprise', en: 'For your company', it: 'Per la tua azienda', de: 'Für Ihr Unternehmen', es: 'Para tu empresa', pt: 'Para a sua empresa', pl: 'Dla Twojej firmy' };
+                return TAG[locale] || TAG.en;
+              })()}
+            </div>
             <h2 className="section-title">
-              {t('pricingTitle1Line')} {t('pricingTitle2Line')}
+              {(() => {
+                const T1 = { fr: 'Une offre sur mesure,', en: 'A tailored offer,', it: "Un'offerta su misura,", de: 'Ein maßgeschneidertes Angebot,', es: 'Una oferta a medida,', pt: 'Uma oferta à medida,', pl: 'Oferta dopasowana,' };
+                const T2 = { fr: 'pour votre force commerciale.', en: 'for your sales force.', it: 'per la tua forza commerciale.', de: 'für Ihre Vertriebsmannschaft.', es: 'para tu fuerza comercial.', pt: 'para a sua força comercial.', pl: 'dla Twojego zespołu sprzedaży.' };
+                return <>{T1[locale] || T1.en} <span className="grad-text">{T2[locale] || T2.en}</span></>;
+              })()}
             </h2>
-            <p className="section-body">{t('pricingSubtitle')}</p>
+            <p className="section-body" style={{ maxWidth: 620, margin: '14px auto 0' }}>
+              {(() => {
+                const SUB = {
+                  fr: "Tarification calculée selon le nombre de commerciaux, vos intégrations CRM existantes et les options Marque Blanche. Réservez 30 min avec notre équipe — nous établissons une proposition sous 48h.",
+                  en: "Pricing is calculated based on number of reps, your existing CRM integrations and White-Label options. Book 30 min with our team — we'll send a tailored proposal within 48 hours.",
+                  it: "Tariffe calcolate in base al numero di commerciali, alle integrazioni CRM esistenti e alle opzioni White-Label. Prenota 30 min con il nostro team — invieremo una proposta entro 48 ore.",
+                  de: "Preisgestaltung basierend auf Anzahl der Vertriebler, bestehenden CRM-Integrationen und White-Label-Optionen. Buchen Sie 30 Min mit unserem Team — Angebot innerhalb von 48 Stunden.",
+                  es: "Precio calculado según el número de comerciales, tus integraciones CRM existentes y las opciones White-Label. Reserva 30 min con nuestro equipo — propuesta personalizada en 48 horas.",
+                  pt: "Preço calculado de acordo com o número de comerciais, integrações de CRM existentes e opções White-Label. Reserve 30 min com a nossa equipa — proposta personalizada em 48 horas.",
+                  pl: "Cena obliczana na podstawie liczby handlowców, istniejących integracji CRM i opcji White-Label. Zarezerwuj 30 min z naszym zespołem — dopasowana propozycja w ciągu 48 godzin."
+                };
+                return SUB[locale] || SUB.en;
+              })()}
+            </p>
           </div>
-          
-          <div className="pricing-grid">
-            {/* FREE Plan */}
-            <div className="pricing-card pricing-starter reveal-scale stagger-1">
-              <div className="plan-name">STARTER</div>
-              <div className="price-row">
-                <span className="price-amount">{currency === 'EUR' ? '0€' : currency === 'USD' ? '$0' : '£0'}</span>
-                <span className="price-period">/{t('pricingMonth')}</span>
-              </div>
-              <ul className="price-features">
-                <li><span className="check-icon">✓</span> {lt.upTo30Prospects}</li>
-                <li><span className="check-icon">✓</span> {lt.oneAiSuggestionDay}</li>
-                <li><span className="check-icon">✓</span> {lt.taskManagement}</li>
-              </ul>
-              <button className="btn-secondary full" onClick={() => navigate('/register')}>
-                {lt.startFree}
-              </button>
-            </div>
-            
-            {/* PRO Plan */}
-            <div className="pricing-card pricing-pro reveal-scale stagger-2">
-              <div className="popular-badge">{lt.popular}</div>
-              <div className="plan-name">PRO</div>
-              <div className="price-row">
-                <span className="price-amount">{LANDING_PRICING.pro[currency]?.monthly || '9,99€'}</span>
-                <span className="price-period">/{t('pricingMonth')}</span>
-              </div>
-              <ul className="price-features">
-                <li><span className="check-icon">✓</span> {lt.unlimitedProspects}</li>
-                <li><span className="check-icon">✓</span> {lt.unlimitedAiSuggestions}</li>
-                <li><span className="check-icon">✓</span> {lt.oneClickSms}</li>
-                <li><span className="check-icon">✓</span> {lt.interactionHistory}</li>
-                <li><span className="check-icon">✓</span> {lt.contextualNotes}</li>
-              </ul>
-              <button className="btn-primary full" onClick={() => navigate('/register', { state: { plan: 'pro' } })}>
-                {t('startFreeMonth')} <ArrowRight size={18} />
-              </button>
-              <p className="pricing-micro">{t('pricingBadge')}</p>
-            </div>
-            
-            {/* PRO+ Plan */}
-            <div className="pricing-card pricing-proplus reveal-scale stagger-3">
-              <div className="plan-name">PRO+</div>
-              <div className="price-row">
-                <span className="price-amount">{LANDING_PRICING.pro_plus[currency]?.monthly || '24,99€'}</span>
-                <span className="price-period">/{t('pricingMonth')}</span>
-              </div>
-              <ul className="price-features">
-                <li><span className="check-icon">✓</span> {lt.everythingInPro}</li>
-                <li><span className="check-icon">🔥</span> {lt.hotLeadsAuto}</li>
-                <li><span className="check-icon">📊</span> {lt.commissionTracking}</li>
-                <li><span className="check-icon">📧</span> {lt.weeklyEmailReport}</li>
-                <li><span className="check-icon">⭐</span> {lt.prioritySupport}</li>
-              </ul>
-              <button className="btn-secondary full" onClick={() => navigate('/register', { state: { plan: 'pro_plus' } })}>
-                {t('startFreeMonth')}
-              </button>
-            </div>
-          </div>
-          
-          <p className="pricing-note reveal" style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
-            {t('pricingMicro')}
-          </p>
 
-          {/* Team callout — Leedflow-style, links to /business */}
-          <div className="team-callout reveal">
-            <div className="team-callout-text">
-              <div className="team-callout-eyebrow">
-                {locale === 'fr' ? 'Vous gérez une entreprise ?' :
-                 locale === 'de' ? 'Sie verwalten ein Unternehmen?' :
-                 locale === 'it' ? "Gestisci un'azienda?" :
-                 'Managing a business?'}
-              </div>
-              <p className="team-callout-body">
-                {locale === 'fr' ? 'Pilotez la performance de vos équipes avec KOLO pour les entreprises.' :
-                 locale === 'de' ? 'Verwalten Sie die Leistung Ihrer Teams mit KOLO für Unternehmen.' :
-                 locale === 'it' ? 'Gestisci le performance dei tuoi team con KOLO per le aziende.' :
-                 'Drive your teams\' performance with KOLO for businesses.'}
-              </p>
+          {/* Single premium CTA card */}
+          <div className="biz-demo-card reveal" style={{
+            maxWidth: 720,
+            margin: '48px auto 0',
+            padding: '52px 44px',
+            borderRadius: 24,
+            background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
+            color: '#fff',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 30px 60px -20px rgba(15,23,42,0.4)'
+          }}>
+            <div style={{
+              position: 'absolute', top: '-100px', right: '-80px', width: 260, height: 260,
+              background: 'radial-gradient(circle, rgba(203,108,230,0.35) 0%, transparent 70%)', pointerEvents: 'none'
+            }} />
+            <div style={{
+              position: 'absolute', bottom: '-120px', left: '-60px', width: 280, height: 280,
+              background: 'radial-gradient(circle, rgba(0,74,173,0.35) 0%, transparent 70%)', pointerEvents: 'none'
+            }} />
+            <div style={{ position: 'relative', fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#A5B4FC', marginBottom: 14 }}>
+              {(() => {
+                const E = { fr: 'Démo personnalisée', en: 'Personalized demo', it: 'Demo personalizzata', de: 'Personalisierte Demo', es: 'Demo personalizada', pt: 'Demo personalizada', pl: 'Spersonalizowane demo' };
+                return E[locale] || E.en;
+              })()}
             </div>
+            <div style={{ position: 'relative', fontFamily: 'Fraunces, Georgia, serif', fontSize: 32, fontWeight: 600, lineHeight: 1.18, marginBottom: 14 }}>
+              {(() => {
+                const T = {
+                  fr: '30 minutes pour voir KOLO sur votre cas concret.',
+                  en: '30 minutes to see KOLO on your real case.',
+                  it: '30 minuti per vedere KOLO sul tuo caso reale.',
+                  de: '30 Minuten, um KOLO an Ihrem konkreten Fall zu sehen.',
+                  es: '30 minutos para ver KOLO en tu caso real.',
+                  pt: '30 minutos para ver o KOLO no seu caso real.',
+                  pl: '30 minut, aby zobaczyć KOLO na Twoim konkretnym przypadku.'
+                };
+                return T[locale] || T.en;
+              })()}
+            </div>
+            <p style={{ position: 'relative', fontSize: 15.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.78)', margin: '0 auto 28px', maxWidth: 520 }}>
+              {(() => {
+                const S = {
+                  fr: "Apportez vos vrais prospects, vos vrais blocages : on vous montre comment KOLO les débloque. Ensuite, devis sur mesure sous 48h.",
+                  en: "Bring your real prospects, real blockers: we'll show you how KOLO unblocks them. Tailored quote within 48 hours.",
+                  it: "Porta i tuoi veri prospect, i tuoi veri blocchi: ti mostriamo come KOLO li sblocca. Preventivo su misura entro 48 ore.",
+                  de: "Bringen Sie Ihre echten Prospects und Blocker mit: Wir zeigen Ihnen, wie KOLO sie löst. Maßgeschneidertes Angebot innerhalb von 48 Stunden.",
+                  es: "Trae tus prospects reales, tus bloqueos reales: te mostramos cómo KOLO los desbloquea. Presupuesto personalizado en 48 horas.",
+                  pt: "Traga os seus prospects reais, os seus bloqueios reais: mostramos como o KOLO os desbloqueia. Orçamento personalizado em 48 horas.",
+                  pl: "Przynieś prawdziwych prospektów, prawdziwe blokady: pokażemy, jak KOLO je odblokowuje. Spersonalizowana wycena w 48 godzin."
+                };
+                return S[locale] || S.en;
+              })()}
+            </p>
             <button
-              className="team-callout-btn"
-              onClick={() => navigate('/business')}
-              data-testid="pricing-team-callout-btn"
+              onClick={() => navigate('/business#contact')}
+              data-testid="pricing-book-demo-btn"
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '14px 28px',
+                background: '#fff',
+                color: '#0F172A',
+                border: 'none',
+                borderRadius: 999,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 14px 30px -10px rgba(0,0,0,0.5)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              {locale === 'fr' ? 'Demander une offre' :
-               locale === 'de' ? 'Angebot anfordern' :
-               locale === 'it' ? 'Richiedi un\'offerta' :
-               'Request an offer'}
+              {(() => {
+                const B = { fr: 'Réserver une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
+                return B[locale] || B.en;
+              })()}
               <ArrowRight size={16} />
             </button>
+          </div>
+
+          {/* Independent professional section — minimalist, App Store only */}
+          <div className="indie-callout reveal" style={{
+            maxWidth: 720,
+            margin: '64px auto 0',
+            padding: '32px 32px',
+            borderRadius: 18,
+            border: '1px solid rgba(15,23,42,0.08)',
+            background: 'rgba(250,250,247,0.6)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94A3B8', marginBottom: 10 }}>
+              {(() => {
+                const E = { fr: 'Indépendant ?', en: 'Solo professional?', it: 'Indipendente?', de: 'Selbstständig?', es: '¿Independiente?', pt: 'Independente?', pl: 'Niezależny?' };
+                return E[locale] || E.en;
+              })()}
+            </div>
+            <h3 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 600, color: '#0F172A', margin: '0 0 10px' }}>
+              {(() => {
+                const T = {
+                  fr: "KOLO existe aussi en app iOS, pour vous.",
+                  en: "KOLO is also an iOS app, just for you.",
+                  it: "KOLO esiste anche come app iOS, per te.",
+                  de: "KOLO gibt es auch als iOS-App, für Sie.",
+                  es: "KOLO también existe como app iOS, para ti.",
+                  pt: "O KOLO também existe como app iOS, para si.",
+                  pl: "KOLO istnieje także jako aplikacja iOS, dla Ciebie."
+                };
+                return T[locale] || T.en;
+              })()}
+            </h3>
+            <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 8px', lineHeight: 1.5 }}>
+              {(() => {
+                const S = {
+                  fr: "Toutes les fonctionnalités KOLO, dans votre poche. À partir de 3,99€/mois.",
+                  en: "All KOLO features, in your pocket. From €3.99/month.",
+                  it: "Tutte le funzionalità KOLO, in tasca. Da 3,99€/mese.",
+                  de: "Alle KOLO-Funktionen, in Ihrer Tasche. Ab 3,99€/Monat.",
+                  es: "Todas las funciones KOLO, en tu bolsillo. Desde 3,99€/mes.",
+                  pt: "Todas as funcionalidades KOLO, no seu bolso. A partir de 3,99€/mês.",
+                  pl: "Wszystkie funkcje KOLO, w Twojej kieszeni. Od 3,99€/miesiąc."
+                };
+                return S[locale] || S.en;
+              })()}
+            </p>
+            <AppStoreBadge locale={locale} variant="default" />
           </div>
         </div>
       </section>
@@ -706,19 +980,68 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* FINAL CTA */}
+      {/* FINAL CTA — B2B-first */}
       <section className="cta-final">
         <div className="container">
           <h2 className="cta-title reveal">
-            {t('finalCtaTitle1')} <span className="grad-text">{t('finalCtaTitle2')}</span>
+            {(() => {
+              const T1 = {
+                fr: "Arrêtez de perdre des deals",
+                en: "Stop losing deals",
+                it: "Smetti di perdere deal",
+                de: "Hören Sie auf, Deals zu verlieren",
+                es: "Deja de perder oportunidades",
+                pt: "Pare de perder negócios",
+                pl: "Przestań tracić transakcje"
+              };
+              const T2 = {
+                fr: "à cause d'un suivi commercial défaillant.",
+                en: "due to broken sales follow-up.",
+                it: "a causa di un follow-up commerciale debole.",
+                de: "wegen mangelhaftem Vertriebs-Follow-up.",
+                es: "por un seguimiento comercial deficiente.",
+                pt: "por causa de um seguimento comercial deficiente.",
+                pl: "z powodu słabego follow-upu sprzedażowego."
+              };
+              return <>{T1[locale] || T1.en} <span className="grad-text">{T2[locale] || T2.en}</span></>;
+            })()}
           </h2>
-          <p className="cta-sub reveal">{t('finalCtaSub')}</p>
+          <p className="cta-sub reveal">
+            {(() => {
+              const S = {
+                fr: "Rejoignez les entreprises qui closent plus, plus vite.",
+                en: "Join the companies that close more, faster.",
+                it: "Unisciti alle aziende che chiudono di più, più velocemente.",
+                de: "Schließen Sie sich Unternehmen an, die mehr und schneller abschließen.",
+                es: "Únete a las empresas que cierran más, más rápido.",
+                pt: "Junte-se às empresas que fecham mais, mais rápido.",
+                pl: "Dołącz do firm, które zamykają więcej, szybciej."
+              };
+              return S[locale] || S.en;
+            })()}
+          </p>
           <div className="reveal">
-            <button className="btn-final" onClick={() => navigate('/register')}>
-              {t('finalCtaBtn')} <ArrowRight size={18} />
+            <button className="btn-final" onClick={() => navigate('/business#contact')} data-testid="final-cta-book-demo">
+              {(() => {
+                const B = { fr: 'Réserver une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
+                return B[locale] || B.en;
+              })()}
+              <ArrowRight size={18} />
             </button>
-            <p className="cta-micro">{t('finalCtaMicro')}</p>
-            <AppStoreBadge locale={locale} variant="centered" />
+            <p className="cta-micro">
+              {(() => {
+                const M = {
+                  fr: '30 min · sans engagement · réponse sous 48h',
+                  en: '30 min · no commitment · response in 48h',
+                  it: '30 min · senza impegno · risposta entro 48h',
+                  de: '30 Min · unverbindlich · Antwort in 48h',
+                  es: '30 min · sin compromiso · respuesta en 48h',
+                  pt: '30 min · sem compromisso · resposta em 48h',
+                  pl: '30 min · bez zobowiązań · odpowiedź w 48h'
+                };
+                return M[locale] || M.en;
+              })()}
+            </p>
           </div>
         </div>
       </section>
@@ -927,7 +1250,7 @@ const LandingPage = () => {
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>6. PAYMENT PROCESSING</h3>
               <p>All payments on KOLO are processed via Stripe, a third-party payment provider.</p>
               <p>KOLO does not store or have access to any banking details and does not process payment information directly.</p>
-              <p>Users are encouraged to review Stripe's own legal terms and privacy policies.</p>
+              <p>Users are encouraged to review Stripe&apos;s own legal terms and privacy policies.</p>
               
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0E0B1E', marginTop: '24px', marginBottom: '12px' }}>7. INTERNATIONAL OPERATIONS</h3>
               <p>KOLO operates globally, with a primary focus on professionals located in Europe, United Kingdom, United States, and United Arab Emirates.</p>

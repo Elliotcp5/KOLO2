@@ -16,6 +16,29 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Pivot B2B-first + 3 langues (iter 47 — Feb 2026)
+🚀 **Refonte stratégique landing : B2C → B2B-first** :
+- **HERO refondu** : "Le suivi commercial intelligent pour les entreprises qui vendent." Sub-titre orienté foncières/promoteurs/réseaux d'agents. CTA principal "Réserver une démo" → `/business#contact`
+- **Section Pricing 3 plans SUPPRIMÉE** : remplacée par une card premium "Démo personnalisée 30 min" + "Tarification sur devis selon volume". L'ancien pricing 9.99€/24.99€ public n'existe plus.
+- **Section "Indépendant ?" minimaliste** ajoutée en bas avec CTA App Store conservé (3,99€/mois mentionné)
+- **FAQ refondue en B2B inline** : 5 questions adaptées (KOLO vs CRM existant, délai déploiement 20 commerciaux, ROI première année, sécurité données RGPD, tarification entreprise). En 7 langues.
+- **Final CTA B2B** : "Arrêtez de perdre des deals à cause d'un suivi commercial défaillant." → Réserver démo
+- **Nav** : "Réserver une démo" + "Démo entreprise" (au lieu de "Try for free")
+- **Terme "suivi commercial"** au lieu de "suivi client" sur landing (blog conserve "suivi client" pour le SEO existant)
+
+🌍 **i18n étendue à 7 langues** :
+- Ajout **Polonais (PL), Portugais (PT/BR/AO/MZ/CV), Espagnol (ES/MX/AR/CO/CL/PE/VE/EC/GT/CU/BO/DO/HN/PY/SV/NI/CR/PA/UY/PR)** dans `LocaleContext.js`
+- `SUPPORTED_LOCALES = ['en', 'fr', 'de', 'it', 'es', 'pt', 'pl']`
+- Détection IP automatique : Italie → IT, Pologne → PL, Brésil → PT, Mexique → ES, etc.
+- ✅ **Confirmé** : un italien en Italie voit le site en italien (ipapi.co → cc=IT → locale=it)
+- Tous les nouveaux textes B2B traduits manuellement en 7 langues (hero, FAQ, CTAs, micro-copy)
+
+⏳ **À implémenter au prochain sprint** :
+- Sélecteur date/heure dans le formulaire de contact (booker démo réelle)
+- Backend : champ `demo_datetime` sur le lead B2B
+- Super Admin : afficher la date/heure de démo prévue sur chaque lead B2B
+- Traductions PL/PT/ES des autres sections de la landing (Sans/Avec, Comment ça marche, etc.) — actuellement en fallback EN pour ces langues
+
 ### Sprint Blog SEO (iter 46 — Feb 2026)
 📰 **Système de blog complet pour SEO ultime** :
 - **5 articles de fond** rédigés en 4 langues (FR/EN/IT/DE) — 20 articles au total, contenu à vraie valeur ajoutée (pas de pub) :
