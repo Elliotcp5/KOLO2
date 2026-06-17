@@ -442,23 +442,13 @@ const LandingPage = () => {
         </a>
         
         <div className="nav-actions">
-          <button
-            className="nav-pricing nav-business"
-            onClick={() => navigate('/business#contact')}
-            data-testid="nav-business-link"
-          >
-            {(() => {
-              const T = { fr: 'Réserver une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
-              return T[locale] || T.en;
-            })()}
-          </button>
           <button className="nav-login" onClick={() => navigate('/login')}>
             {t('loginButton')}
           </button>
-          <button className="nav-cta" onClick={() => navigate('/business#contact')}>
+          <button className="nav-cta" onClick={() => navigate('/business#contact')} data-testid="nav-book-demo-btn">
             <span className="cta-full">
               {(() => {
-                const T = { fr: 'Démo entreprise', en: 'Enterprise demo', it: 'Demo aziendale', de: 'Enterprise-Demo', es: 'Demo empresa', pt: 'Demo empresa', pl: 'Demo dla firm' };
+                const T = { fr: 'Booker une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
                 return T[locale] || T.en;
               })()}
             </span>
@@ -478,13 +468,13 @@ const LandingPage = () => {
           <h1>
             {(() => {
               const HERO_TITLE = {
-                fr: { l1: "Le suivi commercial intelligent", l2: "pour les entreprises qui vendent." },
-                en: { l1: "Smart sales follow-up", l2: "for companies that sell." },
-                it: { l1: "Il follow-up commerciale intelligente", l2: "per le aziende che vendono." },
-                de: { l1: "Intelligentes Vertriebs-Follow-up", l2: "für Unternehmen, die verkaufen." },
-                es: { l1: "El seguimiento comercial inteligente", l2: "para empresas que venden." },
-                pt: { l1: "O seguimento comercial inteligente", l2: "para empresas que vendem." },
-                pl: { l1: "Inteligentny follow-up sprzedażowy", l2: "dla firm, które sprzedają." }
+                fr: { l1: "Le suivi commercial intelligent", l2: "pour votre entreprise en croissance." },
+                en: { l1: "Smart sales follow-up", l2: "for your growing company." },
+                it: { l1: "Il follow-up commerciale intelligente", l2: "per la tua azienda in crescita." },
+                de: { l1: "Intelligentes Vertriebs-Follow-up", l2: "für Ihr wachsendes Unternehmen." },
+                es: { l1: "El seguimiento comercial inteligente", l2: "para tu empresa en crecimiento." },
+                pt: { l1: "O seguimento comercial inteligente", l2: "para a sua empresa em crescimento." },
+                pl: { l1: "Inteligentny follow-up sprzedażowy", l2: "dla Twojej rozwijającej się firmy." }
               };
               const h = HERO_TITLE[locale] || HERO_TITLE.en;
               return <>{h.l1} <br/><span className="grad-text">{h.l2}</span></>;
@@ -493,13 +483,13 @@ const LandingPage = () => {
           <p className="hero-sub">
             {(() => {
               const HERO_SUB = {
-                fr: "Foncières, promoteurs, réseaux d'agents : pilotez votre force commerciale avec une IA qui relance, priorise et accélère le closing — sans remplacer votre CRM.",
-                en: "Real-estate funds, developers, agency networks: steer your sales force with an AI that follows up, prioritizes and accelerates closing — without replacing your CRM.",
-                it: "Fondi immobiliari, sviluppatori, reti di agenti: guida la tua forza commerciale con un'IA che fa follow-up, prioritizza e accelera la chiusura — senza sostituire il tuo CRM.",
-                de: "Immobilienfonds, Bauträger, Agenturnetzwerke: Steuern Sie Ihre Vertriebsmannschaft mit einer KI, die nachfasst, priorisiert und Abschlüsse beschleunigt — ohne Ihr CRM zu ersetzen.",
-                es: "Fondos inmobiliarios, promotores, redes de agentes: pilota tu fuerza comercial con una IA que hace follow-up, prioriza y acelera el cierre — sin reemplazar tu CRM.",
-                pt: "Fundos imobiliários, promotores, redes de agentes: pilote a sua força comercial com uma IA que faz follow-up, prioriza e acelera o fecho — sem substituir o seu CRM.",
-                pl: "Fundusze nieruchomości, deweloperzy, sieci agentów: zarządzaj zespołem sprzedaży z AI, które robi follow-up, priorytetyzuje i przyspiesza zamykanie — bez zastępowania CRM."
+                fr: "Foncières, promoteurs, réseaux d'agents : pilotez votre force commerciale avec une IA qui relance, priorise et accélère le closing, sans remplacer votre CRM.",
+                en: "Real-estate funds, developers, agency networks: steer your sales force with an AI that follows up, prioritizes and accelerates closing, without replacing your CRM.",
+                it: "Fondi immobiliari, sviluppatori, reti di agenti: guida la tua forza commerciale con un'IA che fa follow-up, prioritizza e accelera la chiusura, senza sostituire il tuo CRM.",
+                de: "Immobilienfonds, Bauträger, Agenturnetzwerke: Steuern Sie Ihre Vertriebsmannschaft mit einer KI, die nachfasst, priorisiert und Abschlüsse beschleunigt, ohne Ihr CRM zu ersetzen.",
+                es: "Fondos inmobiliarios, promotores, redes de agentes: pilota tu fuerza comercial con una IA que hace follow-up, prioriza y acelera el cierre, sin reemplazar tu CRM.",
+                pt: "Fundos imobiliários, promotores, redes de agentes: pilote a sua força comercial com uma IA que faz follow-up, prioriza e acelera o fecho, sem substituir o seu CRM.",
+                pl: "Fundusze nieruchomości, deweloperzy, sieci agentów: zarządzaj zespołem sprzedaży z AI, które robi follow-up, priorytetyzuje i przyspiesza zamykanie, bez zastępowania CRM."
               };
               return HERO_SUB[locale] || HERO_SUB.en;
             })()}
@@ -512,7 +502,7 @@ const LandingPage = () => {
             >
               {(() => {
                 const BTN = {
-                  fr: 'Réserver une démo',
+                  fr: 'Booker une démo',
                   en: 'Book a demo',
                   it: 'Prenota una demo',
                   de: 'Demo buchen',
@@ -527,13 +517,13 @@ const LandingPage = () => {
             <span className="hero-micro-inline">
               {(() => {
                 const MICRO = {
-                  fr: '30 min · sans engagement · réponse sous 48h',
-                  en: '30 min · no commitment · response in 48h',
-                  it: '30 min · senza impegno · risposta entro 48h',
-                  de: '30 Min · unverbindlich · Antwort in 48h',
-                  es: '30 min · sin compromiso · respuesta en 48h',
-                  pt: '30 min · sem compromisso · resposta em 48h',
-                  pl: '30 min · bez zobowiązań · odpowiedź w 48h'
+                  fr: '30 minutes, réponse sous 48h',
+                  en: '30 minutes, response in 48h',
+                  it: '30 minuti, risposta entro 48h',
+                  de: '30 Minuten, Antwort in 48 Stunden',
+                  es: '30 minutos, respuesta en 48h',
+                  pt: '30 minutos, resposta em 48h',
+                  pl: '30 minut, odpowiedź w 48 godzin'
                 };
                 return MICRO[locale] || MICRO.en;
               })()}
@@ -579,28 +569,40 @@ const LandingPage = () => {
               </div>
               <ul className="compare-list">
                 <li><X size={18} strokeWidth={2.4} /><span>
-                  {locale === 'fr' ? 'Des notes prises à la va-vite qu\'on ne relit jamais.' :
-                   locale === 'de' ? 'Schnell hingeworfene Notizen, die nie wieder gelesen werden.' :
-                   locale === 'it' ? 'Note prese di corsa che non si rileggono mai.' :
-                   'Hasty notes that you never read again.'}
+                  {locale === 'fr' ? "Votre CRM vous dit qui rappeler, mais pas ce que vous lui aviez promis, ni comment renouer la conversation sans paraître artificiel." :
+                   locale === 'de' ? "Ihr CRM sagt Ihnen, wen Sie zurückrufen sollen, aber nicht, was Sie versprochen hatten, noch wie Sie das Gespräch wiederaufnehmen, ohne künstlich zu wirken." :
+                   locale === 'it' ? "Il tuo CRM ti dice chi richiamare, ma non cosa avevi promesso, né come riprendere la conversazione senza sembrare artificiale." :
+                   locale === 'es' ? "Tu CRM te dice a quién llamar, pero no qué le habías prometido, ni cómo retomar la conversación sin parecer artificial." :
+                   locale === 'pt' ? "O seu CRM diz-lhe a quem ligar, mas não o que tinha prometido, nem como retomar a conversa sem parecer artificial." :
+                   locale === 'pl' ? "Twój CRM mówi, do kogo oddzwonić, ale nie co obiecałeś ani jak nawiązać rozmowę bez sztucznego efektu." :
+                   "Your CRM tells you who to call back, but not what you had promised them, nor how to rekindle the conversation naturally."}
                 </span></li>
                 <li><X size={18} strokeWidth={2.4} /><span>
                   {locale === 'fr' ? 'Des clients qui attendent un rappel qui ne vient pas.' :
                    locale === 'de' ? 'Kunden, die auf einen Rückruf warten, der nie kommt.' :
                    locale === 'it' ? 'Clienti che aspettano una richiamata che non arriva.' :
+                   locale === 'es' ? 'Clientes que esperan una llamada que nunca llega.' :
+                   locale === 'pt' ? 'Clientes que esperam um retorno que nunca chega.' :
+                   locale === 'pl' ? 'Klienci, którzy czekają na telefon, który nigdy nie przychodzi.' :
                    'Clients waiting for a call back that never comes.'}
                 </span></li>
                 <li><X size={18} strokeWidth={2.4} /><span>
                   {locale === 'fr' ? 'Des relances oubliées.' :
                    locale === 'de' ? 'Vergessene Nachfassaktionen.' :
                    locale === 'it' ? 'Follow-up dimenticati.' :
+                   locale === 'es' ? 'Follow-ups olvidados.' :
+                   locale === 'pt' ? 'Follow-ups esquecidos.' :
+                   locale === 'pl' ? 'Zapomniane follow-upy.' :
                    'Forgotten follow-ups.'}
                 </span></li>
                 <li><X size={18} strokeWidth={2.4} /><span>
-                  {locale === 'fr' ? 'Des milliers d\'euros de chiffre d\'affaires perdus.' :
-                   locale === 'de' ? 'Tausende Euro an verlorenen Umsätzen.' :
-                   locale === 'it' ? 'Migliaia di euro di fatturato persi.' :
-                   'Thousands of euros in lost revenue.'}
+                  {locale === 'fr' ? "Des millions d'euros de chiffre d'affaires perdus." :
+                   locale === 'de' ? 'Millionen Euro an verlorenen Umsätzen.' :
+                   locale === 'it' ? 'Milioni di euro di fatturato persi.' :
+                   locale === 'es' ? 'Millones de euros de facturación perdidos.' :
+                   locale === 'pt' ? 'Milhões de euros de faturação perdidos.' :
+                   locale === 'pl' ? 'Miliony euro utraconego przychodu.' :
+                   'Millions of euros in lost revenue.'}
                 </span></li>
               </ul>
             </div>
@@ -642,76 +644,21 @@ const LandingPage = () => {
           </div>
 
           <div className="centered" style={{ marginTop: '48px', marginBottom: 0 }}>
-            <button className="hero-btn-main" onClick={() => navigate('/register')} data-testid="why-cta-btn">
-              {t('tryForFree')} <ArrowRight size={18} />
+            <button className="hero-btn-main" onClick={() => navigate('/business#contact')} data-testid="why-cta-btn">
+              {(() => {
+                const BTN = {
+                  fr: 'Booker une démo',
+                  en: 'Book a demo',
+                  it: 'Prenota una demo',
+                  de: 'Demo buchen',
+                  es: 'Reservar una demo',
+                  pt: 'Reservar uma demo',
+                  pl: 'Zarezerwuj demo'
+                };
+                return BTN[locale] || BTN.en;
+              })()}
+              <ArrowRight size={18} />
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS — 3 steps (leedflow-style) */}
-      <section className="section section-alt">
-        <div className="container">
-          <div className="centered reveal">
-            <div className="section-tag">
-              {locale === 'fr' ? 'Comment ça marche ?' :
-               locale === 'de' ? 'Wie funktioniert es?' :
-               locale === 'it' ? 'Come funziona?' :
-               'How it works'}
-            </div>
-            <h2 className="section-title">
-              {locale === 'fr' ? 'Activez KOLO dès maintenant.' :
-               locale === 'de' ? 'Aktivieren Sie KOLO jetzt.' :
-               locale === 'it' ? 'Attiva KOLO subito.' :
-               'Activate KOLO right now.'}
-            </h2>
-          </div>
-          <div className="steps-grid">
-            <div className="step">
-              <div className="step-num">01.</div>
-              <div className="step-title">
-                {locale === 'fr' ? 'Créez votre compte' :
-                 locale === 'de' ? 'Erstellen Sie Ihr Konto' :
-                 locale === 'it' ? 'Crea il tuo account' :
-                 'Create your account'}
-              </div>
-              <div className="step-body">
-                {locale === 'fr' ? 'Inscription en 2 minutes. 14 jours d\'essai gratuits, sans carte.' :
-                 locale === 'de' ? 'Anmeldung in 2 Minuten. 14 Tage kostenlose Testversion, ohne Kreditkarte.' :
-                 locale === 'it' ? 'Registrazione in 2 minuti. 14 giorni di prova gratuita, senza carta.' :
-                 'Sign up in 2 minutes. 14-day free trial, no credit card.'}
-              </div>
-            </div>
-            <div className="step">
-              <div className="step-num">02.</div>
-              <div className="step-title">
-                {locale === 'fr' ? 'Ajoutez vos prospects' :
-                 locale === 'de' ? 'Fügen Sie Ihre Interessenten hinzu' :
-                 locale === 'it' ? 'Aggiungi i tuoi potenziali clienti' :
-                 'Add your prospects'}
-              </div>
-              <div className="step-body">
-                {locale === 'fr' ? 'Quelques infos par client. KOLO comprend leur situation et leur projet.' :
-                 locale === 'de' ? 'Ein paar Infos pro Kunde. KOLO versteht ihre Situation und ihr Projekt.' :
-                 locale === 'it' ? 'Poche informazioni per cliente. KOLO comprende la loro situazione e il loro progetto.' :
-                 'A few details per client. KOLO understands their situation and their project.'}
-              </div>
-            </div>
-            <div className="step">
-              <div className="step-num">03.</div>
-              <div className="step-title">
-                {locale === 'fr' ? 'KOLO s\'occupe du reste' :
-                 locale === 'de' ? 'KOLO kümmert sich um den Rest' :
-                 locale === 'it' ? 'KOLO si occupa del resto' :
-                 'KOLO handles the rest'}
-              </div>
-              <div className="step-body">
-                {locale === 'fr' ? 'Relances suggérées, messages prêts, priorités du jour. Comme un assistant qui ne dort jamais.' :
-                 locale === 'de' ? 'Vorgeschlagene Erinnerungen, fertige Nachrichten, tägliche Prioritäten. Wie ein Assistent, der nie schläft.' :
-                 locale === 'it' ? 'Follow-up suggeriti, messaggi pronti, priorità del giorno. Come un assistente che non dorme mai.' :
-                 'Suggested follow-ups, ready-made messages, daily priorities. Like an assistant who never sleeps.'}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -809,145 +756,48 @@ const LandingPage = () => {
             <p className="section-body" style={{ maxWidth: 620, margin: '14px auto 0' }}>
               {(() => {
                 const SUB = {
-                  fr: "Tarification calculée selon le nombre de commerciaux, vos intégrations CRM existantes et les options Marque Blanche. Réservez 30 min avec notre équipe — nous établissons une proposition sous 48h.",
-                  en: "Pricing is calculated based on number of reps, your existing CRM integrations and White-Label options. Book 30 min with our team — we'll send a tailored proposal within 48 hours.",
-                  it: "Tariffe calcolate in base al numero di commerciali, alle integrazioni CRM esistenti e alle opzioni White-Label. Prenota 30 min con il nostro team — invieremo una proposta entro 48 ore.",
-                  de: "Preisgestaltung basierend auf Anzahl der Vertriebler, bestehenden CRM-Integrationen und White-Label-Optionen. Buchen Sie 30 Min mit unserem Team — Angebot innerhalb von 48 Stunden.",
-                  es: "Precio calculado según el número de comerciales, tus integraciones CRM existentes y las opciones White-Label. Reserva 30 min con nuestro equipo — propuesta personalizada en 48 horas.",
-                  pt: "Preço calculado de acordo com o número de comerciais, integrações de CRM existentes e opções White-Label. Reserve 30 min com a nossa equipa — proposta personalizada em 48 horas.",
-                  pl: "Cena obliczana na podstawie liczby handlowców, istniejących integracji CRM i opcji White-Label. Zarezerwuj 30 min z naszym zespołem — dopasowana propozycja w ciągu 48 godzin."
+                  fr: "Tarification calculée selon le nombre de commerciaux, vos intégrations CRM existantes et les options Marque Blanche. Réservez 30 minutes avec notre équipe, nous établissons une proposition sous 48h.",
+                  en: "Pricing is calculated based on number of reps, your existing CRM integrations and White-Label options. Book 30 minutes with our team, we send a tailored proposal within 48 hours.",
+                  it: "Tariffe calcolate in base al numero di commerciali, alle integrazioni CRM esistenti e alle opzioni White-Label. Prenota 30 minuti con il nostro team, invieremo una proposta entro 48 ore.",
+                  de: "Preisgestaltung basierend auf Anzahl der Vertriebler, bestehenden CRM-Integrationen und White-Label-Optionen. Buchen Sie 30 Minuten mit unserem Team, Angebot innerhalb von 48 Stunden.",
+                  es: "Precio calculado según el número de comerciales, tus integraciones CRM existentes y las opciones White-Label. Reserva 30 minutos con nuestro equipo, propuesta personalizada en 48 horas.",
+                  pt: "Preço calculado de acordo com o número de comerciais, integrações de CRM existentes e opções White-Label. Reserve 30 minutos com a nossa equipa, proposta personalizada em 48 horas.",
+                  pl: "Cena obliczana na podstawie liczby handlowców, istniejących integracji CRM i opcji White-Label. Zarezerwuj 30 minut z naszym zespołem, dopasowana propozycja w ciągu 48 godzin."
                 };
                 return SUB[locale] || SUB.en;
               })()}
             </p>
           </div>
 
-          {/* Single premium CTA card */}
-          <div className="biz-demo-card reveal" style={{
-            maxWidth: 720,
-            margin: '48px auto 0',
-            padding: '52px 44px',
-            borderRadius: 24,
-            background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
-            color: '#fff',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 30px 60px -20px rgba(15,23,42,0.4)'
-          }}>
-            <div style={{
-              position: 'absolute', top: '-100px', right: '-80px', width: 260, height: 260,
-              background: 'radial-gradient(circle, rgba(203,108,230,0.35) 0%, transparent 70%)', pointerEvents: 'none'
-            }} />
-            <div style={{
-              position: 'absolute', bottom: '-120px', left: '-60px', width: 280, height: 280,
-              background: 'radial-gradient(circle, rgba(0,74,173,0.35) 0%, transparent 70%)', pointerEvents: 'none'
-            }} />
-            <div style={{ position: 'relative', fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#A5B4FC', marginBottom: 14 }}>
-              {(() => {
-                const E = { fr: 'Démo personnalisée', en: 'Personalized demo', it: 'Demo personalizzata', de: 'Personalisierte Demo', es: 'Demo personalizada', pt: 'Demo personalizada', pl: 'Spersonalizowane demo' };
-                return E[locale] || E.en;
-              })()}
-            </div>
-            <div style={{ position: 'relative', fontFamily: 'Fraunces, Georgia, serif', fontSize: 32, fontWeight: 600, lineHeight: 1.18, marginBottom: 14 }}>
-              {(() => {
-                const T = {
-                  fr: '30 minutes pour voir KOLO sur votre cas concret.',
-                  en: '30 minutes to see KOLO on your real case.',
-                  it: '30 minuti per vedere KOLO sul tuo caso reale.',
-                  de: '30 Minuten, um KOLO an Ihrem konkreten Fall zu sehen.',
-                  es: '30 minutos para ver KOLO en tu caso real.',
-                  pt: '30 minutos para ver o KOLO no seu caso real.',
-                  pl: '30 minut, aby zobaczyć KOLO na Twoim konkretnym przypadku.'
-                };
-                return T[locale] || T.en;
-              })()}
-            </div>
-            <p style={{ position: 'relative', fontSize: 15.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.78)', margin: '0 auto 28px', maxWidth: 520 }}>
-              {(() => {
-                const S = {
-                  fr: "Apportez vos vrais prospects, vos vrais blocages : on vous montre comment KOLO les débloque. Ensuite, devis sur mesure sous 48h.",
-                  en: "Bring your real prospects, real blockers: we'll show you how KOLO unblocks them. Tailored quote within 48 hours.",
-                  it: "Porta i tuoi veri prospect, i tuoi veri blocchi: ti mostriamo come KOLO li sblocca. Preventivo su misura entro 48 ore.",
-                  de: "Bringen Sie Ihre echten Prospects und Blocker mit: Wir zeigen Ihnen, wie KOLO sie löst. Maßgeschneidertes Angebot innerhalb von 48 Stunden.",
-                  es: "Trae tus prospects reales, tus bloqueos reales: te mostramos cómo KOLO los desbloquea. Presupuesto personalizado en 48 horas.",
-                  pt: "Traga os seus prospects reais, os seus bloqueios reais: mostramos como o KOLO os desbloqueia. Orçamento personalizado em 48 horas.",
-                  pl: "Przynieś prawdziwych prospektów, prawdziwe blokady: pokażemy, jak KOLO je odblokowuje. Spersonalizowana wycena w 48 godzin."
-                };
-                return S[locale] || S.en;
-              })()}
-            </p>
+          {/* CTA principal — bouton standard du site */}
+          <div className="centered reveal" style={{ marginTop: '40px' }}>
             <button
+              className="hero-btn-main"
               onClick={() => navigate('/business#contact')}
               data-testid="pricing-book-demo-btn"
-              style={{
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '14px 28px',
-                background: '#fff',
-                color: '#0F172A',
-                border: 'none',
-                borderRadius: 999,
-                fontSize: 15,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 14px 30px -10px rgba(0,0,0,0.5)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               {(() => {
-                const B = { fr: 'Réserver une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
+                const B = { fr: 'Booker une démo', en: 'Book a demo', it: 'Prenota una demo', de: 'Demo buchen', es: 'Reservar una demo', pt: 'Reservar uma demo', pl: 'Zarezerwuj demo' };
                 return B[locale] || B.en;
               })()}
-              <ArrowRight size={16} />
+              <ArrowRight size={18} />
             </button>
           </div>
 
-          {/* Independent professional section — minimalist, App Store only */}
-          <div className="indie-callout reveal" style={{
-            maxWidth: 720,
-            margin: '64px auto 0',
-            padding: '32px 32px',
-            borderRadius: 18,
-            border: '1px solid rgba(15,23,42,0.08)',
-            background: 'rgba(250,250,247,0.6)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94A3B8', marginBottom: 10 }}>
-              {(() => {
-                const E = { fr: 'Indépendant ?', en: 'Solo professional?', it: 'Indipendente?', de: 'Selbstständig?', es: '¿Independiente?', pt: 'Independente?', pl: 'Niezależny?' };
-                return E[locale] || E.en;
-              })()}
-            </div>
-            <h3 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 600, color: '#0F172A', margin: '0 0 10px' }}>
+          {/* Independent professional — discret, en cohérence avec la landing */}
+          <div className="centered reveal" style={{ marginTop: '72px', paddingTop: '36px', borderTop: '1px solid rgba(15,23,42,0.08)' }}>
+            <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 14px', lineHeight: 1.55 }}>
               {(() => {
                 const T = {
-                  fr: "KOLO existe aussi en app iOS, pour vous.",
-                  en: "KOLO is also an iOS app, just for you.",
-                  it: "KOLO esiste anche come app iOS, per te.",
-                  de: "KOLO gibt es auch als iOS-App, für Sie.",
-                  es: "KOLO también existe como app iOS, para ti.",
-                  pt: "O KOLO também existe como app iOS, para si.",
-                  pl: "KOLO istnieje także jako aplikacja iOS, dla Ciebie."
+                  fr: "Indépendant ? KOLO existe aussi en application iOS, à partir de 9,99€/mois.",
+                  en: "Solo professional? KOLO is also available as an iOS app, from €9.99/month.",
+                  it: "Indipendente? KOLO è disponibile anche come app iOS, da 9,99€/mese.",
+                  de: "Selbstständig? KOLO ist auch als iOS-App verfügbar, ab 9,99€/Monat.",
+                  es: "¿Independiente? KOLO también está disponible como app iOS, desde 9,99€/mes.",
+                  pt: "Independente? O KOLO também está disponível como aplicação iOS, a partir de 9,99€/mês.",
+                  pl: "Niezależny? KOLO jest również dostępne jako aplikacja iOS, od 9,99€/miesiąc."
                 };
                 return T[locale] || T.en;
-              })()}
-            </h3>
-            <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 8px', lineHeight: 1.5 }}>
-              {(() => {
-                const S = {
-                  fr: "Toutes les fonctionnalités KOLO, dans votre poche. À partir de 3,99€/mois.",
-                  en: "All KOLO features, in your pocket. From €3.99/month.",
-                  it: "Tutte le funzionalità KOLO, in tasca. Da 3,99€/mese.",
-                  de: "Alle KOLO-Funktionen, in Ihrer Tasche. Ab 3,99€/Monat.",
-                  es: "Todas las funciones KOLO, en tu bolsillo. Desde 3,99€/mes.",
-                  pt: "Todas as funcionalidades KOLO, no seu bolso. A partir de 3,99€/mês.",
-                  pl: "Wszystkie funkcje KOLO, w Twojej kieszeni. Od 3,99€/miesiąc."
-                };
-                return S[locale] || S.en;
               })()}
             </p>
             <AppStoreBadge locale={locale} variant="default" />
