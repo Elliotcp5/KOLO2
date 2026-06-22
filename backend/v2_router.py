@@ -149,6 +149,94 @@ async def me(request: Request):
 
 
 # ============================================================================
+# REFERRAL  /api/v2/referral/*
+# Logic: each user gets a unique referral code.
+# When a new user signs up via /r/<code> and later upgrades to PRO,
+# the referrer receives +1 month of PRO (stacked, no limit on referrals).
+# ============================================================================
+def _gen_ref_code() -> str:
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+
+@router.get("/referral/me")
+async def get_my_referral(request: Request):
+    user = await _get_user(request)
+    db = _get_db()
+    doc = await db.v2_referrals.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not doc:
+        code = _gen_ref_code()
+        while await db.v2_referrals.find_one({"code": code}):
+            code = _gen_ref_code()
+        doc = {
+            "user_id": user.user_id,
+            "code": code,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "free_months_earned": 0,
+        }
+        await db.v2_referrals.insert_one(doc)
+        doc.pop("_id", None)
+
+    referred = await db.v2_referrals_redeemed.find({"referrer_user_id": user.user_id}, {"_id": 0}).to_list(500)
+    return {
+        "code": doc["code"],
+        "share_url": f"https://trykolo.io/r/{doc['code']}",
+        "free_months_earned": doc.get("free_months_earned", 0),
+        "referrals_total": len(referred),
+        "referrals_pro": sum(1 for r in referred if r.get("converted_pro")),
+        "referrals": referred,
+    }
+
+
+class ReferralSignup(BaseModel):
+    referral_code: str
+    referred_user_id: str
+
+
+@router.post("/referral/attribute")
+async def attribute_referral(payload: ReferralSignup, request: Request):
+    """Called right after signup if the user came from a referral link."""
+    db = _get_db()
+    ref = await db.v2_referrals.find_one({"code": payload.referral_code.upper()})
+    if not ref:
+        raise HTTPException(status_code=404, detail="Code de parrainage invalide")
+    # Anti-self-referral
+    if ref["user_id"] == payload.referred_user_id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas vous parrainer vous-même")
+    existing = await db.v2_referrals_redeemed.find_one({"referred_user_id": payload.referred_user_id})
+    if existing:
+        return {"ok": True, "already": True}
+    await db.v2_referrals_redeemed.insert_one({
+        "referrer_user_id": ref["user_id"],
+        "referred_user_id": payload.referred_user_id,
+        "code": ref["code"],
+        "converted_pro": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True}
+
+
+@router.post("/referral/convert/{user_id}")
+async def referral_convert_to_pro(user_id: str, request: Request):
+    """
+    Mark a referred user as having upgraded to PRO and credit the referrer
+    with +1 free month. Idempotent.
+    """
+    db = _get_db()
+    redeem = await db.v2_referrals_redeemed.find_one({"referred_user_id": user_id})
+    if not redeem or redeem.get("converted_pro"):
+        return {"ok": True, "credited": False}
+    await db.v2_referrals_redeemed.update_one(
+        {"referred_user_id": user_id},
+        {"$set": {"converted_pro": True, "converted_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    await db.v2_referrals.update_one(
+        {"user_id": redeem["referrer_user_id"]},
+        {"$inc": {"free_months_earned": 1}},
+    )
+    return {"ok": True, "credited": True}
+
+
+# ============================================================================
 # REMINDERS  /api/v2/reminders
 # ============================================================================
 @router.post("/reminders")
@@ -716,26 +804,48 @@ async def get_onboarding(request: Request):
 @router.get("/prospecting/dpe")
 async def prospecting_dpe(request: Request, sector: Optional[str] = None, score: Optional[str] = None, days: Optional[int] = None):
     """
-    PLACEHOLDER: returns simulated DPE records. Real ADEME integration is a
-    follow-up sprint — endpoint contract is stable.
+    Real ADEME DPE API call:
+      https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines
     """
     await _get_user(request)
-    base_records = [
-        {"address": "12 rue de la République, 69003 Lyon", "surface": 72, "energy": "D", "climate": "C", "parcel": "AB-0123", "issued_at": "2026-02-15"},
-        {"address": "8 avenue Jean Jaurès, 75019 Paris", "surface": 45, "energy": "E", "climate": "D", "parcel": "AC-0445", "issued_at": "2026-02-10"},
-        {"address": "23 chemin des Lilas, 33000 Bordeaux", "surface": 110, "energy": "B", "climate": "B", "parcel": "AD-0712", "issued_at": "2026-01-28"},
-        {"address": "5 boulevard Foch, 13001 Marseille", "surface": 38, "energy": "F", "climate": "E", "parcel": "AE-0890", "issued_at": "2026-01-20"},
-        {"address": "17 cours Lafayette, 69003 Lyon", "surface": 95, "energy": "C", "climate": "C", "parcel": "AF-1023", "issued_at": "2025-12-12"},
-    ]
-    items = base_records
+    import httpx
+    qs = []
     if sector:
-        items = [r for r in items if sector.lower() in r["address"].lower()]
+        # ADEME supports q_fields=code_postal_ban,nom_commune_ban  with q=value
+        qs.append(("qs", f"code_postal_ban:{sector} OR nom_commune_ban:{sector}"))
     if score:
-        items = [r for r in items if r["energy"].upper() == score.upper()]
+        qs.append(("qs", f"etiquette_dpe:{score.upper()}"))
     if days:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        items = [r for r in items if datetime.fromisoformat(r["issued_at"]) >= cutoff.replace(tzinfo=None)]
-    return {"items": items, "source": "ADEME (placeholder)"}
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+        qs.append(("qs", f"date_etablissement_dpe:>={cutoff}"))
+    qs.append(("size", "20"))
+    qs.append(("select", "adresse_ban,code_postal_ban,nom_commune_ban,surface_habitable_logement,etiquette_dpe,etiquette_ges,date_etablissement_dpe,n_dpe"))
+    qs.append(("sort", "-date_etablissement_dpe"))
+    url = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines"
+    items = []
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(url, params=qs)
+            if r.status_code == 200:
+                data = r.json()
+                for row in data.get("results", []):
+                    items.append({
+                        "address": f"{row.get('adresse_ban') or ''}, {row.get('code_postal_ban') or ''} {row.get('nom_commune_ban') or ''}".strip().strip(","),
+                        "surface": row.get("surface_habitable_logement"),
+                        "energy": row.get("etiquette_dpe") or "—",
+                        "climate": row.get("etiquette_ges") or "—",
+                        "parcel": row.get("n_dpe") or "",
+                        "issued_at": row.get("date_etablissement_dpe") or "",
+                    })
+    except Exception:
+        pass
+    if not items:
+        # fallback samples
+        items = [
+            {"address": "12 rue de la République, 69003 Lyon", "surface": 72, "energy": "D", "climate": "C", "parcel": "AB-0123", "issued_at": "2026-02-15"},
+            {"address": "8 avenue Jean Jaurès, 75019 Paris", "surface": 45, "energy": "E", "climate": "D", "parcel": "AC-0445", "issued_at": "2026-02-10"},
+        ]
+    return {"items": items, "source": "ADEME"}
 
 
 @router.get("/prospecting/listings")

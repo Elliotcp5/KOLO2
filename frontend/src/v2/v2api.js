@@ -100,6 +100,9 @@ export const v2api = {
   getConversation: (id) =>
     fetch(`${API}/api/v2/ai/conversations/${id}`, { headers: headers() }).then(handle),
 
+  // Referral
+  myReferral: () => fetch(`${API}/api/v2/referral/me`, { headers: headers() }).then(handle),
+
   // Prospecting
   dpe: (params = {}) => {
     const q = new URLSearchParams(params).toString();

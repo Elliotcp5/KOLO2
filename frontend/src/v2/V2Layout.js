@@ -6,22 +6,15 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu, Home as HomeIcon, FolderOpen, Users, Calendar,
-  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic
+  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles
 } from 'lucide-react';
 import v2api from './v2api';
 
-/* ---------- Logo (new identity, premium minimal) ---------- */
-export const V2Logo = ({ size = 28, ink = '#0B0B0F' }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="64" height="64" rx="16" fill={ink} />
-    <path
-      d="M22 16v32M22 32l18-16M22 32l18 16"
-      stroke="#fff"
-      strokeWidth="6.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
+/* ---------- Logo (wordmark KOLO — League Spartan) ---------- */
+export const V2Logo = ({ size = 22, accent = false }) => (
+  <span className={`v2-wordmark ${size > 32 ? (size > 48 ? 'xl' : 'lg') : ''}`} style={{ fontSize: size }}>
+    {accent ? <>K<span className="accent">O</span>LO</> : 'KOLO'}
+  </span>
 );
 
 /* ---------- Loading screen ---------- */
@@ -45,7 +38,7 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
       <div className="v2-drawer-backdrop" onClick={onClose} data-testid="v2-drawer-backdrop" />
       <aside className="v2-drawer" data-testid="v2-drawer">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <V2Logo size={36} />
+          <V2Logo size={26} accent />
           <button onClick={onClose} className="v2-icon-btn" aria-label="Close">
             <X size={18} />
           </button>
@@ -73,18 +66,25 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
 
         <div className="v2-drawer-section">Fonctionnalités</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/prospecting'); }} data-testid="drawer-prospecting">
-          <SearchIcon size={18} /> Prospection
+          <SearchIcon size={18} /> <span>Pige & Prospection</span>
+          <span className="arrow">›</span>
+        </button>
+        <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/referral'); }} data-testid="drawer-referral">
+          <Sparkles size={18} /> <span>Parrainage</span>
+          <span className="arrow">›</span>
         </button>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/guide'); }} data-testid="drawer-guide">
-          <BookOpen size={18} /> Guide KOLO
+          <BookOpen size={18} /> <span>Guide KOLO</span>
+          <span className="arrow">›</span>
         </button>
 
         <div className="v2-drawer-section">Compte</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/settings'); }} data-testid="drawer-profile">
-          <Settings size={18} /> Profil & paramètres
+          <Settings size={18} /> <span>Profil & paramètres</span>
+          <span className="arrow">›</span>
         </button>
         <button className="v2-drawer-item" onClick={onLogout} data-testid="drawer-logout">
-          <LogOut size={18} /> Se déconnecter
+          <LogOut size={18} /> <span>Se déconnecter</span>
         </button>
 
         <div className="v2-drawer-section" style={{ marginTop: 32 }}>&nbsp;</div>
@@ -136,7 +136,7 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
           <Menu size={20} strokeWidth={1.8} />
         </button>
         <div className="v2-header-brand">
-          <span className="dot" /> KOLO
+          <V2Logo size={22} accent />
         </div>
         <div style={{ width: 38 }} />
       </header>

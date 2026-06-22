@@ -148,8 +148,62 @@ export const V2GuidePage = () => {
 };
 
 // ============================================================
-// SETTINGS (profile + subscription + delete)
+// REFERRAL — parrainage avec lien unique
 // ============================================================
+export const V2ReferralPage = () => {
+  const user = useAuthedUser();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { v2api.myReferral().then(setData).catch(() => {}); }, []);
+  if (!user) return null;
+  const copy = () => {
+    if (!data) return;
+    navigator.clipboard.writeText(data.share_url);
+    setCopied(true); setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <V2Layout user={user}>
+      <button className="v2-icon-btn" onClick={() => navigate(-1)} style={{ marginBottom: 12 }}><ChevronLeft size={16} /></button>
+      <h1 className="v2-hello" style={{ fontSize: 26 }}>Parrainage</h1>
+      <p className="v2-card-body" style={{ marginTop: 4 }}>Chaque ami qui passe Pro grâce à ton lien te fait gagner 1 mois Pro offert. Sans limite.</p>
+
+      <div className="v2-referral-card" style={{ marginTop: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: '#A5B4FC' }}>Ton lien unique</div>
+        <div className="v2-referral-link" data-testid="referral-link">{data?.share_url || 'Chargement…'}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="v2-btn ai-btn full" onClick={copy} disabled={!data} data-testid="referral-copy">
+            {copied ? '✓ Copié' : 'Copier le lien'}
+          </button>
+          <button className="v2-btn secondary" onClick={() => navigator.share && navigator.share({ title: 'KOLO', text: 'Découvre KOLO, le copilote IA des agents immo', url: data?.share_url })} aria-label="Share">
+            Partager
+          </button>
+        </div>
+      </div>
+
+      <div className="v2-grid-2" style={{ marginTop: 16 }}>
+        <div className="v2-stat-card">
+          <div className="v2-stat-num">{data?.referrals_total ?? 0}</div>
+          <div className="v2-stat-label">Filleuls inscrits</div>
+        </div>
+        <div className="v2-stat-card">
+          <div className="v2-stat-num">{data?.free_months_earned ?? 0}</div>
+          <div className="v2-stat-label">Mois Pro gagnés</div>
+        </div>
+      </div>
+
+      <div className="v2-card" style={{ marginTop: 16 }}>
+        <div className="v2-tag">Comment ça marche</div>
+        <ul style={{ paddingLeft: 18, marginTop: 10, fontSize: 14, color: 'var(--v2-muted)', lineHeight: 1.6 }}>
+          <li>Partage ton lien unique à un confrère agent immo</li>
+          <li>Il s'inscrit sur KOLO via ton lien</li>
+          <li>Quand il passe Pro (29,99€/mois), tu reçois +1 mois Pro offert sur ton compte</li>
+          <li>Aucune limite : parraine 1, 10 ou 100 personnes</li>
+        </ul>
+      </div>
+    </V2Layout>
+  );
+};
 export const V2SettingsPage = () => {
   const user = useAuthedUser();
   const navigate = useNavigate();

@@ -41,7 +41,7 @@ import V2HomePage from "./v2/pages/V2HomePage";
 import { V2CasesPage, V2ContactsPage, V2AgendaPage } from "./v2/pages/V2OtherPages";
 import V2AuthPage from "./v2/pages/V2AuthPage";
 import V2OnboardingPage from "./v2/pages/V2OnboardingPage";
-import { V2ProspectingPage, V2GuidePage, V2SettingsPage } from "./v2/pages/V2Extras";
+import { V2ProspectingPage, V2GuidePage, V2SettingsPage, V2ReferralPage } from "./v2/pages/V2Extras";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -141,6 +141,7 @@ const AppRouter = () => {
       <Route path="/app-v2/signup" element={<V2AuthPage mode="signup" />} />
       <Route path="/app-v2/onboarding" element={<V2OnboardingPage />} />
       <Route path="/app-v2/prospecting" element={<V2ProspectingPage />} />
+      <Route path="/app-v2/referral" element={<V2ReferralPage />} />
       <Route path="/app-v2/guide" element={<V2GuidePage />} />
       <Route path="/app-v2/settings" element={<V2SettingsPage />} />
       <Route path="/app-v2/settings/subscription" element={<V2SettingsPage />} />
