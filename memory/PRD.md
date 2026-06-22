@@ -16,6 +16,15 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Google Sign-In V2 + Push V2 + Corrections copy/tarif (iter 50 — Feb 2026)
+🎯 **Réponse à la directive user "Fais P1 Google, Push hyper important, pas Stripe (paiement IAP)"** :
+- ✅ **Google Sign-In V2** : le bouton "Continuer avec Google" sur /app-v2/login et /app-v2/signup déclenche désormais le vrai flow OAuth (réutilise l'infra V1 `/api/auth/google/client-id` + `/api/auth/google/exchange`). Un sessionStorage flag `kolo_oauth_target=v2` est posé avant redirect → `GoogleAuthCallback.js` détecte la cible V2, stocke le token dans `kolo_v2_session`, attribue automatiquement le referral_code en attente, vérifie l'onboarding V2 (`GET /api/v2/onboarding`) et redirige vers `/app-v2/onboarding` (nouveau) ou `/app-v2` (existant). 100% testé via testing agent.
+- ✅ **Notifications Push V2** : composant inline `V2NotificationPrompt` sur la home V2 (gradient violet→rose, ne s'affiche que si permission='default' et pas dismiss) avec bouton "Activer les notifications" + dismiss persistant (`kolo_v2_push_prompt_dismissed`). Section dédiée dans `/app-v2/settings` avec bouton "Activer" + "Test notif". Endpoint `POST /api/v2/notifications/test-push` (auth) → 404 si pas de subscription, `sent:true` si OK. **Push instantané** automatique à la création d'un rappel V2 du jour (`POST /api/v2/reminders` avec `date=today` → trigger best-effort).
+- ✅ **Scheduler V2-aware** : `notification_scheduler.send_daily_reminders()` agrège désormais **V1 tasks ET V2 reminders** (collection `v2_reminders`, status=pending, date=today). target_url='/app-v2' si au moins 1 reminder V2 sinon '/app'.
+- ✅ **pushNotifications.js** lit le token depuis `kolo_token || kolo_v2_session || session_token` → fonctionne pour les users V1, V2 et legacy.
+- ✅ **Pas de Stripe sur V2** (paiement = IAP Apple iOS + Google Play Billing Android) — décision validée par l'utilisateur. Tarif Pro affiché **24,99€/mois** partout (sidebar V2Layout, V2ReferralPage, V2 perks).
+- ✅ **Copy parrainage corrigé** : "1 mois Pro offert au PARRAIN UNIQUEMENT (si le filleul passe Pro)" sur landing /r/:code + banner signup. Plus aucune mention "+1 mois pour vous deux".
+
 ### Sprint Audit V2 + Parrainage public + IA contextuelle + Pige RapidAPI (iter 49 — Feb 2026)
 🎯 **Audit V2 + finalisation last working item** (réponse à "tu es sûr que tu as bien tout fait ?") :
 - ✅ **Audit V2 testing agent** : 16/16 backend + ~95% frontend OK — la V2 n'est PAS une façade vide. Onboarding 9 slides complet, ADEME DPE réel, IA Claude Sonnet 4.5, CRUD complet.
