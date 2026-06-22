@@ -16,6 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Refonte intégrale webapp v2 (iter 48 — Feb 2026)
+🚀 **Refonte complète sous `/app-v2`** (iOS-first, mobile, ne casse rien) :
+- **Backend** : `/app/backend/v2_router.py` monté sous `/api/v2/*`. Nouvelles collections MongoDB (v2_reminders, v2_notes, v2_contacts, v2_cases, v2_ai_messages, v2_email_codes, v2_onboarding). Endpoints : me, dashboard, reminders/notes/contacts/cases CRUD, ai/chat + daily-tip + conversations, auth email-code, onboarding, prospecting DPE & listings.
+- **IA Claude Sonnet 4.5** via EMERGENT_LLM_KEY (emergentintegrations) pour conseil du jour personnalisé + chat copilote.
+- **Auth email-code** (code 6 chiffres) + Resend, dev_code exposé en preview pour test.
+- **Frontend** : design system `/app/frontend/src/styles/v2.css` (fond clair, gradients subtils, typo SF Pro, bottom-sheet modals iOS, safe-area insets). Nouveau logo SVG. Layout = Header burger + Sidebar drawer + Bottom nav 4 onglets.
+- **4 pages principales** : Accueil (Hero + Conseil du jour IA + Rappels + Notes + Dossiers récents + FAB micro), Dossiers (filtres + search + add vendeur/acquéreur + détail), Contacts (annuaire + add + actions tel/mail), Agenda (vue semaine + timeline 7h-23h + add rappel).
+- **3 pages extras** : Prospection DPE/Annonces (placeholder data réaliste), Guide KOLO (5 tips métier), Settings (profil + abonnement + suppression).
+- **Onboarding 9 slides** : privacy → rôle → qualification → identité → tel → secteurs → CRM → plateformes → slides éducatives.
+- **6 modals** : AddNote (vocal Web Speech API + écrit), AddReminder, AddCase, AddContact, CaseDetail (Suivi vendeur/acheteur), AIChat conversationnel.
+- **Routes** : /app-v2, /app-v2/dossiers, /app-v2/contacts, /app-v2/agenda, /app-v2/login, /app-v2/signup, /app-v2/onboarding, /app-v2/prospecting, /app-v2/guide, /app-v2/settings.
+- **Testing** : flow complet signup → code → onboarding → home → switch onglets validé visuellement (screenshots).
+- **Placeholders/MOCKÉ** : DPE ADEME + Annonces multi-portails (données mock réalistes), Google Sign-In bouton alert (à brancher), Gmail/Outlook dans CaseDetail, mails rétention auto. Apple Sign-In supprimé.
+
 ### Sprint Pivot B2B-first + 3 langues (iter 47 — Feb 2026)
 🚀 **Refonte stratégique landing : B2C → B2B-first** :
 - **HERO refondu** : "Le suivi commercial intelligent pour les entreprises qui vendent." Sub-titre orienté foncières/promoteurs/réseaux d'agents. CTA principal "Réserver une démo" → `/business#contact`

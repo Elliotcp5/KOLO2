@@ -1905,6 +1905,10 @@ class EnterpriseDemoRequest(BaseModel):
     business_sector: Optional[str] = None  # network / agency / group / property_fund / developer / land_developer / other
     message: Optional[str] = ""
     locale: Optional[str] = "fr"
+    # Demo booking fields (added Feb 2026)
+    demo_datetime: Optional[str] = None       # ISO 8601 e.g. "2026-02-25T14:30"
+    demo_timezone: Optional[str] = None       # e.g. "GMT+1", "GMT-5"
+    preferred_language: Optional[str] = None  # "fr" or "en"
 
 
 @api_router.post("/enterprise/demo-request")
@@ -1936,6 +1940,10 @@ async def submit_enterprise_demo_request(payload: EnterpriseDemoRequest, request
         "business_sector": (payload.business_sector or "").strip() or None,
         "message": (payload.message or "").strip(),
         "locale": payload.locale or "fr",
+        # Demo booking
+        "demo_datetime": (payload.demo_datetime or "").strip() or None,
+        "demo_timezone": (payload.demo_timezone or "").strip() or None,
+        "preferred_language": (payload.preferred_language or "").strip() or None,
         "source_ip": request.client.host if request.client else None,
         "user_agent": request.headers.get("user-agent", "")[:300],
         "status": "new",
@@ -1971,6 +1979,8 @@ async def submit_enterprise_demo_request(payload: EnterpriseDemoRequest, request
                   <tr><td style="padding: 8px 0; color: #6B7280;">Téléphone</td><td style="padding: 8px 0;">{lead.get('phone') or '—'}</td></tr>
                   <tr><td style="padding: 8px 0; color: #6B7280;">Entreprise</td><td style="padding: 8px 0; font-weight: 600;">{lead['company']}</td></tr>
                   <tr><td style="padding: 8px 0; color: #6B7280;">Taille</td><td style="padding: 8px 0;">{lead['size']}</td></tr>
+                  {f'<tr><td style="padding: 8px 0; color: #6B7280;">Démo prévue</td><td style="padding: 8px 0; font-weight: 600; color: #8B5CF6;">{lead["demo_datetime"]} {lead.get("demo_timezone") or ""}</td></tr>' if lead.get('demo_datetime') else ''}
+                  {f'<tr><td style="padding: 8px 0; color: #6B7280;">Langue souhaitée</td><td style="padding: 8px 0;">{("Français" if lead["preferred_language"] == "fr" else "Anglais")}</td></tr>' if lead.get('preferred_language') else ''}
                 </table>
                 {f'<div style="margin-top: 18px; padding: 14px; background: rgba(139, 92, 246, 0.06); border-radius: 10px;"><div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B7280; margin-bottom: 6px;">Message</div><div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">{lead["message"]}</div></div>' if lead.get('message') else ''}
                 <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06); font-size: 12px; color: #9CA3AF;">
@@ -8145,6 +8155,17 @@ async def root():
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# ============================================================================
+# KOLO v2 — Webapp refonte intégrale (4 onglets mobile, IA copilote)
+# Loaded after api_router so it is exposed under /api/v2/*.
+# ============================================================================
+try:
+    from v2_router import router as v2_router
+    app.include_router(v2_router)
+    logger.info("KOLO v2 router mounted at /api/v2")
+except Exception as _v2_err:
+    logger.error(f"Failed to mount v2 router: {_v2_err}")
 
 # CORS configuration - simplified since we don't use cookies anymore
 app.add_middleware(

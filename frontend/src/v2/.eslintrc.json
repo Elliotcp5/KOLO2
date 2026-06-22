@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "no-empty": "off",
+    "no-unused-vars": "warn"
+  }
+}

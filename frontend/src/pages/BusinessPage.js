@@ -43,9 +43,9 @@ const TEXT = {
     sec4TitleGrad: 'souverain, RGPD.',
     sec4Body: "Cloud souverain européen, chiffrement de bout en bout, conformité RGPD intégrale. Vos données restent en France. DPO disponible.",
 
-    ctaTitleStart: 'Parlons de',
-    ctaTitleGrad: 'votre entreprise.',
-    ctaSub: 'On revient vers vous sous 48 h avec une proposition adaptée.',
+    ctaTitleStart: 'Booker',
+    ctaTitleGrad: 'une démo.',
+    ctaSub: 'Choisissez votre créneau, on revient vers vous sous 48h.',
     formFirstName: 'Prénom',
     formLastName: 'Nom',
     formEmail: 'Email professionnel',
@@ -55,9 +55,14 @@ const TEXT = {
     formSizePh: 'Sélectionner',
     formSector: 'Secteur d\'activité',
     formSectorPh: 'Sélectionner',
+    formDemoDatetime: 'Date et heure souhaitées',
+    formDemoTimezone: 'Fuseau horaire',
+    formPreferredLanguage: 'Langue souhaitée pendant l\'échange',
+    optLangFr: 'Français',
+    optLangEn: 'Anglais',
     formMessage: 'Message (optionnel)',
     formMessagePh: 'Parlez-nous de vos besoins…',
-    formSubmit: 'Envoyer',
+    formSubmit: 'Booker une démo',
     formSubmitting: 'Envoi…',
     formSuccess: 'Merci. Votre demande a bien été reçue, notre équipe revient vers vous sous 48 h.',
     formError: 'Une erreur est survenue. Réessayez ou écrivez-nous à contact@trykolo.io',
@@ -269,8 +274,22 @@ const BusinessPage = () => {
   const { locale } = useLocale();
   const t = TEXT[locale] || TEXT.en;
 
+  // ===== Auto-scroll to #contact when arriving from "Book a demo" CTA =====
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#contact') {
+      // Wait for layout to stabilize before scrolling
+      const tid = setTimeout(() => {
+        const el = document.getElementById('contact');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+      return () => clearTimeout(tid);
+    }
+  }, []);
+
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', company: '', size: '', business_sector: '', message: '',
+    demo_datetime: '', demo_timezone: '', preferred_language: 'fr',
   });
   const [status, setStatus] = useState('idle');
 
