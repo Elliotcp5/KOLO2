@@ -16,6 +16,21 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Refonte Monochrome Premium V4 + Nouveau logo + Capacitor iOS light (iter 53 — Feb 2026)
+🎯 **Réponse à "fait pas premium, retour visuel basique, logo cheap, surveillance micro cheap, menu basique, header horrible"** — refonte 100% selon les directives :
+- ✅ **Background gradient gris monochrome** (`#F0F0F2 → #DCDCDF → #C2C2C8`, fixed) matchant la tonalité du nouveau logo K. Plus aucune trace de violet/rose.
+- ✅ **Palette restreinte à 4 couleurs** : noir #0B0B0F, gris #6B7280, blanc #FFFFFF, + thin gradient border (noir→gris→gris clair) UNIQUEMENT sur Ask KOLO et Daily Advice.
+- ✅ **Nouveau logo K** (image fournie user, K noir dans rectangle blanc sur fond gradient noir→gris) installé dans `/app/frontend/public/kolo-mark-v4.png` + utilisé partout (header, splash V2Loading, manifest.json, apple-touch-icon, logo512, page auth).
+- ✅ **Daily Advice = GROS HERO CARD** (radius 24px, padding 22-24px, min-height 96px, font-family display League Spartan 22px title) collapsible — eyebrow "CONSEIL DU JOUR" + titre extrait du tip + teaser 1 ligne + chevron rond animé qui devient noir quand ouvert.
+- ✅ **Ask KOLO = compact side pill** (border-radius 999px, padding 10×14px, align-self flex-start, ne prend PAS toute la largeur, accessible mais pas central). Plus de Sparkles "étoile cheap" — remplacée par MessageCircle simple.
+- ✅ **Micro central simplifié** : 60px noir #0B0B0F, border blanc 3px, plus de pulse ring "surveillance cheap", plus de halo gradient. Label "CRÉER UNE NOTE" 9.5px letter-spacing 0.10em.
+- ✅ **Bottom nav GHOST FLOATING PILL** : pill border-radius 28px flottant 14px du bord, backdrop-blur 28px saturate 200%, border blanc translucide, shadow multi-couches premium. Plus de barre basique.
+- ✅ **Header transparent** : plus de bande blanche horrible. Burger button glassmorphism + petit logo K mark au centre 28×28.
+- ✅ **Capacitor config light theme** : `backgroundColor` partout `#E8E8EC`, `StatusBar.style='dark'` (icônes noires sur fond clair).
+- ✅ **Manifest.json refait** : `start_url=/app-v2`, `background_color=#E8E8EC`, `theme_color=#0B0B0F`, icons → `kolo-mark-v4.png`, nom "KOLO - Copilote IA immobilier".
+- ✅ **i18n 7 langues 100% validé** : FR/EN/IT/DE/ES/PT/PL — Créer une note / New note / Crea una nota / Notiz erstellen / Crear nota / Criar nota / Nowa notatka.
+- 📝 **Audit App Store** : `/app/APP_STORE_READINESS.md` mis à jour avec le process Apple Developer + TestFlight (à faire user-side, Emergent ne gère pas l'upload App Store automatiquement).
+
 ### Sprint UX Premium V2 + Conseil collapsible + AI CTA central + i18n + Haptic + App Store audit (iter 52 — Feb 2026)
 🎯 **Réponse au feedback "fait basique, manque de vie, conseil illisible, pas de chat IA central"** :
 - ✅ **Bug double KOLO** retiré sur page login/signup (V2Logo unique).

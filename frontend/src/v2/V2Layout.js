@@ -21,7 +21,7 @@ export const V2Logo = ({ size = 22, accent = false }) => (
 /* ---------- Loading screen ---------- */
 export const V2Loading = () => (
   <div className="v2-loading" data-testid="v2-loading">
-    <V2Logo size={64} />
+    <img src="/kolo-mark-v4.png" alt="KOLO" style={{ width: 80, height: 80, objectFit: 'contain' }} />
   </div>
 );
 
@@ -230,10 +230,8 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
         <button className="v2-header-burger" onClick={() => setDrawerOpen(true)} aria-label="Menu" data-testid="v2-burger">
           <Menu size={20} strokeWidth={1.8} />
         </button>
-        <div className="v2-header-brand">
-          <V2Logo size={22} accent />
-        </div>
-        <div style={{ width: 38 }} />
+        <img src="/kolo-mark-v4.png" alt="KOLO" className="v2-header-mark" />
+        <div style={{ width: 40 }} />
       </header>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} user={user} dashboard={dashboard} />
       <main className="v2-container">{children}</main>

@@ -95,25 +95,11 @@ export default function V2HomePage() {
         <V2NotificationPrompt userId={user.user_id} />
 
         <div className="v2-section-title">
-          Aujourd'hui
+          {v2t('today')}
           <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">+ Ajouter un rappel</button>
         </div>
 
-        {/* AI Chat CTA — heart of the app: free-form input to KOLO */}
-        <button
-          className="v2-ai-cta"
-          onClick={() => { setAiInitial(null); setAiCaseId(null); setShowAI(true); }}
-          data-testid="home-ai-cta"
-        >
-          <span className="v2-ai-cta-icon"><Sparkles size={18} /></span>
-          <span className="v2-ai-cta-text">
-            <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
-            <span className="v2-ai-cta-sub">{v2t('askKoloSub')}</span>
-          </span>
-          <span className="v2-ai-cta-send"><Send size={16} /></span>
-        </button>
-
-        {/* Daily tip — collapsible button */}
+        {/* Daily advice — LARGE hero, collapsible, thin gradient border, main attraction */}
         <button
           className={`v2-tip-collapsible ${tipOpen ? 'open' : ''}`}
           onClick={() => setTipOpen(o => !o)}
@@ -121,10 +107,17 @@ export default function V2HomePage() {
           aria-expanded={tipOpen}
         >
           <div className="v2-tip-head">
-            <span className="v2-tip-head-left">
-              <span className="v2-tip-spark"><Sparkles size={14} /></span>
-              <span className="v2-tip-title">{v2t('dailyAdvice')}</span>
-            </span>
+            <div className="v2-tip-head-left">
+              <span className="v2-tip-eyebrow">{v2t('dailyAdvice')}</span>
+              <span className="v2-tip-title">
+                {tip?.tip ? (tip.tip.split('\n')[0] || '').replace(/^#+\s*/, '').slice(0, 70) : 'Ton conseil du jour t\'attend'}
+              </span>
+              {!tipOpen && tip?.tip && (
+                <span className="v2-tip-teaser">
+                  {tip.tip.replace(/^#+\s*[^\n]*\n+/, '').slice(0, 90)}…
+                </span>
+              )}
+            </div>
             <ChevronDown size={18} className="v2-tip-chevron" />
           </div>
           {tipOpen && (
@@ -167,6 +160,19 @@ export default function V2HomePage() {
               )}
             </div>
           )}
+        </button>
+
+        {/* AI Chat CTA — compact side bubble (not central, accessible via mic + this) */}
+        <button
+          className="v2-ai-cta"
+          onClick={() => { setAiInitial(null); setAiCaseId(null); setShowAI(true); }}
+          data-testid="home-ai-cta"
+        >
+          <span className="v2-ai-cta-icon"><MessageCircle size={14} /></span>
+          <span className="v2-ai-cta-text">
+            <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
+          </span>
+          <span className="v2-ai-cta-send"><Send size={14} /></span>
         </button>
 
         <div className="v2-grid-2">
