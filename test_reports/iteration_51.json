@@ -1,0 +1,39 @@
+{
+  "summary": "Iter51 — Free Plan V2 quotas (10 contacts max, 1 prospection/jour) + drawer sidebar counter + Google Play Billing scaffold endpoint. Backend: 12/12 pytest passed (test_iteration_51.py). Quota endpoint returns correct snapshot (is_pro, contacts_used/limit/left, prospecting_used_today/limit_per_day/left_today, prospecting_resets_at='00:00 UTC'). POST /api/v2/contacts: free user blocked at 11th contact with 402 'Limite gratuite atteinte (10 contacts). Passe Pro pour des contacts illimités.', pro user (subscription_status=active) unlimited (12+ contacts OK). GET /api/v2/prospecting/dpe + /listings: free user 1 search/day shared quota (DPE consumes for /listings and vice-versa), 2nd call returns 402 'Quota Prospection gratuit atteint (1 recherche / jour). Passe Pro pour des recherches illimitées.', pro user unlimited (4 DPE + 3 listings calls all 200). /api/v2/dashboard exposes new fields: prospecting_used_today, prospecting_limit_per_day, prospecting_left_today, free_contacts_limit, has_pro. POST /api/iap/verify-google-purchase: missing fields → 400 'Missing product_id or purchase_token', valid body but no GOOGLE_PLAY_SERVICE_ACCOUNT_JSON env → 500 'Google Play IAP not configured' (expected — intentionally unconfigured). Apple receipt endpoint reachable (regression OK, returns 400 on empty body, never 404). Frontend (mobile 390x844): drawer (data-testid v2-drawer) opens from v2-burger; shows 'KOLO Gratuit' + sub 'Plan gratuit — limites du jour ↓'; drawer-quota-block contains quota-contacts ('📇 CONTACTS — 10 sur 10 restants' initially, '2 sur 10 restants' after 8 seed) and quota-prospecting ('🔍 PROSPECTION — 1 sur 1 restante aujourd'hui'); two .v2-quota-bar progress bars visible and fill proportionally; drawer-upgrade-btn 'Passer Pro · 24,99€/mois' present. For Pro user (subscription_status=active): drawer shows 'KOLO Pro' + drawer-pro-block ('📇 Contacts : illimité / 🔍 Prospection : illimitée'), no quota block, no upgrade button. /app-v2/prospecting: after consuming quota and triggering DPE search, banner data-testid='prosp-quota-error' appears with yellow-pink gradient (linear-gradient 135deg #FEF3C7 → #FCE7F3, border #FCD34D), backend message rendered verbatim, and data-testid='prosp-quota-upgrade' button navigates to /app-v2/settings/subscription on click (confirmed).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_51.py",
+    "/app/test_reports/pytest/iteration_51.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "v2_router.py est maintenant à 1150 lignes (>700) — déjà signalé iter_37/38. Le découpage en sous-modules (quotas.py + iap.py + prospecting.py + crud.py) reste fortement recommandé : un seul fichier qui mélange contacts/cases/dossiers/prospecting/dashboard/quotas/AI complique le diff review.",
+    "_quota_snapshot, _is_pro_user et _enforce_prospecting_quota sont définis APRES leur première utilisation (POST /contacts ligne 410+ utilise FREE_CONTACTS_LIMIT déclaré ligne 600). En Python module-level cela fonctionne car les fonctions sont résolues au call time, mais c'est fragile et peu lisible. Déplacer la section 'PLAN / QUOTAS' (lignes 597-660) en haut du fichier juste après _get_db.",
+    "Le check pro/free dans POST /v2/contacts (lignes 416-422) lit user_doc deux fois (une fois local + via _is_pro_user). Refactor : passer is_pro déjà résolu pour éviter 2 queries.",
+    "Pour Google Play IAP : si GOOGLE_PLAY_SERVICE_ACCOUNT_JSON est défini mais malformé (JSON invalide), _google_play_get_access_token va lever JSONDecodeError → 502 'Google Play auth failed'. OK fonctionnellement, mais ajouter validation au boot dans un health check.",
+    "L'auth dans iap_verify_google_purchase utilise require_auth (server.py) mais les endpoints v2 utilisent _get_user (Bearer V2 session). Vérifier que require_auth accepte aussi un Bearer V2 sess_* token sinon les utilisateurs V2 ne pourront pas valider leur achat Google Play.",
+    "GET /v2/prospecting/listings : 5+ try/except silencieux (pass) cachent les erreurs upstream — ajouter logger.warning au minimum pour faciliter le debug en prod quand Selogimmo réponses changent.",
+    "Frontend V2Layout.js L63 et L78 : `?? 10` et `?? 1` en fallback de free_contacts_left/prospecting_left_today fonctionne, mais quand dashboard.has_pro=true ces lignes ne sont pas rendues (condition !has_pro) donc les fallbacks sont morts — cohérent, juste cosmétique."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_51.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Session V2 sess_ec7f64eac2c346648c7baf3afb7cff80 → user_id u_227c821eafc54b53. Cleanup final: 0 contacts, 0 prospecting log, subscription_status=free.",
+  "seed_data_creation": "Aucun seed pérenne. Les tests créent 10 contacts TEST_q* puis 12 contacts TEST_pro*, et insèrent dans v2_prospecting_log avant nettoyage. Pour tester '2 sur 10 restants' j'ai temporairement seedé 8 contacts ct_test51_* (supprimés à la fin). subscription_status est remis à 'free' avant la sortie.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter51 quotas free V2 + Google Play IAP scaffold 100% OK. Pour re-run: pytest /app/backend/tests/test_iteration_51.py -v. Les tests resettent l'état entre chaque classe (delete contacts + prospecting log + reset subscription_status='free') donc ré-entrants. La validation Pro switch via db.users.update_one({user_id}, {$set: {subscription_status: 'active'}}) fonctionne — _is_pro_user retourne True pour 'active' et 'trialing'. Le banner /app-v2/prospecting quota-error utilise un linear-gradient jaune→rose conforme à la spec. Les erreurs hydration <span> dans <option>/<select> observées en console viennent de l'instrumentation dev x-ve-dynamic (data-ve-dynamic='true' x-excluded='true') et NE sont PAS un bug applicatif.",
+  "rca of the issue": "Aucun bug. Les 15 points testés (BACKEND 9 + FRONTEND 5 + Pro view) sont tous validés. Le scaffolding Google Play Billing répond correctement aux 2 cas (400 si body invalide, 500 si env non configuré). Le user peut être rassuré : quotas free=10 contacts + 1 prospection/jour appliqués strictement, Pro illimité partout, drawer sidebar affiche les compteurs en temps réel avec barres de progression, et le banner d'upsell sur /prospecting redirige bien vers /app-v2/settings/subscription."
+}

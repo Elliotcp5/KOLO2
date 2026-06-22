@@ -412,6 +412,14 @@ async def delete_note(note_id: str, request: Request):
 async def create_contact(payload: ContactIn, request: Request):
     user = await _get_user(request)
     db = _get_db()
+    # Free-tier hard limit : 10 contacts max
+    if not await _is_pro_user(db, user.user_id):
+        current = await db.v2_contacts.count_documents({"user_id": user.user_id})
+        if current >= FREE_CONTACTS_LIMIT:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Limite gratuite atteinte ({FREE_CONTACTS_LIMIT} contacts). Passe Pro pour des contacts illimités.",
+            )
     doc = {
         "contact_id": f"ct_{uuid.uuid4().hex[:14]}",
         "user_id": user.user_id,
@@ -570,13 +578,85 @@ async def get_dashboard(request: Request):
     # Plan info
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
     plan = user_doc.get("subscription_status") in ("active", "trialing")
+    prospecting_used_today = await db.v2_prospecting_log.count_documents({
+        "user_id": user.user_id, "date": today
+    })
     return {
         "reminders_today": reminders_today,
         "notes_pending": notes_pending,
         "total_contacts": total_contacts,
         "has_pro": bool(plan),
-        "free_contacts_left": max(0, 10 - total_contacts) if not plan else None,
+        "free_contacts_left": max(0, FREE_CONTACTS_LIMIT - total_contacts) if not plan else None,
+        "free_contacts_limit": None if plan else FREE_CONTACTS_LIMIT,
+        "prospecting_used_today": prospecting_used_today,
+        "prospecting_limit_per_day": None if plan else FREE_PROSPECTING_PER_DAY,
+        "prospecting_left_today": None if plan else max(0, FREE_PROSPECTING_PER_DAY - prospecting_used_today),
     }
+
+
+# ============================================================================
+# PLAN / QUOTAS  — Free tier limits
+# ============================================================================
+FREE_CONTACTS_LIMIT = 10
+FREE_PROSPECTING_PER_DAY = 1
+
+
+async def _is_pro_user(db, user_id: str) -> bool:
+    """Returns True if user has an active or trialing subscription."""
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "subscription_status": 1}) or {}
+    return user_doc.get("subscription_status") in ("active", "trialing")
+
+
+async def _quota_snapshot(db, user_id: str) -> dict:
+    """Returns the current free-plan quotas usage for a user."""
+    is_pro = await _is_pro_user(db, user_id)
+    contacts_used = await db.v2_contacts.count_documents({"user_id": user_id})
+    today = datetime.now(timezone.utc).date().isoformat()
+    prospecting_used = await db.v2_prospecting_log.count_documents({
+        "user_id": user_id, "date": today
+    })
+    return {
+        "is_pro": is_pro,
+        "contacts_used": contacts_used,
+        "contacts_limit": None if is_pro else FREE_CONTACTS_LIMIT,
+        "contacts_left": None if is_pro else max(0, FREE_CONTACTS_LIMIT - contacts_used),
+        "prospecting_used_today": prospecting_used,
+        "prospecting_limit_per_day": None if is_pro else FREE_PROSPECTING_PER_DAY,
+        "prospecting_left_today": None if is_pro else max(0, FREE_PROSPECTING_PER_DAY - prospecting_used),
+        "prospecting_resets_at": "00:00 UTC",
+    }
+
+
+async def _log_prospecting(db, user_id: str, kind: str, query: dict):
+    """Logs a prospecting search (free-tier quota counting)."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    await db.v2_prospecting_log.insert_one({
+        "user_id": user_id,
+        "date": today,
+        "kind": kind,
+        "query": query,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+async def _enforce_prospecting_quota(db, user_id: str):
+    """Raises 402 if free user has hit today's prospecting quota."""
+    if await _is_pro_user(db, user_id):
+        return
+    today = datetime.now(timezone.utc).date().isoformat()
+    used = await db.v2_prospecting_log.count_documents({"user_id": user_id, "date": today})
+    if used >= FREE_PROSPECTING_PER_DAY:
+        raise HTTPException(
+            status_code=402,
+            detail="Quota Prospection gratuit atteint (1 recherche / jour). Passe Pro pour des recherches illimitées.",
+        )
+
+
+@router.get("/quota")
+async def get_quota(request: Request):
+    user = await _get_user(request)
+    db = _get_db()
+    return await _quota_snapshot(db, user.user_id)
 
 
 # ============================================================================
@@ -911,7 +991,9 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
     Real ADEME DPE API call:
       https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines
     """
-    await _get_user(request)
+    user = await _get_user(request)
+    db = _get_db()
+    await _enforce_prospecting_quota(db, user.user_id)
     import httpx
     qs = []
     if sector:
@@ -949,6 +1031,7 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
             {"address": "12 rue de la République, 69003 Lyon", "surface": 72, "energy": "D", "climate": "C", "parcel": "AB-0123", "issued_at": "2026-02-15"},
             {"address": "8 avenue Jean Jaurès, 75019 Paris", "surface": 45, "energy": "E", "climate": "D", "parcel": "AC-0445", "issued_at": "2026-02-10"},
         ]
+    await _log_prospecting(db, user.user_id, "dpe", {"sector": sector, "score": score, "days": days})
     return {"items": items, "source": "ADEME"}
 
 
@@ -958,8 +1041,9 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
     Configuration via env: RAPIDAPI_KEY + RAPIDAPI_SELOGIMMO_HOST.
     Falls back to clearly-marked placeholder data when not configured / not subscribed.
     """
-    await _get_user(request)
+    user = await _get_user(request)
     db = _get_db()
+    await _enforce_prospecting_quota(db, user.user_id)
     rapidapi_key = os.environ.get("RAPIDAPI_KEY", "").strip()
     selogimmo_host = os.environ.get("RAPIDAPI_SELOGIMMO_HOST", "selogimmo.p.rapidapi.com").strip()
 
@@ -972,6 +1056,7 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
             try:
                 cached_at = datetime.fromisoformat(cached["cached_at"])
                 if datetime.now(timezone.utc) - cached_at < timedelta(hours=6):
+                    await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind, "cached": True})
                     return {"items": cached.get("items", []), "source": "Selogimmo (cache)"}
             except Exception:
                 pass
@@ -1041,6 +1126,7 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                 )
                             except Exception:
                                 pass
+                            await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind})
                             return {"items": items, "source": "Selogimmo"}
                     elif r.status_code == 403:
                         return {"items": [], "source": "not_subscribed", "hint": "Active 'Subscribe to Test' sur RapidAPI Selogimmo (gratuit)."}
@@ -1059,4 +1145,5 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
         items = [r for r in items if sector.lower() in r["sector"].lower()]
     if kind in {"private", "pro"}:
         items = [r for r in items if r["kind"] == kind]
+    await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind, "age": age})
     return {"items": items, "source": "placeholder"}

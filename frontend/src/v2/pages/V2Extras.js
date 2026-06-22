@@ -27,19 +27,31 @@ export const V2ProspectingPage = () => {
   const [age, setAge] = useState('');
   const [items, setItems] = useState([]);
   const [source, setSource] = useState('');
+  const [quotaError, setQuotaError] = useState('');
 
   const reload = () => {
+    setQuotaError('');
     if (mode === 'dpe') {
       const p = {};
       if (sector) p.sector = sector;
       if (score) p.score = score;
       if (age === '30') p.days = 30;
       if (age === '90') p.days = 90;
-      v2api.dpe(p).then(r => { setItems(r.items); setSource(r.source || ''); }).catch(() => { setItems([]); setSource(''); });
+      v2api.dpe(p)
+        .then(r => { setItems(r.items); setSource(r.source || ''); })
+        .catch(e => {
+          setItems([]); setSource('');
+          if ((e.message || '').includes('Quota')) setQuotaError(e.message);
+        });
     } else {
       const p = {};
       if (sector) p.sector = sector;
-      v2api.listings(p).then(r => { setItems(r.items); setSource(r.source || ''); }).catch(() => { setItems([]); setSource(''); });
+      v2api.listings(p)
+        .then(r => { setItems(r.items); setSource(r.source || ''); })
+        .catch(e => {
+          setItems([]); setSource('');
+          if ((e.message || '').includes('Quota')) setQuotaError(e.message);
+        });
     }
   };
   useEffect(() => { reload(); }, [mode, sector, score, age]);
@@ -84,6 +96,25 @@ export const V2ProspectingPage = () => {
             <select className="v2-select" value={age} onChange={(e) => setAge(e.target.value)} data-testid="prosp-age">
               <option value="">Tous</option><option value="30">- 30 jours</option><option value="90">- 3 mois</option>
             </select></div>
+        </div>
+      )}
+
+      {quotaError && (
+        <div
+          className="v2-card"
+          style={{ marginTop: 14, background: 'linear-gradient(135deg, #FEF3C7 0%, #FCE7F3 100%)', border: '1px solid #FCD34D' }}
+          data-testid="prosp-quota-error"
+        >
+          <div style={{ fontWeight: 600, color: '#92400E', fontSize: 14 }}>Quota gratuit atteint</div>
+          <div style={{ color: '#7C2D12', fontSize: 13.5, marginTop: 4 }}>{quotaError}</div>
+          <button
+            className="v2-btn primary"
+            style={{ marginTop: 10 }}
+            onClick={() => navigate('/app-v2/settings/subscription')}
+            data-testid="prosp-quota-upgrade"
+          >
+            Passer Pro · 24,99€/mois
+          </button>
         </div>
       )}
 

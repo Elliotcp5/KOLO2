@@ -1665,6 +1665,139 @@ async def iap_verify_apple_receipt(request: Request):
     }
 
 
+# ====================================================================
+# GOOGLE PLAY BILLING (Android IAP)
+# ====================================================================
+# Configuration via env:
+#   GOOGLE_PLAY_PACKAGE_NAME = io.kolo.app (or your android package)
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = full service account JSON (or path to file)
+#
+# Product IDs (Play Console) → KOLO plans
+GOOGLE_PRODUCT_TO_PLAN = {
+    "kolo_pro_monthly": "PRO",
+    "kolo_pro_annual": "PRO",
+    "kolo_pro_plus_monthly": "PRO_plus",
+    "kolo_pro_plus_annual": "PRO_plus",
+}
+GOOGLE_PLAY_PACKAGE_NAME = os.environ.get("GOOGLE_PLAY_PACKAGE_NAME", "io.kolo.app")
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON", "").strip()
+
+
+async def _google_play_get_access_token():
+    """Builds an OAuth2 access token from the Google Play service account."""
+    if not GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        raise RuntimeError("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured")
+    import json as _json
+    import time as _time
+    import jwt as _jwt
+    import httpx as _httpx
+    sa_text = GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+    if sa_text.endswith('.json') and os.path.exists(sa_text):
+        with open(sa_text, 'r', encoding='utf-8') as f:
+            sa_text = f.read()
+    sa = _json.loads(sa_text)
+    now = int(_time.time())
+    payload = {
+        "iss": sa["client_email"],
+        "scope": "https://www.googleapis.com/auth/androidpublisher",
+        "aud": "https://oauth2.googleapis.com/token",
+        "exp": now + 3600,
+        "iat": now,
+    }
+    assertion = _jwt.encode(payload, sa["private_key"], algorithm="RS256")
+    async with _httpx.AsyncClient(timeout=8) as client:
+        r = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": assertion,
+            },
+        )
+        r.raise_for_status()
+        return r.json().get("access_token")
+
+
+@api_router.post("/iap/verify-google-purchase")
+async def iap_verify_google_purchase(request: Request):
+    """
+    Verify a Google Play Billing subscription purchase token.
+
+    Body: {
+      "product_id": "kolo_pro_monthly",
+      "purchase_token": "<token from Play Billing client>",
+      "package_name": "io.kolo.app"   // optional, falls back to env
+    }
+    """
+    user = await require_auth(request)
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    product_id = body.get("product_id")
+    purchase_token = body.get("purchase_token")
+    package_name = body.get("package_name") or GOOGLE_PLAY_PACKAGE_NAME
+    if not product_id or not purchase_token:
+        raise HTTPException(status_code=400, detail="Missing product_id or purchase_token")
+
+    if not GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        logger.error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured")
+        raise HTTPException(status_code=500, detail="Google Play IAP not configured")
+
+    try:
+        access_token = await _google_play_get_access_token()
+    except Exception as e:
+        logger.error(f"Google Play OAuth failed: {e}")
+        raise HTTPException(status_code=502, detail="Google Play auth failed")
+
+    import httpx as _httpx
+    url = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package_name}/purchases/subscriptions/{product_id}/tokens/{purchase_token}"
+    try:
+        async with _httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+    except Exception as e:
+        logger.error(f"Google Play API call failed: {e}")
+        raise HTTPException(status_code=502, detail="Google Play verification failed")
+
+    if r.status_code != 200:
+        logger.warning(f"Google Play verifyPurchase status={r.status_code} user={user.user_id}")
+        return {"success": False, "status": "invalid_token", "google_status": r.status_code}
+
+    data = r.json()
+    # Active if expiryTimeMillis in the future AND paymentState in {1=Received, 2=Free trial}
+    expires_ms = int(data.get("expiryTimeMillis", "0") or 0)
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    is_active = (expires_ms > now_ms) and (int(data.get("paymentState", -1)) in (1, 2))
+    plan = GOOGLE_PRODUCT_TO_PLAN.get(product_id, "free") if is_active else "free"
+    expires_iso = (
+        datetime.fromtimestamp(expires_ms / 1000, tz=timezone.utc).isoformat()
+        if expires_ms else None
+    )
+
+    update = {
+        "plan": plan,
+        "subscription_status": "active" if is_active else "expired",
+        "platform": "android",
+        "google_play_purchase_token": purchase_token,
+        "google_play_product_id": product_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if expires_iso:
+        update["subscription_ends_at"] = expires_iso
+
+    await db.users.update_one({"user_id": user.user_id}, {"$set": update})
+    logger.info(f"Google Play IAP verified for {user.user_id}: plan={plan} expires={expires_iso}")
+
+    return {
+        "success": True,
+        "plan": plan,
+        "status": update["subscription_status"],
+        "expires_at": expires_iso,
+        "product_id": product_id,
+    }
+
+
 @api_router.post("/admin/sync-subscription")
 async def admin_sync_subscription(request: Request):
     """Admin endpoint to sync user subscription from Stripe"""

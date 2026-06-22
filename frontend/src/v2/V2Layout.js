@@ -50,12 +50,55 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
           <div className="sub">
             {dashboard?.has_pro
               ? 'Toutes les fonctionnalités, sans limite.'
-              : `${dashboard?.free_contacts_left ?? 10} contacts gratuits restants`}
+              : 'Plan gratuit — limites du jour ↓'}
           </div>
+
+          {!dashboard?.has_pro && (
+            <div className="v2-quota-block" data-testid="drawer-quota-block">
+              <div className="v2-quota-row" data-testid="quota-contacts">
+                <div className="v2-quota-label">
+                  <span className="emoji">📇</span> Contacts
+                </div>
+                <div className="v2-quota-value">
+                  <strong>{dashboard?.free_contacts_left ?? 10}</strong>
+                  <span className="muted"> sur {dashboard?.free_contacts_limit ?? 10} restants</span>
+                </div>
+                <div className="v2-quota-bar">
+                  <div
+                    className="v2-quota-bar-fill"
+                    style={{ width: `${Math.min(100, Math.round(((dashboard?.total_contacts ?? 0) / (dashboard?.free_contacts_limit ?? 10)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+              <div className="v2-quota-row" data-testid="quota-prospecting">
+                <div className="v2-quota-label">
+                  <span className="emoji">🔍</span> Prospection
+                </div>
+                <div className="v2-quota-value">
+                  <strong>{dashboard?.prospecting_left_today ?? 1}</strong>
+                  <span className="muted"> sur {dashboard?.prospecting_limit_per_day ?? 1} restante aujourd'hui</span>
+                </div>
+                <div className="v2-quota-bar">
+                  <div
+                    className="v2-quota-bar-fill"
+                    style={{ width: `${Math.min(100, Math.round(((dashboard?.prospecting_used_today ?? 0) / (dashboard?.prospecting_limit_per_day ?? 1)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {dashboard?.has_pro && (
+            <div className="v2-quota-block" data-testid="drawer-pro-block" style={{ fontSize: 13, color: 'var(--v2-muted)' }}>
+              <div>📇 Contacts : <strong>illimité</strong></div>
+              <div style={{ marginTop: 4 }}>🔍 Prospection : <strong>illimitée</strong></div>
+            </div>
+          )}
+
           {!dashboard?.has_pro && (
             <button
               className="v2-btn ai-btn full"
-              style={{ marginTop: 12 }}
+              style={{ marginTop: 14 }}
               onClick={() => { onClose(); navigate('/app-v2/settings/subscription'); }}
               data-testid="drawer-upgrade-btn"
             >
