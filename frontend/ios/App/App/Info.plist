@@ -71,5 +71,15 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KOLO utilise le microphone pour enregistrer tes notes vocales de terrain (notes de visite, comptes-rendus de rendez-vous).</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>KOLO accède à ta photothèque pour ajouter des photos aux dossiers de tes biens immobiliers.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>KOLO utilise la caméra pour prendre en photo les documents et les biens lors de tes visites.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>KOLO importe tes contacts pour t'aider à les retrouver et à gérer ton portefeuille clients.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>KOLO utilise ta position pour t'afficher les annonces et DPE de ton secteur lors des visites.</string>
 </dict>
 </plist>

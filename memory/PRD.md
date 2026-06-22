@@ -16,6 +16,16 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Logo iOS/Android + Info.plist + Version bump V2.0 — App Store ready (iter 54 — Feb 2026)
+🎯 **Préparation finale pour push GitHub → CodeMagic → TestFlight → App Store update** :
+- ✅ **Nouveau logo K** (fourni user, 6250×6250 RGBA, K blanc + cadre noir + thin gradient bleu→violet) traité via PIL : recadré square centré, RGB sur fond noir (pas de transparence pour Apple), généré en 1024/512/192/180 px.
+- ✅ **iOS AppIcon-512@2x.png** (1024×1024) remplacé dans `/app/frontend/ios/App/App/Assets.xcassets/AppIcon.appiconset/` → l'icône sera bien la nouvelle dans le build TestFlight.
+- ✅ **Android mipmaps** (mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144, xxxhdpi 192) — ic_launcher, ic_launcher_round, ic_launcher_foreground tous remplacés.
+- ✅ **iOS Info.plist enrichi** : `NSMicrophoneUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSCameraUsageDescription`, `NSContactsUsageDescription`, `NSLocationWhenInUseUsageDescription` — bloquants Apple App Review levés.
+- ✅ **Version bump 2.0 (build 3)** : `MARKETING_VERSION` 1.0→2.0 et `CURRENT_PROJECT_VERSION` 2→3 dans `App.xcodeproj/project.pbxproj`. Android `versionName "2.0" versionCode 3` dans `build.gradle`.
+- ✅ **In-app logos** : kolo-mark-v4.png remplacé partout (header V2Layout, splash V2Loading, manifest.json, apple-touch-icon, page auth) — utilise désormais le nouveau K avec cadre.
+- 📝 **codemagic.yaml** déjà configuré pour : yarn build React → npx cap sync ios → pod install → auto-increment build number depuis App Store/TestFlight → signing automatique → IPA → upload App Store Connect. Trigger sur push to `main`.
+
 ### Sprint Refonte Monochrome Premium V4 + Nouveau logo + Capacitor iOS light (iter 53 — Feb 2026)
 🎯 **Réponse à "fait pas premium, retour visuel basique, logo cheap, surveillance micro cheap, menu basique, header horrible"** — refonte 100% selon les directives :
 - ✅ **Background gradient gris monochrome** (`#F0F0F2 → #DCDCDF → #C2C2C8`, fixed) matchant la tonalité du nouveau logo K. Plus aucune trace de violet/rose.
