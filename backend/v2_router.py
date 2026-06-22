@@ -578,8 +578,9 @@ async def get_dashboard(request: Request):
     # Plan info
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
     plan = user_doc.get("subscription_status") in ("active", "trialing")
-    prospecting_used_today = await db.v2_prospecting_log.count_documents({
-        "user_id": user.user_id, "date": today
+    week_start = _current_week_start()
+    prospecting_used_this_week = await db.v2_prospecting_log.count_documents({
+        "user_id": user.user_id, "week_start": week_start
     })
     return {
         "reminders_today": reminders_today,
@@ -588,9 +589,9 @@ async def get_dashboard(request: Request):
         "has_pro": bool(plan),
         "free_contacts_left": max(0, FREE_CONTACTS_LIMIT - total_contacts) if not plan else None,
         "free_contacts_limit": None if plan else FREE_CONTACTS_LIMIT,
-        "prospecting_used_today": prospecting_used_today,
-        "prospecting_limit_per_day": None if plan else FREE_PROSPECTING_PER_DAY,
-        "prospecting_left_today": None if plan else max(0, FREE_PROSPECTING_PER_DAY - prospecting_used_today),
+        "prospecting_used_this_week": prospecting_used_this_week,
+        "prospecting_limit_per_week": None if plan else FREE_PROSPECTING_PER_WEEK,
+        "prospecting_left_this_week": None if plan else max(0, FREE_PROSPECTING_PER_WEEK - prospecting_used_this_week),
     }
 
 
@@ -598,7 +599,7 @@ async def get_dashboard(request: Request):
 # PLAN / QUOTAS  — Free tier limits
 # ============================================================================
 FREE_CONTACTS_LIMIT = 10
-FREE_PROSPECTING_PER_DAY = 1
+FREE_PROSPECTING_PER_WEEK = 1
 
 
 async def _is_pro_user(db, user_id: str) -> bool:
@@ -607,32 +608,40 @@ async def _is_pro_user(db, user_id: str) -> bool:
     return user_doc.get("subscription_status") in ("active", "trialing")
 
 
+def _current_week_start() -> str:
+    """Returns the ISO date (YYYY-MM-DD) of the current week's Monday in UTC."""
+    today = datetime.now(timezone.utc).date()
+    monday = today - timedelta(days=today.weekday())
+    return monday.isoformat()
+
+
 async def _quota_snapshot(db, user_id: str) -> dict:
     """Returns the current free-plan quotas usage for a user."""
     is_pro = await _is_pro_user(db, user_id)
     contacts_used = await db.v2_contacts.count_documents({"user_id": user_id})
-    today = datetime.now(timezone.utc).date().isoformat()
+    week_start = _current_week_start()
     prospecting_used = await db.v2_prospecting_log.count_documents({
-        "user_id": user_id, "date": today
+        "user_id": user_id, "week_start": week_start
     })
     return {
         "is_pro": is_pro,
         "contacts_used": contacts_used,
         "contacts_limit": None if is_pro else FREE_CONTACTS_LIMIT,
         "contacts_left": None if is_pro else max(0, FREE_CONTACTS_LIMIT - contacts_used),
-        "prospecting_used_today": prospecting_used,
-        "prospecting_limit_per_day": None if is_pro else FREE_PROSPECTING_PER_DAY,
-        "prospecting_left_today": None if is_pro else max(0, FREE_PROSPECTING_PER_DAY - prospecting_used),
-        "prospecting_resets_at": "00:00 UTC",
+        "prospecting_used_this_week": prospecting_used,
+        "prospecting_limit_per_week": None if is_pro else FREE_PROSPECTING_PER_WEEK,
+        "prospecting_left_this_week": None if is_pro else max(0, FREE_PROSPECTING_PER_WEEK - prospecting_used),
+        "prospecting_window": "semaine (lundi → dimanche UTC)",
     }
 
 
 async def _log_prospecting(db, user_id: str, kind: str, query: dict):
-    """Logs a prospecting search (free-tier quota counting)."""
-    today = datetime.now(timezone.utc).date().isoformat()
+    """Logs a prospecting search (free-tier quota counting, weekly window)."""
+    week_start = _current_week_start()
     await db.v2_prospecting_log.insert_one({
         "user_id": user_id,
-        "date": today,
+        "week_start": week_start,
+        "date": datetime.now(timezone.utc).date().isoformat(),
         "kind": kind,
         "query": query,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -640,15 +649,15 @@ async def _log_prospecting(db, user_id: str, kind: str, query: dict):
 
 
 async def _enforce_prospecting_quota(db, user_id: str):
-    """Raises 402 if free user has hit today's prospecting quota."""
+    """Raises 402 if free user has hit this week's prospecting quota."""
     if await _is_pro_user(db, user_id):
         return
-    today = datetime.now(timezone.utc).date().isoformat()
-    used = await db.v2_prospecting_log.count_documents({"user_id": user_id, "date": today})
-    if used >= FREE_PROSPECTING_PER_DAY:
+    week_start = _current_week_start()
+    used = await db.v2_prospecting_log.count_documents({"user_id": user_id, "week_start": week_start})
+    if used >= FREE_PROSPECTING_PER_WEEK:
         raise HTTPException(
             status_code=402,
-            detail="Quota Prospection gratuit atteint (1 recherche / jour). Passe Pro pour des recherches illimitées.",
+            detail="Quota Prospection gratuit atteint (1 recherche / semaine). Passe Pro pour des recherches illimitées.",
         )
 
 
@@ -663,6 +672,81 @@ async def get_quota(request: Request):
 # AI CHAT  /api/v2/ai/*
 # ============================================================================
 KOLO_SYSTEM_PROMPT = """Tu es KOLO, le copilote IA des agents immobiliers. Tu apportes une expertise terrain pointue : techniques de prospection, gestion de pipeline, relances commerciales, négociation, signaux marché DPE, droit immobilier (à valider par un pro). Tu réponds en français, ton chaleureux et direct, sans baratin. Pour chaque conseil, tu donnes du concret (chiffres, mots à dire, étapes). Si une question sort de ton expertise immo/commerciale, tu le dis et tu redirige."""
+
+
+def _build_role_specific_persona(onboarding: dict) -> str:
+    """Adapts KOLO's coaching tone to the agent profile (role, CA, séniorité)."""
+    role = (onboarding.get("role") or "").lower()
+    activity = (onboarding.get("main_activity") or "").lower()
+    revenue = (onboarding.get("annual_revenue") or "").lower()
+    team_size = (onboarding.get("team_size") or "").lower()
+    sectors_count = len(onboarding.get("sectors", []) or [])
+
+    # Default
+    persona_lines = []
+
+    # ----- ROLE
+    if "directeur" in role or "réseau" in role or "reseau" in role:
+        persona_lines.append(
+            "L'utilisateur est un DIRIGEANT (directeur d'agence ou de réseau). "
+            "Ses préoccupations : performance globale, recrutement et rétention de talents, montée en compétence des équipes, pilotage du CA, marketing/notoriété de la marque, structuration des process commerciaux, management de la motivation. "
+            "Donne-lui des conseils stratégiques niveau direction : KPIs hebdo, scripts de réunion d'équipe, métriques de productivité, leviers de scale. JAMAIS de conseil 'comment décrocher un mandat' — ce n'est plus sa zone."
+        )
+    elif "mandataire" in role:
+        persona_lines.append(
+            "L'utilisateur est un MANDATAIRE indépendant (réseau type IAD/Capifrance/SAFTI). "
+            "Ses spécificités : solo, multi-casquette, dépend du réseau pour les outils et la formation, marge rémunération vs charges autonome. "
+            "Donne-lui des conseils d'optimisation perso : organisation, prospection en zone, dynamique de réseau, négociation honoraires, calculs net après charges."
+        )
+    elif "agent" in role and ("indépendant" in role or "independant" in role or "négociateur" in role or "negociateur" in role):
+        persona_lines.append(
+            "L'utilisateur est un AGENT INDÉPENDANT en agence ou négociateur salarié. Donne-lui du concret terrain : techniques de prospection, qualité de visite, scripts de relance, gestion du pipeline."
+        )
+    elif "agent" in role:
+        persona_lines.append(
+            "L'utilisateur est un AGENT IMMOBILIER. Donne-lui du concret terrain : techniques de prospection, qualité de visite, scripts de relance, gestion du pipeline."
+        )
+
+    # ----- SÉNIORITÉ via revenue
+    if revenue in {"-30k", "0-30k", "moins de 30k", "moins_30k"}:
+        persona_lines.append(
+            "DÉBUTANT (CA < 30k€/an) : pédagogie maximale, vocabulaire simple, propose des actions petites et concrètes (1 par jour). Évite le jargon. Encourage et célèbre chaque progrès. Insiste sur la régularité plus que l'intensité."
+        )
+    elif revenue in {"30-60k", "30k-60k", "30k_60k"}:
+        persona_lines.append(
+            "INTERMÉDIAIRE (CA 30-60k€/an) : focus sur la professionnalisation. Process, outils, méthodes éprouvées. Comment passer de 'je fais au feeling' à 'je suis structuré'."
+        )
+    elif revenue in {"60-100k", "60k-100k", "60k_100k"}:
+        persona_lines.append(
+            "CONFIRMÉ (CA 60-100k€/an) : conseils stratégiques. Spécialisation, montée en valeur ajoutée, négociation honoraires, gestion d'un portefeuille mature. Pas de bases, va direct."
+        )
+    elif revenue in {"100k+", "100k_plus", "+100k", "plus de 100k"}:
+        persona_lines.append(
+            "EXPERT (CA > 100k€/an, top 10% du marché). Tu lui parles d'égal à égal. Aucune banalité : KPIs avancés, leverage marketing, image personnelle, expansion d'équipe, vente à haut potentiel, exit/transmission. Réponds en mode 'coach de top performeurs'."
+        )
+
+    # ----- TYPE D'ACTIVITÉ
+    if "luxe" in activity or "prestige" in activity:
+        persona_lines.append("Spécialité LUXE/PRESTIGE : posture commerciale haut de gamme, discrétion, networking événementiel, valorisation expérientielle, narrative storytelling premium.")
+    if "neuf" in activity or "vefa" in activity:
+        persona_lines.append("Spécialité NEUF/VEFA : maîtrise des dispositifs (Pinel, PTZ), travail avec promoteurs, cycles de vente longs, garanties constructeur.")
+    if "commercial" in activity or "professionnel" in activity:
+        persona_lines.append("Spécialité IMMO PRO/COMMERCIAL : transactions B2B, rendement, baux commerciaux, fiscalité, négociation à long terme.")
+    if "location" in activity or "gestion" in activity:
+        persona_lines.append("Spécialité LOCATION/GESTION : mandat de gestion, rentabilité locative, dossiers locataires, contentieux.")
+
+    if team_size and team_size not in {"1", "solo", ""}:
+        persona_lines.append(f"L'utilisateur gère/coordonne une équipe ({team_size}). Inclut des conseils de management ponctuellement.")
+    if sectors_count >= 5:
+        persona_lines.append("Il/elle a un large périmètre géographique — propose des conseils de priorisation et de scoring de zone.")
+
+    if not persona_lines:
+        return ""
+
+    return (
+        "\n\n[Persona adaptatif — adapte STRICTEMENT tes réponses à ce profil]\n"
+        + "\n".join(f"- {p}" for p in persona_lines)
+    )
 
 
 @router.post("/ai/chat")
@@ -725,7 +809,9 @@ async def ai_chat(payload: AiChatIn, request: Request):
         api_key = os.environ.get("EMERGENT_LLM_KEY") or ""
         if not api_key:
             raise RuntimeError("EMERGENT_LLM_KEY missing")
-        chat = LlmChat(api_key=api_key, session_id=conv_id, system_message=KOLO_SYSTEM_PROMPT).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        adaptive_persona = _build_role_specific_persona(onboarding)
+        system_prompt = KOLO_SYSTEM_PROMPT + adaptive_persona
+        chat = LlmChat(api_key=api_key, session_id=conv_id, system_message=system_prompt).with_model("anthropic", "claude-sonnet-4-5-20250929")
         msg = UserMessage(text=final_message)
         response_text = await chat.send_message(msg)
     except Exception as e:
@@ -813,7 +899,7 @@ async def daily_tip(request: Request):
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         api_key = os.environ.get("EMERGENT_LLM_KEY") or ""
-        chat = LlmChat(api_key=api_key, session_id=f"tip_{user.user_id}_{datetime.now().date().isoformat()}", system_message=KOLO_SYSTEM_PROMPT).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        chat = LlmChat(api_key=api_key, session_id=f"tip_{user.user_id}_{datetime.now().date().isoformat()}", system_message=KOLO_SYSTEM_PROMPT + _build_role_specific_persona(onboarding)).with_model("anthropic", "claude-sonnet-4-5-20250929")
         msg = UserMessage(text=prompt)
         tip = await chat.send_message(msg)
     except Exception:
@@ -971,6 +1057,55 @@ async def save_onboarding(payload: OnboardingPayload, request: Request):
         "company_name": payload.company_name or "",
         "sectors": payload.sectors,
     }})
+
+    # ---- High-value lead alert : Directeur d'agence / Réseau
+    role_lower = (payload.role or "").lower()
+    if any(k in role_lower for k in ("directeur", "directrice", "réseau", "reseau", "head of", "dirigeant")):
+        try:
+            user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+            alert_doc = {
+                "alert_id": f"al_{uuid.uuid4().hex[:12]}",
+                "kind": "high_value_signup",
+                "user_id": user.user_id,
+                "email": user_doc.get("email"),
+                "first_name": user_doc.get("first_name") or "",
+                "last_name": user_doc.get("last_name") or "",
+                "phone": payload.phone or user_doc.get("phone"),
+                "role": payload.role,
+                "company_name": payload.company_name or "",
+                "team_size": payload.team_size or "",
+                "annual_revenue": payload.annual_revenue or "",
+                "sectors": payload.sectors or [],
+                "status": "new",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.v2_admin_alerts.insert_one(alert_doc)
+            # Best-effort: send notification email via Resend if available
+            try:
+                from email_service import send_email  # type: ignore
+                admin_email = os.environ.get("ADMIN_ALERT_EMAIL") or "elliot.cohenpressard@trykolo.io"
+                subject = f"🚨 Compte Direction — {alert_doc['first_name']} {alert_doc['last_name']} ({payload.role})"
+                html = (
+                    f"<h2 style='color:#0B0B0F;'>Nouveau compte de DIRIGEANT</h2>"
+                    f"<p>Un nouveau profil <strong>{payload.role}</strong> vient de finaliser son onboarding.</p>"
+                    f"<table cellpadding='6' style='border-collapse:collapse;font-size:14px;'>"
+                    f"<tr><td><b>Nom</b></td><td>{alert_doc['first_name']} {alert_doc['last_name']}</td></tr>"
+                    f"<tr><td><b>Email</b></td><td><a href='mailto:{alert_doc['email']}'>{alert_doc['email']}</a></td></tr>"
+                    f"<tr><td><b>Téléphone</b></td><td>{alert_doc['phone'] or '—'}</td></tr>"
+                    f"<tr><td><b>Rôle</b></td><td>{payload.role}</td></tr>"
+                    f"<tr><td><b>Entreprise</b></td><td>{payload.company_name or '—'}</td></tr>"
+                    f"<tr><td><b>Taille d'équipe</b></td><td>{payload.team_size or '—'}</td></tr>"
+                    f"<tr><td><b>CA annuel</b></td><td>{payload.annual_revenue or '—'}</td></tr>"
+                    f"<tr><td><b>Secteurs</b></td><td>{', '.join(payload.sectors or []) or '—'}</td></tr>"
+                    f"</table>"
+                    f"<p style='color:#6B7280;margin-top:16px;font-size:13px;'>→ À contacter sous 24h.</p>"
+                )
+                await send_email(admin_email, subject, html)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     return {"ok": True}
 
 

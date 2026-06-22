@@ -55,8 +55,7 @@ export default function V2AuthPage({ mode = 'login' }) {
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <V2Logo size={56} />
-          <div style={{ fontSize: 22, fontWeight: 700, marginTop: 14 }}>KOLO</div>
-          <div style={{ fontSize: 13.5, color: 'var(--v2-muted)', marginTop: 4 }}>
+          <div style={{ fontSize: 13.5, color: 'var(--v2-muted)', marginTop: 14 }}>
             Ton copilote IA terrain
           </div>
         </div>

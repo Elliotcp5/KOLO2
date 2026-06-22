@@ -57,7 +57,7 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
             <div className="v2-quota-block" data-testid="drawer-quota-block">
               <div className="v2-quota-row" data-testid="quota-contacts">
                 <div className="v2-quota-label">
-                  <span className="emoji">📇</span> Contacts
+                  <Users size={13} strokeWidth={2} /> Contacts
                 </div>
                 <div className="v2-quota-value">
                   <strong>{dashboard?.free_contacts_left ?? 10}</strong>
@@ -72,16 +72,16 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
               </div>
               <div className="v2-quota-row" data-testid="quota-prospecting">
                 <div className="v2-quota-label">
-                  <span className="emoji">🔍</span> Prospection
+                  <SearchIcon size={13} strokeWidth={2} /> Prospection
                 </div>
                 <div className="v2-quota-value">
-                  <strong>{dashboard?.prospecting_left_today ?? 1}</strong>
-                  <span className="muted"> sur {dashboard?.prospecting_limit_per_day ?? 1} restante aujourd'hui</span>
+                  <strong>{dashboard?.prospecting_left_this_week ?? 1}</strong>
+                  <span className="muted"> sur {dashboard?.prospecting_limit_per_week ?? 1} restante cette semaine</span>
                 </div>
                 <div className="v2-quota-bar">
                   <div
                     className="v2-quota-bar-fill"
-                    style={{ width: `${Math.min(100, Math.round(((dashboard?.prospecting_used_today ?? 0) / (dashboard?.prospecting_limit_per_day ?? 1)) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round(((dashboard?.prospecting_used_this_week ?? 0) / (dashboard?.prospecting_limit_per_week ?? 1)) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -90,8 +90,8 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
 
           {dashboard?.has_pro && (
             <div className="v2-quota-block" data-testid="drawer-pro-block" style={{ fontSize: 13, color: 'var(--v2-muted)' }}>
-              <div>📇 Contacts : <strong>illimité</strong></div>
-              <div style={{ marginTop: 4 }}>🔍 Prospection : <strong>illimitée</strong></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={14} strokeWidth={2} /> Contacts : <strong>illimité</strong></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}><SearchIcon size={14} strokeWidth={2} /> Prospection : <strong>illimitée</strong></div>
             </div>
           )}
 
@@ -139,17 +139,45 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
   );
 };
 
-/* ---------- Bottom Nav ---------- */
-export const V2BottomNav = () => {
+/* ---------- Bottom Nav (with optional central mic FAB on Home) ---------- */
+export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) => {
   const tabs = [
     { to: '/app-v2', icon: HomeIcon, label: 'Accueil', exact: true, tid: 'tab-home' },
     { to: '/app-v2/dossiers', icon: FolderOpen, label: 'Dossiers', tid: 'tab-cases' },
     { to: '/app-v2/contacts', icon: Users, label: 'Contacts', tid: 'tab-contacts' },
     { to: '/app-v2/agenda', icon: Calendar, label: 'Agenda', tid: 'tab-agenda' },
   ];
+  // When central mic is shown, split tabs 2|MIC|2
+  const left = tabs.slice(0, 2);
+  const right = tabs.slice(2);
   return (
-    <nav className="v2-bottom-nav" data-testid="v2-bottom-nav">
-      {tabs.map(({ to, icon: Icon, label, exact, tid }) => (
+    <nav className={`v2-bottom-nav ${showCentralMic ? 'with-mic' : ''}`} data-testid="v2-bottom-nav">
+      {(showCentralMic ? left : tabs).map(({ to, icon: Icon, label, exact, tid }) => (
+        <NavLink
+          to={to}
+          end={exact}
+          key={to}
+          className={({ isActive }) => `v2-tab ${isActive ? 'active' : ''}`}
+          data-testid={tid}
+        >
+          <Icon size={22} strokeWidth={1.8} />
+          <span>{label}</span>
+          <span className="tab-dot" />
+        </NavLink>
+      ))}
+      {showCentralMic && (
+        <button
+          type="button"
+          className="v2-mic-fab"
+          onClick={onMicClick}
+          aria-label="Créer une note vocale"
+          data-testid="home-mic-fab"
+        >
+          <span className="v2-mic-ring" aria-hidden />
+          <Mic size={26} strokeWidth={2.2} />
+        </button>
+      )}
+      {showCentralMic && right.map(({ to, icon: Icon, label, exact, tid }) => (
         <NavLink
           to={to}
           end={exact}
@@ -185,12 +213,7 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
       </header>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} user={user} dashboard={dashboard} />
       <main className="v2-container">{children}</main>
-      {showAddNoteFab && (
-        <button className="v2-add-note-fab" onClick={onAddNote} data-testid="add-note-fab">
-          <Mic size={18} strokeWidth={2.2} /> Ajouter une note
-        </button>
-      )}
-      <V2BottomNav />
+      <V2BottomNav showCentralMic={showAddNoteFab} onMicClick={onAddNote} />
     </div>
   );
 };
