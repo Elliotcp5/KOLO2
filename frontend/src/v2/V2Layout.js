@@ -59,7 +59,7 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
               onClick={() => { onClose(); navigate('/app-v2/settings/subscription'); }}
               data-testid="drawer-upgrade-btn"
             >
-              Passer Pro · 29,99€/mois
+              Passer Pro · 24,99€/mois
             </button>
           )}
         </div>

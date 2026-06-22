@@ -16,6 +16,19 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Audit V2 + Parrainage public + IA contextuelle + Pige RapidAPI (iter 49 — Feb 2026)
+🎯 **Audit V2 + finalisation last working item** (réponse à "tu es sûr que tu as bien tout fait ?") :
+- ✅ **Audit V2 testing agent** : 16/16 backend + ~95% frontend OK — la V2 n'est PAS une façade vide. Onboarding 9 slides complet, ADEME DPE réel, IA Claude Sonnet 4.5, CRUD complet.
+- ✅ **Landing parrainage publique `/r/:code`** : page minimaliste avec prénom du parrain (gradient violet→rose), 4 perks, CTA noir "Créer mon compte avec [Prénom] comme parrain". Stocke le code en localStorage, redirige vers `/app-v2/signup?ref=CODE`.
+- ✅ **Endpoint public** `GET /api/v2/referral/info/{code}` (no auth) → retourne `{code, referrer_first_name}`.
+- ✅ **Attribution automatique** : `/api/v2/auth/verify-email-code` accepte `referral_code` et crée l'entrée `v2_referrals_redeemed` automatiquement (anti-self-referral inclus).
+- ✅ **Banner référent dynamique** sur `/app-v2/signup?ref=CODE` : "🎁 Tu es invité par [Prénom] — rejoins KOLO gratuitement."
+- ✅ **IA Copilote contextuel** : chaque message `/api/v2/ai/chat` injecte le profil agent (rôle, CRM, secteurs, prénom), les compteurs (contacts/dossiers/rappels du jour) et les 5 derniers dossiers dans le prompt → Claude répond en utilisant le contexte réel.
+- ✅ **Fix bug `user.first_name`** : daily-tip + ai/chat utilisent maintenant `db.users.find_one(...)` (le modèle Pydantic User n'a pas first_name, drop par `extra="ignore"`).
+- ✅ **Pige Annonces RapidAPI Selogimmo** : code backend complet (résolution code postal → city_id + listings + cache MongoDB 6h). Activé via `RAPIDAPI_KEY` + `RAPIDAPI_SELOGIMMO_HOST` en .env. Le code retourne `source: "Selogimmo"` quand actif, `"placeholder"` sinon, `"not_subscribed"` si HTTP 403. **MOCKÉ pour l'instant** car le provider Selogimmo se fait bloquer par SeLoger.com côté upstream (HTTP 501 "AxiosError 403") et le user n'a pas activement souscrit à toutes les APIs RapidAPI nécessaires.
+- ✅ **Corrections copy parrainage** (selon directive user) : "+1 mois pour vous deux" → "1 mois Pro offert pour le parrain uniquement (si le filleul passe Pro)". Tarif Pro corrigé 29,99€ → **24,99€/mois** partout (V2Layout sidebar, V2Extras referral page).
+- 📝 **Test seed** : code TESTABCD pour parrain Marie (`user_id=u_testref01`) — landing accessible via `/r/TESTABCD`.
+
 ### Sprint Refonte intégrale webapp v2 (iter 48 — Feb 2026)
 🚀 **Refonte complète sous `/app-v2`** (iOS-first, mobile, ne casse rien) :
 - **Backend** : `/app/backend/v2_router.py` monté sous `/api/v2/*`. Nouvelles collections MongoDB (v2_reminders, v2_notes, v2_contacts, v2_cases, v2_ai_messages, v2_email_codes, v2_onboarding). Endpoints : me, dashboard, reminders/notes/contacts/cases CRUD, ai/chat + daily-tip + conversations, auth email-code, onboarding, prospecting DPE & listings.

@@ -65,15 +65,15 @@ export default function V2ReferralLandingPage() {
               <span className="accent">{referrerName}</span> t'invite à rejoindre KOLO.
             </h1>
             <p className="v2-ref-body">
-              KOLO est le copilote IA des agents immobiliers. Ton parrain t'offre l'accès à la version premium —
-              tu profites d'<strong>1 mois offert</strong>, et lui aussi.
+              KOLO est le copilote IA des agents immobiliers. Ton parrain {referrerName} t'invite à le découvrir —
+              il bénéficie d'<strong>1 mois Pro offert</strong> si tu passes Pro à ton tour.
             </p>
 
             <div className="v2-ref-perks">
               <div className="perk"><Check size={14} /> Copilote IA conversationnel — formé à l'immobilier</div>
               <div className="perk"><Check size={14} /> Pige DPE + annonces sur ta zone</div>
               <div className="perk"><Check size={14} /> Notes vocales, dossiers et rappels intelligents</div>
-              <div className="perk"><Check size={14} /> +1 mois Pro offert pour toi <strong>et</strong> pour {referrerName}</div>
+              <div className="perk"><Check size={14} /> Plan gratuit : 10 contacts, puis Pro à 24,99€/mois</div>
             </div>
 
             <button className="v2-btn primary full big" onClick={startSignup} data-testid="ref-create-account">

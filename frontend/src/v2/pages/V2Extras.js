@@ -92,7 +92,12 @@ export const V2ProspectingPage = () => {
           Données d'exemple — la pige live des annonces se débloque dès la configuration RapidAPI.
         </div>
       )}
-      {source && source !== 'placeholder' && (
+      {mode === 'ads' && source === 'not_subscribed' && (
+        <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-not-subscribed">
+          API Selogimmo non souscrite. Active "Subscribe to Test" sur RapidAPI (gratuit) puis recharge.
+        </div>
+      )}
+      {source && source !== 'placeholder' && source !== 'not_subscribed' && (
         <div style={{ color: 'var(--v2-muted-2)', fontSize: 11.5, marginTop: 8 }} data-testid="prosp-source-badge">
           Source : {source}
         </div>
@@ -209,7 +214,7 @@ export const V2ReferralPage = () => {
         <ul style={{ paddingLeft: 18, marginTop: 10, fontSize: 14, color: 'var(--v2-muted)', lineHeight: 1.6 }}>
           <li>Partage ton lien unique à un confrère agent immo</li>
           <li>Il s'inscrit sur KOLO via ton lien</li>
-          <li>Quand il passe Pro (29,99€/mois), tu reçois +1 mois Pro offert sur ton compte</li>
+          <li>Quand il passe Pro (24,99€/mois), tu reçois +1 mois Pro offert sur ton compte</li>
           <li>Aucune limite : parraine 1, 10 ou 100 personnes</li>
         </ul>
       </div>
@@ -241,7 +246,7 @@ export const V2SettingsPage = () => {
         <div className="v2-row-title" style={{ marginTop: 6 }}>{dashboard?.has_pro ? 'KOLO Pro' : 'KOLO Gratuit'}</div>
         <div className="v2-row-sub">{dashboard?.has_pro ? 'Toutes les fonctionnalités, sans limite.' : `${dashboard?.free_contacts_left ?? 10} contacts gratuits restants`}</div>
         {!dashboard?.has_pro && (
-          <button className="v2-btn ai-btn full" style={{ marginTop: 12 }} onClick={() => navigate('/app-v2/settings/subscription')}>Passer Pro · 29,99€/mois</button>
+          <button className="v2-btn ai-btn full" style={{ marginTop: 12 }} onClick={() => navigate('/app-v2/settings/subscription')}>Passer Pro · 24,99€/mois</button>
         )}
       </div>
 

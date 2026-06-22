@@ -921,69 +921,98 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
 
 @router.get("/prospecting/listings")
 async def prospecting_listings(request: Request, sector: Optional[str] = None, kind: Optional[str] = None, age: Optional[str] = None):
-    """Real-estate listings aggregator.
-    Uses RapidAPI when RAPIDAPI_KEY + RAPIDAPI_HOST are configured.
-    Otherwise returns realistic placeholder data (clearly marked).
+    """Real-estate listings aggregator via RapidAPI Selogimmo.
+    Configuration via env: RAPIDAPI_KEY + RAPIDAPI_SELOGIMMO_HOST.
+    Falls back to clearly-marked placeholder data when not configured / not subscribed.
     """
     await _get_user(request)
     db = _get_db()
     rapidapi_key = os.environ.get("RAPIDAPI_KEY", "").strip()
-    rapidapi_host = os.environ.get("RAPIDAPI_HOST", "").strip()
-    rapidapi_endpoint = os.environ.get("RAPIDAPI_LISTINGS_ENDPOINT", "/properties/search").strip()
+    selogimmo_host = os.environ.get("RAPIDAPI_SELOGIMMO_HOST", "selogimmo.p.rapidapi.com").strip()
 
-    # ---- REAL CALL via RapidAPI (only when configured)
-    if rapidapi_key and rapidapi_host and sector:
-        # Cache key — 6h TTL
-        cache_key = f"listings_{rapidapi_host}_{sector}_{kind or 'any'}"
+    # ---- REAL CALL via Selogimmo (RapidAPI)
+    if rapidapi_key and selogimmo_host and sector:
+        # Cache 6h
+        cache_key = f"selogimmo_{sector}_{kind or 'any'}"
         cached = await db.v2_listings_cache.find_one({"key": cache_key}, {"_id": 0})
         if cached:
             try:
                 cached_at = datetime.fromisoformat(cached["cached_at"])
                 if datetime.now(timezone.utc) - cached_at < timedelta(hours=6):
-                    return {"items": cached.get("items", []), "source": "RapidAPI (cache)"}
+                    return {"items": cached.get("items", []), "source": "Selogimmo (cache)"}
             except Exception:
                 pass
 
         import httpx
-        url = f"https://{rapidapi_host}{rapidapi_endpoint}"
-        params = {"zipcode": sector, "type": "buy"}
-        if kind:
-            params["kind"] = kind
-        headers = {"X-RapidAPI-Key": rapidapi_key, "X-RapidAPI-Host": rapidapi_host}
+        headers = {"x-rapidapi-key": rapidapi_key, "x-rapidapi-host": selogimmo_host}
 
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get(url, headers=headers, params=params)
-                if r.status_code == 200:
-                    payload = r.json()
-                    raw = payload.get("listings") or payload.get("results") or payload.get("data") or []
-                    items = []
-                    for row in raw[:30]:
-                        items.append({
-                            "title": row.get("title") or row.get("name") or "Annonce immobilière",
-                            "sector": str(row.get("postal_code") or row.get("zipcode") or sector or ""),
-                            "price": row.get("price") or row.get("amount") or 0,
-                            "surface": row.get("area") or row.get("surface") or 0,
-                            "rooms": row.get("rooms") or row.get("nb_rooms") or 0,
-                            "kind": (row.get("source") or row.get("publisher") or "").lower(),
-                            "photo": row.get("image_url") or row.get("photo") or "",
-                            "url": row.get("url") or row.get("link") or "",
-                            "posted_at": row.get("posted_at") or row.get("date") or "",
-                        })
-                    # Cache for 6h
-                    try:
-                        await db.v2_listings_cache.update_one(
-                            {"key": cache_key},
-                            {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
-                            upsert=True,
+        # Step 1 — Resolve sector → city_id via /cityinfo (if not already a numeric ID)
+        city_id: Optional[str] = None
+        not_subscribed = False
+        if sector.strip().isdigit() and len(sector.strip()) >= 5:
+            city_id = sector.strip()
+        else:
+            try:
+                async with httpx.AsyncClient(timeout=8) as client:
+                    cr = await client.get(
+                        f"https://{selogimmo_host}/cityinfo",
+                        headers=headers, params={"city": sector},
+                    )
+                    if cr.status_code == 200:
+                        cdata = cr.json()
+                        # API returns either a list or a dict — best-effort extraction
+                        if isinstance(cdata, list) and cdata:
+                            city_id = str(cdata[0].get("id") or cdata[0].get("city_id") or "")
+                        elif isinstance(cdata, dict):
+                            city_id = str(cdata.get("id") or cdata.get("city_id") or cdata.get("data", [{}])[0].get("id", "") if cdata.get("data") else "")
+                    elif cr.status_code == 403:
+                        not_subscribed = True
+            except Exception:
+                pass
+
+        if not_subscribed and not city_id:
+            return {"items": [], "source": "not_subscribed", "hint": "Active 'Subscribe to Test' sur RapidAPI Selogimmo (gratuit)."}
+
+        # Step 2 — Fetch listings
+        if city_id:
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    r = await client.get(
+                        f"https://{selogimmo_host}/",
+                        headers=headers, params={"city": city_id, "page": 1},
+                    )
+                    if r.status_code == 200:
+                        payload = r.json()
+                        raw = payload if isinstance(payload, list) else (
+                            payload.get("listings") or payload.get("results") or payload.get("data") or payload.get("items") or []
                         )
-                    except Exception:
-                        pass
-                    if items:
-                        return {"items": items, "source": "RapidAPI"}
-        except Exception:
-            # Fall through to placeholder
-            pass
+                        items = []
+                        for row in raw[:30]:
+                            items.append({
+                                "title": row.get("title") or row.get("publicationTitle") or row.get("description", "")[:60] or "Annonce",
+                                "sector": str(row.get("city") or row.get("zipCode") or row.get("postalCode") or sector or ""),
+                                "price": row.get("price") or row.get("pricing", {}).get("price") or 0,
+                                "surface": row.get("surface") or row.get("livingArea") or 0,
+                                "rooms": row.get("rooms") or row.get("nbRooms") or row.get("roomsQuantity") or 0,
+                                "kind": "pro" if (row.get("publisher", {}).get("type") == "professional" or row.get("isPro")) else "private",
+                                "photo": (row.get("photos") or row.get("pictures") or [{}])[0].get("url") if isinstance(row.get("photos") or row.get("pictures"), list) else (row.get("photo") or ""),
+                                "url": row.get("url") or row.get("permalink") or "",
+                                "posted_at": row.get("publicationDate") or row.get("publishedAt") or "",
+                            })
+                        if items:
+                            try:
+                                await db.v2_listings_cache.update_one(
+                                    {"key": cache_key},
+                                    {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                                    upsert=True,
+                                )
+                            except Exception:
+                                pass
+                            return {"items": items, "source": "Selogimmo"}
+                    elif r.status_code == 403:
+                        return {"items": [], "source": "not_subscribed", "hint": "Active 'Subscribe to Test' sur RapidAPI Selogimmo (gratuit)."}
+            except Exception:
+                pass
 
     # ---- Placeholder (clearly marked)
     base = [

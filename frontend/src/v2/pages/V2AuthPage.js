@@ -72,7 +72,7 @@ export default function V2AuthPage({ mode = 'login' }) {
             color: 'var(--v2-ink)',
             textAlign: 'center',
           }} data-testid="auth-referral-banner">
-            🎁 Tu es invité par <strong>{referralName}</strong> — +1 mois offert pour vous deux.
+            🎁 Tu es invité par <strong>{referralName}</strong> — rejoins KOLO gratuitement.
           </div>
         )}
 
