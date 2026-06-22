@@ -1,64 +1,14 @@
-# KOLO - Test Credentials
+# KOLO — Test Credentials
 
-## Application principale
-- **Email**: test@test.com
-- **Password**: testtest
+## Super Admin (V1 prod)
+- Email: elliot.cohenpressard@trykolo.io
+- Password: Psychologue75007%!
+- Notes: hardcoded fallback super admin, plan PRO+ lifetime.
 
-## Super Admin KOLO (accès `/kolo-admin` + bypass org membership)
-- **Email**: elliot.cohenpressard@trykolo.io
-- **Mot de passe**: `Psychologue75007%!`
-- **Provider**: email/password (le compte n'est pas Google)
-- **Méthodes de connexion** : Email/password sur `/login` OU Google Sign-In (si tu actives le même email avec Google plus tard)
-- **Allowlist super admin**: hard-coded dans `server.py` (`KOLO_SUPER_ADMIN_EMAILS`)
-- **Plan**: pro_plus (active subscription)
+## V2 Email-Code Auth (preview/dev)
+- Tout email fonctionne — endpoint `/api/v2/auth/send-email-code` retourne `dev_code` en dev preview pour test instantané.
+- Endpoint preview: https://responsive-kolo.preview.emergentagent.com
 
-## Super Admin 2 (allowlist — pas seedé)
-- **Email**: pressardhugo@gmail.com
-- **Mot de passe**: doit s'inscrire via /register puis se connecter (allowlist le promeut automatiquement)
-- **Allowlist**: `KOLO_SUPER_ADMIN_EMAILS`
-
-## Admin Simple (allowlist — création marques blanches uniquement)
-- **Email**: alessio.arduca@trykolo.io
-- **Mot de passe**: doit s'inscrire via /register puis se connecter
-- **Allowlist**: `KOLO_SIMPLE_ADMIN_EMAILS`
-- **Permissions**: peut voir l'onglet "Créer une marque blanche" + "Mes marques blanches" (filtrées sur celles qu'il a créées). RIEN d'autre.
-
-## Apple Sign-In (Web)
-- Statut: **placeholders** dans `backend/.env` (bouton désactivé "Bientôt disponible")
-- Variables: `APPLE_SIGNIN_CLIENT_ID`, `APPLE_SIGNIN_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY`, `APPLE_SIGNIN_ENABLED=false`
-
-## Phase 3 — Intégrations (placeholders dans backend/.env)
-- **Twilio Voice**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
-- **WhatsApp Business**: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN=kolo_wa_verify_2026` (déjà fixée), `WHATSAPP_APP_SECRET` (sécurité signature webhook)
-- **Google Calendar**: ✅ ACTIVÉ — `GOOGLE_CAL_CLIENT_ID` et `GOOGLE_CAL_CLIENT_SECRET` configurés. Redirect URI : `https://trykolo.io/api/integrations/google-calendar/callback` (à ajouter dans Google Cloud Console)
-- **Outlook (Microsoft Graph)**: ✅ ACTIVÉ — `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common`. Redirect URI : `https://trykolo.io/api/integrations/outlook-calendar/callback` (à ajouter dans Azure App Registration)
-- **OpenAI Whisper**: `EMERGENT_LLM_KEY=sk-emergent-27dA4CbFe23205352D` (Emergent Universal Key — DÉJÀ ACTIVÉE)
-- **Apple Calendar**: bouton "Bientôt disponible" (CalDAV à implémenter)
-
-## ⚠️ Production — variables à ajouter
-**Pour que la connexion super admin fonctionne en production** :
-- ✅ **PLUS BESOIN d'ajouter** `SUPER_ADMIN_SEED_PASSWORD` — un fallback `"Psychologue75007%!"` est désormais hardcodé dans `server.py` (au seed startup). Le seed tourne à chaque démarrage du backend et garantit que le compte `elliot.cohenpressard@trykolo.io` existe avec ce mot de passe, le flag `is_super_admin: true`, et le plan `pro_plus`.
-- Pour rotation : définir `SUPER_ADMIN_SEED_PASSWORD=...` en env var écrase le fallback au prochain restart.
-
-**Pour activer Google OAuth direct (sans page intermédiaire Emergent) en prod** :
-- ✅ `GOOGLE_CAL_CLIENT_ID` et `GOOGLE_CAL_CLIENT_SECRET` sont déjà dans `.env`
-- ⚠️ **ACTION REQUISE dans Google Cloud Console** : ajouter dans la même OAuth Client (Calendar) :
-  - **Authorized JavaScript Origins** : `https://trykolo.io`, `https://responsive-kolo.preview.emergentagent.com`
-  - **Authorized redirect URIs** : `https://trykolo.io/auth/google`, `https://responsive-kolo.preview.emergentagent.com/auth/google` (pour le sign-in), + `https://trykolo.io/api/integrations/google-calendar/callback` (pour Calendar)
-
-**Pour activer Outlook Calendar en prod** :
-- `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT=common` (déjà dans `.env`)
-- Azure Portal : ajouter redirect URI `https://trykolo.io/api/integrations/outlook-calendar/callback`
-
-**Pour l'IA Suggested Task en prod** :
-- `EMERGENT_LLM_KEY=sk-emergent-27dA4CbFe23205352D` (déjà dans `.env`)
-- Variable `FRONTEND_URL=https://trykolo.io`
-
-## Environnement
-- Backend (preview Emergent): https://responsive-kolo.preview.emergentagent.com
-- Backend (production): https://trykolo.io
-- Bundle iOS: io.kolo.app
-- App Store Apple ID: 6761818371
-
-## Tests automatiques (seed pour pytest)
-Voir `/app/auth_testing.md` pour le script mongosh complet.
+## V2 Referral (test seed)
+- Code: TESTABCD → parrain "Marie" (`user_id=u_testref01`)
+- Page publique: https://responsive-kolo.preview.emergentagent.com/r/TESTABCD

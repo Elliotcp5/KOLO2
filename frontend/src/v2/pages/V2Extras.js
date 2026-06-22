@@ -26,6 +26,7 @@ export const V2ProspectingPage = () => {
   const [score, setScore] = useState('');
   const [age, setAge] = useState('');
   const [items, setItems] = useState([]);
+  const [source, setSource] = useState('');
 
   const reload = () => {
     if (mode === 'dpe') {
@@ -34,11 +35,11 @@ export const V2ProspectingPage = () => {
       if (score) p.score = score;
       if (age === '30') p.days = 30;
       if (age === '90') p.days = 90;
-      v2api.dpe(p).then(r => setItems(r.items)).catch(() => setItems([]));
+      v2api.dpe(p).then(r => { setItems(r.items); setSource(r.source || ''); }).catch(() => { setItems([]); setSource(''); });
     } else {
       const p = {};
       if (sector) p.sector = sector;
-      v2api.listings(p).then(r => setItems(r.items)).catch(() => setItems([]));
+      v2api.listings(p).then(r => { setItems(r.items); setSource(r.source || ''); }).catch(() => { setItems([]); setSource(''); });
     }
   };
   useEffect(() => { reload(); }, [mode, sector, score, age]);
@@ -83,6 +84,17 @@ export const V2ProspectingPage = () => {
             <select className="v2-select" value={age} onChange={(e) => setAge(e.target.value)} data-testid="prosp-age">
               <option value="">Tous</option><option value="30">- 30 jours</option><option value="90">- 3 mois</option>
             </select></div>
+        </div>
+      )}
+
+      {mode === 'ads' && source === 'placeholder' && (
+        <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-source-notice">
+          Données d'exemple — la pige live des annonces se débloque dès la configuration RapidAPI.
+        </div>
+      )}
+      {source && source !== 'placeholder' && (
+        <div style={{ color: 'var(--v2-muted-2)', fontSize: 11.5, marginTop: 8 }} data-testid="prosp-source-badge">
+          Source : {source}
         </div>
       )}
 

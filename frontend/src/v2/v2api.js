@@ -100,6 +100,10 @@ export const v2api = {
   getConversation: (id) =>
     fetch(`${API}/api/v2/ai/conversations/${id}`, { headers: headers() }).then(handle),
 
+  // Public (no auth required)
+  referralInfo: (code) =>
+    fetch(`${API}/api/v2/referral/info/${encodeURIComponent(code)}`).then(handle),
+
   // Referral
   myReferral: () => fetch(`${API}/api/v2/referral/me`, { headers: headers() }).then(handle),
 

@@ -105,6 +105,7 @@ class EmailCodeVerify(BaseModel):
     first_name: Optional[str] = ""
     last_name: Optional[str] = ""
     password: Optional[str] = None
+    referral_code: Optional[str] = None
 
 
 class OnboardingPayload(BaseModel):
@@ -156,6 +157,30 @@ async def me(request: Request):
 # ============================================================================
 def _gen_ref_code() -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+
+@router.get("/referral/info/{code}")
+async def get_referral_info(code: str):
+    """PUBLIC endpoint — returns referrer first name + plan invite from a referral code.
+    Used by the public landing page /r/:code.
+    """
+    db = _get_db()
+    ref = await db.v2_referrals.find_one({"code": code.upper().strip()}, {"_id": 0})
+    if not ref:
+        raise HTTPException(status_code=404, detail="Code de parrainage invalide")
+    referrer = await db.users.find_one(
+        {"user_id": ref["user_id"]},
+        {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "name": 1}
+    ) or {}
+    first_name = (referrer.get("first_name") or "").strip()
+    if not first_name and referrer.get("name"):
+        first_name = referrer["name"].split(" ", 1)[0]
+    if not first_name and referrer.get("email"):
+        first_name = referrer["email"].split("@", 1)[0]
+    return {
+        "code": ref["code"],
+        "referrer_first_name": first_name or "Ton parrain",
+    }
 
 
 @router.get("/referral/me")
@@ -551,7 +576,35 @@ async def ai_chat(payload: AiChatIn, request: Request):
                 f"Notes terrain:\n{note_lines or '(aucune)'}"
             )
 
-    final_message = f"{payload.message}{context_snippet}"
+    # Always add a lightweight global context (onboarding + counts + active dossiers)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    first_name = (user_doc.get("first_name") or "").strip() or (user_doc.get("name") or "").split(" ", 1)[0]
+    onboarding = await db.v2_onboarding.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    cases_count = await db.v2_cases.count_documents({"user_id": user.user_id})
+    contacts_count = await db.v2_contacts.count_documents({"user_id": user.user_id})
+    today = datetime.now(timezone.utc).date().isoformat()
+    reminders_today = await db.v2_reminders.count_documents({
+        "user_id": user.user_id, "date": today, "status": "pending"
+    })
+    recent_cases = await db.v2_cases.find(
+        {"user_id": user.user_id}, {"_id": 0, "type": 1, "property_kind": 1, "address": 1, "price": 1}
+    ).sort("created_at", -1).to_list(5)
+    recent_cases_summary = "\n".join(
+        f"- {c.get('type','?')} · {c.get('property_kind','?')} · {c.get('address','—') or '—'} · {c.get('price') or '—'}€"
+        for c in recent_cases
+    ) or "(aucun)"
+
+    global_ctx = (
+        f"\n\n[Profil agent]\nPrénom: {first_name or '—'}. "
+        f"Rôle: {onboarding.get('role') or '—'}. "
+        f"Activité: {onboarding.get('main_activity') or '—'}. "
+        f"CRM: {onboarding.get('crm_tool') or '—'}. "
+        f"Secteurs: {', '.join(onboarding.get('sectors', [])) or '—'}.\n"
+        f"[État actuel]\nContacts: {contacts_count} · Dossiers: {cases_count} · Rappels aujourd'hui: {reminders_today}.\n"
+        f"[5 derniers dossiers]\n{recent_cases_summary}"
+    )
+
+    final_message = f"{payload.message}{context_snippet}{global_ctx}"
 
     # Call LLM via emergentintegrations
     try:
@@ -628,13 +681,15 @@ async def daily_tip(request: Request):
     """Returns a freshly generated daily tip tailored to the user's activity."""
     user = await _get_user(request)
     db = _get_db()
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    first_name = (user_doc.get("first_name") or "").strip() or (user_doc.get("name") or "").split(" ", 1)[0] or "Agent"
     contacts_count = await db.v2_contacts.count_documents({"user_id": user.user_id})
     cases_count = await db.v2_cases.count_documents({"user_id": user.user_id})
     notes_count = await db.v2_notes.count_documents({"user_id": user.user_id})
     onboarding = await db.v2_onboarding.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
 
     activity_summary = (
-        f"L'utilisateur s'appelle {user.first_name or 'Agent'}. Profil onboarding: {onboarding.get('role') or '—'}. "
+        f"L'utilisateur s'appelle {first_name}. Profil onboarding: {onboarding.get('role') or '—'}. "
         f"Il a actuellement {contacts_count} contacts, {cases_count} dossiers, {notes_count} notes terrain."
     )
     prompt = (
@@ -649,7 +704,7 @@ async def daily_tip(request: Request):
         msg = UserMessage(text=prompt)
         tip = await chat.send_message(msg)
     except Exception:
-        tip = f"Salut {user.first_name or 'Agent'} 👋 La régularité fait la différence. Note systématiquement chaque échange terrain — c'est ce qui transforme KOLO en vrai copilote. Quel a été ton dernier échange client ?"
+        tip = f"Salut {first_name} 👋 La régularité fait la différence. Note systématiquement chaque échange terrain — c'est ce qui transforme KOLO en vrai copilote. Quel a été ton dernier échange client ?"
 
     suggestions = [
         "Voir mes tâches du jour",
@@ -754,6 +809,22 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
         "subscription_status": "free",
     }
     await db.users.insert_one(user_doc)
+    # Auto-attribute referral if provided
+    if payload.referral_code:
+        try:
+            ref = await db.v2_referrals.find_one({"code": payload.referral_code.upper().strip()})
+            if ref and ref["user_id"] != user_id:
+                existing_redeem = await db.v2_referrals_redeemed.find_one({"referred_user_id": user_id})
+                if not existing_redeem:
+                    await db.v2_referrals_redeemed.insert_one({
+                        "referrer_user_id": ref["user_id"],
+                        "referred_user_id": user_id,
+                        "code": ref["code"],
+                        "converted_pro": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+        except Exception:
+            pass
     session_token = f"sess_{uuid.uuid4().hex}"
     await db.user_sessions.insert_one({
         "session_token": session_token,
@@ -850,8 +921,71 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
 
 @router.get("/prospecting/listings")
 async def prospecting_listings(request: Request, sector: Optional[str] = None, kind: Optional[str] = None, age: Optional[str] = None):
-    """PLACEHOLDER: real-estate listings aggregator placeholder."""
+    """Real-estate listings aggregator.
+    Uses RapidAPI when RAPIDAPI_KEY + RAPIDAPI_HOST are configured.
+    Otherwise returns realistic placeholder data (clearly marked).
+    """
     await _get_user(request)
+    db = _get_db()
+    rapidapi_key = os.environ.get("RAPIDAPI_KEY", "").strip()
+    rapidapi_host = os.environ.get("RAPIDAPI_HOST", "").strip()
+    rapidapi_endpoint = os.environ.get("RAPIDAPI_LISTINGS_ENDPOINT", "/properties/search").strip()
+
+    # ---- REAL CALL via RapidAPI (only when configured)
+    if rapidapi_key and rapidapi_host and sector:
+        # Cache key — 6h TTL
+        cache_key = f"listings_{rapidapi_host}_{sector}_{kind or 'any'}"
+        cached = await db.v2_listings_cache.find_one({"key": cache_key}, {"_id": 0})
+        if cached:
+            try:
+                cached_at = datetime.fromisoformat(cached["cached_at"])
+                if datetime.now(timezone.utc) - cached_at < timedelta(hours=6):
+                    return {"items": cached.get("items", []), "source": "RapidAPI (cache)"}
+            except Exception:
+                pass
+
+        import httpx
+        url = f"https://{rapidapi_host}{rapidapi_endpoint}"
+        params = {"zipcode": sector, "type": "buy"}
+        if kind:
+            params["kind"] = kind
+        headers = {"X-RapidAPI-Key": rapidapi_key, "X-RapidAPI-Host": rapidapi_host}
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get(url, headers=headers, params=params)
+                if r.status_code == 200:
+                    payload = r.json()
+                    raw = payload.get("listings") or payload.get("results") or payload.get("data") or []
+                    items = []
+                    for row in raw[:30]:
+                        items.append({
+                            "title": row.get("title") or row.get("name") or "Annonce immobilière",
+                            "sector": str(row.get("postal_code") or row.get("zipcode") or sector or ""),
+                            "price": row.get("price") or row.get("amount") or 0,
+                            "surface": row.get("area") or row.get("surface") or 0,
+                            "rooms": row.get("rooms") or row.get("nb_rooms") or 0,
+                            "kind": (row.get("source") or row.get("publisher") or "").lower(),
+                            "photo": row.get("image_url") or row.get("photo") or "",
+                            "url": row.get("url") or row.get("link") or "",
+                            "posted_at": row.get("posted_at") or row.get("date") or "",
+                        })
+                    # Cache for 6h
+                    try:
+                        await db.v2_listings_cache.update_one(
+                            {"key": cache_key},
+                            {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                            upsert=True,
+                        )
+                    except Exception:
+                        pass
+                    if items:
+                        return {"items": items, "source": "RapidAPI"}
+        except Exception:
+            # Fall through to placeholder
+            pass
+
+    # ---- Placeholder (clearly marked)
     base = [
         {"title": "T3 lumineux", "sector": "69003 Lyon", "price": 285000, "surface": 71, "rooms": 3, "kind": "private", "photo": "/og-image-v2.png", "url": "https://www.leboncoin.fr", "posted_at": "2026-02-18"},
         {"title": "Maison familiale", "sector": "33000 Bordeaux", "price": 520000, "surface": 145, "rooms": 6, "kind": "pro", "photo": "/og-image-v2.png", "url": "https://www.seloger.com", "posted_at": "2026-02-12"},
@@ -863,4 +997,4 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
         items = [r for r in items if sector.lower() in r["sector"].lower()]
     if kind in {"private", "pro"}:
         items = [r for r in items if r["kind"] == kind]
-    return {"items": items}
+    return {"items": items, "source": "placeholder"}

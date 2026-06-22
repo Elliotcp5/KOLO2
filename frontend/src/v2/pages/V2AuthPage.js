@@ -1,14 +1,15 @@
 // =============================================================
 // KOLO v2 — Auth pages (Login + Signup with email code) + Google
 // =============================================================
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { V2Logo } from '../V2Layout';
 import v2api from '../v2api';
 import '../../styles/v2.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [step, setStep] = useState('email'); // email | code
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -17,6 +18,19 @@ export default function V2AuthPage({ mode = 'login' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [devCode, setDevCode] = useState(null);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralName, setReferralName] = useState('');
+
+  useEffect(() => {
+    // Pick up ?ref=CODE from URL or from previously stored referral (set by /r/:code landing)
+    const fromUrl = params.get('ref') || '';
+    const fromStorage = localStorage.getItem('kolo_referral_code') || '';
+    const ref = (fromUrl || fromStorage || '').toUpperCase().trim();
+    if (ref) {
+      setReferralCode(ref);
+      v2api.referralInfo(ref).then(r => setReferralName(r.referrer_first_name || '')).catch(() => {});
+    }
+  }, [params]);
 
   const sendCode = async () => {
     setError(''); setBusy(true);
@@ -29,8 +43,9 @@ export default function V2AuthPage({ mode = 'login' }) {
   const verify = async () => {
     setError(''); setBusy(true);
     try {
-      const r = await v2api.verifyEmailCode({ email, code, first_name: firstName, last_name: lastName });
+      const r = await v2api.verifyEmailCode({ email, code, first_name: firstName, last_name: lastName, referral_code: referralCode || undefined });
       v2api.setSession(r.session_token);
+      if (referralCode) localStorage.removeItem('kolo_referral_code');
       navigate(r.new_user ? '/app-v2/onboarding' : '/app-v2');
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
@@ -45,6 +60,21 @@ export default function V2AuthPage({ mode = 'login' }) {
             Ton copilote IA terrain
           </div>
         </div>
+
+        {referralName && mode === 'signup' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #EEF4FF 0%, #FAF5FF 100%)',
+            border: '1px solid #E5E7FF',
+            borderRadius: 14,
+            padding: '12px 14px',
+            marginBottom: 18,
+            fontSize: 13.5,
+            color: 'var(--v2-ink)',
+            textAlign: 'center',
+          }} data-testid="auth-referral-banner">
+            🎁 Tu es invité par <strong>{referralName}</strong> — +1 mois offert pour vous deux.
+          </div>
+        )}
 
         {step === 'email' && (
           <>
