@@ -214,6 +214,15 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+  // V2 → FR by default (no marketing-site auto-overwrite). The user can still switch via settings.
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('kolo_locale_manual')) {
+        localStorage.setItem('kolo_locale', localStorage.getItem('kolo_locale') || 'fr');
+        localStorage.setItem('kolo_locale_manual', 'true');
+      }
+    } catch (_) { /* noop */ }
+  }, []);
 
   return (
     <div className="v2-app" data-testid="v2-app">

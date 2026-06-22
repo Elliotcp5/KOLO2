@@ -16,6 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint UX Premium V2 + Conseil collapsible + AI CTA central + i18n + Haptic + App Store audit (iter 52 — Feb 2026)
+🎯 **Réponse au feedback "fait basique, manque de vie, conseil illisible, pas de chat IA central"** :
+- ✅ **Bug double KOLO** retiré sur page login/signup (V2Logo unique).
+- ✅ **Quota Prospection → 1 / SEMAINE** (lundi→dimanche UTC) au lieu de 1/jour. Collection `v2_prospecting_log` stocke désormais `week_start` ISO. Endpoint `/api/v2/quota` retourne `prospecting_used_this_week`, `prospecting_limit_per_week`, `prospecting_window`. Drawer affiche "X sur 1 restante cette semaine".
+- ✅ **IA Adaptive par profil onboarding** : `_build_role_specific_persona` injecte des persona_lines dans le system prompt Claude Sonnet 4.5. 4 rôles (Directeur/Mandataire/Agent indé/Agent), 4 buckets CA (-30k pédagogie / 30-60k structuration / 60-100k stratégie / 100k+ expert), 4 activités (luxe/neuf/commercial/location). Catch-all "Persona adaptatif" pour rôles non matchés.
+- ✅ **Alerte admin BDD + email Resend** sur création compte Directeur/Réseau/Dirigeant : collection `v2_admin_alerts` + email à `ADMIN_ALERT_EMAIL` (défaut elliot.cohenpressard@trykolo.io) avec nom/email/tel/CA/secteurs/taille équipe.
+- ✅ **Conseil du jour COLLAPSIBLE** : bouton premium (data-testid `home-daily-advice`) avec chevron animé (rotate 180° on open). État fermé compact, état ouvert révèle le contenu IA dans une card gradient subtil + bouton "Continuer la conversation" (`home-tip-continue`) qui ouvre le modal AI Chat avec le conseil pré-rempli + suggestions chips cliquables.
+- ✅ **AI Chat CTA central "Demande à KOLO"** (data-testid `home-ai-cta`) : carte avec gradient border violet→pink + spark icon + bouton send rond. Titre "Demande à KOLO", sub-text "Estimation, coaching, relance, conseil…". Clic → modal AIChat full-screen "Parler à KOLO". C'est désormais le **centre de l'app**.
+- ✅ **Bouton micro central + label "Créer une note"** (multilingue 7 locales via `v2i18n.js`) : `home-mic-fab` 64px noir avec halo gradient violet→pink + anneau pulse animé + label uppercase petite typo en-dessous (`home-mic-fab-label`). **Visible uniquement sur /app-v2 (Accueil)** — pas sur Dossiers/Contacts/Agenda.
+- ✅ **Haptic feedback** : `@capacitor/haptics@5` installé. Au tap du micro → `Haptics.impact(Medium)` sur natif iOS/Android, fallback `navigator.vibrate(12)` sur web. Try/catch silencieux.
+- ✅ **V2 force FR par défaut** : `useEffect` dans V2Layout qui pose `kolo_locale_manual=true` + locale `fr` au premier mount d'un user V2 (évite l'auto-overwrite navigator.language du LocaleContext marketing).
+- ✅ **Refonte premium suivant `design_guidelines.json`** : palette violet #8B5CF6 → pink #EC4899, glassmorphism bottom nav, gradient subtil sur Conseil ouvert, élévations multi-couches, transitions cubic-bezier signature, anneau pulse mic.
+- ✅ **App Store readiness audit** complet documenté dans `/app/APP_STORE_READINESS.md` (iOS Info.plist mic, Sign in with Apple obligatoire, Google Play Service Account, splash light V2, manifest.json fix, store screenshots 7 locales, webhooks IAP).
+
 ### Sprint Quotas Free + Drawer counter + Google Play Billing (iter 51 — Feb 2026)
 🎯 **Réponse à la directive user "compteur 'X sur 10 restants' dans le drawer + 1 recherche prospection free + IAP Apple+Google"** :
 - ✅ **Free quotas backend** : `FREE_CONTACTS_LIMIT=10` + `FREE_PROSPECTING_PER_DAY=1`. POST /api/v2/contacts retourne 402 au-delà de 10. /prospecting/dpe + /prospecting/listings consomment un quota partagé (1 par jour), retournent 402 ensuite. Pro = illimité partout (`_is_pro_user` retourne True pour subscription_status in {active, trialing}).

@@ -741,6 +741,12 @@ def _build_role_specific_persona(onboarding: dict) -> str:
         persona_lines.append("Il/elle a un large périmètre géographique — propose des conseils de priorisation et de scoring de zone.")
 
     if not persona_lines:
+        original_role = onboarding.get("role", "") or ""
+        if original_role:
+            return (
+                f"\n\n[Persona adaptatif]\n- L'utilisateur a indiqué le rôle '{original_role}'. "
+                "Adapte tes conseils à cette spécialité immobilière. Reste pragmatique, donne du concret."
+            )
         return ""
 
     return (
