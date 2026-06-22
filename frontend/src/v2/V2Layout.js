@@ -9,6 +9,7 @@ import {
   Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles
 } from 'lucide-react';
 import v2api from './v2api';
+import v2t from './v2i18n';
 
 /* ---------- Logo (wordmark KOLO — League Spartan) ---------- */
 export const V2Logo = ({ size = 22, accent = false }) => (
@@ -140,6 +141,16 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
 };
 
 /* ---------- Bottom Nav (with optional central mic FAB on Home) ---------- */
+// Lazy haptic feedback — uses Capacitor Haptics on native, Vibration API on web.
+const triggerHapticImpact = async () => {
+  try {
+    const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+    await Haptics.impact({ style: ImpactStyle.Medium });
+    return;
+  } catch (_) { /* native plugin not available, fall back */ }
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) { /* noop */ }
+};
+
 export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) => {
   const tabs = [
     { to: '/app-v2', icon: HomeIcon, label: 'Accueil', exact: true, tid: 'tab-home' },
@@ -150,6 +161,7 @@ export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) =
   // When central mic is shown, split tabs 2|MIC|2
   const left = tabs.slice(0, 2);
   const right = tabs.slice(2);
+  const handleMic = () => { triggerHapticImpact(); onMicClick(); };
   return (
     <nav className={`v2-bottom-nav ${showCentralMic ? 'with-mic' : ''}`} data-testid="v2-bottom-nav">
       {(showCentralMic ? left : tabs).map(({ to, icon: Icon, label, exact, tid }) => (
@@ -166,16 +178,19 @@ export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) =
         </NavLink>
       ))}
       {showCentralMic && (
-        <button
-          type="button"
-          className="v2-mic-fab"
-          onClick={onMicClick}
-          aria-label="Créer une note vocale"
-          data-testid="home-mic-fab"
-        >
-          <span className="v2-mic-ring" aria-hidden />
-          <Mic size={26} strokeWidth={2.2} />
-        </button>
+        <div className="v2-mic-fab-wrap">
+          <button
+            type="button"
+            className="v2-mic-fab"
+            onClick={handleMic}
+            aria-label={v2t('createNote')}
+            data-testid="home-mic-fab"
+          >
+            <span className="v2-mic-ring" aria-hidden />
+            <Mic size={26} strokeWidth={2.2} />
+          </button>
+          <span className="v2-mic-fab-label" data-testid="home-mic-fab-label">{v2t('createNote')}</span>
+        </div>
       )}
       {showCentralMic && right.map(({ to, icon: Icon, label, exact, tid }) => (
         <NavLink

@@ -139,6 +139,10 @@
 .v2-tab.active .tab-dot { opacity: 1; }
 
 /* ----- Central microphone FAB (Home only) ----- */
+.v2-mic-fab-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  margin: -28px 4px 0;
+}
 .v2-mic-fab {
   position: relative;
   width: 64px; height: 64px;
@@ -147,10 +151,9 @@
   border: 4px solid #FFFFFF;
   color: #fff;
   display: flex; align-items: center; justify-content: center;
-  margin: -28px 4px 6px;
   cursor: pointer;
   box-shadow:
-    0 14px 30px rgba(99,102,241,0.28),
+    0 14px 30px rgba(139,92,246,0.32),
     0 4px 10px rgba(11,11,15,0.18),
     inset 0 1px 0 rgba(255,255,255,0.08);
   transition: transform 200ms cubic-bezier(.2,.7,.3,1.4), box-shadow 200ms ease;
@@ -158,7 +161,7 @@
 .v2-mic-fab::before {
   content: ''; position: absolute; inset: -2px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(165,180,252,0.65), rgba(240,171,252,0.55));
+  background: linear-gradient(135deg, rgba(139,92,246,0.65), rgba(236,72,153,0.55));
   z-index: -1;
   filter: blur(10px);
   opacity: 0.85;
@@ -166,17 +169,125 @@
 .v2-mic-fab .v2-mic-ring {
   position: absolute; inset: -6px;
   border-radius: 50%;
-  border: 1.5px solid rgba(165,180,252,0.65);
+  border: 1.5px solid rgba(139,92,246,0.65);
   animation: micPulse 2.2s ease-out infinite;
   pointer-events: none;
 }
 .v2-mic-fab:hover { transform: translateY(-2px); }
-.v2-mic-fab:active { transform: scale(0.96); }
+.v2-mic-fab:active { transform: scale(0.94); }
+.v2-mic-fab-label {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-top: 6px; margin-bottom: 2px;
+  color: var(--v2-ink);
+  line-height: 1;
+}
 @keyframes micPulse {
   0% { transform: scale(1); opacity: 0.7; }
   70% { transform: scale(1.35); opacity: 0; }
   100% { transform: scale(1.35); opacity: 0; }
 }
+
+/* ----- AI Chat CTA (heart of the app on Home) ----- */
+.v2-ai-cta {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 14px 16px;
+  margin: 4px 0 16px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#FFFFFF, #FFFFFF) padding-box,
+    linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%) border-box;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -8px rgba(139,92,246,0.18), 0 2px 6px -2px rgba(0,0,0,0.04);
+  transition: transform 160ms cubic-bezier(.2,.7,.3,1.4), box-shadow 160ms ease;
+  text-align: left;
+  font-family: inherit;
+}
+.v2-ai-cta:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -10px rgba(139,92,246,0.30), 0 4px 8px -2px rgba(0,0,0,0.06); }
+.v2-ai-cta:active { transform: scale(0.985); }
+.v2-ai-cta-icon {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  box-shadow: 0 6px 14px -4px rgba(139,92,246,0.5);
+}
+.v2-ai-cta-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.v2-ai-cta-title { font-size: 15px; font-weight: 600; color: var(--v2-ink); letter-spacing: -0.01em; }
+.v2-ai-cta-sub { font-size: 12.5px; color: var(--v2-muted); margin-top: 2px; line-height: 1.35; }
+.v2-ai-cta-send {
+  flex-shrink: 0; width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--v2-ink); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 160ms ease;
+}
+.v2-ai-cta:hover .v2-ai-cta-send { transform: translateX(2px); }
+
+/* ----- Daily Tip — collapsible ----- */
+.v2-tip-collapsible {
+  display: block; width: 100%;
+  background: #FFFFFF;
+  border: 1px solid var(--v2-line);
+  border-radius: 16px;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  margin-bottom: 16px;
+  font-family: inherit;
+  transition: box-shadow 200ms ease;
+}
+.v2-tip-collapsible:hover { box-shadow: 0 8px 24px -8px rgba(0,0,0,0.08); }
+.v2-tip-collapsible.open { box-shadow: 0 12px 28px -8px rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.25); }
+.v2-tip-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+}
+.v2-tip-head-left { display: flex; align-items: center; gap: 10px; }
+.v2-tip-spark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(236,72,153,0.18));
+  color: #8B5CF6;
+  display: flex; align-items: center; justify-content: center;
+}
+.v2-tip-title {
+  font-size: 14px; font-weight: 600; color: var(--v2-ink);
+  letter-spacing: -0.005em;
+}
+.v2-tip-chevron {
+  color: var(--v2-muted);
+  transition: transform 280ms cubic-bezier(.2,.8,.2,1);
+}
+.v2-tip-collapsible.open .v2-tip-chevron { transform: rotate(180deg); }
+.v2-tip-body {
+  padding: 4px 16px 16px;
+  animation: tipFadeIn 280ms ease both;
+}
+@keyframes tipFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.v2-tip-content {
+  white-space: pre-wrap;
+  font-size: 14px; line-height: 1.55;
+  color: var(--v2-ink);
+  background: linear-gradient(135deg, #FAFAFC 0%, #FBF7FE 100%);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.v2-tip-actions {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px;
+}
+.v2-tip-actions .v2-btn { padding: 10px 14px; }
+.v2-tip-collapsible .v2-suggestions { margin-top: 12px; }
+
+
 
 .v2-add-note-fab {
   position: fixed; left: 18px; right: 18px;

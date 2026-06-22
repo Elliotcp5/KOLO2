@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 52 — Premium UX sprint V2 (gradient violet/pink, glassmorphism, weekly prospecting quota, adaptive AI persona, high-value signup alert, central mic FAB, i18n labels, collapsible daily advice). BACKEND 11/11 pytest passed (test_iteration_52.py). FRONTEND 100% on session sess_ec7f64eac2c346648c7baf3afb7cff80 (mobile 390x844).\n\nBACKEND VERIFIED:\n- GET /api/v2/quota returns prospecting_used_this_week=0/limit=1/left=1 + prospecting_window='semaine (lundi → dimanche UTC)', legacy *_today fields removed.\n- GET /api/v2/dashboard exposes the same weekly fields.\n- 1st GET /api/v2/prospecting/dpe?sector=Lyon → 200, 2nd same week → 402 'Quota Prospection gratuit atteint (1 recherche / semaine). Passe Pro pour des recherches illimitées.'\n- v2_prospecting_log stores week_start ISO date (Monday UTC). Logs from previous weeks are NOT counted (verified by inserting fake 2-weeks-old log → counter still 0).\n- POST /api/v2/onboarding with role='Directeur d_agence' → v2_admin_alerts doc created kind='high_value_signup' with email, role, company_name, team_size, annual_revenue, sectors, phone. 'Directrice de réseau' also triggers. 'Agent indépendant' → NO alert. send_email Resend is best-effort (silent except).\n- POST /api/v2/ai/chat: Director (role=Directeur d_agence + 100k+) → reply contains strategic markers (KPI/équipe/pilotage/performance/manager). Beginner (Agent indépendant + -30k) → reply contains pedagogic markers (étape/simple/prospect/commenc). _build_role_specific_persona injects persona_lines as expected.\n- GET /api/v2/ai/daily-tip for Director → strategic content (équipe/pilot/agence).\n\nFRONTEND VERIFIED (mobile viewport 390x844):\n- /app-v2/login: single V2Logo wordmark + tagline 'Ton copilote IA terrain' (1 standalone KOLO node, no redundant <div>KOLO</div>).\n- /app-v2 home: data-testid='home-ai-cta' visible with title 'Demande à KOLO' + sub 'Estimation, coaching, relance, conseil…' + send round button. Click → opens '.v2-modal' fullscreen 'Parler à KOLO' chat. data-testid='home-daily-advice' collapsible (body absent before click, present after click). After click, daily-tip AI streamed content + data-testid='home-tip-continue' button rendered (note: small flaky timing — appeared in run 1/3s wait, missing in run 2 after 5s).\n- Bottom nav: data-testid='home-mic-fab' (64px central button) + data-testid='home-mic-fab-label' visible on home. On /app-v2/dossiers, /app-v2/contacts, /app-v2/agenda → home-mic-fab is NOT present (bottom nav is 4 uniform tabs). Confirmed.\n- Mic FAB click → triggers AddNoteModal '.v2-modal' titled 'Nouvelle note terrain' (with mic icon + Annuler/Enregistrer). No page error thrown. Haptic fallback to navigator.vibrate is silent.\n- i18n labels (with kolo_locale_manual='true'): FR → 'Créer une note' / 'Demande à KOLO' / 'Conseil du jour'. EN → 'New note' / 'Ask KOLO' / 'Daily advice'. IT → 'Crea una nota' / 'Chiedi a KOLO' / 'Consiglio del giorno'. All 3 verified.\n- Drawer (v2-burger → v2-drawer): quota-prospecting row reads 'PROSPECTION / 1 sur 1 restante cette semaine' — uses 'semaine' not 'aujourd'hui'. drawer-pro-block uses lucide-react Users + SearchIcon (no emojis 📇 🔍). Confirmed in V2Layout.js lines 60-96.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "i18n on /app-v2 — kolo_locale auto-overwrite",
+        "issue": "LocaleContext.js line 116/135 overwrites localStorage.kolo_locale with navigator.language unless kolo_locale_manual='true' is set. In headless browsers (and for users whose nav language ≠ FR), this silently flips the V2 UI back to English/EN labels (Ask KOLO / Daily advice / New note) the moment a user lands on the app — they have to explicitly pick FR in the LanguageSwitcher to make it stick. Not a regression vs iter51 but a UX caveat for the i18n labels added this sprint: if a French user visits with browser language=en-US, they see English UI on home. Recommend: when user finalizes onboarding (or session is V2 + onboarding role contains French keywords), set kolo_locale_manual='true' and kolo_locale='fr' automatically.",
+        "affected_selectors": ["home-ai-cta", "home-daily-advice", "home-mic-fab-label"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "/app-v2 home — Daily advice collapsible",
+        "issues": ["home-tip-continue button rendering is timing-dependent on /api/v2/ai/daily-tip latency. In one run the button appeared after ~3s; in another it was still absent after 5s. Consider showing the 'Continuer la conversation' button immediately on expand (it does not require the AI text) and lazy-loading the tip body underneath."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_52.py",
+    "/app/test_reports/pytest/iteration_52.xml"
+  ],
+  "action_items": [
+    "Auto-promote kolo_locale to 'manual' for V2 users so the i18n labels (Créer une note / Demande à KOLO / Conseil du jour) survive a reload regardless of navigator.language. Otherwise the new i18n work is invisible to most users.",
+    "Render data-testid='home-tip-continue' synchronously when the collapsible expands (decoupled from daily-tip stream), to avoid flaky UX."
+  ],
+  "critical_code_review_comments": [
+    "v2_router.py still ~1285 lines, repeated comment from iter37/38/51 — split into quotas.py / ai.py / onboarding.py / prospecting.py / crud.py.",
+    "_build_role_specific_persona (v2_router.py:677) builds persona_lines but discards the user's role text if it doesn't match any of the 4 buckets (directeur, mandataire, agent indépendant, agent). E.g. role='Promoteur immobilier' or 'Notaire' yields no persona → falls back to generic. Add a default catch-all persona line.",
+    "Onboarding high_value_signup hook (v2_router.py:1063) catches all Exceptions silently (line 1106-1107). If db.v2_admin_alerts.insert_one fails because of an upstream Mongo error, we lose the alert and never log it. Replace `except: pass` with `except Exception as e: logger.warning('admin alert insert failed', exc_info=True)`.",
+    "v2i18n.js depends on a synchronous localStorage.getItem inside the component render path on every call — fine for 5 labels but if expanded to dozens, consider a React context wrapping v2t to avoid re-reads.",
+    "V2Layout.js:147 dynamic import('@capacitor/haptics') will throw an MODULE_NOT_FOUND on web and is caught silently; the fallback navigator.vibrate(12) requires user interaction (which we have here) — OK in practice. But the silent catch hides any real native error in production builds → log it once at app boot."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_52.py",
+    "/app/test_reports/iteration_52.json",
+    "/app/test_reports/pytest/iteration_52.xml"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "95%"
+  },
+  "test_credentials": "Session V2 sess_ec7f64eac2c346648c7baf3afb7cff80 (user_id=u_227c821eafc54b53). Free plan, role=Directeur d_agence, annual_revenue=100k+. To verify i18n, ALSO set localStorage.kolo_locale_manual='true'.",
+  "seed_data_creation": "Per-test cleanup: db.v2_prospecting_log.delete_many({user_id}) before/after each test. test_high_value_signup creates temp users (test52_*@kolo-test.io), inserts v2_admin_alerts/v2_onboarding/users, then cleans up. test_beginner_chat creates a temp beginner user, then cleans up. No persistent seed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 11 backend tests pass against the public preview URL. To re-run: `pytest /app/backend/tests/test_iteration_52.py -v --tb=short --junitxml=/app/test_reports/pytest/iteration_52.xml`. Frontend i18n verification REQUIRES setting `localStorage.kolo_locale_manual='true'` in addition to `kolo_locale='fr/en/it'` — otherwise LocaleContext.js (line 116-135) overwrites it with navigator.language on every mount. The v2-modal (.v2-modal) is the shared modal class used for both AIChat (title 'Parler à KOLO') and AddNoteModal (title 'Nouvelle note terrain'). home-tip-continue is dependent on /api/v2/ai/daily-tip latency — wait ≥5s after clicking home-daily-advice. Session reset is good (subscription_status='free', prospecting log empty).",
+  "rca of the issue": "No critical bug. One UX caveat (i18n auto-overwrite by LocaleContext.js) and one minor flakiness (home-tip-continue depends on AI stream). Both documented in action_items for E1. All 14 review_request points validated end-to-end."
+}

@@ -3,11 +3,12 @@
 // =============================================================
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronRight, Plus, Clock, FileText } from 'lucide-react';
+import { Sparkles, ChevronRight, ChevronDown, Plus, Clock, FileText, Send, MessageCircle, CheckCircle2 } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import { AddNoteModal, AddReminderModal, AIChatModal, CaseDetailModal } from '../V2Modals';
 import V2NotificationPrompt from '../V2NotificationPrompt';
 import v2api from '../v2api';
+import v2t from '../v2i18n';
 import '../../styles/v2.css';
 
 const formatDateFR = (d) => {
@@ -65,6 +66,7 @@ export default function V2HomePage() {
   const [aiCaseId, setAiCaseId] = useState(null);
   const [showNotes, setShowNotes] = useState(false);
   const [showCase, setShowCase] = useState(null);
+  const [tipOpen, setTipOpen] = useState(false);
 
   const reload = () => {
     v2api.me().then(setUser).catch(() => { navigate('/app-v2/login'); });
@@ -97,22 +99,75 @@ export default function V2HomePage() {
           <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">+ Ajouter un rappel</button>
         </div>
 
-        <div className="v2-tip-card" onClick={() => { setAiInitial(tip?.tip); setAiCaseId(null); setShowAI(true); }} data-testid="home-daily-tip">
-          <div className="v2-tag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Sparkles size={12} /> Conseil du jour</span>
-            <button className="v2-icon-btn" style={{ width: 30, height: 30 }} onClick={(e) => { e.stopPropagation(); navigate('/app-v2/conversations'); }} aria-label="Historique" data-testid="home-tip-history">
-              <Clock size={14} />
-            </button>
+        {/* AI Chat CTA — heart of the app: free-form input to KOLO */}
+        <button
+          className="v2-ai-cta"
+          onClick={() => { setAiInitial(null); setAiCaseId(null); setShowAI(true); }}
+          data-testid="home-ai-cta"
+        >
+          <span className="v2-ai-cta-icon"><Sparkles size={18} /></span>
+          <span className="v2-ai-cta-text">
+            <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
+            <span className="v2-ai-cta-sub">{v2t('askKoloSub')}</span>
+          </span>
+          <span className="v2-ai-cta-send"><Send size={16} /></span>
+        </button>
+
+        {/* Daily tip — collapsible button */}
+        <button
+          className={`v2-tip-collapsible ${tipOpen ? 'open' : ''}`}
+          onClick={() => setTipOpen(o => !o)}
+          data-testid="home-daily-advice"
+          aria-expanded={tipOpen}
+        >
+          <div className="v2-tip-head">
+            <span className="v2-tip-head-left">
+              <span className="v2-tip-spark"><Sparkles size={14} /></span>
+              <span className="v2-tip-title">{v2t('dailyAdvice')}</span>
+            </span>
+            <ChevronDown size={18} className="v2-tip-chevron" />
           </div>
-          <div className="v2-card-body" style={{ color: 'var(--v2-ink)', marginTop: 10, whiteSpace: 'pre-wrap' }}>
-            {tip?.tip || 'Chargement de ton conseil personnalisé…'}
-          </div>
-          <div className="v2-suggestions" style={{ marginTop: 12 }}>
-            {(tip?.suggestions || []).map(s => (
-              <button key={s} className="v2-suggestion-chip" onClick={(e) => { e.stopPropagation(); setAiInitial(`Je voudrais : ${s}`); setShowAI(true); }} data-testid={`home-tip-sugg-${s}`}>{s}</button>
-            ))}
-          </div>
-        </div>
+          {tipOpen && (
+            <div className="v2-tip-body" data-testid="home-daily-advice-body">
+              <div className="v2-tip-content">
+                {tip?.tip || 'Chargement de ton conseil personnalisé…'}
+              </div>
+              <div className="v2-tip-actions">
+                <button
+                  className="v2-btn primary"
+                  onClick={(e) => { e.stopPropagation(); setAiInitial(tip?.tip); setShowAI(true); }}
+                  data-testid="home-tip-continue"
+                >
+                  <MessageCircle size={14} /> {v2t('continueChat')}
+                </button>
+                <button
+                  className="v2-icon-btn"
+                  onClick={(e) => { e.stopPropagation(); navigate('/app-v2/conversations'); }}
+                  aria-label="Historique des conversations"
+                  data-testid="home-tip-history"
+                >
+                  <Clock size={16} />
+                </button>
+              </div>
+              {(tip?.suggestions || []).length > 0 && (
+                <div className="v2-suggestions">
+                  {(tip.suggestions || []).map(s => (
+                    <span
+                      key={s}
+                      className="v2-suggestion-chip"
+                      onClick={(e) => { e.stopPropagation(); setAiInitial(`Je voudrais : ${s}`); setShowAI(true); }}
+                      data-testid={`home-tip-sugg-${s}`}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </button>
 
         <div className="v2-grid-2">
           <button className="v2-stat-card" onClick={() => navigate('/app-v2/agenda')} data-testid="home-stat-reminders" style={{ textAlign: 'left' }}>
