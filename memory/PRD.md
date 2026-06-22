@@ -16,6 +16,15 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Quotas Free + Drawer counter + Google Play Billing (iter 51 — Feb 2026)
+🎯 **Réponse à la directive user "compteur 'X sur 10 restants' dans le drawer + 1 recherche prospection free + IAP Apple+Google"** :
+- ✅ **Free quotas backend** : `FREE_CONTACTS_LIMIT=10` + `FREE_PROSPECTING_PER_DAY=1`. POST /api/v2/contacts retourne 402 au-delà de 10. /prospecting/dpe + /prospecting/listings consomment un quota partagé (1 par jour), retournent 402 ensuite. Pro = illimité partout (`_is_pro_user` retourne True pour subscription_status in {active, trialing}).
+- ✅ **Endpoint `GET /api/v2/quota`** + enrichissement `/dashboard` avec `prospecting_used_today, prospecting_limit_per_day, prospecting_left_today, free_contacts_limit`. Collection `v2_prospecting_log` track les recherches par jour.
+- ✅ **Drawer sidebar compteurs prominents** (V2Layout) : pour users free, blocs "📇 CONTACTS — X sur 10 restants" + "🔍 PROSPECTION — Y sur 1 restante aujourd'hui" avec barres de progression dégradé violet→rose. Pour users Pro : bloc "📇 Contacts : illimité / 🔍 Prospection : illimitée".
+- ✅ **Banner d'upsell** sur /app-v2/prospecting : gradient jaune→rose avec message backend + CTA "Passer Pro · 24,99€/mois" qui navigue vers /app-v2/settings/subscription.
+- ✅ **Google Play Billing endpoint** : `POST /api/iap/verify-google-purchase` scaffolding production-ready. Service Account OAuth2 (PyJWT RS256), call androidpublisher.googleapis.com/v3/applications/{package}/purchases/subscriptions/{productId}/tokens/{token}. Mapping `kolo_pro_monthly|annual` → plan PRO. Update db.users avec plan, subscription_ends_at, platform='android'. **Requires** `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` env (json complet ou chemin .json) + `GOOGLE_PLAY_PACKAGE_NAME` (default io.kolo.app).
+- 📝 **Test report** : iter_51.json — 12/12 pytest backend + 100% frontend. Aucun bug.
+
 ### Sprint Google Sign-In V2 + Push V2 + Corrections copy/tarif (iter 50 — Feb 2026)
 🎯 **Réponse à la directive user "Fais P1 Google, Push hyper important, pas Stripe (paiement IAP)"** :
 - ✅ **Google Sign-In V2** : le bouton "Continuer avec Google" sur /app-v2/login et /app-v2/signup déclenche désormais le vrai flow OAuth (réutilise l'infra V1 `/api/auth/google/client-id` + `/api/auth/google/exchange`). Un sessionStorage flag `kolo_oauth_target=v2` est posé avant redirect → `GoogleAuthCallback.js` détecte la cible V2, stocke le token dans `kolo_v2_session`, attribue automatiquement le referral_code en attente, vérifie l'onboarding V2 (`GET /api/v2/onboarding`) et redirige vers `/app-v2/onboarding` (nouveau) ou `/app-v2` (existant). 100% testé via testing agent.
