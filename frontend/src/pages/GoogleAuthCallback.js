@@ -117,6 +117,25 @@ const GoogleAuthCallback = () => {
           throw new Error(data.detail || tr.exchangeFail);
         }
         localStorage.setItem('kolo_token', data.token);
+        // V2 dual-store : si l'utilisateur vient de la V2, on stocke aussi pour V2
+        let oauthTarget = 'v1';
+        try { oauthTarget = sessionStorage.getItem('kolo_oauth_target') || 'v1'; } catch (_) {}
+        if (oauthTarget === 'v2') {
+          try { localStorage.setItem('kolo_v2_session', data.token); } catch (_) {}
+        }
+        // Attribute referral if user came via /r/:code
+        let refCode = null;
+        try { refCode = localStorage.getItem('kolo_referral_code'); } catch (_) {}
+        if (refCode && data.user_id) {
+          try {
+            await fetch(`${API_URL}/api/v2/referral/attribute`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` },
+              body: JSON.stringify({ referral_code: refCode, referred_user_id: data.user_id }),
+            });
+            localStorage.removeItem('kolo_referral_code');
+          } catch (_) {}
+        }
         login({
           user_id: data.user_id,
           email: data.email,
@@ -133,6 +152,23 @@ const GoogleAuthCallback = () => {
         const isNewish = mode === 'register' || data.subscription_status === 'trialing';
         const firstName = (data.name || '').split(' ')[0] || '';
         toast.success(isNewish ? tr.welcomeNew(firstName) : tr.welcomeBack);
+        // Cible navigation : V2 si l'utilisateur vient de la V2, sinon V1
+        if (oauthTarget === 'v2') {
+          // Vérifier si l'onboarding V2 est complété
+          let goOnboarding = false;
+          try {
+            const orb = await fetch(`${API_URL}/api/v2/onboarding`, {
+              headers: { Authorization: `Bearer ${data.token}` },
+            });
+            if (orb.ok) {
+              const o = await orb.json();
+              goOnboarding = !o || !o.role;
+            }
+          } catch (_) { goOnboarding = false; }
+          try { sessionStorage.removeItem('kolo_oauth_target'); } catch (_) {}
+          window.location.replace(goOnboarding ? '/app-v2/onboarding' : '/app-v2');
+          return;
+        }
         window.location.replace('/app');
       } catch (e) {
         console.error('Google OAuth exchange failed', e);

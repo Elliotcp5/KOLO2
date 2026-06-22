@@ -134,7 +134,7 @@ class PushNotificationService {
         });
       }
 
-      const token = localStorage.getItem('kolo_token');
+      const token = localStorage.getItem('kolo_token') || localStorage.getItem('kolo_v2_session') || localStorage.getItem('session_token');
       await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
         headers: {
@@ -157,7 +157,7 @@ class PushNotificationService {
 
   async sendTokenToServer(token) {
     try {
-      const authToken = localStorage.getItem('kolo_token');
+      const authToken = localStorage.getItem('kolo_token') || localStorage.getItem('kolo_v2_session') || localStorage.getItem('session_token');
       await fetch(`${API_URL}/api/notifications/register-device`, {
         method: 'POST',
         headers: {
@@ -188,7 +188,7 @@ class PushNotificationService {
       if (subscription) {
         await subscription.unsubscribe();
         
-        const token = localStorage.getItem('kolo_token');
+        const token = localStorage.getItem('kolo_token') || localStorage.getItem('kolo_v2_session') || localStorage.getItem('session_token');
         await fetch(`${API_URL}/api/notifications/unsubscribe`, {
           method: 'DELETE',
           headers: {

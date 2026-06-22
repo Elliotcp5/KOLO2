@@ -250,6 +250,41 @@ export const V2SettingsPage = () => {
         )}
       </div>
 
+      <div className="v2-card" style={{ marginTop: 10 }}>
+        <div className="v2-tag">Notifications push</div>
+        <div className="v2-row-sub" style={{ marginTop: 6 }}>
+          Reçois un push instantané quand tu crées un rappel et chaque matin un récap de ta journée.
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <button
+            className="v2-btn primary"
+            onClick={async () => {
+              const pushService = (await import('../../services/pushNotifications')).default;
+              await pushService.initWeb();
+              const ok = await pushService.requestPermission();
+              if (!ok) { alert('Permission refusée'); return; }
+              await pushService.subscribe(user.user_id);
+              alert('Notifications activées ✓');
+            }}
+            data-testid="settings-push-enable"
+          >
+            Activer
+          </button>
+          <button
+            className="v2-btn secondary"
+            onClick={async () => {
+              try {
+                const r = await v2api.testPush();
+                alert(r.sent ? 'Test envoyé ✓' : "Envoi échoué");
+              } catch (e) { alert(e.message); }
+            }}
+            data-testid="settings-push-test"
+          >
+            Test notif
+          </button>
+        </div>
+      </div>
+
       <button className="v2-card" style={{ width: '100%', marginTop: 10, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }} onClick={logout} data-testid="settings-logout">
         <LogOut size={18} /> Se déconnecter
       </button>

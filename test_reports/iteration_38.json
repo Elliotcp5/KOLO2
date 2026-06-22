@@ -1,0 +1,36 @@
+{
+  "summary": "Audit iter_38 — Google Sign-In V2, Push V2, corrections copy/tarif. Backend: 9/9 pytest passés (vapid-key public, google client-id configured=true, /api/v2/notifications/test-push 404 sans subscription + sent:true avec subscription seedée, POST /api/v2/reminders date=today retourne 200 avec reminder_id et ne 500 jamais, /api/notifications/subscribe accepte Bearer V2, notification_scheduler.send_daily_reminders() agrège V1 tasks + V2 reminders et envoie au user seed). Frontend: validation visuelle + selectors. /r/TESTABCD copy à jour ('il bénéficie d'1 mois Pro offert si tu passes Pro à ton tour', 'Plan gratuit : 10 contacts, puis Pro à 24,99€/mois', AUCUNE mention 'vous deux' ni '29,99'). /app-v2/signup?ref=TESTABCD affiche bien le banner '🎁 Tu es invité par Marie — rejoins KOLO gratuitement.' (screenshot confirmé). Bouton 'Continuer avec Google' (data-testid='auth-google') déclenche redirect vers accounts.google.com avec client_id=344180186708-...apps.googleusercontent.com, state=non-vide, redirect_uri pointant vers /auth/google. Login V2 + dashboard /app-v2 chargent correctement. V2NotificationPrompt + V2Extras push buttons + V2Layout drawer 24,99€ tous présents dans le code (validation source car Notification.permission n'est pas 'default' en headless donc le prompt ne s'affiche pas, ce qui est conforme au design).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_38.py",
+    "/app/test_reports/pytest/iteration_38.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "v2_router.py atteint 1062 lignes (>700) — déjà signalé iter_37. Le découpage en sous-modules (referral.py, ai.py, prospecting.py, crud.py, reminders.py, notifications.py) reste recommandé.",
+    "POST /api/v2/reminders : le bloc push best-effort (lignes 281-289) catch Exception muet — OK fonctionnellement, mais ajouter un logger.warning faciliterait le debug en prod.",
+    "notification_scheduler.send_daily_reminders : l'ordre 'V1 first puis V2' construit le message correctement mais quand 1 V1 + 0 V2 existent, target_url reste '/app' ; quand 0 V1 + 1 V2, target_url='/app-v2'. Le cas mixte (>=1 V2) ouvre toujours /app-v2 — c'est cohérent avec la refonte mais à documenter.",
+    "Le bouton Google sur V2AuthPage.js dépend d'un fetch /api/auth/google/client-id avant chaque click — envisager cache (ou injection au mount) pour latence perçue."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_38.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Email-code dev preview (tout email + dev_code dans la réponse). Seed: TESTABCD (Marie). Subscription push seedée: user_id=u_227c821eafc54b53, session=sess_ec7f64eac2c346648c7baf3afb7cff80, endpoint test.push.com (skip intentionnel → sent=True).",
+  "seed_data_creation": "Aucun seed pérenne créé. Tests créent users éphémères TEST_iter38_*@kolo.test et nettoient les reminders TEST_iter38_*.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter38 valide V2 push backend + Google sign-in routing + copy/tarif fixes. Toutes les data-testids V2 push sont en place. Pour re-run: pytest /app/backend/tests/test_iteration_38.py. La validation visuelle du V2NotificationPrompt nécessite un vrai navigateur avec Notification.permission='default' (impossible en headless Chromium par défaut) — la présence du composant est confirmée par grep + analyse source.",
+  "rca of the issue": "Aucun bug. Les 3 corrections demandées (Google V2, Push V2, copy/tarif) sont entièrement fonctionnelles et conformes au contrat. Le user peut être rassuré : 24,99€ partout (V2Layout L62, V2Extras L217/L249), aucun '29,99' restant, copy parrainage 1 mois pour PARRAIN uniquement (V2ReferralLandingPage L69), banner '🎁 Tu es invité par Marie — rejoins KOLO gratuitement.' présent (sans 'vous deux'), endpoint /api/v2/notifications/test-push 404/sent:true selon subscription, scheduler agrège V1+V2."
+}

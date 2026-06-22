@@ -495,7 +495,44 @@
 
 /* ====== Desktop ====== */
 
-/* ====== Public Referral Landing /r/:code ====== */
+/* ====== Push Notification Prompt ====== */
+.v2-push-prompt {
+  position: relative;
+  background: linear-gradient(135deg, #FAF5FF 0%, #EEF4FF 100%);
+  border: 1px solid #E5E7FF;
+  border-radius: 18px;
+  padding: 16px 18px 16px 16px;
+  margin: 14px 0 18px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.v2-push-icon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--v2-accent), var(--v2-accent-2));
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+}
+.v2-push-content { flex: 1; min-width: 0; }
+.v2-push-title {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--v2-accent);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.v2-push-body {
+  font-size: 13.5px; line-height: 1.5; color: var(--v2-ink);
+  margin-top: 6px;
+}
+.v2-push-close {
+  position: absolute; top: 10px; right: 10px;
+  background: transparent; border: none; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--v2-muted-2);
+}
+.v2-push-close:hover { background: rgba(0,0,0,0.04); color: var(--v2-ink); }
+
+
 .v2-ref-landing {
   min-height: 100vh;
   background:

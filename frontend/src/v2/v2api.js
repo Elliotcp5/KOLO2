@@ -104,6 +104,10 @@ export const v2api = {
   referralInfo: (code) =>
     fetch(`${API}/api/v2/referral/info/${encodeURIComponent(code)}`).then(handle),
 
+  // Notifications
+  testPush: () =>
+    fetch(`${API}/api/v2/notifications/test-push`, { method: 'POST', headers: headers() }).then(handle),
+
   // Referral
   myReferral: () => fetch(`${API}/api/v2/referral/me`, { headers: headers() }).then(handle),
 

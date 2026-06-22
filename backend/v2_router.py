@@ -276,7 +276,40 @@ async def create_reminder(payload: ReminderIn, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.v2_reminders.insert_one(doc)
+
+    # Instant push if a subscription exists (best-effort, never blocks the response)
+    try:
+        sub = await db.push_subscriptions.find_one({"user_id": user.user_id}, {"_id": 0})
+        if sub and sub.get("subscription"):
+            from notification_scheduler import send_push_notification  # type: ignore
+            title = "KOLO — Nouveau rappel"
+            body = payload.title
+            await send_push_notification(sub["subscription"], title, body, url="/app-v2/agenda")
+    except Exception:
+        pass
+
     return _strip_mongo(doc)
+
+
+@router.post("/notifications/test-push")
+async def test_push_v2(request: Request):
+    """Sends a test push notification to the current user (V2 push debug)."""
+    user = await _get_user(request)
+    db = _get_db()
+    sub = await db.push_subscriptions.find_one({"user_id": user.user_id}, {"_id": 0})
+    if not sub or not sub.get("subscription"):
+        raise HTTPException(status_code=404, detail="Pas d'abonnement push pour cet utilisateur. Active d'abord les notifications.")
+    try:
+        from notification_scheduler import send_push_notification  # type: ignore
+        ok = await send_push_notification(
+            sub["subscription"],
+            "KOLO — Test de notification",
+            "Si tu vois ce message, les notifications fonctionnent ! 🎉",
+            url="/app-v2",
+        )
+        return {"sent": bool(ok)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Push failed: {type(e).__name__}")
 
 
 @router.get("/reminders")

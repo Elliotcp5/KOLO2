@@ -117,23 +117,36 @@ async def send_push_notification(subscription: dict, title: str, body: str, url:
         return False
 
 async def send_daily_reminders():
-    """Main function to send daily task reminders"""
+    """Main function to send daily task reminders (V1 tasks + V2 reminders)"""
     logger.info("Starting daily reminder job...")
     
-    # Get users with tasks
+    # ----- V1 tasks
     user_tasks = await get_users_with_tasks_today()
+    # ----- V2 reminders (new webapp)
+    today_iso = datetime.now(timezone.utc).date().isoformat()
+    v2_reminders = await db.v2_reminders.find({
+        "date": today_iso,
+        "status": "pending"
+    }, {"_id": 0}).to_list(10000)
+    v2_user_reminders = {}
+    for r in v2_reminders:
+        uid = r.get("user_id")
+        if not uid:
+            continue
+        v2_user_reminders.setdefault(uid, []).append(r)
     
-    if not user_tasks:
-        logger.info("No tasks due today")
+    all_user_ids = set(list(user_tasks.keys()) + list(v2_user_reminders.keys()))
+    if not all_user_ids:
+        logger.info("No tasks/reminders due today")
         return {"sent": 0, "failed": 0, "no_subscription": 0}
     
-    logger.info(f"Found {len(user_tasks)} users with tasks today")
+    logger.info(f"Found {len(all_user_ids)} users with tasks/reminders today")
     
     sent_count = 0
     failed_count = 0
     no_sub_count = 0
     
-    for user_id, tasks in user_tasks.items():
+    for user_id in all_user_ids:
         # Get push subscription
         subscription = await get_push_subscription(user_id)
         
@@ -142,20 +155,22 @@ async def send_daily_reminders():
             no_sub_count += 1
             continue
         
-        # Build notification message
-        task_count = len(tasks)
-        
-        if task_count == 1:
-            # Single task - show the task title
+        # Build notification message — combine V1 tasks + V2 reminders
+        tasks = user_tasks.get(user_id, [])
+        v2_rems = v2_user_reminders.get(user_id, [])
+        total = len(tasks) + len(v2_rems)
+        if total == 1:
+            single = tasks[0] if tasks else v2_rems[0]
             title = "KOLO - Rappel"
-            body = tasks[0].get("title", "Vous avez une tâche à faire")
+            body = single.get("title", "Vous avez un rappel à traiter")
         else:
-            # Multiple tasks
-            title = "KOLO - Vos tâches du jour"
-            body = f"Vous avez {task_count} tâches à effectuer aujourd'hui"
+            title = "KOLO - Tes rappels du jour"
+            body = f"{total} actions t'attendent aujourd'hui."
+        # Target URL: V2 if at least one V2 reminder
+        target_url = "/app-v2" if v2_rems else "/app"
         
         # Send notification
-        success = await send_push_notification(subscription, title, body)
+        success = await send_push_notification(subscription, title, body, url=target_url)
         
         if success:
             sent_count += 1

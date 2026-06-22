@@ -104,7 +104,34 @@ export default function V2AuthPage({ mode = 'login' }) {
               <span>ou</span>
               <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
             </div>
-            <button className="v2-btn secondary full" onClick={() => alert('Google Sign-In bientôt disponible')} data-testid="auth-google">
+            <button className="v2-btn secondary full" onClick={async () => {
+              try {
+                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/google/client-id`);
+                const d = await r.json();
+                if (!d.client_id) throw new Error('Google non configuré');
+                const redirectUri = window.location.origin + '/auth/google';
+                const state = Math.random().toString(36).slice(2);
+                try {
+                  sessionStorage.setItem('kolo_oauth_state', state);
+                  sessionStorage.setItem('kolo_oauth_mode', mode);
+                  sessionStorage.setItem('kolo_oauth_locale', 'fr');
+                  sessionStorage.setItem('kolo_oauth_target', 'v2');
+                } catch (_) {}
+                const params = new URLSearchParams({
+                  client_id: d.client_id,
+                  redirect_uri: redirectUri,
+                  response_type: 'code',
+                  scope: 'openid email profile',
+                  access_type: 'online',
+                  include_granted_scopes: 'true',
+                  prompt: 'select_account',
+                  state,
+                });
+                window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+              } catch (e) {
+                setError(e.message || 'Google indisponible');
+              }
+            }} data-testid="auth-google">
               Continuer avec Google
             </button>
 

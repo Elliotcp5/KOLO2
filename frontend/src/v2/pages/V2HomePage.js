@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, ChevronRight, Plus, Clock, FileText } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import { AddNoteModal, AddReminderModal, AIChatModal, CaseDetailModal } from '../V2Modals';
+import V2NotificationPrompt from '../V2NotificationPrompt';
 import v2api from '../v2api';
 import '../../styles/v2.css';
 
@@ -88,6 +89,8 @@ export default function V2HomePage() {
             {formatDateFR(today)}
           </button>
         </div>
+
+        <V2NotificationPrompt userId={user.user_id} />
 
         <div className="v2-section-title">
           Aujourd'hui
