@@ -3,7 +3,7 @@
 // Add Case, Add Contact). Bottom-sheet style, iOS feel.
 // =============================================================
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Mic, Send, MicOff, Plus, Phone, Mail, Clock } from 'lucide-react';
+import { X, Mic, Send, MicOff, Plus, Phone, Mail, Clock, Brain } from 'lucide-react';
 import v2api from './v2api';
 
 const Modal = ({ open, onClose, title, children, testid }) => {
@@ -98,6 +98,8 @@ export const AddNoteModal = ({ open, onClose, onCreated }) => {
 export const AddReminderModal = ({ open, onClose, onCreated, defaultDate }) => {
   const [form, setForm] = useState({ title: '', date: defaultDate || new Date().toISOString().slice(0, 10), time_start: '', time_end: '', description: '' });
   const [busy, setBusy] = useState(false);
+  const { listening: lsTitle, start: startTitle, stop: stopTitle } = useSpeech((t) => setForm(prev => ({ ...prev, title: prev.title ? `${prev.title} ${t}` : t })));
+  const { listening: lsDesc, start: startDesc, stop: stopDesc } = useSpeech((t) => setForm(prev => ({ ...prev, description: prev.description ? `${prev.description} ${t}` : t })));
   useEffect(() => { if (open) setForm({ title: '', date: defaultDate || new Date().toISOString().slice(0, 10), time_start: '', time_end: '', description: '' }); }, [open, defaultDate]);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const submit = async () => {
@@ -110,7 +112,18 @@ export const AddReminderModal = ({ open, onClose, onCreated, defaultDate }) => {
     <Modal open={open} onClose={onClose} title="Nouveau rappel" testid="modal-add-reminder">
       <div className="v2-field">
         <label className="v2-label">Titre</label>
-        <input className="v2-input" value={form.title} onChange={set('title')} placeholder="Appel Mme Dupont" data-testid="reminder-title" />
+        <div className="v2-input-with-mic">
+          <input className="v2-input" value={form.title} onChange={set('title')} placeholder="Appel Mme Dupont" data-testid="reminder-title" />
+          <button
+            type="button"
+            className={`v2-input-mic ${lsTitle ? 'recording' : ''}`}
+            onClick={lsTitle ? stopTitle : startTitle}
+            aria-label="Dicter le titre"
+            data-testid="reminder-title-mic"
+          >
+            {lsTitle ? <MicOff size={15} /> : <Mic size={15} />}
+          </button>
+        </div>
       </div>
       <div className="v2-field">
         <label className="v2-label">Jour</label>
@@ -127,8 +140,31 @@ export const AddReminderModal = ({ open, onClose, onCreated, defaultDate }) => {
         </div>
       </div>
       <div className="v2-field">
-        <label className="v2-label">Description (optionnelle)</label>
-        <textarea className="v2-textarea" rows={2} value={form.description} onChange={set('description')} />
+        <label className="v2-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Description (optionnelle)</span>
+          <span style={{ fontSize: 9, color: 'var(--v2-muted-2)', textTransform: 'none', letterSpacing: 0 }}>
+            {lsDesc ? 'Écoute en cours…' : 'Touche le micro pour dicter'}
+          </span>
+        </label>
+        <div className="v2-textarea-with-mic">
+          <textarea
+            className="v2-textarea"
+            rows={3}
+            value={form.description}
+            onChange={set('description')}
+            placeholder="Ajoute du contexte, des points à aborder…"
+            data-testid="reminder-description"
+          />
+          <button
+            type="button"
+            className={`v2-textarea-mic ${lsDesc ? 'recording' : ''}`}
+            onClick={lsDesc ? stopDesc : startDesc}
+            aria-label="Dicter la description"
+            data-testid="reminder-desc-mic"
+          >
+            {lsDesc ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+        </div>
       </div>
       <div className="v2-modal-actions">
         <button className="v2-btn secondary full" onClick={onClose}>Annuler</button>
@@ -270,6 +306,7 @@ export const AddCaseModal = ({ open, onClose, onCreated }) => {
   const [form, setForm] = useState({ property_kind: 'apartment', surface_m2: '', rooms: '', price: '', address: '', notes: '' });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const [busy, setBusy] = useState(false);
+  const { listening: lsNotes, start: startNotes, stop: stopNotes } = useSpeech((t) => setForm(prev => ({ ...prev, notes: prev.notes ? `${prev.notes} ${t}` : t })));
   useEffect(() => { if (open) { setForm({ property_kind: 'apartment', surface_m2: '', rooms: '', price: '', address: '', notes: '' }); setType('seller'); } }, [open]);
   const submit = async () => {
     setBusy(true);
@@ -311,8 +348,25 @@ export const AddCaseModal = ({ open, onClose, onCreated }) => {
         <input className="v2-input" type="number" value={form.price} onChange={set('price')} data-testid="case-price" /></div>
       <div className="v2-field"><label className="v2-label">{type === 'seller' ? 'Adresse du bien' : 'Secteur recherché'}</label>
         <input className="v2-input" value={form.address} onChange={set('address')} data-testid="case-address" /></div>
-      <div className="v2-field"><label className="v2-label">Notes</label>
-        <textarea className="v2-textarea" rows={2} value={form.notes} onChange={set('notes')} /></div>
+      <div className="v2-field"><label className="v2-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Notes du dossier</span>
+          <span style={{ fontSize: 9, color: 'var(--v2-muted-2)', textTransform: 'none', letterSpacing: 0 }}>
+            {lsNotes ? 'Écoute en cours…' : 'Touche le micro pour dicter'}
+          </span>
+        </label>
+        <div className="v2-textarea-with-mic">
+          <textarea className="v2-textarea" rows={3} value={form.notes} onChange={set('notes')} placeholder="Notes terrain, contexte client, éléments à retenir…" data-testid="case-notes" />
+          <button
+            type="button"
+            className={`v2-textarea-mic ${lsNotes ? 'recording' : ''}`}
+            onClick={lsNotes ? stopNotes : startNotes}
+            aria-label="Dicter les notes du dossier"
+            data-testid="case-notes-mic"
+          >
+            {lsNotes ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+        </div>
+      </div>
       <div className="v2-modal-actions">
         <button className="v2-btn secondary full" onClick={onClose}>Annuler</button>
         <button className="v2-btn primary full" onClick={submit} disabled={busy} data-testid="case-submit">{busy ? '…' : 'Créer le dossier'}</button>

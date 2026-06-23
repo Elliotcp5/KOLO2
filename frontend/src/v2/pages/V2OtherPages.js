@@ -35,7 +35,7 @@ export const V2CasesPage = () => {
     v2api.listCases(params).then(r => setItems(r.items)).catch(() => setItems([]));
   };
   useEffect(() => { reload(); }, [filter, search]);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
 
   return (
     <>
@@ -98,7 +98,7 @@ export const V2ContactsPage = () => {
 
   const reload = () => v2api.listContacts(search || undefined).then(r => setItems(r.items)).catch(() => setItems([]));
   useEffect(() => { reload(); }, [search]);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
 
   // Group by initial
   const grouped = items.reduce((acc, c) => {
@@ -176,7 +176,7 @@ export const V2AgendaPage = () => {
 
   const reload = () => v2api.listReminders(dateStr).then(r => setItems(r.items)).catch(() => setItems([]));
   useEffect(() => { reload(); }, [dateStr]);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
 
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
   const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];

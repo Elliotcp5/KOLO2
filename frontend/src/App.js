@@ -96,6 +96,18 @@ const ThemedToaster = () => {
 const AppRouter = () => {
   const location = useLocation();
 
+  // V2 routes use a light premium theme — sync body bg to avoid flash-white between transitions.
+  React.useEffect(() => {
+    const isV2 = location.pathname.startsWith('/app-v2') || location.pathname.startsWith('/r/');
+    if (isV2) {
+      document.body.style.backgroundColor = '#F7F7F9';
+      document.documentElement.style.backgroundColor = '#F7F7F9';
+    } else {
+      document.body.style.backgroundColor = '';
+      document.documentElement.style.backgroundColor = '';
+    }
+  }, [location.pathname]);
+
   // SEO multilingue dynamique (title, description, OG, html[lang])
   useSEO();
 

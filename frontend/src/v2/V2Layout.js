@@ -21,7 +21,7 @@ export const V2Logo = ({ size = 22, accent = false }) => (
 /* ---------- Loading screen ---------- */
 export const V2Loading = () => (
   <div className="v2-loading" data-testid="v2-loading">
-    <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 80, height: 80, objectFit: 'contain' }} />
+    <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 80, height: 80, objectFit: 'contain', filter: 'invert(1)' }} />
   </div>
 );
 

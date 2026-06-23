@@ -51,10 +51,10 @@ export default function V2AuthPage({ mode = 'login' }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--v2-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 380 }}>
+    <div className="v2-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, paddingBottom: 24 }}>
+      <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 72, height: 72, objectFit: 'contain' }} />
+          <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 72, height: 72, objectFit: 'contain', filter: 'invert(1)' }} />
           <div style={{ fontSize: 13.5, color: 'var(--v2-muted)', marginTop: 14 }}>
             Ton copilote IA terrain
           </div>

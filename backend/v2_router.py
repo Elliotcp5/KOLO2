@@ -1361,10 +1361,11 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
         if kind == "private":
             apify_input["onlyOwner"] = True
 
-        # Pattern: async kick off + polling via dataset (faster UX, no 60s blocking)
+        # Pattern: async kick off + short polling (~12s max) to avoid Cloudflare 502.
+        # If still running we store the run_id and the next call picks the dataset.
         run_url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={apify_token}"
         try:
-            async with httpx.AsyncClient(timeout=20) as client:
+            async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.post(run_url, json=apify_input)
                 if r.status_code in (200, 201):
                     run_data = r.json().get("data", {})
@@ -1373,16 +1374,20 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                     if not run_id or not dataset_id:
                         raise RuntimeError("no run_id")
 
-                    # Poll status max 50s (kept under nginx default proxy timeout)
+                    # Short poll: max ~12s (6 iters × 2s) — well below CF 524 (≈100s) but fast enough
+                    # to return immediate hits when Apify warm-cached the query
                     import asyncio as _aio
                     status = "RUNNING"
-                    for _ in range(25):
+                    for _ in range(6):
                         await _aio.sleep(2)
-                        sr = await client.get(f"https://api.apify.com/v2/acts/{actor_id}/runs/{run_id}?token={apify_token}")
-                        if sr.status_code == 200:
-                            status = sr.json().get("data", {}).get("status", "")
-                            if status in ("SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"):
-                                break
+                        try:
+                            sr = await client.get(f"https://api.apify.com/v2/acts/{actor_id}/runs/{run_id}?token={apify_token}")
+                            if sr.status_code == 200:
+                                status = sr.json().get("data", {}).get("status", "")
+                                if status in ("SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"):
+                                    break
+                        except Exception:
+                            break
 
                     if status == "SUCCEEDED":
                         dr = await client.get(
@@ -1417,7 +1422,7 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                 await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind})
                                 return {"items": items, "source": "Pige Immo (LBC+PAP)"}
                     # If still running, store run info so next call can pick up the dataset
-                    if status in ("RUNNING", "READY"):
+                    if status not in ("SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"):
                         await db.v2_listings_pending.update_one(
                             {"key": cache_key},
                             {"$set": {

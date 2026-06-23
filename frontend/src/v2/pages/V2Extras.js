@@ -55,7 +55,7 @@ export const V2ProspectingPage = () => {
     }
   };
   useEffect(() => { reload(); }, [mode, sector, score, age]);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
 
   const convertToCase = async (it) => {
     try {
@@ -119,8 +119,8 @@ export const V2ProspectingPage = () => {
       )}
 
       {mode === 'ads' && source === 'scraping_in_progress' && (
-        <div style={{ background: '#DBEAFE', border: '1px solid #93C5FD', color: '#1E40AF', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-scraping-in-progress">
-          🔄 Pige live en cours sur LeBonCoin + PAP — peut prendre 1 à 3 minutes la 1ère fois. Réessaie dans 30 secondes.
+        <div style={{ background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.25)', color: '#0A4DAB', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-scraping-in-progress">
+          Pige live en cours sur LeBonCoin + PAP — peut prendre 1 à 3 minutes la 1ère fois. Réessaie dans 30 secondes.
         </div>
       )}
       {mode === 'ads' && source === 'placeholder' && (
@@ -181,7 +181,7 @@ export const V2GuidePage = () => {
     { title: 'WhatsApp vs Email', body: 'WhatsApp pour le suivi conversationnel (taux de réponse x3). Email pour les pièces écrites.' },
     { title: 'Découper ton secteur', body: "Trop large = inefficace. Découpe par micro-zones de 800 à 1500 logements pour densifier ta présence." },
   ];
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
   return (
     <V2Layout user={user}>
       <button className="v2-icon-btn" onClick={() => navigate(-1)} style={{ marginBottom: 12 }}><ChevronLeft size={16} /></button>
@@ -209,7 +209,7 @@ export const V2ReferralPage = () => {
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => { v2api.myReferral().then(setData).catch(() => {}); }, []);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
   const copy = () => {
     if (!data) return;
     navigator.clipboard.writeText(data.share_url);
@@ -262,7 +262,7 @@ export const V2SettingsPage = () => {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   useEffect(() => { v2api.dashboard().then(setDashboard).catch(() => {}); }, []);
-  if (!user) return null;
+  if (!user) return <div className="v2-app" />;
 
   const logout = () => { v2api.clearSession(); localStorage.removeItem('session_token'); navigate('/app-v2/login'); };
 

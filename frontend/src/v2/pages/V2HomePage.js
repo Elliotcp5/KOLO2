@@ -3,13 +3,15 @@
 // =============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Settings, LogOut, CreditCard, ChevronRight, Clock, Send, MessageCircle, X as XIcon } from 'lucide-react';
+import { ChevronDown, Settings, LogOut, CreditCard, ChevronRight, Clock, Brain, X as XIcon } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import { AddNoteModal, AddReminderModal, AIChatModal, CaseDetailModal } from '../V2Modals';
 import V2NotificationPrompt from '../V2NotificationPrompt';
 import v2api from '../v2api';
 import v2t from '../v2i18n';
 import '../../styles/v2.css';
+
+const stripEmoji = (s) => (s || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2700}-\u{27BF}\u{1F000}-\u{1F2FF}]/gu, '').replace(/\s+/g, ' ').trim();
 
 const formatDateFR = (d) => {
   const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -176,7 +178,7 @@ export default function V2HomePage() {
     };
   }, [dashboard]);
 
-  if (!user) return null;
+  if (!user) return <div className="v2-app" data-testid="v2-home-loading" />;
   const today = new Date();
   const initials = getInitials(user.first_name, user.last_name, user.email);
 
@@ -223,11 +225,11 @@ export default function V2HomePage() {
             <div className="v2-tip-head-left">
               <span className="v2-tip-eyebrow">{v2t('dailyAdvice')}</span>
               <span className="v2-tip-title">
-                {tip?.tip ? (tip.tip.split('\n')[0] || '').replace(/^#+\s*/, '').slice(0, 70) : 'Ton conseil du jour t\'attend'}
+                {tip?.tip ? stripEmoji((tip.tip.split('\n')[0] || '').replace(/^#+\s*/, '')).slice(0, 70) : 'Ton conseil du jour t\'attend'}
               </span>
               {!tipOpen && tip?.tip && (
                 <span className="v2-tip-teaser">
-                  {tip.tip.replace(/^#+\s*[^\n]*\n+/, '').slice(0, 90)}…
+                  {stripEmoji(tip.tip.replace(/^#+\s*[^\n]*\n+/, '')).slice(0, 90)}…
                 </span>
               )}
             </div>
@@ -236,7 +238,7 @@ export default function V2HomePage() {
           {tipOpen && (
             <div className="v2-tip-body" data-testid="home-daily-advice-body">
               <div className="v2-tip-content">
-                {tip?.tip || 'Chargement de ton conseil personnalisé…'}
+                {stripEmoji(tip?.tip || '') || 'Chargement de ton conseil personnalisé…'}
               </div>
               <div className="v2-tip-actions">
                 <button
@@ -275,15 +277,14 @@ export default function V2HomePage() {
           )}
         </div>
 
-        {/* Ask KOLO compact CTA — single, clean icon (no duplicates) */}
+        {/* Ask KOLO compact CTA — single brain icon */}
         <button
           className="v2-ai-cta"
           onClick={() => { setAiInitial(null); setAiCaseId(null); setShowAI(true); }}
           data-testid="home-ai-cta"
         >
-          <span className="v2-ai-cta-icon"><MessageCircle size={14} /></span>
+          <span className="v2-ai-cta-icon"><Brain size={14} strokeWidth={2} /></span>
           <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
-          <span className="v2-ai-cta-send"><Send size={13} /></span>
         </button>
 
         {/* SVG Activity Rings — REPLACES the flat stat cards */}

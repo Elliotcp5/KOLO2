@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 54 — Refonte LIGHT theme + gradient mesh, voice dictation (mic) in AddReminderModal & AddCaseModal, Brain icon for Ask KOLO CTA, white-flash fix between routes, and prospecting Apify polling reduced 50s→12s. BACKEND: 10/10 pytest passed (test_iteration_54.py) including the critical prospecting endpoint timing (first call returned in <13s with valid JSON {items:[], source:'scraping_in_progress', hint:'...'} — NO Cloudflare 502; second call after 30s also returned <13s). FRONTEND (mobile 430x932 via Playwright on preview URL): all 14 review_request bullets verified — LIGHT theme #F7F7F9 with 4-blob pastel mesh (rose/blue/green/yellow + violet center) visible on /app-v2/login AND /app-v2 home; mesh has blur(63px) + saturate(1.19) + animated transform; Brain icon single in home-ai-cta (svg_count=1, lucide-brain present, NO send/message-circle); Activity rings (home-ring-reminders + home-ring-notes) rendered in glass card rgba(255,255,255,0.75); bottom nav floating pill position:fixed bottom:16px border-radius:999px bg rgba(255,255,255,0.80); central mic FAB 58px; AddReminderModal opens with both reminder-title-mic + reminder-desc-mic testids and 'Touche le micro pour dicter' hint; body bg stays rgb(247,247,249) across tab navigation (Accueil → Dossiers → Contacts → Agenda → Accueil) — NO flash. Code review confirmed case-notes-mic in V2Modals.js:364 and drawer-guide-online is now <a href='https://www.trykolo.io/guide' target='_blank' rel='noopener noreferrer'> in V2Layout.js:124 (addresses iter53 action item).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home /app-v2 (English locale only)", "issues": ["v2-ai-cta text renders 'Ask KOLO' in en-US (Playwright default) — the i18n key `v2t('askKolo')` returns the EN string for non-FR browsers. Spec says 'Demande à KOLO' which IS what FR users see. Not a bug — just confirming structural pass via icon and testid."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_54.py",
+    "/app/test_reports/pytest/iteration_54.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "v2_router.py prospecting endpoint (lines 1277-1448) — short-poll loop range(6) × 2s = ~12s max + httpx timeout=15s gives a hard ceiling well below Cloudflare CF 524 (~100s). Pending run stored in v2_listings_pending and quota NOT consumed when scraping_in_progress is returned — good UX.",
+    "v2_router.py still ~1464 lines (was ~1285 last iter, growing). Strong case to split into modules: quotas.py / prospecting.py / ai.py / onboarding.py / crud.py.",
+    "V2HomePage.js:213-254 nested-button hydration warning carried over from iter53 (home-daily-advice outer <button> containing home-tip-continue/home-tip-history inner <button>s). STILL not fixed. Should convert outer to <div role='button' tabIndex={0} onKeyDown=...>.",
+    "v2.css mesh gradient uses fixed inset:-15% + position:fixed + pointer-events:none — correctly non-interactive overlay. Animation 26s ease-in-out infinite via @keyframes on transform/filter — confirmed via getComputedStyle.",
+    "V2Modals.js:122/163/364 — three mics share same Web Speech API helper. Good DRY. Hint string 'Touche le micro pour dicter' consistent (line 146 & 354)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_54.py",
+    "/app/test_reports/iteration_54.json",
+    "/app/test_reports/pytest/iteration_54.xml"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Backend uses fresh iter54.<uuid>@kolo-test.io per test run (auto-onboards). Frontend uses test.premium.ui@kolo.io with dev_code read from the on-page '(dev: XXXXXX)' hint that the preview displays after sending the code.",
+  "seed_data_creation": "No persistent seed. Backend pytest fixture creates a fresh email per module + onboarding payload; orphaned test users remain in db.users_v2 (prefixed iter54.).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: `pytest /app/backend/tests/test_iteration_54.py -v --tb=short --junitxml=/app/test_reports/pytest/iteration_54.xml`. Critical: verify-email-code returns the token under key `session_token` (not `token`/`access_token`). The dev_code is fresh every send-email-code call, so when testing the UI flow, grab the code from the page text via regex /dev:\\s*(\\d{6})/ instead of calling send-email-code a second time (would invalidate the displayed code). Prospecting test takes ~45-60s total because of the 30s wait between calls; if you cut that, the cache may not have settled. The headless browser may show 'Ask KOLO' instead of 'Demande à KOLO' because v2t('askKolo') resolves to en when navigator.language=en-US. Test pass criterion is the Brain icon + testid presence, not the literal text.",
+  "rca of the issue": "No blockers. Previous prospecting 502 was caused by Apify polling loop range(25) × 2s = 50s, exceeding Cloudflare's preview-edge timeout (~50-60s before 502/524). Fix: reduce to range(6) × 2s = 12s and persist run_id/dataset_id to db.v2_listings_pending so the NEXT user request resumes the same Apify run instead of starting a new one. Empirical timing on preview: 1st call ~12s (kickoff + 5 polls + short tail), 2nd call ~1-3s (fetch dataset if SUCCEEDED, else return scraping_in_progress). All under the Cloudflare ceiling. Quota is NOT consumed when scraping_in_progress is returned so the free 1/week budget is preserved for actual results."
+}

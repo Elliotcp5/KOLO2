@@ -55,7 +55,7 @@ export default function V2NotificationsPage() {
 
   useEffect(() => { reload(); }, []); // eslint-disable-line
 
-  if (!user) return null;
+  if (!user) return <div className="v2-app" data-testid="v2-notif-loading" />;
 
   const pendingReminders = reminders.filter(r => r.status === 'pending');
   const completedReminders = reminders.filter(r => r.status !== 'pending');
