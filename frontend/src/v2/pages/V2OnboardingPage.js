@@ -3,7 +3,7 @@
 // =============================================================
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Lock, Mic, Sparkles, Compass, Check } from 'lucide-react';
+import { ChevronRight, Lock, Mic, Sparkles, Compass, Check, Plus, X as XIcon } from 'lucide-react';
 import { V2Logo } from '../V2Layout';
 import v2api from '../v2api';
 import '../../styles/v2.css';
@@ -17,6 +17,14 @@ const REVENUE = ['Moins de 10 000€', 'Entre 10 000€ et 30 000€', 'Entre 30
 const MAIN_ACTIVITY = ['Transaction & Location', 'Location uniquement', 'Transaction uniquement'];
 const TEAM_SIZES = ['1 collaborateur', '2 à 5', '6 à 20', '21 à 100', '100+'];
 
+const POPULAR_SECTORS = [
+  'Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Toulouse', 'Nantes', 'Lille', 'Nice',
+  'Strasbourg', 'Montpellier', 'Rennes', 'Rouen', 'Grenoble', 'Dijon', 'Angers',
+  'Saint-Étienne', 'Brest', 'Le Havre', 'Reims', 'Toulon', 'Le Mans', 'Aix-en-Provence',
+  'Clermont-Ferrand', 'Tours', 'Limoges', 'Villeurbanne', 'Amiens', 'Metz', 'Besançon',
+  'Perpignan', 'Caen', 'Orléans', 'Mulhouse', 'Boulogne-Billancourt', 'Nancy',
+];
+
 const Choice = ({ children, selected, onClick, testid }) => (
   <button className={`v2-choice ${selected ? 'selected' : ''}`} onClick={onClick} data-testid={testid}>
     <span>{children}</span>
@@ -26,6 +34,67 @@ const Choice = ({ children, selected, onClick, testid }) => (
 const Chip = ({ children, selected, onClick, testid }) => (
   <button className={`v2-chip ${selected ? 'selected' : ''}`} onClick={onClick} data-testid={testid}>{children}</button>
 );
+
+const SectorPicker = ({ selected = [], onChange }) => {
+  const [custom, setCustom] = useState('');
+  const toggle = (val) => {
+    if (selected.includes(val)) onChange(selected.filter(x => x !== val));
+    else onChange([...selected, val]);
+  };
+  const addCustom = () => {
+    const v = custom.trim();
+    if (!v) return;
+    if (!selected.includes(v)) onChange([...selected, v]);
+    setCustom('');
+  };
+  const remove = (val) => onChange(selected.filter(x => x !== val));
+  const customs = selected.filter(s => !POPULAR_SECTORS.includes(s));
+  return (
+    <div data-testid="onb-sectors">
+      {selected.length > 0 && (
+        <div className="v2-multi" style={{ marginBottom: 14 }} data-testid="onb-sectors-selected">
+          {selected.map(s => (
+            <button key={s} className="v2-chip-remove" onClick={() => remove(s)} data-testid={`onb-sector-selected-${s}`}>
+              {s}
+              <span className="xicon"><XIcon size={11} strokeWidth={2.5} /></span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="v2-multi" data-testid="onb-sectors-suggestions">
+        {POPULAR_SECTORS.map(s => (
+          <Chip key={s} selected={selected.includes(s)} onClick={() => toggle(s)} testid={`onb-sector-${s}`}>{s}</Chip>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <input
+          className="v2-input"
+          placeholder="Ajouter une ville ou un code postal (ex. 69003)"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          data-testid="onb-sectors-custom-input"
+        />
+        <button
+          type="button"
+          className="v2-btn primary"
+          style={{ padding: '13px 16px' }}
+          onClick={addCustom}
+          disabled={!custom.trim()}
+          data-testid="onb-sectors-custom-add"
+          aria-label="Ajouter"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+      {customs.length > 0 && (
+        <p style={{ fontSize: 11.5, color: 'var(--v2-muted-2)', marginTop: 10 }}>
+          {customs.length} secteur(s) personnalisé(s) ajouté(s)
+        </p>
+      )}
+    </div>
+  );
+};
 
 export default function V2OnboardingPage() {
   const navigate = useNavigate();
@@ -125,9 +194,9 @@ export default function V2OnboardingPage() {
           <>
             <div className="v2-onb-eyebrow">Étape 5</div>
             <h1 className="v2-onb-title">Ta zone de prospection ?</h1>
-            <p className="v2-onb-body">Codes postaux ou villes — sépare par des virgules.</p>
-            <textarea className="v2-textarea" rows={3} placeholder="69003, 69007, Villeurbanne…" value={data.sectors.join(', ')} onChange={(e) => set({ sectors: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} data-testid="onb-sectors" />
-            <p style={{ fontSize: 12.5, color: 'var(--v2-muted)', marginTop: 8 }}>Astuce : ta zone te débloque l'accès direct aux DPE et annonces du secteur.</p>
+            <p className="v2-onb-body">Sélectionne tes villes ou ajoute un code postal personnalisé.</p>
+            <SectorPicker selected={data.sectors} onChange={(v) => set({ sectors: v })} />
+            <p style={{ fontSize: 12.5, color: 'var(--v2-muted)', marginTop: 12 }}>Astuce : ta zone te débloque l'accès direct aux DPE et annonces du secteur.</p>
           </>
         )}
         {step === 6 && (

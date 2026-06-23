@@ -1,9 +1,9 @@
 // =============================================================
-// KOLO v2 — PAGE ACCUEIL
+// KOLO v2 — PAGE ACCUEIL (Dark Premium / Revolut style)
 // =============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ChevronRight, ChevronDown, Plus, Clock, FileText, Send, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Settings, LogOut, CreditCard, ChevronRight, Clock, Send, MessageCircle, X as XIcon } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import { AddNoteModal, AddReminderModal, AIChatModal, CaseDetailModal } from '../V2Modals';
 import V2NotificationPrompt from '../V2NotificationPrompt';
@@ -15,6 +15,87 @@ const formatDateFR = (d) => {
   const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+};
+
+const getInitials = (firstName, lastName, email) => {
+  if (firstName) {
+    const a = firstName.charAt(0).toUpperCase();
+    const b = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return (a + b).slice(0, 2);
+  }
+  return (email || 'K').charAt(0).toUpperCase();
+};
+
+/* ---------- SVG Activity Ring (Apple Health / Revolut style) ---------- */
+const ActivityRing = ({ value = 0, total = 1, color = '#FFFFFF', size = 100, stroke = 10 }) => {
+  const safeTotal = Math.max(1, total);
+  const safeValue = Math.max(0, Math.min(safeTotal, value));
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = safeValue / safeTotal;
+  const dashOffset = c * (1 - pct);
+  return (
+    <svg width={size} height={size} aria-hidden>
+      <circle className="v2-ring-track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} />
+      <circle
+        className="v2-ring-progress"
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        strokeWidth={stroke}
+        stroke={color}
+        strokeDasharray={c}
+        strokeDashoffset={dashOffset}
+        style={{ '--ring-color': color }}
+      />
+    </svg>
+  );
+};
+
+/* ---------- Profile mini sheet (triggered by Bonjour hero tap) ---------- */
+const ProfileSheet = ({ open, onClose, user, dashboard, onLogout }) => {
+  const navigate = useNavigate();
+  if (!open) return null;
+  const initials = getInitials(user?.first_name, user?.last_name, user?.email);
+  const planLabel = dashboard?.has_pro ? 'KOLO Pro · Actif' : 'KOLO Gratuit';
+  return (
+    <div className="v2-profile-sheet-backdrop" onClick={onClose} data-testid="profile-sheet-backdrop">
+      <div className="v2-profile-sheet" onClick={(e) => e.stopPropagation()} data-testid="profile-sheet">
+        <div className="v2-modal-handle" />
+        <div className="v2-profile-sheet-head">
+          <div className="v2-profile-sheet-avatar" data-testid="profile-sheet-avatar">{initials}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="v2-profile-sheet-name" data-testid="profile-sheet-name">
+              {user?.first_name || ''} {user?.last_name || ''}
+            </div>
+            <div className="v2-profile-sheet-email" data-testid="profile-sheet-email">{user?.email || ''}</div>
+            <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-muted)' }}>
+              {planLabel}
+            </div>
+          </div>
+          <button className="v2-icon-btn" onClick={onClose} aria-label="Fermer" data-testid="profile-sheet-close">
+            <XIcon size={16} />
+          </button>
+        </div>
+        <div className="v2-profile-sheet-list">
+          <button className="v2-profile-sheet-item" onClick={() => { onClose(); navigate('/app-v2/settings'); }} data-testid="profile-sheet-settings">
+            <Settings size={18} /> Profil & paramètres <span className="arrow">›</span>
+          </button>
+          {!dashboard?.has_pro && (
+            <button className="v2-profile-sheet-item" onClick={() => { onClose(); navigate('/app-v2/settings/subscription'); }} data-testid="profile-sheet-upgrade">
+              <CreditCard size={18} /> Passer Pro · 24,99€/mois <span className="arrow">›</span>
+            </button>
+          )}
+          <button className="v2-profile-sheet-item" onClick={() => { onClose(); navigate('/app-v2/notifications'); }} data-testid="profile-sheet-notifications">
+            <Clock size={18} /> Mes notifications <span className="arrow">›</span>
+          </button>
+          <button className="v2-profile-sheet-item" onClick={onLogout} data-testid="profile-sheet-logout" style={{ color: '#FF6B66' }}>
+            <LogOut size={18} /> Se déconnecter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const NotesModal = ({ open, onClose }) => {
@@ -42,7 +123,7 @@ const NotesModal = ({ open, onClose }) => {
                 {n.status === 'pending' ? (
                   <button className="v2-btn secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={async () => { await v2api.updateNote(n.note_id, { status: 'processed' }); reload(); }} data-testid={`note-mark-${n.note_id}`}>Marquer traitée</button>
                 ) : (
-                  <span style={{ fontSize: 11.5, color: 'var(--v2-success)', fontWeight: 600 }}>✓ Traitée</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--v2-success)', fontWeight: 600 }}>Traitée</span>
                 )}
               </div>
             </div>
@@ -67,6 +148,7 @@ export default function V2HomePage() {
   const [showNotes, setShowNotes] = useState(false);
   const [showCase, setShowCase] = useState(null);
   const [tipOpen, setTipOpen] = useState(false);
+  const [showProfileSheet, setShowProfileSheet] = useState(false);
 
   const reload = () => {
     v2api.me().then(setUser).catch(() => { navigate('/app-v2/login'); });
@@ -76,30 +158,58 @@ export default function V2HomePage() {
   };
   useEffect(() => { reload(); }, []);
 
+  const onLogout = () => {
+    v2api.clearSession();
+    localStorage.removeItem('session_token');
+    navigate('/app-v2/login');
+  };
+
+  // Ring totals — daily goals reflect realistic agent activity
+  const ringData = useMemo(() => {
+    const remindersDone = dashboard?.reminders_completed_today ?? 0;
+    const remindersTotal = Math.max(3, (dashboard?.reminders_today ?? 0) + remindersDone);
+    const notesPending = dashboard?.notes_pending ?? 0;
+    const notesTotal = Math.max(5, notesPending + (dashboard?.notes_processed_today ?? 0));
+    return {
+      reminders: { value: remindersDone, total: remindersTotal, pending: dashboard?.reminders_today ?? 0 },
+      notes: { value: (dashboard?.notes_processed_today ?? 0), total: notesTotal, pending: notesPending },
+    };
+  }, [dashboard]);
+
   if (!user) return null;
   const today = new Date();
+  const initials = getInitials(user.first_name, user.last_name, user.email);
 
   return (
     <>
       <V2Layout user={user} dashboard={dashboard} showAddNoteFab onAddNote={() => setShowAddNote(true)}>
         <div className="v2-hero">
-          <h1 className="v2-hello" data-testid="home-hello">
-            Bonjour {user.first_name || ''}
-            {!dashboard?.has_pro && <span className="v2-pro-badge" data-testid="home-pro-badge"><Sparkles size={11} /> Passer PRO</span>}
-          </h1>
-          <button className="v2-date" onClick={() => navigate('/app-v2/agenda')} data-testid="home-date">
-            {formatDateFR(today)}
+          <button
+            type="button"
+            className="v2-hero-trigger"
+            onClick={() => setShowProfileSheet(true)}
+            data-testid="home-hero-trigger"
+            aria-label="Ouvrir le menu profil"
+          >
+            <div className="v2-hero-left">
+              <h1 className="v2-hello" data-testid="home-hello">
+                Bonjour <span className="v2-hello-name">{user.first_name || ''}</span>
+                {!dashboard?.has_pro && <span className="v2-pro-badge" data-testid="home-pro-badge">Passer PRO</span>}
+              </h1>
+              <span className="v2-date" data-testid="home-date">
+                {formatDateFR(today)}
+              </span>
+            </div>
+            <div className="v2-hero-avatar" aria-hidden data-testid="home-hero-avatar">
+              {initials}
+              <span className="v2-hero-avatar-dot" />
+            </div>
           </button>
         </div>
 
         <V2NotificationPrompt userId={user.user_id} />
 
-        <div className="v2-section-title">
-          {v2t('today')}
-          <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">+ Ajouter un rappel</button>
-        </div>
-
-        {/* Daily advice — LARGE hero, collapsible, thin gradient border, main attraction */}
+        {/* Daily advice — collapsible hero */}
         <button
           className={`v2-tip-collapsible ${tipOpen ? 'open' : ''}`}
           onClick={() => setTipOpen(o => !o)}
@@ -131,7 +241,7 @@ export default function V2HomePage() {
                   onClick={(e) => { e.stopPropagation(); setAiInitial(tip?.tip); setShowAI(true); }}
                   data-testid="home-tip-continue"
                 >
-                  <MessageCircle size={14} /> {v2t('continueChat')}
+                  {v2t('continueChat')}
                 </button>
                 <button
                   className="v2-icon-btn"
@@ -162,31 +272,88 @@ export default function V2HomePage() {
           )}
         </button>
 
-        {/* AI Chat CTA — compact side bubble (not central, accessible via mic + this) */}
+        {/* Ask KOLO compact CTA — single, clean icon (no duplicates) */}
         <button
           className="v2-ai-cta"
           onClick={() => { setAiInitial(null); setAiCaseId(null); setShowAI(true); }}
           data-testid="home-ai-cta"
         >
           <span className="v2-ai-cta-icon"><MessageCircle size={14} /></span>
-          <span className="v2-ai-cta-text">
-            <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
-          </span>
-          <span className="v2-ai-cta-send"><Send size={14} /></span>
+          <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
+          <span className="v2-ai-cta-send"><Send size={13} /></span>
         </button>
 
-        <div className="v2-grid-2">
-          <button className="v2-stat-card" onClick={() => navigate('/app-v2/agenda')} data-testid="home-stat-reminders" style={{ textAlign: 'left' }}>
-            <div className="v2-stat-num">{dashboard?.reminders_today ?? 0}</div>
-            <div className="v2-stat-label">Rappels aujourd'hui</div>
+        {/* SVG Activity Rings — REPLACES the flat stat cards */}
+        <div className="v2-section-title" style={{ marginTop: 26 }}>
+          Aujourd'hui
+          <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">+ Rappel</button>
+        </div>
+
+        <div className="v2-rings-grid" data-testid="home-rings-grid">
+          <button
+            type="button"
+            className="v2-ring-card"
+            style={{ '--ring-glow': 'rgba(50,215,75,0.20)' }}
+            onClick={() => navigate('/app-v2/agenda')}
+            data-testid="home-ring-reminders"
+          >
+            <div className="v2-ring-svg">
+              <ActivityRing
+                value={ringData.reminders.value}
+                total={ringData.reminders.total}
+                color="#32D74B"
+                size={104}
+                stroke={11}
+              />
+              <div className="v2-ring-center">
+                <span className="v2-ring-value">
+                  <span data-testid="ring-reminders-value">{ringData.reminders.value}</span>
+                  <span className="sep">/</span>
+                  <span className="total">{ringData.reminders.total}</span>
+                </span>
+                <span className="v2-ring-sub">faits</span>
+              </div>
+            </div>
+            <span className="v2-ring-label">Rappels</span>
+            <span className="v2-ring-status">
+              <span className="dot" style={{ '--ring-color': '#32D74B' }} />
+              {ringData.reminders.pending > 0 ? `${ringData.reminders.pending} restants` : 'Tout est fait'}
+            </span>
           </button>
-          <button className="v2-stat-card" onClick={() => setShowNotes(true)} data-testid="home-stat-notes" style={{ textAlign: 'left' }}>
-            <div className="v2-stat-num">{dashboard?.notes_pending ?? 0}</div>
-            <div className="v2-stat-label">Notes à traiter</div>
+
+          <button
+            type="button"
+            className="v2-ring-card"
+            style={{ '--ring-glow': 'rgba(10,132,255,0.20)' }}
+            onClick={() => setShowNotes(true)}
+            data-testid="home-ring-notes"
+          >
+            <div className="v2-ring-svg">
+              <ActivityRing
+                value={ringData.notes.value}
+                total={ringData.notes.total}
+                color="#0A84FF"
+                size={104}
+                stroke={11}
+              />
+              <div className="v2-ring-center">
+                <span className="v2-ring-value">
+                  <span data-testid="ring-notes-value">{ringData.notes.value}</span>
+                  <span className="sep">/</span>
+                  <span className="total">{ringData.notes.total}</span>
+                </span>
+                <span className="v2-ring-sub">traitées</span>
+              </div>
+            </div>
+            <span className="v2-ring-label">Notes</span>
+            <span className="v2-ring-status">
+              <span className="dot" style={{ '--ring-color': '#0A84FF' }} />
+              {ringData.notes.pending > 0 ? `${ringData.notes.pending} à traiter` : 'À jour'}
+            </span>
           </button>
         </div>
 
-        <div className="v2-section-title" style={{ marginTop: 30 }}>
+        <div className="v2-section-title" style={{ marginTop: 28 }}>
           Dossiers récents
           <button className="link" onClick={() => navigate('/app-v2/dossiers')}>Voir tout</button>
         </div>
@@ -204,13 +371,21 @@ export default function V2HomePage() {
                 <div className="v2-row-title">{pc.first_name} {pc.last_name}</div>
                 <div className="v2-row-sub">{c.property_kind === 'apartment' ? 'Appartement' : c.property_kind === 'house' ? 'Maison' : ''} {detail}</div>
                 <button className="v2-btn secondary full" style={{ marginTop: 12 }} onClick={() => setShowCase(c.case_id)} data-testid={`recent-case-view-${c.case_id}`}>
-                  Voir le dossier
+                  Voir le dossier <ChevronRight size={14} />
                 </button>
               </div>
             );
           })
         )}
       </V2Layout>
+
+      <ProfileSheet
+        open={showProfileSheet}
+        onClose={() => setShowProfileSheet(false)}
+        user={user}
+        dashboard={dashboard}
+        onLogout={onLogout}
+      />
 
       <AddNoteModal open={showAddNote} onClose={() => setShowAddNote(false)} onCreated={reload} />
       <AddReminderModal open={showAddReminder} onClose={() => setShowAddReminder(false)} onCreated={reload} />

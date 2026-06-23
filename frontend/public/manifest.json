@@ -4,19 +4,19 @@
   "description": "Le copilote IA des agents immobiliers : notes vocales, dossiers, agenda, prospection.",
   "icons": [
     {
-      "src": "/kolo-mark-v4.png",
+      "src": "/kolo-mark-v5-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/kolo-mark-v4.png",
+      "src": "/kolo-mark-v5-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/kolo-mark-v4.png",
+      "src": "/kolo-mark-v5-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
@@ -24,8 +24,8 @@
   ],
   "start_url": "/app-v2",
   "display": "standalone",
-  "theme_color": "#0B0B0F",
-  "background_color": "#E8E8EC",
+  "theme_color": "#040405",
+  "background_color": "#040405",
   "orientation": "portrait",
   "scope": "/",
   "lang": "fr",

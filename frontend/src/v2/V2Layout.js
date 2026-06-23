@@ -21,7 +21,7 @@ export const V2Logo = ({ size = 22, accent = false }) => (
 /* ---------- Loading screen ---------- */
 export const V2Loading = () => (
   <div className="v2-loading" data-testid="v2-loading">
-    <img src="/kolo-mark-v4.png" alt="KOLO" style={{ width: 80, height: 80, objectFit: 'contain' }} />
+    <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 80, height: 80, objectFit: 'contain' }} />
   </div>
 );
 
@@ -121,6 +121,10 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
           <BookOpen size={18} /> <span>Guide KOLO</span>
           <span className="arrow">›</span>
         </button>
+        <button className="v2-drawer-item" onClick={() => window.open('https://www.trykolo.io/guide', '_blank', 'noopener,noreferrer')} data-testid="drawer-guide-online">
+          <BookOpen size={18} /> <span>Guide complet (web)</span>
+          <span className="arrow">↗</span>
+        </button>
 
         <div className="v2-drawer-section">Compte</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/settings'); }} data-testid="drawer-profile">
@@ -192,6 +196,7 @@ const V2BellNotification = () => {
       data-testid="v2-bell"
     >
       <Bell size={18} strokeWidth={1.8} />
+      {count > 0 && <span className="v2-bell-pulse" aria-hidden />}
       {count > 0 && <span className="v2-bell-dot" data-testid="v2-bell-dot">{count > 9 ? '9+' : count}</span>}
     </button>
   );
@@ -287,7 +292,7 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
         <button className="v2-header-burger" onClick={() => setDrawerOpen(true)} aria-label="Menu" data-testid="v2-burger">
           <Menu size={20} strokeWidth={1.8} />
         </button>
-        <img src="/kolo-mark-v4.png" alt="KOLO" className="v2-header-mark" />
+        <img src="/kolo-mark-v5-128.png" alt="KOLO" className="v2-header-mark" />
         <V2BellNotification />
       </header>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} user={user} dashboard={dashboard} />
