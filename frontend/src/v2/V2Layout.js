@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu, Home as HomeIcon, FolderOpen, Users, Calendar,
-  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles, Mail
+  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles, Mail, Bell
 } from 'lucide-react';
 import v2api from './v2api';
 import v2t from './v2i18n';
@@ -166,6 +166,37 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
   );
 };
 
+/* ---------- Bell notification (header right) ---------- */
+const V2BellNotification = () => {
+  const navigate = useNavigate();
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/notifications/unread`, { headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` } });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (!cancelled) setCount(d.count || 0);
+      } catch (_) { /* noop */ }
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+  return (
+    <button
+      className="v2-header-bell"
+      onClick={() => navigate('/app-v2/notifications')}
+      aria-label="Notifications"
+      data-testid="v2-bell"
+    >
+      <Bell size={18} strokeWidth={1.8} />
+      {count > 0 && <span className="v2-bell-dot" data-testid="v2-bell-dot">{count > 9 ? '9+' : count}</span>}
+    </button>
+  );
+};
+
 /* ---------- Bottom Nav (with optional central mic FAB on Home) ---------- */
 // Lazy haptic feedback — uses Capacitor Haptics on native, Vibration API on web.
 const triggerHapticImpact = async () => {
@@ -257,7 +288,7 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
           <Menu size={20} strokeWidth={1.8} />
         </button>
         <img src="/kolo-mark-v4.png" alt="KOLO" className="v2-header-mark" />
-        <div style={{ width: 40 }} />
+        <V2BellNotification />
       </header>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} user={user} dashboard={dashboard} />
       <main className="v2-container">{children}</main>

@@ -294,6 +294,27 @@ async def create_reminder(payload: ReminderIn, request: Request):
     return _strip_mongo(doc)
 
 
+@router.get("/notifications/unread")
+async def notifications_unread(request: Request):
+    """Count of attention-worthy items for the header bell badge.
+    - Today's pending reminders
+    - Just-completed pige scrapings the user hasn't viewed yet
+    """
+    user = await _get_user(request)
+    db = _get_db()
+    today = datetime.now(timezone.utc).date().isoformat()
+    reminders_today = await db.v2_reminders.count_documents({
+        "user_id": user.user_id, "date": today, "status": "pending"
+    })
+    # Fresh pige results (cache populated < 30min ago)
+    fresh_window = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+    fresh_pige = await db.v2_listings_cache.count_documents({
+        "cached_at": {"$gt": fresh_window}
+    })
+    count = reminders_today + (1 if fresh_pige > 0 else 0)
+    return {"count": count, "reminders_today": reminders_today, "fresh_pige": fresh_pige}
+
+
 @router.post("/notifications/test-push")
 async def test_push_v2(request: Request):
     """Sends a test push notification to the current user (V2 push debug)."""

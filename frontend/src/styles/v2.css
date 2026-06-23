@@ -105,6 +105,36 @@
 
 .v2-header-mark { width: 28px; height: 28px; object-fit: contain; }
 
+.v2-header-bell {
+  position: relative;
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 12px;
+  color: var(--v2-ink);
+  box-shadow: 0 2px 10px rgba(11,11,15,0.06);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(.2,.7,.3,1.4), background 160ms ease;
+}
+.v2-header-bell:hover { background: rgba(255,255,255,0.65); transform: translateY(-1px); }
+.v2-header-bell:active { transform: scale(0.94); }
+.v2-bell-dot {
+  position: absolute;
+  top: -2px; right: -2px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  background: #0B0B0F;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #FFFFFF;
+  letter-spacing: -0.02em;
+}
+
 .v2-container { max-width: 540px; margin: 0 auto; padding: 18px 18px 18px; }
 
 /* ====== Bottom Nav — GHOST FLOATING PILL ====== */
