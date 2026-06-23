@@ -395,9 +395,11 @@
   overflow: hidden;
   margin: 18px 0 18px;
   font-family: inherit;
+  outline: none;
   transition: box-shadow 240ms ease, transform 240ms ease, border-color 240ms ease;
   box-shadow: var(--v2-inner-glow), 0 18px 36px -18px rgba(0,0,0,0.6);
 }
+.v2-tip-collapsible:focus-visible { border-color: rgba(255,255,255,0.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.10); }
 .v2-tip-collapsible::after {
   content: ''; position: absolute; top: -60px; right: -60px;
   width: 200px; height: 200px;

@@ -209,12 +209,15 @@ export default function V2HomePage() {
 
         <V2NotificationPrompt userId={user.user_id} />
 
-        {/* Daily advice — collapsible hero */}
-        <button
+        {/* Daily advice — collapsible hero (div + role for valid DOM) */}
+        <div
           className={`v2-tip-collapsible ${tipOpen ? 'open' : ''}`}
           onClick={() => setTipOpen(o => !o)}
-          data-testid="home-daily-advice"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTipOpen(o => !o); } }}
+          role="button"
+          tabIndex={0}
           aria-expanded={tipOpen}
+          data-testid="home-daily-advice"
         >
           <div className="v2-tip-head">
             <div className="v2-tip-head-left">
@@ -270,7 +273,7 @@ export default function V2HomePage() {
               )}
             </div>
           )}
-        </button>
+        </div>
 
         {/* Ask KOLO compact CTA — single, clean icon (no duplicates) */}
         <button

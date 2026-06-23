@@ -121,10 +121,10 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
           <BookOpen size={18} /> <span>Guide KOLO</span>
           <span className="arrow">›</span>
         </button>
-        <button className="v2-drawer-item" onClick={() => window.open('https://www.trykolo.io/guide', '_blank', 'noopener,noreferrer')} data-testid="drawer-guide-online">
+        <a className="v2-drawer-item" href="https://www.trykolo.io/guide" target="_blank" rel="noopener noreferrer" onClick={onClose} data-testid="drawer-guide-online">
           <BookOpen size={18} /> <span>Guide complet (web)</span>
           <span className="arrow">↗</span>
-        </button>
+        </a>
 
         <div className="v2-drawer-section">Compte</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/settings'); }} data-testid="drawer-profile">

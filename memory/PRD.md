@@ -16,6 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint UI Premium Dark Obsidian + Activity Rings + Chips Onboarding (iter 53 — Feb 2026) 🔥
+🎯 **Refonte UI critique post-rejet utilisateur ("cheap/bricolé/2D gris")** :
+- ✅ **v2.css 100% refondu** — Palette dark obsidian (#040405 / #121214 / #1A1A1C), background avec radial glows verts/bleus subtils + grain SVG, glassmorphism propre (backdrop-filter blur 20-32px), shadows multi-layers (inner-glow + outer drop), typo Cabinet Grotesk pour displays. Plus aucun gris plat 2D.
+- ✅ **Activity Rings SVG** (Apple Health style) sur la home — composant `<ActivityRing>` avec stroke-dasharray animé (cubic-bezier 1.4s). Ring Rappels (vert #32D74B) + Ring Notes (bleu #0A84FF) remplacent les stat cards plates. Center value/total + label + status dot.
+- ✅ **Bottom Nav flottant premium iOS** — pill `position:fixed bottom:16px border-radius:999px` glass (blur 32px sat 180%), 4 tabs + FAB micro central blanc/noir 58px en saillie (-22px margin-top), backdrop, multi-layer shadow.
+- ✅ **Hero "Bonjour {Prénom}" interactif** — tap ouvre `ProfileSheet` bottom modal (avatar + email + plan, items Profil/Pro/Notifications/Logout). Avatar circulaire 46px avec dot vert online. Badge PASSER PRO inline si user free.
+- ✅ **Onboarding Sectors étape 5 refondu** — composant `SectorPicker` : 35 villes pré-listées en chips cliquables `<button className="v2-chip">` + champ custom + bouton "+" pour ajouter codes postaux. Sectors sélectionnés affichés en haut avec X de retrait (`v2-chip-remove`). **Plus aucun textarea "séparé par virgules"**.
+- ✅ **Page Notifications** créée (était 404) — `/app-v2/notifications` (V2NotificationsPage.js) avec rappels pending/done + banner pige fraîche + push prompt + nav retour. Liée à la cloche du header.
+- ✅ **Logos KOLO v5** — `/kolo-mark-v5-{32,64,128,180,192,256,512}.png` (K blanc transparent, fond 0% opacité) intégrés dans manifest, apple-touch-icon, header, splash, auth, loading.
+- ✅ **Drawer Guide web** — nouveau lien externe `<a href="https://www.trykolo.io/guide" target="_blank">` (`drawer-guide-online`) sous Guide KOLO interne.
+- ✅ **Daily Advice collapsible** corrigée DOM-valide (div role="button" + keyboard handler) — résout warning React nested-button.
+- ✅ **Capacitor StatusBar light + bg #040405** sur iOS/Android pour cohérence dark.
+- ✅ Backend 100% pytest (11/11) — endpoints inchangés, logos statiques 200 OK.
+
 ### Sprint Apify Pige FONCTIONNELLE + Apple Sign-In V2 + Contact + Mentions légales + IAP Terms (iter 55 — Feb 2026)
 🎯 **Toutes les demandes traitées** :
 - ✅ **APIFY PIGE IMMO FR 100% FONCTIONNELLE** — actor `dltik/pige-immo-fr-scraper` (LeBonCoin + PAP + dedup + DPE + GPS) wired via `/api/v2/prospecting/listings`. Architecture async robuste : 1er call → kick off Apify run + retourne `source:scraping_in_progress` + sauvegarde `run_id/dataset_id` dans `v2_listings_pending`. 2ème call (1-3 min plus tard) → récupère le dataset, cache 6h, retourne vraies annonces avec source `Pige Immo (LBC+PAP)`. **Testé en production** : 20 vraies annonces remontées avec prix/surface/ville/source_site.
