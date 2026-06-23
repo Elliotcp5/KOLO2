@@ -4374,7 +4374,7 @@ async def google_oauth_client_id():
     Includes a hardcoded fallback for production safety, since env vars sometimes
     don't propagate. Override via GOOGLE_CAL_CLIENT_ID env var."""
     cid = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-           or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
+           or "")
     return {"client_id": cid, "configured": True}
 
 
@@ -4390,9 +4390,9 @@ async def google_oauth_exchange(payload: GoogleExchangeRequest, response: Respon
       3) The /auth/google React route POSTs {code, redirect_uri} here
       4) We return {token, ...} and the frontend stores it in localStorage."""
     client_id = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-                 or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
+                 or "")
     client_secret = (os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
-                     or "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")
+                     or "")
     if not (client_id and client_secret):
         raise HTTPException(status_code=500, detail="Google OAuth not configured on server")
 
@@ -4767,9 +4767,9 @@ async def _sync_task_to_calendar(user_id: str, task_id: str, action: str, task_d
                 refresh_token=tokens.get("refresh_token"),
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-                         or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com",
+                         or "",
                 client_secret=os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
-                              or "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",
+                              or "",
                 scopes=tokens.get("scopes") or ["https://www.googleapis.com/auth/calendar"],
             )
             service = build("calendar", "v3", credentials=creds, cache_discovery=False)
@@ -4914,9 +4914,9 @@ async def _pull_calendar_changes(user_id: str) -> dict:
                 refresh_token=tokens.get("refresh_token"),
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-                         or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com",
+                         or "",
                 client_secret=os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
-                              or "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",
+                              or "",
                 scopes=tokens.get("scopes") or ["https://www.googleapis.com/auth/calendar"],
             )
             service = build("calendar", "v3", credentials=creds, cache_discovery=False)
@@ -7890,7 +7890,7 @@ GOOGLE_CAL_SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.go
 async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
     user = await require_auth(request)
     cid = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-           or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
+           or "")
     if not cid:
         raise HTTPException(status_code=500, detail="Google Calendar non configuré côté serveur")
     base_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
@@ -7918,9 +7918,9 @@ async def gcal_auth_url(request: Request, redirect_to: Optional[str] = None):
 @api_router.get("/integrations/google-calendar/callback")
 async def gcal_callback(request: Request, code: str, state: str):
     cid = (os.environ.get("GOOGLE_CAL_CLIENT_ID", "").strip()
-           or "344180186708-ek99vc3nhrt6vfrv0v56rorhf8ste0cs.apps.googleusercontent.com")
+           or "")
     cs = (os.environ.get("GOOGLE_CAL_CLIENT_SECRET", "").strip()
-          or "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")
+          or "")
     if not (cid and cs):
         raise HTTPException(status_code=400, detail="Google Calendar credentials missing")
 
