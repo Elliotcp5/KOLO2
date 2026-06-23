@@ -16,7 +16,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
-### Sprint UI Premium Dark Obsidian + Activity Rings + Chips Onboarding (iter 53 — Feb 2026) 🔥
+### Sprint LIGHT premium + mesh gradient + voice dictation + brain icon (iter 54 — Feb 2026) 🪶
+🎨 **Pivot UI : light theme animated mesh gradient** (suite à feedback user "full black trop dur, je préfère du clair avec un gradient subtil qui bouge") :
+- ✅ **v2.css basculé en LIGHT premium** : bg #F7F7F9 + animated mesh gradient (4 radial blobs pastel rose/bleu/jaune/vert + violet center) avec `.v2-app::before { position:fixed; inset:-15%; filter:blur(42px) saturate(135%); animation:meshDrift 26s ease-in-out infinite alternate }`. Glassmorphism rgba(255,255,255,0.75-0.85) blur 12-32px sur les cartes/nav/inputs.
+- ✅ **Icône Brain pour Ask KOLO** : `home-ai-cta` est désormais une seule pill noire avec un unique icône `<Brain size={14}>` (lucide-react) au lieu de MessageCircle+Send.
+- ✅ **Dictée vocale ajoutée** : 
+  - `AddReminderModal` : micro sur input Titre (`reminder-title-mic`) + micro sur textarea Description (`reminder-desc-mic`) avec hint "Touche le micro pour dicter".
+  - `AddCaseModal` : micro sur textarea Notes du dossier (`case-notes-mic`).
+  - Implémentation Web Speech API via le hook `useSpeech` (continuous, fr-FR), pulse anim rouge `.recording`.
+  - Styles `.v2-input-with-mic`, `.v2-input-mic`, `.v2-textarea-with-mic`, `.v2-textarea-mic`.
+- ✅ **Flash blanc 1s entre pages éliminé** : 
+  - `AppRouter` useEffect sync `document.body.style.backgroundColor='#F7F7F9'` quand route commence par `/app-v2` ou `/r/`.
+  - Toutes les pages V2 `return <div className='v2-app' />` au lieu de `null` quand user encore en chargement (V2HomePage, V2NotificationsPage, V2Extras, V2OtherPages).
+- ✅ **Prospecting Apify répareé (502 fix)** : polling backend réduit de range(25)*2s=50s → range(6)*2s=12s. Run_id/dataset_id stockés dans `v2_listings_pending` sur tout statut non-final, permet à l'appel suivant de reprendre le run sans relancer. Quota non consommé tant que `scraping_in_progress`. ✅ Vérifié : 1er appel ~12s, 2e appel ~1-3s, tous sous le seuil Cloudflare ~50s.
+- ✅ **Capacitor StatusBar 'dark'** (icônes noires) + bg #F7F7F9 pour iOS/Android cohérence light.
+- ✅ Backend pytest 10/10 — Frontend 100% testing agent PASS.
+
+
 🎯 **Refonte UI critique post-rejet utilisateur ("cheap/bricolé/2D gris")** :
 - ✅ **v2.css 100% refondu** — Palette dark obsidian (#040405 / #121214 / #1A1A1C), background avec radial glows verts/bleus subtils + grain SVG, glassmorphism propre (backdrop-filter blur 20-32px), shadows multi-layers (inner-glow + outer drop), typo Cabinet Grotesk pour displays. Plus aucun gris plat 2D.
 - ✅ **Activity Rings SVG** (Apple Health style) sur la home — composant `<ActivityRing>` avec stroke-dasharray animé (cubic-bezier 1.4s). Ring Rappels (vert #32D74B) + Ring Notes (bleu #0A84FF) remplacent les stat cards plates. Center value/total + label + status dot.
