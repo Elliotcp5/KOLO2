@@ -27,6 +27,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import PricingPage from "./pages/PricingPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import LegalPage from "./pages/LegalPage";
+import IapTermsPage from "./pages/IapTermsPage";
 import BusinessPage from "./pages/BusinessPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import OrgSpace from "./pages/OrgSpace";
@@ -123,6 +125,10 @@ const AppRouter = () => {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/terms-of-use" element={<TermsPage />} />
+      <Route path="/legal" element={<LegalPage />} />
+      <Route path="/mentions-legales" element={<LegalPage />} />
+      <Route path="/iap-terms" element={<IapTermsPage />} />
+      <Route path="/conditions-achat" element={<IapTermsPage />} />
       <Route path="/eula" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/privacy-policy" element={<PrivacyPage />} />

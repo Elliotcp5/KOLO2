@@ -104,6 +104,39 @@ export default function V2AuthPage({ mode = 'login' }) {
               <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
             </div>
             <button className="v2-btn secondary full" onClick={async () => {
+              setError('');
+              try {
+                const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+                const result = await SignInWithApple.authorize({
+                  clientId: 'io.kolo.app.web',
+                  redirectURI: `${window.location.origin}/app-v2/login`,
+                  scopes: 'email name',
+                });
+                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/auth/apple/exchange`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    identity_token: result.response.identityToken,
+                    email: result.response.email || null,
+                    first_name: result.response.givenName || null,
+                    last_name: result.response.familyName || null,
+                  }),
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.detail || 'Échec Apple Sign-In');
+                v2api.setSession(d.session_token);
+                navigate(d.new_user ? '/app-v2/onboarding' : '/app-v2');
+              } catch (e) {
+                setError(e.message || 'Apple Sign-In indisponible');
+              }
+            }} data-testid="auth-apple">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6 }}>
+                <path d="M11.182.008C11.148-.03 9.923.023 8.857 1.18c-1.066 1.156-.902 2.482-.878 2.516.024.034 1.52.087 2.475-1.258.955-1.345.762-2.391.728-2.43zm3.314 11.733c-.048-.096-2.325-1.234-2.113-3.422.212-2.189 1.675-2.789 1.698-2.854.023-.065-.597-.79-1.254-1.157a3.692 3.692 0 0 0-1.563-.434c-1.082-.031-1.903.626-2.34.626-.438 0-1.01-.626-1.896-.626-1.082 0-2.114.626-2.839 1.496C1.498 7.391 1.054 9.4 1.832 11.698c.778 2.298 2.083 4.295 3.038 4.295.955 0 1.25-.595 2.564-.595 1.314 0 1.554.595 2.564.595 1.01 0 2.325-2.059 3.038-4.295.713-2.236 1.119-4.148 1.446-4.544z"/>
+              </svg>
+              Continuer avec Apple
+            </button>
+
+            <button className="v2-btn secondary full" onClick={async () => {
               try {
                 const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/google/client-id`);
                 const d = await r.json();

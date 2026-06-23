@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu, Home as HomeIcon, FolderOpen, Users, Calendar,
-  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles
+  Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles, Mail
 } from 'lucide-react';
 import v2api from './v2api';
 import v2t from './v2i18n';
@@ -127,8 +127,34 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
           <Settings size={18} /> <span>Profil & paramètres</span>
           <span className="arrow">›</span>
         </button>
+        <button
+          className="v2-drawer-item"
+          onClick={() => {
+            const subject = encodeURIComponent('Demande d\'assistance KOLO');
+            const body = encodeURIComponent(`Bonjour,\n\n[Décris ton besoin ici]\n\n--\nApp: KOLO v2.0\nUser: ${user?.email || user?.user_id || ''}`);
+            window.location.href = `mailto:contact@trykolo.io?subject=${subject}&body=${body}`;
+          }}
+          data-testid="drawer-contact"
+        >
+          <Mail size={18} /> <span>Contact / Assistance</span>
+          <span className="arrow">›</span>
+        </button>
         <button className="v2-drawer-item" onClick={onLogout} data-testid="drawer-logout">
           <LogOut size={18} /> <span>Se déconnecter</span>
+        </button>
+
+        <div className="v2-drawer-section" style={{ marginTop: 24 }}>Informations légales</div>
+        <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/privacy', '_blank')} data-testid="drawer-privacy">
+          Politique de confidentialité
+        </button>
+        <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/terms', '_blank')} data-testid="drawer-terms">
+          Conditions générales d'utilisation
+        </button>
+        <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/legal', '_blank')} data-testid="drawer-legal">
+          Mentions légales
+        </button>
+        <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/iap-terms', '_blank')} data-testid="drawer-iap-terms">
+          Conditions d'achat in-app
         </button>
 
         <div className="v2-drawer-section" style={{ marginTop: 32 }}>&nbsp;</div>

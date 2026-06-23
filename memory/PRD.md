@@ -16,6 +16,17 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026)
+### Sprint Apify Pige FONCTIONNELLE + Apple Sign-In V2 + Contact + Mentions légales + IAP Terms (iter 55 — Feb 2026)
+🎯 **Toutes les demandes traitées** :
+- ✅ **APIFY PIGE IMMO FR 100% FONCTIONNELLE** — actor `dltik/pige-immo-fr-scraper` (LeBonCoin + PAP + dedup + DPE + GPS) wired via `/api/v2/prospecting/listings`. Architecture async robuste : 1er call → kick off Apify run + retourne `source:scraping_in_progress` + sauvegarde `run_id/dataset_id` dans `v2_listings_pending`. 2ème call (1-3 min plus tard) → récupère le dataset, cache 6h, retourne vraies annonces avec source `Pige Immo (LBC+PAP)`. **Testé en production** : 20 vraies annonces remontées avec prix/surface/ville/source_site.
+- ✅ **Apple Sign-In V2** — endpoint `POST /api/v2/auth/apple/exchange` vérifie l'identity_token JWT RS256 contre les JWKs Apple, crée/login user dans `db.users` avec champ `apple_id`, retourne session_token. Frontend bouton "Continuer avec Apple" (data-testid `auth-apple`) sur `/app-v2/login` + `/app-v2/signup` utilise `@capacitor-community/apple-sign-in` (natif iOS) + fallback web. Aud accepte `APPLE_CLIENT_ID_IOS` + `APPLE_CLIENT_ID_WEB`. Apple §4.8 ✅.
+- ✅ **Bouton Contact / Assistance** dans drawer V2 (data-testid `drawer-contact`) — mailto:contact@trykolo.io avec subject + body pré-rempli (user_id, version app).
+- ✅ **Mentions légales FR** (`/legal`, `/mentions-legales`) — nouvelle page LegalPage : KOLO.IO LTD, numéro 17140900, Companies House lien, Infomaniak Network SA hébergement (ISO 27001/9001/14001/50001, RGPD + LPD Suisse), Resend pour emails transactionnels, no resale.
+- ✅ **Conditions d'achat in-app** (`/iap-terms`, `/conditions-achat`) — nouvelle page IapTermsPage couvrant : produits (24,99€/mois), renouvellement auto Apple/Google, annulation, remboursements (via Apple/Google uniquement), période d'essai, modifications tarifaires.
+- ✅ **TermsPage enrichi** avec KOLO.IO LTD numéro 17140900 + lien Companies House + mention Infomaniak.
+- ✅ **Drawer V2** : nouvelle section "Informations légales" avec 4 liens (Privacy, Terms, Legal, IAP Terms) qui s'ouvrent dans un nouvel onglet.
+- ✅ **Auto-emails audités** : pas de mention 29.99€ obsolète dans email_service.py. Templates password reset multilingues OK. Welcome email price-agnostic.
+
 ### Sprint Logo iOS/Android + Info.plist + Version bump V2.0 — App Store ready (iter 54 — Feb 2026)
 🎯 **Préparation finale pour push GitHub → CodeMagic → TestFlight → App Store update** :
 - ✅ **Nouveau logo K** (fourni user, 6250×6250 RGBA, K blanc + cadre noir + thin gradient bleu→violet) traité via PIL : recadré square centré, RGB sur fond noir (pas de transparence pour Apple), généré en 1024/512/192/180 px.

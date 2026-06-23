@@ -118,9 +118,14 @@ export const V2ProspectingPage = () => {
         </div>
       )}
 
+      {mode === 'ads' && source === 'scraping_in_progress' && (
+        <div style={{ background: '#DBEAFE', border: '1px solid #93C5FD', color: '#1E40AF', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-scraping-in-progress">
+          🔄 Pige live en cours sur LeBonCoin + PAP — peut prendre 1 à 3 minutes la 1ère fois. Réessaie dans 30 secondes.
+        </div>
+      )}
       {mode === 'ads' && source === 'placeholder' && (
         <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-source-notice">
-          Données d'exemple — la pige live des annonces se débloque dès la configuration RapidAPI.
+          Données d'exemple — réessaie dans 1 minute, la pige live se charge.
         </div>
       )}
       {mode === 'ads' && source === 'not_subscribed' && (

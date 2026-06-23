@@ -11,7 +11,10 @@ import os
 import uuid
 import random
 import string
+import logging
 from datetime import datetime, timezone, timedelta
+
+logger = logging.getLogger(__name__)
 from typing import Optional, List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -971,6 +974,80 @@ async def send_email_code(payload: EmailCodeRequest):
     return {"sent": True, "dev_code": code if is_dev else None}
 
 
+class AppleAuthRequest(BaseModel):
+    identity_token: str
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
+@router.post("/auth/apple/exchange")
+async def auth_apple_exchange(payload: AppleAuthRequest):
+    """Verifies an Apple Sign-In identity_token (JWT RS256 from Apple),
+    creates/loads a user, returns a KOLO session_token."""
+    import jwt as _jwt
+    db = _get_db()
+    apple_client_id_ios = os.environ.get("APPLE_CLIENT_ID_IOS", "io.kolo.app").strip()
+    apple_client_id_web = os.environ.get("APPLE_CLIENT_ID_WEB", "io.kolo.app.web").strip()
+    try:
+        jwks_client = _jwt.PyJWKClient("https://appleid.apple.com/auth/keys")
+        signing_key = jwks_client.get_signing_key_from_jwt(payload.identity_token)
+        decoded = _jwt.decode(
+            payload.identity_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=[apple_client_id_ios, apple_client_id_web],
+            issuer="https://appleid.apple.com",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Apple token invalide: {type(e).__name__}")
+
+    apple_user_id = decoded.get("sub")
+    token_email = (decoded.get("email") or payload.email or "").lower().strip()
+    if not apple_user_id:
+        raise HTTPException(status_code=400, detail="Apple token sans sub")
+
+    # Find or create user (by apple_id first, then by email)
+    user_doc = await db.users.find_one({"apple_id": apple_user_id}, {"_id": 0})
+    if not user_doc and token_email:
+        user_doc = await db.users.find_one({"email": token_email}, {"_id": 0})
+
+    new_user = False
+    if not user_doc:
+        new_user = True
+        user_id = f"u_{uuid.uuid4().hex[:16]}"
+        user_doc = {
+            "user_id": user_id,
+            "email": token_email or f"apple_{apple_user_id[:12]}@privaterelay.appleid.com",
+            "first_name": payload.first_name or "",
+            "last_name": payload.last_name or "",
+            "name": " ".join(filter(None, [payload.first_name, payload.last_name])) or "Utilisateur",
+            "apple_id": apple_user_id,
+            "auth_provider": "apple",
+            "subscription_status": "free",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(user_doc)
+    else:
+        user_id = user_doc["user_id"]
+        update = {"apple_id": apple_user_id, "auth_provider_last": "apple"}
+        if token_email and not user_doc.get("email"):
+            update["email"] = token_email
+        if payload.first_name and not user_doc.get("first_name"):
+            update["first_name"] = payload.first_name
+        if payload.last_name and not user_doc.get("last_name"):
+            update["last_name"] = payload.last_name
+        await db.users.update_one({"user_id": user_id}, {"$set": update})
+
+    session_token = f"sess_{uuid.uuid4().hex}"
+    await db.v2_sessions.insert_one({
+        "session_token": session_token,
+        "user_id": user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"session_token": session_token, "user_id": user_id, "new_user": new_user, "email": user_doc.get("email")}
+
+
 @router.post("/auth/verify-email-code")
 async def verify_email_code(payload: EmailCodeVerify, request: Request):
     db = _get_db()
@@ -1178,101 +1255,171 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
 
 @router.get("/prospecting/listings")
 async def prospecting_listings(request: Request, sector: Optional[str] = None, kind: Optional[str] = None, age: Optional[str] = None):
-    """Real-estate listings aggregator via RapidAPI Selogimmo.
-    Configuration via env: RAPIDAPI_KEY + RAPIDAPI_SELOGIMMO_HOST.
-    Falls back to clearly-marked placeholder data when not configured / not subscribed.
+    """Multi-source French real-estate listings via Apify (LBC + SeLoger + PAP + Bien'ici + Logic-immo).
+    Uses actor `dltik/pige-immo-fr-scraper`. Cache 6h.
     """
     user = await _get_user(request)
     db = _get_db()
     await _enforce_prospecting_quota(db, user.user_id)
-    rapidapi_key = os.environ.get("RAPIDAPI_KEY", "").strip()
-    selogimmo_host = os.environ.get("RAPIDAPI_SELOGIMMO_HOST", "selogimmo.p.rapidapi.com").strip()
+    apify_token = os.environ.get("APIFY_API_TOKEN", "").strip()
+    actor_id = os.environ.get("APIFY_ACTOR_PIGE_IMMO", "dltik/pige-immo-fr-scraper").strip().replace("/", "~")
 
-    # ---- REAL CALL via Selogimmo (RapidAPI)
-    if rapidapi_key and selogimmo_host and sector:
-        # Cache 6h
-        cache_key = f"selogimmo_{sector}_{kind or 'any'}"
+    # ---- REAL CALL via Apify Pige Immo
+    if apify_token and sector:
+        cache_key = f"apify_pige_{sector}_{kind or 'any'}"
         cached = await db.v2_listings_cache.find_one({"key": cache_key}, {"_id": 0})
         if cached:
             try:
                 cached_at = datetime.fromisoformat(cached["cached_at"])
                 if datetime.now(timezone.utc) - cached_at < timedelta(hours=6):
-                    await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind, "cached": True})
-                    return {"items": cached.get("items", []), "source": "Selogimmo (cache)"}
+                    await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "cached": True})
+                    return {"items": cached.get("items", []), "source": "Pige Immo (cache)"}
             except Exception:
                 pass
+
+        # Check if a previous run is pending — if so, try to fetch its dataset now
+        pending = await db.v2_listings_pending.find_one({"key": cache_key}, {"_id": 0})
+        if pending:
+            import httpx as _hx
+            try:
+                async with _hx.AsyncClient(timeout=20) as client:
+                    sr = await client.get(f"https://api.apify.com/v2/acts/{pending['actor_id']}/runs/{pending['run_id']}?token={apify_token}")
+                    if sr.status_code == 200:
+                        pdata = sr.json().get("data", {})
+                        pstatus = pdata.get("status", "")
+                        if pstatus == "SUCCEEDED":
+                            dr = await client.get(
+                                f"https://api.apify.com/v2/datasets/{pending['dataset_id']}/items?token={apify_token}&clean=true&limit=30"
+                            )
+                            if dr.status_code == 200:
+                                raw = dr.json() or []
+                                items = []
+                                for row in raw[:30]:
+                                    items.append({
+                                        "title": row.get("title") or row.get("description", "")[:60] or "Annonce",
+                                        "sector": str(row.get("city") or row.get("postalCode") or sector),
+                                        "price": row.get("price") or 0,
+                                        "surface": row.get("surface") or row.get("area") or 0,
+                                        "rooms": row.get("rooms") or row.get("nbRooms") or 0,
+                                        "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
+                                        "photo": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
+                                        "url": row.get("url") or row.get("link") or "",
+                                        "source_site": row.get("source") or row.get("portal") or "",
+                                        "energy_class": row.get("dpe") or row.get("energy") or "",
+                                        "posted_at": row.get("publishedAt") or row.get("date") or "",
+                                    })
+                                if items:
+                                    await db.v2_listings_cache.update_one(
+                                        {"key": cache_key},
+                                        {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                                        upsert=True,
+                                    )
+                                    await db.v2_listings_pending.delete_one({"key": cache_key})
+                                    await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "from_pending": True})
+                                    return {"items": items, "source": "Pige Immo (LBC+PAP)"}
+                        elif pstatus in ("RUNNING", "READY"):
+                            return {"items": [], "source": "scraping_in_progress", "hint": "Pige toujours en cours, réessaie dans 30s."}
+                        else:
+                            # Failed/timed-out — wipe pending so we can try again
+                            await db.v2_listings_pending.delete_one({"key": cache_key})
+            except Exception as e:
+                logger.warning(f"Pending check failed: {e}")
 
         import httpx
-        headers = {"x-rapidapi-key": rapidapi_key, "x-rapidapi-host": selogimmo_host}
-
-        # Step 1 — Resolve sector → city_id via /cityinfo (if not already a numeric ID)
-        city_id: Optional[str] = None
-        not_subscribed = False
-        if sector.strip().isdigit() and len(sector.strip()) >= 5:
-            city_id = sector.strip()
+        # Apify input — actor schema: sources/cities/transaction/propertyTypes
+        is_postal = sector.strip().isdigit() and len(sector.strip()) == 5
+        apify_input = {
+            "sources": ["leboncoin", "pap"],
+            "transaction": "buy",
+            "maxItems": 15,
+        }
+        if is_postal:
+            apify_input["postalCodes"] = [sector.strip()]
         else:
-            try:
-                async with httpx.AsyncClient(timeout=8) as client:
-                    cr = await client.get(
-                        f"https://{selogimmo_host}/cityinfo",
-                        headers=headers, params={"city": sector},
-                    )
-                    if cr.status_code == 200:
-                        cdata = cr.json()
-                        # API returns either a list or a dict — best-effort extraction
-                        if isinstance(cdata, list) and cdata:
-                            city_id = str(cdata[0].get("id") or cdata[0].get("city_id") or "")
-                        elif isinstance(cdata, dict):
-                            city_id = str(cdata.get("id") or cdata.get("city_id") or cdata.get("data", [{}])[0].get("id", "") if cdata.get("data") else "")
-                    elif cr.status_code == 403:
-                        not_subscribed = True
-            except Exception:
-                pass
+            apify_input["cities"] = [sector.strip()]
+        if kind == "private":
+            apify_input["onlyOwner"] = True
 
-        if not_subscribed and not city_id:
-            return {"items": [], "source": "not_subscribed", "hint": "Active 'Subscribe to Test' sur RapidAPI Selogimmo (gratuit)."}
+        # Pattern: async kick off + polling via dataset (faster UX, no 60s blocking)
+        run_url = f"https://api.apify.com/v2/acts/{actor_id}/runs?token={apify_token}"
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post(run_url, json=apify_input)
+                if r.status_code in (200, 201):
+                    run_data = r.json().get("data", {})
+                    run_id = run_data.get("id")
+                    dataset_id = run_data.get("defaultDatasetId")
+                    if not run_id or not dataset_id:
+                        raise RuntimeError("no run_id")
 
-        # Step 2 — Fetch listings
-        if city_id:
-            try:
-                async with httpx.AsyncClient(timeout=10) as client:
-                    r = await client.get(
-                        f"https://{selogimmo_host}/",
-                        headers=headers, params={"city": city_id, "page": 1},
-                    )
-                    if r.status_code == 200:
-                        payload = r.json()
-                        raw = payload if isinstance(payload, list) else (
-                            payload.get("listings") or payload.get("results") or payload.get("data") or payload.get("items") or []
+                    # Poll status max 50s (kept under nginx default proxy timeout)
+                    import asyncio as _aio
+                    status = "RUNNING"
+                    for _ in range(25):
+                        await _aio.sleep(2)
+                        sr = await client.get(f"https://api.apify.com/v2/acts/{actor_id}/runs/{run_id}?token={apify_token}")
+                        if sr.status_code == 200:
+                            status = sr.json().get("data", {}).get("status", "")
+                            if status in ("SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"):
+                                break
+
+                    if status == "SUCCEEDED":
+                        dr = await client.get(
+                            f"https://api.apify.com/v2/datasets/{dataset_id}/items?token={apify_token}&clean=true&limit=30"
                         )
-                        items = []
-                        for row in raw[:30]:
-                            items.append({
-                                "title": row.get("title") or row.get("publicationTitle") or row.get("description", "")[:60] or "Annonce",
-                                "sector": str(row.get("city") or row.get("zipCode") or row.get("postalCode") or sector or ""),
-                                "price": row.get("price") or row.get("pricing", {}).get("price") or 0,
-                                "surface": row.get("surface") or row.get("livingArea") or 0,
-                                "rooms": row.get("rooms") or row.get("nbRooms") or row.get("roomsQuantity") or 0,
-                                "kind": "pro" if (row.get("publisher", {}).get("type") == "professional" or row.get("isPro")) else "private",
-                                "photo": (row.get("photos") or row.get("pictures") or [{}])[0].get("url") if isinstance(row.get("photos") or row.get("pictures"), list) else (row.get("photo") or ""),
-                                "url": row.get("url") or row.get("permalink") or "",
-                                "posted_at": row.get("publicationDate") or row.get("publishedAt") or "",
-                            })
-                        if items:
-                            try:
-                                await db.v2_listings_cache.update_one(
-                                    {"key": cache_key},
-                                    {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
-                                    upsert=True,
-                                )
-                            except Exception:
-                                pass
-                            await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind})
-                            return {"items": items, "source": "Selogimmo"}
-                    elif r.status_code == 403:
-                        return {"items": [], "source": "not_subscribed", "hint": "Active 'Subscribe to Test' sur RapidAPI Selogimmo (gratuit)."}
-            except Exception:
-                pass
+                        if dr.status_code == 200:
+                            raw = dr.json() or []
+                            items = []
+                            for row in raw[:30]:
+                                items.append({
+                                    "title": row.get("title") or row.get("description", "")[:60] or "Annonce",
+                                    "sector": str(row.get("city") or row.get("postalCode") or sector),
+                                    "price": row.get("price") or 0,
+                                    "surface": row.get("surface") or row.get("area") or 0,
+                                    "rooms": row.get("rooms") or row.get("nbRooms") or 0,
+                                    "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
+                                    "photo": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
+                                    "url": row.get("url") or row.get("link") or "",
+                                    "source_site": row.get("source") or row.get("portal") or "",
+                                    "energy_class": row.get("dpe") or row.get("energy") or "",
+                                    "posted_at": row.get("publishedAt") or row.get("date") or "",
+                                })
+                            if items:
+                                try:
+                                    await db.v2_listings_cache.update_one(
+                                        {"key": cache_key},
+                                        {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
+                                        upsert=True,
+                                    )
+                                except Exception:
+                                    pass
+                                await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind})
+                                return {"items": items, "source": "Pige Immo (LBC+PAP)"}
+                    # If still running, store run info so next call can pick up the dataset
+                    if status in ("RUNNING", "READY"):
+                        await db.v2_listings_pending.update_one(
+                            {"key": cache_key},
+                            {"$set": {
+                                "key": cache_key,
+                                "run_id": run_id,
+                                "dataset_id": dataset_id,
+                                "actor_id": actor_id,
+                                "started_at": datetime.now(timezone.utc).isoformat(),
+                                "sector": sector,
+                            }},
+                            upsert=True,
+                        )
+                        # Don't consume quota for a pending run (user got nothing useful)
+                        return {
+                            "items": [],
+                            "source": "scraping_in_progress",
+                            "hint": "Pige en cours sur LeBonCoin + PAP — réessaie dans 1 minute. Le scraping peut prendre 1-3 min en 1ère recherche.",
+                        }
+                    logger.warning(f"Apify run status={status} — falling back to placeholder")
+                else:
+                    logger.warning(f"Apify kickoff failed {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            logger.warning(f"Apify error: {type(e).__name__}: {e}")
 
     # ---- Placeholder (clearly marked)
     base = [

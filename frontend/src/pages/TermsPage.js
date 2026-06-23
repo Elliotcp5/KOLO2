@@ -53,15 +53,22 @@ export default function TermsPage() {
         <h2 style={heading}>1. Company Information</h2>
         <p>KOLO is operated by:</p>
         <p style={{ marginTop: 4 }}>
-          <strong>KOLO.io LTD</strong><br />
+          <strong>KOLO.IO LTD</strong><br />
+          Company number: <strong>17140900</strong> (incorporated in England & Wales)<br />
           124 City Road<br />
           London, EC1V 2NX<br />
           United Kingdom<br />
           Email:{' '}
-          <a href="mailto:contact@trykolo.io" style={link}>contact@trykolo.io</a>
+          <a href="mailto:contact@trykolo.io" style={link}>contact@trykolo.io</a><br />
+          Registry:{' '}
+          <a href="https://find-and-update.company-information.service.gov.uk/company/17140900" style={link} target="_blank" rel="noopener noreferrer">
+            Companies House — UK
+          </a>
         </p>
         <p>
-          KOLO.io LTD is a company incorporated under the laws of England and Wales.
+          KOLO.IO LTD is a company incorporated under the laws of England and Wales.
+          All user data is hosted on <strong>Infomaniak</strong> (Swiss sovereign cloud) under Swiss data-protection law and GDPR.
+          We never sell, lease, or share personal data with third parties for commercial purposes.
         </p>
 
         <h2 style={heading}>2. Purpose of the Platform</h2>
