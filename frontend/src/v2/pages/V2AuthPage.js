@@ -112,7 +112,7 @@ export default function V2AuthPage({ mode = 'login' }) {
                   redirectURI: `${window.location.origin}/app-v2/login`,
                   scopes: 'email name',
                 });
-                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/auth/apple/exchange`, {
+                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/auth/apple/exchange`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -138,7 +138,7 @@ export default function V2AuthPage({ mode = 'login' }) {
 
             <button className="v2-btn secondary full" onClick={async () => {
               try {
-                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/google/client-id`);
+                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/auth/google/client-id`);
                 const d = await r.json();
                 if (!d.client_id) throw new Error('Google non configuré');
                 const redirectUri = window.location.origin + '/auth/google';

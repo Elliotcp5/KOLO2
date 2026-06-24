@@ -178,7 +178,7 @@ const V2BellNotification = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/notifications/unread`, { headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` } });
+        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/notifications/unread`, { headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` } });
         if (!r.ok) return;
         const d = await r.json();
         if (!cancelled) setCount(d.count || 0);

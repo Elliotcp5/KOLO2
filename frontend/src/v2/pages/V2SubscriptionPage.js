@@ -64,7 +64,7 @@ export default function V2SubscriptionPage() {
         if (r?.cancelled) { setBusy(false); return; }
         if (r?.error) { alert(r.error); }
       } else {
-        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/billing/create-checkout-session`, {
+        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/billing/create-checkout-session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

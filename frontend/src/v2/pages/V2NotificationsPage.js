@@ -39,7 +39,7 @@ export default function V2NotificationsPage() {
         v2api.me().catch(() => null),
         v2api.dashboard().catch(() => null),
         v2api.listReminders(today).catch(() => ({ items: [] })),
-        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/notifications/unread`, {
+        fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/notifications/unread`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` },
         }).then(r => r.ok ? r.json() : { count: 0, fresh_pige: 0, reminders_today: 0 }).catch(() => ({ count: 0, fresh_pige: 0, reminders_today: 0 })),
       ]);

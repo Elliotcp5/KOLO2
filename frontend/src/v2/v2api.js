@@ -2,7 +2,7 @@
 // KOLO v2 — API helper. Uses the same session token stored in
 // localStorage as the rest of the app, with a clean wrapper.
 // =============================================================
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com';
 
 const getToken = () =>
   localStorage.getItem('kolo_v2_session') ||

@@ -81,5 +81,39 @@
 	<string>KOLO importe tes contacts pour t'aider à les retrouver et à gérer ton portefeuille clients.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>KOLO utilise ta position pour t'afficher les annonces et DPE de ton secteur lors des visites.</string>
+        <key>NSAppTransportSecurity</key>
+        <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <false/>
+                <key>NSExceptionDomains</key>
+                <dict>
+                        <key>emergentagent.com</key>
+                        <dict>
+                                <key>NSIncludesSubdomains</key>
+                                <true/>
+                                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                                <false/>
+                                <key>NSExceptionRequiresForwardSecrecy</key>
+                                <true/>
+                                <key>NSExceptionMinimumTLSVersion</key>
+                                <string>TLSv1.2</string>
+                        </dict>
+                        <key>trykolo.io</key>
+                        <dict>
+                                <key>NSIncludesSubdomains</key>
+                                <true/>
+                                <key>NSExceptionMinimumTLSVersion</key>
+                                <string>TLSv1.2</string>
+                        </dict>
+                </dict>
+        </dict>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>KOLO utilise le micro pour enregistrer tes notes vocales et les transcrire automatiquement.</string>
+        <key>NSSpeechRecognitionUsageDescription</key>
+        <string>KOLO utilise la reconnaissance vocale pour transcrire tes dictées en texte.</string>
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>KOLO accède à ta photothèque pour joindre des images à tes dossiers.</string>
+        <key>NSFaceIDUsageDescription</key>
+        <string>KOLO utilise Face ID pour sécuriser l'accès à ton compte.</string>
 </dict>
 </plist>
