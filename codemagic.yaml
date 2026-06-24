@@ -4,12 +4,13 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
 
+    integrations:
+      app_store_connect: KOLO 1
+
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: io.kolo.app
-      integrations:
-        app_store_connect: KOLO 1
       vars:
         PACKAGE_NAME: "io.kolo.app"
         BUNDLE_ID: "io.kolo.app"
