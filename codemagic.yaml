@@ -126,7 +126,7 @@ workflows:
           failure: true
 
       app_store_connect:
-        # Utilise l'intégration "KOLO Production" configurée dans Codemagic
-        # → Teams → Integrations → App Store Connect → KOLO Production
+        # Utilise l'intégration "KOLO 1" configurée dans Codemagic
+        # → Teams → Integrations → App Store Connect → KOLO 1
         auth: integration
         submit_to_testflight: true
