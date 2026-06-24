@@ -246,13 +246,14 @@ async def attribute_referral(payload: ReferralSignup, request: Request):
 @router.post("/referral/convert/{user_id}")
 async def referral_convert_to_pro(user_id: str, request: Request):
     """
-    Mark a referred user as having upgraded to PRO and credit the referrer
-    with +1 free month. Idempotent.
+    Marque un user parrainé comme passé Pro et crédite VRAIMENT le parrain
+    avec +30 jours de Pro bonus (cumulatif si déjà actif). Idempotent.
     """
     db = _get_db()
     redeem = await db.v2_referrals_redeemed.find_one({"referred_user_id": user_id})
     if not redeem or redeem.get("converted_pro"):
         return {"ok": True, "credited": False}
+
     await db.v2_referrals_redeemed.update_one(
         {"referred_user_id": user_id},
         {"$set": {"converted_pro": True, "converted_at": datetime.now(timezone.utc).isoformat()}},
@@ -261,7 +262,39 @@ async def referral_convert_to_pro(user_id: str, request: Request):
         {"user_id": redeem["referrer_user_id"]},
         {"$inc": {"free_months_earned": 1}},
     )
-    return {"ok": True, "credited": True}
+
+    # ── Crédite VRAIMENT le parrain avec +30 jours de Pro bonus
+    referrer_id = redeem["referrer_user_id"]
+    referrer_doc = await db.users.find_one(
+        {"user_id": referrer_id}, {"_id": 0, "pro_bonus_until": 1}
+    ) or {}
+    now = datetime.now(timezone.utc)
+    current_bonus = referrer_doc.get("pro_bonus_until")
+    if current_bonus:
+        try:
+            if isinstance(current_bonus, str):
+                current_dt = datetime.fromisoformat(current_bonus.replace("Z", "+00:00"))
+            else:
+                current_dt = current_bonus
+            if current_dt.tzinfo is None:
+                current_dt = current_dt.replace(tzinfo=timezone.utc)
+            # Si bonus encore actif → extend de 30 jours. Sinon repart de now+30j.
+            base = current_dt if current_dt > now else now
+        except Exception:
+            base = now
+    else:
+        base = now
+    new_bonus_until = base + timedelta(days=30)
+    await db.users.update_one(
+        {"user_id": referrer_id},
+        {"$set": {"pro_bonus_until": new_bonus_until.isoformat()}},
+    )
+
+    return {
+        "ok": True,
+        "credited": True,
+        "referrer_pro_bonus_until": new_bonus_until.isoformat(),
+    }
 
 
 # ============================================================================
@@ -599,9 +632,8 @@ async def get_dashboard(request: Request):
     })
     total_contacts = await db.v2_contacts.count_documents({"user_id": user.user_id})
 
-    # Plan info
-    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
-    plan = user_doc.get("subscription_status") in ("active", "trialing")
+    # Plan info — unified check (subscription + lifetime + referral bonus)
+    plan = await _is_pro_user(db, user.user_id)
     week_start = _current_week_start()
     prospecting_used_this_week = await db.v2_prospecting_log.count_documents({
         "user_id": user.user_id, "week_start": week_start
@@ -627,11 +659,33 @@ FREE_PROSPECTING_PER_WEEK = 1
 
 
 async def _is_pro_user(db, user_id: str) -> bool:
+    """Pro check unifié : abonnement Apple/Stripe actif OU bonus parrainage actif OU lifetime admin."""
+    user_doc = await db.users.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "subscription_status": 1, "pro_bonus_until": 1, "pro_lifetime": 1, "email": 1},
+    ) or {}
+    # 1) Pro à vie (admin/testers Apple)
+    if user_doc.get("pro_lifetime"):
+        return True
+    # 2) Abonnement payant actif
+    if user_doc.get("subscription_status") in ("active", "trialing"):
+        return True
+    # 3) Bonus parrainage encore valide
+    bonus_until = user_doc.get("pro_bonus_until")
+    if bonus_until:
+        try:
+            if isinstance(bonus_until, str):
+                bonus_dt = datetime.fromisoformat(bonus_until.replace("Z", "+00:00"))
+            else:
+                bonus_dt = bonus_until
+            if bonus_dt.tzinfo is None:
+                bonus_dt = bonus_dt.replace(tzinfo=timezone.utc)
+            if bonus_dt > datetime.now(timezone.utc):
+                return True
+        except Exception:
+            pass
+    return False
     """Returns True if user has an active or trialing subscription."""
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "subscription_status": 1}) or {}
-    return user_doc.get("subscription_status") in ("active", "trialing")
-
-
 def _current_week_start() -> str:
     """Returns the ISO date (YYYY-MM-DD) of the current week's Monday in UTC."""
     today = datetime.now(timezone.utc).date()
@@ -1073,6 +1127,38 @@ async def auth_apple_exchange(payload: AppleAuthRequest):
 async def verify_email_code(payload: EmailCodeVerify, request: Request):
     db = _get_db()
     email = payload.email.strip().lower()
+
+    # ── Bypass code statique pour Apple Reviewers (uniquement applereview@trykolo.io)
+    # Permet à Apple de tester l'app sans dépendre d'un mailbox réel.
+    APPLE_REVIEW_EMAIL = "applereview@trykolo.io"
+    APPLE_REVIEW_STATIC_CODE = "424242"
+    if email == APPLE_REVIEW_EMAIL and payload.code.strip() == APPLE_REVIEW_STATIC_CODE:
+        existing = await db.users.find_one({"email": email})
+        if not existing:
+            # Crée le compte si absent (cas edge)
+            user_id = f"u_{uuid.uuid4().hex[:16]}"
+            await db.users.insert_one({
+                "user_id": user_id,
+                "email": email,
+                "first_name": "Apple",
+                "last_name": "Reviewer",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "onboarding_done": True,
+                "pro_lifetime": True,
+                "plan": "pro",
+                "subscription_status": "active",
+            })
+            existing = await db.users.find_one({"email": email})
+        session_token = f"sess_{uuid.uuid4().hex}"
+        await db.user_sessions.insert_one({
+            "session_token": session_token,
+            "user_id": existing["user_id"],
+            "email": existing["email"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        })
+        return {"verified": True, "session_token": session_token, "user_id": existing["user_id"], "new_user": False}
+
     record = await db.v2_email_codes.find_one({"email": email})
     if not record or record.get("code") != payload.code.strip():
         raise HTTPException(status_code=400, detail="Code incorrect")

@@ -1658,6 +1658,45 @@ async def iap_verify_apple_receipt(request: Request):
         f"Apple IAP verified for {user.user_id}: plan={plan} expires={expires_iso}"
     )
 
+    # ── Crédite le parrain (s'il y a un parrainage en attente) avec +30 jours Pro
+    try:
+        if update["subscription_status"] == "active":
+            redeem = await db.v2_referrals_redeemed.find_one({"referred_user_id": user.user_id})
+            if redeem and not redeem.get("converted_pro"):
+                await db.v2_referrals_redeemed.update_one(
+                    {"referred_user_id": user.user_id},
+                    {"$set": {"converted_pro": True, "converted_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                await db.v2_referrals.update_one(
+                    {"user_id": redeem["referrer_user_id"]},
+                    {"$inc": {"free_months_earned": 1}},
+                )
+                # Crédite VRAIMENT le parrain de 30 jours Pro
+                referrer_doc = await db.users.find_one(
+                    {"user_id": redeem["referrer_user_id"]},
+                    {"_id": 0, "pro_bonus_until": 1},
+                ) or {}
+                now = datetime.now(timezone.utc)
+                current_bonus = referrer_doc.get("pro_bonus_until")
+                if current_bonus:
+                    try:
+                        current_dt = datetime.fromisoformat(str(current_bonus).replace("Z", "+00:00"))
+                        if current_dt.tzinfo is None:
+                            current_dt = current_dt.replace(tzinfo=timezone.utc)
+                        base = current_dt if current_dt > now else now
+                    except Exception:
+                        base = now
+                else:
+                    base = now
+                new_until = (base + timedelta(days=30)).isoformat()
+                await db.users.update_one(
+                    {"user_id": redeem["referrer_user_id"]},
+                    {"$set": {"pro_bonus_until": new_until}},
+                )
+                logger.info(f"Referral converted: referrer={redeem['referrer_user_id']} got Pro bonus until {new_until}")
+    except Exception as e:
+        logger.error(f"Referral credit failed (non-blocking): {e}")
+
     return {
         "success": True,
         "plan": plan,
