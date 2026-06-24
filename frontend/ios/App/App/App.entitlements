@@ -8,10 +8,5 @@
 	<array>
 		<string>Default</string>
 	</array>
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:trykolo.io</string>
-		<string>applinks:www.trykolo.io</string>
-	</array>
 </dict>
 </plist>
