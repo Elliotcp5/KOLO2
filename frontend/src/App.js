@@ -126,7 +126,7 @@ const AppRouter = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<LandingPageNew />} />
+      <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app-v2" replace /> : <LandingPageNew />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
