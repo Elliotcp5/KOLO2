@@ -98,11 +98,16 @@ export default function V2AuthPage({ mode = 'login' }) {
               {busy ? 'Envoi…' : 'Recevoir un code par email'}
             </button>
 
+            {false && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0', color: 'var(--v2-muted-2)', fontSize: 12 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
               <span>ou</span>
               <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
             </div>
+            )}
+            {/* Apple Sign-In désactivé temporairement — sera réactivé en v2.1 quand le provisioning profile sera régénéré.
+                Apple Review §4.8 accepte l'email-code comme méthode d'auth unique. */}
+            {false && (
             <button className="v2-btn secondary full" onClick={async () => {
               setError('');
               try {
@@ -135,7 +140,8 @@ export default function V2AuthPage({ mode = 'login' }) {
               </svg>
               Continuer avec Apple
             </button>
-
+            )}
+            {false && (
             <button className="v2-btn secondary full" onClick={async () => {
               try {
                 const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/auth/google/client-id`);
@@ -166,6 +172,7 @@ export default function V2AuthPage({ mode = 'login' }) {
             }} data-testid="auth-google">
               Continuer avec Google
             </button>
+            )}
 
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--v2-muted)' }}>
               {mode === 'login' ? (
