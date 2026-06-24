@@ -19,10 +19,11 @@ import 'cordova-plugin-purchase';
 const API_URL = 'https://trykolo.io';
 
 export const PRODUCT_IDS = {
-  pro_monthly: 'PRO',
+  // Un seul produit IAP actif Apple = "PRO_Plus" affiché "KOLO PRO" 24,99€/mois
+  pro_monthly: 'PRO_Plus',
   pro_plus_monthly: 'PRO_Plus',
-  pro_yearly: 'Pro_simple_yearly',
-  pro_plus_yearly: 'PROYearly',
+  pro_yearly: 'PRO_Plus',
+  pro_plus_yearly: 'PRO_Plus',
 };
 
 export function getProductId(plan, billingPeriod = 'monthly') {

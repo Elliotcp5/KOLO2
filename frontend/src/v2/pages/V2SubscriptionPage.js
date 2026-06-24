@@ -1,6 +1,6 @@
 // =============================================================
-// KOLO v2 — Subscription page (StoreKit native sur iOS / Stripe sur Web)
-// Apple §3.1.1 compliant : sur iOS native, on lance UNIQUEMENT StoreKit.
+// KOLO v2 — Subscription page (StoreKit native iOS / Stripe web)
+// Apple §3.1.1 compliant. UN seul produit : KOLO Pro 24,99€/mois.
 // =============================================================
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,7 +13,6 @@ import {
   restorePurchases,
   isIOSNative,
   onPurchaseVerified,
-  getProducts,
 } from '../../services/iapStore';
 import '../../styles/v2.css';
 
@@ -21,7 +20,6 @@ export default function V2SubscriptionPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [dashboard, setDashboard] = useState(null);
-  const [billing, setBilling] = useState('monthly');
   const [busy, setBusy] = useState(false);
   const [iapReady, setIapReady] = useState(false);
   const native = isIOSNative();
@@ -33,7 +31,6 @@ export default function V2SubscriptionPage() {
 
   useEffect(() => {
     reload();
-    // Init StoreKit if iOS native
     if (native) {
       (async () => {
         try {
@@ -41,17 +38,17 @@ export default function V2SubscriptionPage() {
           const u = await v2api.me().catch(() => null);
           await initIAP({ userId: u?.user_id, token });
           setIapReady(true);
-          getProducts(); // warm-up products list
         } catch (e) {
           console.warn('IAP init failed', e);
+          setIapReady(true); // permettre le clic même si init partiel
         }
       })();
+    } else {
+      setIapReady(true);
     }
-    // Listen to purchase verified → reload dashboard
     const off = onPurchaseVerified((info) => {
-      console.log('Purchase verified', info);
       reload();
-      if (info?.status === 'active') {
+      if (info?.status === 'active' || info?.plan === 'pro') {
         alert('Abonnement Pro activé ✓');
         navigate('/app-v2');
       }
@@ -59,27 +56,24 @@ export default function V2SubscriptionPage() {
     return () => { try { off && off(); } catch (_) {} };
   }, []); // eslint-disable-line
 
-  const doPurchase = async (plan) => {
+  const doPurchase = async () => {
     setBusy(true);
     try {
       if (native) {
-        // iOS — lance la sheet Apple StoreKit
-        const r = await purchasePlan(plan, billing);
+        const r = await purchasePlan('pro', 'monthly');
         if (r?.cancelled) { setBusy(false); return; }
         if (r?.error) { alert(r.error); }
-        // success → handled by onPurchaseVerified listener
       } else {
-        // Web — redirige vers Stripe Checkout
         const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/v2/billing/create-checkout-session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${localStorage.getItem('kolo_v2_session')}`,
           },
-          body: JSON.stringify({ plan, billing_period: billing }),
+          body: JSON.stringify({ plan: 'pro', billing_period: 'monthly' }),
         }).then(x => x.json());
         if (r?.url) window.location.href = r.url;
-        else alert("Impossible de démarrer le paiement. Réessaie plus tard.");
+        else alert("Impossible de démarrer le paiement.");
       }
     } catch (e) {
       alert(e?.message || 'Erreur de paiement');
@@ -103,7 +97,7 @@ export default function V2SubscriptionPage() {
         alert("Aucun abonnement trouvé à restaurer.");
       }
     } catch (e) {
-      alert(e?.message || 'Erreur lors de la restauration');
+      alert(e?.message || 'Erreur restauration');
     } finally {
       setBusy(false);
     }
@@ -121,51 +115,29 @@ export default function V2SubscriptionPage() {
     'Parrainage activé',
   ];
 
-  const monthlyPrice = '24,99 €';
-  const yearlyPrice = '249 €';
-  const yearlyMonthEq = '20,75 €';
+  const isPro = dashboard?.has_pro;
 
   return (
     <V2Layout user={user} dashboard={dashboard}>
-      <button className="v2-icon-btn" onClick={() => navigate(-1)} style={{ marginBottom: 14 }} aria-label="Retour"><ChevronLeft size={18} /></button>
+      <button className="v2-icon-btn" onClick={() => navigate(-1)} style={{ marginBottom: 14 }} aria-label="Retour" data-testid="sub-back"><ChevronLeft size={18} /></button>
 
-      <h1 className="v2-hello" style={{ fontSize: 30 }} data-testid="sub-title">Passe en Pro</h1>
+      <h1 className="v2-hello" style={{ fontSize: 30 }} data-testid="sub-title">
+        {isPro ? 'Tu es Pro' : 'Passe en Pro'}
+      </h1>
       <p style={{ color: 'var(--v2-muted)', fontSize: 14.5, lineHeight: 1.5, marginBottom: 22 }}>
-        Débloque toutes les fonctionnalités KOLO et gagne 5h par semaine.
+        {isPro
+          ? 'Toutes les fonctionnalités KOLO sont débloquées. Merci de ton soutien.'
+          : 'Débloque toutes les fonctionnalités KOLO et gagne 5h par semaine.'}
       </p>
 
-      {/* Billing toggle */}
-      <div className="v2-filter-tabs" style={{ marginBottom: 18 }}>
-        <button
-          className={`v2-filter-tab ${billing === 'monthly' ? 'active' : ''}`}
-          onClick={() => setBilling('monthly')}
-          data-testid="sub-tab-monthly"
-        >
-          Mensuel
-        </button>
-        <button
-          className={`v2-filter-tab ${billing === 'yearly' ? 'active' : ''}`}
-          onClick={() => setBilling('yearly')}
-          data-testid="sub-tab-yearly"
-        >
-          Annuel <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 4 }}>-17%</span>
-        </button>
-      </div>
-
-      {/* Plan card */}
       <div className="v2-card" style={{ padding: 22 }}>
         <div className="v2-tag" style={{ color: 'var(--v2-info)' }}>KOLO PRO</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
           <span style={{ fontFamily: 'var(--v2-font-display)', fontSize: 36, fontWeight: 800, letterSpacing: '-0.025em' }} data-testid="sub-price">
-            {billing === 'monthly' ? monthlyPrice : yearlyMonthEq}
+            24,99 €
           </span>
           <span style={{ color: 'var(--v2-muted)', fontSize: 14 }}>/mois</span>
         </div>
-        {billing === 'yearly' && (
-          <div style={{ fontSize: 12.5, color: 'var(--v2-muted-2)', marginTop: 4 }}>
-            Facturé {yearlyPrice} par an
-          </div>
-        )}
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {PERKS.map(p => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--v2-ink-2)' }}>
@@ -174,15 +146,17 @@ export default function V2SubscriptionPage() {
           ))}
         </div>
 
-        <button
-          className="v2-btn primary full"
-          style={{ marginTop: 20, fontSize: 15 }}
-          disabled={busy || (native && !iapReady)}
-          onClick={() => doPurchase('pro')}
-          data-testid="sub-purchase-btn"
-        >
-          {busy ? 'Patiente…' : `S'abonner — ${billing === 'monthly' ? monthlyPrice : yearlyPrice}`}
-        </button>
+        {!isPro && (
+          <button
+            className="v2-btn primary full"
+            style={{ marginTop: 20, fontSize: 15 }}
+            disabled={busy || (native && !iapReady)}
+            onClick={doPurchase}
+            data-testid="sub-purchase-btn"
+          >
+            {busy ? 'Patiente…' : "S'abonner — 24,99 €/mois"}
+          </button>
+        )}
 
         {native && (
           <button
@@ -197,17 +171,17 @@ export default function V2SubscriptionPage() {
         )}
       </div>
 
-      <p style={{ fontSize: 11, color: 'var(--v2-muted-2)', lineHeight: 1.5, marginTop: 20, textAlign: 'center' }}>
+      <p style={{ fontSize: 11, color: 'var(--v2-muted-2)', lineHeight: 1.5, marginTop: 20, textAlign: 'center', padding: '0 12px' }}>
         {native ? (
           <>
-            L'abonnement est facturé via ton compte Apple à la fin de la période d'essai (s'il y en a une) et se renouvelle automatiquement. Tu peux gérer ou annuler ton abonnement à tout moment depuis les Réglages iOS → ton nom → Abonnements.
+            L'abonnement est facturé via ton compte Apple et se renouvelle automatiquement chaque mois. Tu peux gérer ou annuler à tout moment depuis Réglages iOS → ton nom → Abonnements. Aucun frais après annulation.
             <br /><br />
-            En t'abonnant, tu acceptes les <a href="https://www.trykolo.io/iap-terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--v2-ink)', textDecoration: 'underline' }}>conditions IAP</a> et la <a href="https://www.trykolo.io/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--v2-ink)', textDecoration: 'underline' }}>politique de confidentialité</a>.
+            <a href="https://www.trykolo.io/iap-terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--v2-ink)', textDecoration: 'underline' }}>Conditions IAP</a>
+            {' · '}
+            <a href="https://www.trykolo.io/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--v2-ink)', textDecoration: 'underline' }}>Confidentialité</a>
           </>
         ) : (
-          <>
-            Paiement sécurisé via Stripe. Tu peux annuler à tout moment depuis les paramètres.
-          </>
+          <>Paiement sécurisé via Stripe. Tu peux annuler à tout moment depuis les paramètres.</>
         )}
       </p>
     </V2Layout>

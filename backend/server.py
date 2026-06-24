@@ -1504,10 +1504,12 @@ APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID') or _APPLE_BUNDLE_FALLBACK
 
 # Map Apple product_id → internal plan key (must match App Store Connect EXACTLY — case sensitive)
 APPLE_PRODUCT_TO_PLAN = {
+    # Le produit IAP actif Apple est "PRO_Plus" (affiché "KOLO PRO" — 24,99€/mois)
+    'PRO_Plus': 'pro',
+    # Compat anciens IDs si jamais réactivés plus tard
     'PRO': 'pro',
-    'PRO_Plus': 'pro_plus',
     'Pro_simple_yearly': 'pro',
-    'PROYearly': 'pro_plus',
+    'PROYearly': 'pro',
 }
 
 # Apple verifyReceipt endpoints (production + sandbox fallback)
