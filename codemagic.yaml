@@ -8,8 +8,8 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: io.kolo.app
-      groups:
-        - Apple
+      integrations:
+        app_store_connect: KOLO Production
       vars:
         PACKAGE_NAME: "io.kolo.app"
         BUNDLE_ID: "io.kolo.app"
@@ -125,8 +125,7 @@ workflows:
           failure: true
 
       app_store_connect:
-        # Utilise les variables APP_STORE_CONNECT_PRIVATE_KEY / ISSUER_ID / KEY_IDENTIFIER du groupe Apple
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        # Utilise l'intégration "KOLO Production" configurée dans Codemagic
+        # → Teams → Integrations → App Store Connect → KOLO Production
+        auth: integration
         submit_to_testflight: true
