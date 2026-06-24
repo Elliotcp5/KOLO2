@@ -1,0 +1,85 @@
+{
+  "summary": "Full frontend QA of the new marketing site (/, /comment-kolo, /ressources, /a-propos). All 4 pages render correctly with all required data-testid hooks, animations, assets, navigation, and CTAs. Logo marquee runs CSS animation `mktMarquee` (38s) with all 30 images (15 logos x2) loaded. iPhone mockups load HTTP 200. Resources filter + article view + back-to-grid all functional. Mobile burger menu fully working. No regressions on /app-v2 routes or legacy public routes. 0 console errors on the 4 marketing pages.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "OPTIONAL (low priority): On /comment-kolo, the Avant/Après tags are rendered with CSS class `.mkt-tag-before` / `.mkt-tag-after` but lack explicit `data-testid='mkt-tag-before'` and `data-testid='mkt-tag-after'` attributes. The original spec mentions these as data-testid hooks. Visually present and labeled correctly, so functional pass — purely a testability nit. Add `data-testid` if you want future Playwright suites to grab them directly."
+  ],
+  "critical_code_review_comments": [
+    "Marketing CSS scope is well-isolated under `.mkt-root` — no risk of leaking into /app-v2.",
+    "MarketingLayout's IntersectionObserver useEffect has no dependency array — runs on every render and creates a fresh observer each time. Low-impact but could be tightened with [] dependency.",
+    "App.js correctly guards `/` behind Capacitor.isNativePlatform() so iOS native still lands on /app-v2 — verified by code review.",
+    "All 4 marketing pages are static (no backend calls), 0 console errors observed."
+  ],
+  "test_findings_detail": {
+    "homepage_/": {
+      "hero_title_correct": true,
+      "eyebrow_chip": true,
+      "subtitle": true,
+      "cta_appstore_href": "https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371",
+      "cta_target_blank": true,
+      "secondary_cta_to_comment_kolo": true,
+      "hero_phone_image_loaded": "live_home.jpeg 430x932",
+      "logo_marquee": "30 images (duplicated track), animation mktMarquee 38s, all loaded",
+      "pillars": ["mkt-pillar-pige", "mkt-pillar-dictee", "mkt-pillar-pilotage all visible"],
+      "stats_block": true,
+      "final_cta": true,
+      "console_errors": 0
+    },
+    "comment_kolo": {
+      "4_steps_visible": true,
+      "step_phone_images_loaded": ["live_pige", "live_home", "live_dossiers", "live_home"],
+      "bullets_per_step": 3,
+      "console_errors": 0,
+      "note": "Avant/Après tags rendered visually (red/green chips) but use CSS class only, no data-testid"
+    },
+    "ressources": {
+      "card_count": 10,
+      "filters": ["tout", "pige", "pilotage", "closing", "productivité", "outils"],
+      "pilotage_filter_count": 3,
+      "article_view_works": true,
+      "back_btn_returns_to_grid_with_10_cards": true,
+      "console_errors": 0
+    },
+    "a_propos": {
+      "founder_photo_loaded": "founder.png 1119px",
+      "story_visible": true,
+      "values_3": true,
+      "italic_quote_visible": true,
+      "console_errors": 0
+    },
+    "header_footer_nav": {
+      "header_sticky": "position: sticky confirmed",
+      "active_nav_link_class": "active applied correctly on /",
+      "footer_present_on_all_pages": true
+    },
+    "mobile_responsive_390px": {
+      "burger_visible": true,
+      "desktop_nav_hidden": "display: none",
+      "burger_opens_mobile_nav": true,
+      "4_mobile_links_visible": true,
+      "navigation_works": "clicking ressources navigates and shows 10 cards"
+    },
+    "regression_v2_and_legacy": {
+      "/app-v2/login": "loads V2AuthPage (not marketing)",
+      "/app-v2/signup": "loads V2AuthPage (not marketing)",
+      "/app-v2/dossiers": "redirects to /app-v2/login when unauthenticated (expected)",
+      "legacy_routes_ok": ["/login", "/pricing", "/blog", "/legal", "/privacy", "/terms", "/landing-old", "/business"]
+    }
+  },
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only test)", "frontend": "100%"},
+  "test_credentials": "Not required - all 4 marketing pages are public",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Marketing site refonte (/, /comment-kolo, /ressources, /a-propos) is fully validated and shipping-ready. The only nit is that 'Avant/Après' tags on /comment-kolo use CSS class .mkt-tag-before/.mkt-tag-after instead of explicit data-testid attributes — visual functionality is fine. Assets live under /app/frontend/public/marketing/assets/. APP_STORE_URL constant in MarketingLayout.js. All routes are static, no backend dependency. Native iOS still correctly redirects / to /app-v2 via Capacitor guard in App.js."
+}

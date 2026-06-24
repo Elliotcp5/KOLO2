@@ -16,6 +16,12 @@ import { useIOSKeyboardScroll } from "./hooks/useIOSKeyboardScroll";
 
 // Pages
 import LandingPageNew from "./pages/LandingPageNew";
+
+// Marketing v3 — Refonte intégrale du site vitrine www.trykolo.io
+import MarketingHomePage from "./pages/marketing/HomePage";
+import MarketingHowKoloPage from "./pages/marketing/HowKoloPage";
+import MarketingResourcesPage from "./pages/marketing/ResourcesPage";
+import MarketingAboutPage from "./pages/marketing/AboutPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import SubscribePage from "./pages/SubscribePage";
@@ -126,8 +132,13 @@ const AppRouter = () => {
 
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app-v2" replace /> : <LandingPageNew />} />
+      {/* Public routes — Marketing v3 (web only, app native redirige sur /app-v2) */}
+      <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app-v2" replace /> : <MarketingHomePage />} />
+      <Route path="/comment-kolo" element={<MarketingHowKoloPage />} />
+      <Route path="/ressources" element={<MarketingResourcesPage />} />
+      <Route path="/a-propos" element={<MarketingAboutPage />} />
+      {/* Legacy landing accessible via /landing-old pour fallback temporaire */}
+      <Route path="/landing-old" element={<LandingPageNew />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
