@@ -9,7 +9,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: io.kolo.app
       integrations:
-        app_store_connect: KOLO Production
+        app_store_connect: KOLO 1
       vars:
         PACKAGE_NAME: "io.kolo.app"
         BUNDLE_ID: "io.kolo.app"
