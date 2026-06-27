@@ -1272,6 +1272,7 @@ async def save_onboarding(payload: OnboardingPayload, request: Request):
         "role": payload.role,
         "company_name": payload.company_name or "",
         "sectors": payload.sectors,
+        "language": payload.language,
     }})
 
     # ---- High-value lead alert : Directeur d'agence / Réseau

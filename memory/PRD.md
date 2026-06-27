@@ -16,7 +16,24 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026) — UPDATED
-### Sprint App iOS V2 Fixes (iter 57 — Feb 2026) ✨ NEW
+### Sprint App iOS V2 — Suite (iter 58-59 — Feb 2026) ✨ NEW
+🎯 **Tour de finition avant build 2.1** :
+- ✅ **Bump version Apple** : `MARKETING_VERSION 2.0 → 2.1`, `CURRENT_PROJECT_VERSION 8 → 9` dans `project.pbxproj` (Apple avait fermé le train 2.0)
+- ✅ **Onboarding slide 0 = sélecteur de langue** (4 pastilles 🇫🇷🇬🇧🇩🇪🇮🇹) avec persistance dans localStorage.kolo_locale + sur user doc backend. STEPS passé de 9 à 10, tous les blocs `step ===` shiftés cleanement, eyebrows "Étape X" mises à jour. Gate disabled corrigée (`step === 1` au lieu de `step === 0`).
+- ✅ **Padding-top header** passé de 14px à 24px + `env(safe-area-inset-top)` pour libérer le burger menu du notch iPhone.
+- ✅ **Notifications push contextuelles (5 règles)** dans `notification_scheduler.py` :
+  - `end_of_day` (17h UTC) — "Comment s'est passée ta journée ?"
+  - `pige_done` — déclenchée quand un scrape Apify aboutit
+  - `draft_unfinished` (> 6h) — "Tu as commencé quelque chose…"
+  - `inactive_1d` — "KOLO t'attend 👋"
+  - `inactive_2d` — "Tes prospects n'attendent pas"
+  - Idempotence par `v2_push_log` (1 push par user/kind/jour max)
+- ✅ **`/me` met à jour `last_seen_at`** à chaque appel pour les nudges d'inactivité
+- ✅ **`dev_code` retiré de l'UI** (encore une vérif), backend retourne `dev_code` uniquement en non-prod, ignoré par le frontend
+- ✅ **Investigation 404 admin** : pas de 404 reproductible côté backend (tous endpoints v2 répondent 200 pour `pressardelliot@gmail.com`). Probablement résolu par les redéploiements successifs.
+- ✅ **Testing agent iter 59 : 100% frontend (walkthrough onboarding 0→9 réussi), 100% backend final après fix du mirror language sur user doc.**
+
+### Sprint App iOS V2 Fixes (iter 57 — Feb 2026)
 🍎 **8 bugs critiques fixés sur l'app iOS V2** :
 - ✅ Page login/signup : logo K centré (display:block + margin:0 auto)
 - ✅ Code `(dev: XXXXXX)` retiré du UI (devCode state supprimé de V2AuthPage)
