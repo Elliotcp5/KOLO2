@@ -1060,9 +1060,10 @@ async def send_email_code(payload: EmailCodeRequest):
             })
     except Exception:
         pass
-    # In dev preview, also return code to make manual testing trivial.
+    # In dev preview, also return code so QA/curl tests can verify the flow.
+    # NEVER displayed in the UI (frontend ignores dev_code).
     is_dev = os.environ.get("ENV", "dev").lower() != "production"
-    return {"sent": True, "dev_code": code if is_dev else None}
+    return {"sent": True, **({"dev_code": code} if is_dev else {})}
 
 
 class AppleAuthRequest(BaseModel):
