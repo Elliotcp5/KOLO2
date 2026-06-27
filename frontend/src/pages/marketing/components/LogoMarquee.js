@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../i18n';
 
 const LOGOS = [
   { src: '/marketing/assets/logos/guyhoquet.png',     alt: 'Guy Hoquet' },
@@ -18,12 +19,12 @@ const LOGOS = [
   { src: '/marketing/assets/logos/deferla.png',       alt: 'De Ferla Immobilier' },
 ];
 
-const LogoMarquee = ({ label = 'Des agents de ces réseaux nous font confiance' }) => {
-  // Duplicate the list to enable seamless looping
+const LogoMarquee = () => {
+  const { t } = useI18n();
   const items = [...LOGOS, ...LOGOS];
   return (
     <section className="mkt-marquee" data-testid="mkt-logo-marquee">
-      <div className="mkt-marquee-label">{label}</div>
+      <div className="mkt-marquee-label">{t('marquee_label')}</div>
       <div className="mkt-marquee-track-wrap">
         <div className="mkt-marquee-track">
           {items.map((l, i) => (

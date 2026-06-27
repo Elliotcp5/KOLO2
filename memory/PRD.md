@@ -15,6 +15,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - MongoDB (motor async)
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
+## Implemented (état Feb 2026) — UPDATED
+### Sprint Marketing Site Refonte (iter 56 — Feb 2026) ✨ NEW
+🌐 **Refonte intégrale du site vitrine www.trykolo.io** (4 pages, style Revolut, lumineux, premium) :
+- ✅ Page d'accueil `/` (`HomePage.js`) — Hero "Le copilote des agents qui veulent vendre plus" avec mockup iPhone réel (live screenshot V2), eyebrow chip, 2 CTAs (App Store + Voir comment ça marche), floating cards animées, bandeau logos défilant infini, 3 piliers, 3 stats, 2 product showcase steps, social proof quote, final CTA.
+- ✅ Page `/comment-kolo` (`HowKoloPage.js`) — 4 étapes "Avant/Après" avec tags verts/rouges, mockups iPhone live et bullets concrets.
+- ✅ Page `/ressources` (`ResourcesPage.js`) — 10 micro-tutos éditoriaux (rédaction maison) répartis en 5 catégories (Pige, Pilotage, Closing, Productivité, Outils). Filtres pill cliquables. Vue article expanded avec drop-cap typographique.
+- ✅ Page `/a-propos` (`AboutPage.js`) — Founder story Elliot (ex-agent immobilier → tech), photo détourée sur mesh gradient, citation italique serif, 3 valeurs (terrain, rapide, indépendant).
+- ✅ Design system marketing scopé `.mkt-root` (zéro fuite vers `/app-v2`) — Cabinet Grotesk display + Instrument Serif italics + Satoshi body. Palette ivoire/encre/coral.
+- ✅ Bandeau logos infini : 15 logos partenaires extraits programmatiquement depuis la planche PNG fournie (Python/PIL, alpha mask + col/row band detection), normalisés à 160px de haut, animation CSS marquee 38s seamless avec masque dégradé sur les bords.
+- ✅ Header sticky avec blur, footer pro 4 colonnes, menu burger mobile, reveal-on-scroll IntersectionObserver.
+- ✅ Capacitor.isNativePlatform() préserve la route `/` pour l'app iOS (redirige vers `/app-v2`). Aucune régression sur les routes V2.
+- ✅ Testing agent : 100% pass, 0 console error, 0 régression sur `/app-v2`.
+
+
 ## Implemented (état Feb 2026)
 ### Sprint LIGHT premium + mesh gradient + voice dictation + brain icon (iter 54 — Feb 2026) 🪶
 🎨 **Pivot UI : light theme animated mesh gradient** (suite à feedback user "full black trop dur, je préfère du clair avec un gradient subtil qui bouge") :

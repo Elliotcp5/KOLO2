@@ -1,32 +1,84 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight, ChevronDown } from 'lucide-react';
 import '../marketing.css';
-
-const NAV = [
-  { to: '/', label: 'Accueil' },
-  { to: '/comment-kolo', label: 'Comment KOLO' },
-  { to: '/ressources', label: 'Ressources' },
-  { to: '/a-propos', label: 'À propos' },
-];
+import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
 
 const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
 
 const KoloLogo = () => (
   <Link to="/" className="mkt-logo" data-testid="mkt-logo-home">
     <span>KOLO</span>
-    <span className="mkt-logo-dot" />
   </Link>
 );
 
-export const MarketingHeader = () => {
+const LanguageSwitcher = () => {
+  const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
-  const location = useLocation();
-  // Close mobile nav on route change
-  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!e.target.closest('.mkt-lang-switcher')) setOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, []);
+
+  const current = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
 
   return (
-    <header className="mkt-header" data-testid="mkt-header">
+    <div className="mkt-lang-switcher" data-testid="mkt-lang-switcher">
+      <button
+        type="button"
+        className="mkt-lang-trigger"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        data-testid="mkt-lang-trigger"
+      >
+        {current.label}
+        <ChevronDown size={13} strokeWidth={2.5} />
+      </button>
+      {open && (
+        <ul className="mkt-lang-menu" role="listbox" data-testid="mkt-lang-menu">
+          {LANGUAGES.map((l) => (
+            <li key={l.code}>
+              <button
+                type="button"
+                className={`mkt-lang-item ${l.code === lang ? 'active' : ''}`}
+                onClick={() => { setLang(l.code); setOpen(false); }}
+                data-testid={`mkt-lang-option-${l.code}`}
+              >
+                {l.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const HeaderInner = () => {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const { t } = useI18n();
+
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  const NAV = [
+    { to: '/', label: t('nav.home') },
+    { to: '/comment-kolo', label: t('nav.how') },
+    { to: '/ressources', label: t('nav.resources') },
+    { to: '/a-propos', label: t('nav.about') },
+  ];
+
+  return (
+    <header className={`mkt-header ${open ? 'menu-open' : ''}`} data-testid="mkt-header">
       <div className="mkt-container mkt-header-inner">
         <KoloLogo />
         <nav className="mkt-nav" data-testid="mkt-nav-desktop">
@@ -43,6 +95,7 @@ export const MarketingHeader = () => {
           ))}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <LanguageSwitcher />
           <a
             href={APP_STORE_URL}
             target="_blank"
@@ -50,11 +103,11 @@ export const MarketingHeader = () => {
             className="mkt-header-cta"
             data-testid="mkt-header-appstore-cta"
           >
-            Télécharger <ArrowRight size={14} strokeWidth={2.5} />
+            {t('nav.cta')} <ArrowRight size={14} strokeWidth={2.5} />
           </a>
           <button
             className="mkt-burger"
-            aria-label="Ouvrir le menu"
+            aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
             data-testid="mkt-nav-burger"
@@ -76,52 +129,63 @@ export const MarketingHeader = () => {
             {n.label}
           </NavLink>
         ))}
+        <div className="mkt-mobile-divider" />
+        <a
+          href={APP_STORE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="mkt-btn mkt-btn-primary"
+          data-testid="mkt-nav-mobile-appstore"
+          style={{ marginTop: 12 }}
+        >
+          {t('nav.cta')} <ArrowRight size={16} strokeWidth={2.5} />
+        </a>
       </div>
     </header>
   );
 };
 
-export const MarketingFooter = () => (
-  <footer className="mkt-footer" data-testid="mkt-footer">
-    <div className="mkt-container">
-      <div className="mkt-footer-grid">
-        <div className="mkt-footer-brand">
-          <KoloLogo />
-          <p>Le copilote IA des agents immobiliers indépendants. Pige, dictée vocale, suivi des dossiers — pensé par un agent pour les agents.</p>
+const FooterInner = () => {
+  const { t } = useI18n();
+  return (
+    <footer className="mkt-footer" data-testid="mkt-footer">
+      <div className="mkt-container">
+        <div className="mkt-footer-grid">
+          <div className="mkt-footer-brand">
+            <KoloLogo />
+            <p>{t('footer.tagline')}</p>
+          </div>
+          <div className="mkt-footer-col">
+            <h5>{t('footer.product')}</h5>
+            <Link to="/comment-kolo">{t('footer.how')}</Link>
+            <Link to="/ressources">{t('footer.resources')}</Link>
+            <a href={APP_STORE_URL} target="_blank" rel="noreferrer">{t('footer.download')}</a>
+          </div>
+          <div className="mkt-footer-col">
+            <h5>{t('footer.company')}</h5>
+            <Link to="/a-propos">{t('footer.about')}</Link>
+            <a href="mailto:contact@trykolo.io">{t('footer.contact')}</a>
+          </div>
+          <div className="mkt-footer-col">
+            <h5>{t('footer.legal')}</h5>
+            <Link to="/legal">{t('footer.legal_notice')}</Link>
+            <Link to="/legal">{t('footer.privacy')}</Link>
+            <Link to="/legal">{t('footer.terms')}</Link>
+          </div>
         </div>
-        <div className="mkt-footer-col">
-          <h5>Produit</h5>
-          <Link to="/comment-kolo">Comment ça marche</Link>
-          <Link to="/ressources">Ressources</Link>
-          <a href={APP_STORE_URL} target="_blank" rel="noreferrer">Télécharger l'app</a>
-        </div>
-        <div className="mkt-footer-col">
-          <h5>Société</h5>
-          <Link to="/a-propos">À propos</Link>
-          <Link to="/business">Entreprise</Link>
-          <a href="mailto:contact@trykolo.io">Contact</a>
-        </div>
-        <div className="mkt-footer-col">
-          <h5>Légal</h5>
-          <Link to="/legal">Mentions légales</Link>
-          <Link to="/privacy">Confidentialité</Link>
-          <Link to="/terms">CGU</Link>
+        <div className="mkt-footer-bottom">
+          <div>© {new Date().getFullYear()} {t('footer.company_label')}. {t('footer.rights')}</div>
+          <div>{t('footer.crafted')}</div>
         </div>
       </div>
-      <div className="mkt-footer-bottom">
-        <div>© {new Date().getFullYear()} KOLO. Tous droits réservés.</div>
-        <div>Conçu en France · Pensé pour l'immobilier</div>
-      </div>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
-const MarketingLayout = ({ children }) => {
-  // Scroll to top on route change
+const Layout = ({ children }) => {
   const location = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
 
-  // Reveal-on-scroll observer
   useEffect(() => {
     const els = document.querySelectorAll('.mkt-reveal');
     if (!('IntersectionObserver' in window) || !els.length) {
@@ -138,16 +202,22 @@ const MarketingLayout = ({ children }) => {
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  });
+  }, [location.pathname]);
 
   return (
     <div className="mkt-root" data-testid="mkt-root">
-      <MarketingHeader />
+      <HeaderInner />
       <main>{children}</main>
-      <MarketingFooter />
+      <FooterInner />
     </div>
   );
 };
+
+const MarketingLayout = ({ children }) => (
+  <I18nProvider>
+    <Layout>{children}</Layout>
+  </I18nProvider>
+);
 
 export default MarketingLayout;
 export { APP_STORE_URL };

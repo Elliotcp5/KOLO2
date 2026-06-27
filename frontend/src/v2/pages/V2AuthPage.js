@@ -17,7 +17,6 @@ export default function V2AuthPage({ mode = 'login' }) {
   const [lastName, setLastName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [devCode, setDevCode] = useState(null);
   const [referralCode, setReferralCode] = useState('');
   const [referralName, setReferralName] = useState('');
 
@@ -35,8 +34,7 @@ export default function V2AuthPage({ mode = 'login' }) {
   const sendCode = async () => {
     setError(''); setBusy(true);
     try {
-      const r = await v2api.sendEmailCode(email);
-      setDevCode(r.dev_code || null);
+      await v2api.sendEmailCode(email);
       setStep('code');
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
@@ -54,7 +52,7 @@ export default function V2AuthPage({ mode = 'login' }) {
     <div className="v2-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, paddingBottom: 24 }}>
       <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 72, height: 72, objectFit: 'contain', filter: 'invert(1)' }} />
+          <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 72, height: 72, objectFit: 'contain', filter: 'invert(1)', display: 'block', margin: '0 auto' }} />
           <div style={{ fontSize: 13.5, color: 'var(--v2-muted)', marginTop: 14 }}>
             Ton copilote IA terrain
           </div>
@@ -188,7 +186,6 @@ export default function V2AuthPage({ mode = 'login' }) {
           <>
             <p style={{ fontSize: 14, color: 'var(--v2-muted)', marginBottom: 18 }}>
               Code envoyé à <strong style={{ color: 'var(--v2-ink)' }}>{email}</strong>
-              {devCode && <span style={{ display: 'block', marginTop: 6, fontSize: 12, color: 'var(--v2-accent)' }}>(dev: {devCode})</span>}
             </p>
             <div className="v2-field">
               <label className="v2-label">Code à 6 chiffres</label>

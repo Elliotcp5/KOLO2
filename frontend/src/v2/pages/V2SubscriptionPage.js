@@ -22,6 +22,8 @@ export default function V2SubscriptionPage() {
   const [dashboard, setDashboard] = useState(null);
   const [busy, setBusy] = useState(false);
   const [iapReady, setIapReady] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoMsg, setPromoMsg] = useState('');
   const native = isIOSNative();
 
   const reload = () => {
@@ -147,15 +149,70 @@ export default function V2SubscriptionPage() {
         </div>
 
         {!isPro && (
-          <button
-            className="v2-btn primary full"
-            style={{ marginTop: 20, fontSize: 15 }}
-            disabled={busy || (native && !iapReady)}
-            onClick={doPurchase}
-            data-testid="sub-purchase-btn"
-          >
-            {busy ? 'Patiente…' : "S'abonner — 24,99 €/mois"}
-          </button>
+          <>
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--v2-muted)', marginBottom: 8 }}>
+                Code promo
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="v2-input"
+                  style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase().slice(0, 24))}
+                  placeholder="Saisis ton code"
+                  data-testid="sub-promo-input"
+                />
+                <button
+                  type="button"
+                  className="v2-btn secondary"
+                  onClick={async () => {
+                    setPromoMsg(''); setBusy(true);
+                    try {
+                      const API = process.env.REACT_APP_BACKEND_URL;
+                      const token = localStorage.getItem('kolo_v2_session') || '';
+                      const r = await fetch(`${API}/api/v2/promo/redeem`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ code: promoCode.trim() }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok) throw new Error(d.detail || 'Code invalide');
+                      setPromoMsg(`✓ ${d.granted_days} jours Pro offerts`);
+                      setTimeout(() => window.location.reload(), 1200);
+                    } catch (e) {
+                      setPromoMsg(e.message || 'Erreur');
+                    } finally { setBusy(false); }
+                  }}
+                  disabled={busy || promoCode.length < 3}
+                  data-testid="sub-promo-redeem-btn"
+                >
+                  Valider
+                </button>
+              </div>
+              {promoMsg && (
+                <div
+                  style={{
+                    marginTop: 8, fontSize: 12.5,
+                    color: promoMsg.startsWith('✓') ? '#1E7A3C' : '#DC2626',
+                  }}
+                  data-testid="sub-promo-msg"
+                >
+                  {promoMsg}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="v2-btn primary full"
+              style={{ marginTop: 20, fontSize: 15 }}
+              disabled={busy || (native && !iapReady)}
+              onClick={doPurchase}
+              data-testid="sub-purchase-btn"
+            >
+              {busy ? 'Patiente…' : "S'abonner — 24,99 €/mois"}
+            </button>
+          </>
         )}
 
         {native && (

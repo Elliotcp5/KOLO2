@@ -1,0 +1,71 @@
+{
+  "summary": "Full backend + frontend QA of V2 fixes (iteration 57). All 13 requested behaviours validated. 17/17 backend pytest tests passing. Frontend: logo centering, removal of '(dev:XXX)' on code screen, ring counters (0/0 not 0/3,0/5), safe-area header padding, prospecting 'Analyse en cours' spinner with no yellow 'Données d'exemple' banner, language grid FR/EN/DE/IT with localStorage.kolo_locale persistence, promo redeem flow (input visible for free user, error shown for unknown code, WELCOME30 success → user becomes Pro). Apple Review bypass (applereview@trykolo.io / 424242) works end-to-end and user correctly sees 'Tu es Pro' page on /settings/subscription (input hidden as expected for lifetime Pro). Regression on auth flow and v2 standard endpoints (/dashboard, /cases, /contacts, /reminders, /notes, /referral/me) all green.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/app-v2/prospecting",
+        "issues": [
+          "React hydration warning in console: <span> cannot be a child of <select>/<option>. Comes from a code-injection wrapper around the <select data-testid='prosp-score'> and its <option> children in V2Extras.js. Doesn't break rendering but generates 2 console errors. Likely caused by the live-edit instrumentation wrapping dynamic JSX. Cosmetic console noise only."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_57.py",
+    "/app/test_reports/pytest/iter57.xml"
+  ],
+  "action_items": [
+    "All 13 requested fixes are confirmed working. No action required from main agent unless the React hydration console warning around <select data-testid='prosp-score'> needs cleanup (low priority — does not affect functionality)."
+  ],
+  "critical_code_review_comments": [
+    "v2_router.py is now 1687 lines — close to the 700-line threshold. Recommend splitting promo/* into a dedicated v2_router_promo.py module to keep concerns isolated.",
+    "promo_redeem endpoint correctly returns 404/409/410 with specific French messages — good UX.",
+    "_get_user dependency uses 'from server import get_user_from_session' inside the function — works but creates a hidden runtime import that could mask circular-dependency issues; better to lift to module top.",
+    "Prospecting fallback correctly returns {items:[], source:'scraping_in_progress'} instead of fake placeholder data — trust-preserving design.",
+    "Dashboard counters use real Mongo aggregations (count_documents on date ranges) — no hard-coded values left."
+  ],
+  "test_findings_detail": {
+    "backend": {
+      "tests_run": 17,
+      "tests_passed": 17,
+      "groups": [
+        "TestAuthRegression (2/2)",
+        "TestDashboardCounters (2/2) — new fields reminders_completed_today, reminders_created_today, notes_processed_today, notes_created_today all present and = 0 for fresh user",
+        "TestProspectingListings (1/1) — source != 'placeholder', returns scraping_in_progress with items:[] or real items",
+        "TestPromoCodes (6/6) — 404 unknown, 200 WELCOME30 success (granted_days=30, pro_until set), 409 re-redeem same user, has_pro=true after redeem, 410 VIP-ONCE limit reached, 401 unauth",
+        "TestV2Regression (6/6) — /dashboard /cases /contacts /reminders /notes /referral/me all 200/204"
+      ]
+    },
+    "frontend": {
+      "login_logo_centered": "delta=0.0px on 430x932 viewport",
+      "signup_logo_centered": "delta=0.0px",
+      "no_dev_text_on_code_screen": "document.body.innerText does not contain 'dev:' after sending code for applereview",
+      "ring_counters_apple_review": "reminders='0/0', notes='0/0' — no hard-coded /3 or /5",
+      "header_safe_area_padding_top": "14px (matches spec minimum)",
+      "prospecting_loading": "[data-testid='prosp-loading'] visible with text 'Analyse en cours… Tu peux quitter cette page, on te notifie dès que c'est prêt.'",
+      "prospecting_no_placeholder_banner": "[data-testid='prosp-source-notice'] does NOT exist; body does NOT contain 'Données d'exemple'",
+      "language_grid": "all 4 buttons (settings-lang-fr/en/de/it) present and clickable",
+      "language_grid_localstorage": "clicking settings-lang-en sets localStorage.kolo_locale='en'",
+      "promo_input_pro_lifetime_user": "Correctly HIDDEN for applereview (user lands on 'Tu es Pro' page)",
+      "promo_input_free_user": "VISIBLE — input + Valider button both rendered",
+      "promo_unknown_code_error": "Error message displayed for ZZZNOTFOUND (404 → backend message bubbles up to UI)",
+      "promo_welcome30_success": "After clicking Valider with WELCOME30, free user becomes Pro — page redirects/refreshes to show 'Tu es Pro' state with feature list and 'KOLO PRO 24,99€' badge"
+    }
+  },
+  "updated_files": [
+    "/app/backend/tests/test_iteration_57.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (all 13 spec items validated)"},
+  "test_credentials": "applereview@trykolo.io / 424242 (Pro lifetime bypass). Free test users created on-the-fly via /api/v2/auth/send-email-code (dev_code in response).",
+  "seed_data_creation": "Promo codes WELCOME30 (multi-use, 30 days) and VIP-ONCE (single-use, 90 days) already seeded in v2_promo_codes collection — confirmed via mongosh.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All V2 iteration-57 fixes are validated and shipping-ready. Backend test file at /app/backend/tests/test_iteration_57.py covers regression for: auth (email-code + Apple Review bypass), dashboard counters, prospecting (no placeholder), promo codes (404/409/410/401/200 cases). One cosmetic issue: V2 prospecting page generates 2 React hydration console errors due to the dev-tools instrumentation injecting <span> wrappers inside <select>/<option> — purely a dev-time warning, no runtime impact. Subscription promo input is correctly hidden when user is Pro (lifetime or active) — must test promo redeem with a fresh free user (use localStorage.setItem('kolo_v2_session', token) trick). VIP-ONCE has already been consumed (redeemed_count=1) so further 2nd-user attempts will return 410; create a fresh single-use code if more tests needed.",
+  "rca_of_the_issue": "N/A — no issues found."
+}

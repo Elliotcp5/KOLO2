@@ -166,15 +166,17 @@ export default function V2HomePage() {
     navigate('/app-v2/login');
   };
 
-  // Ring totals — daily goals reflect realistic agent activity
+  // Ring totals — use REAL counts from backend dashboard (0/0 if nothing yet today)
   const ringData = useMemo(() => {
     const remindersDone = dashboard?.reminders_completed_today ?? 0;
-    const remindersTotal = Math.max(3, (dashboard?.reminders_today ?? 0) + remindersDone);
+    const remindersTotal = dashboard?.reminders_created_today ?? 0;
+    const remindersPending = dashboard?.reminders_today ?? 0;
+    const notesDone = dashboard?.notes_processed_today ?? 0;
+    const notesTotal = dashboard?.notes_created_today ?? 0;
     const notesPending = dashboard?.notes_pending ?? 0;
-    const notesTotal = Math.max(5, notesPending + (dashboard?.notes_processed_today ?? 0));
     return {
-      reminders: { value: remindersDone, total: remindersTotal, pending: dashboard?.reminders_today ?? 0 },
-      notes: { value: (dashboard?.notes_processed_today ?? 0), total: notesTotal, pending: notesPending },
+      reminders: { value: remindersDone, total: remindersTotal, pending: remindersPending },
+      notes:     { value: notesDone,     total: notesTotal,     pending: notesPending },
     };
   }, [dashboard]);
 

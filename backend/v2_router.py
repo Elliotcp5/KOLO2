@@ -627,8 +627,20 @@ async def get_dashboard(request: Request):
     reminders_today = await db.v2_reminders.count_documents({
         "user_id": user.user_id, "date": today, "status": "pending"
     })
+    reminders_completed_today = await db.v2_reminders.count_documents({
+        "user_id": user.user_id, "date": today, "status": "done"
+    })
+    reminders_created_today = reminders_today + reminders_completed_today
     notes_pending = await db.v2_notes.count_documents({
         "user_id": user.user_id, "status": "pending"
+    })
+    notes_processed_today = await db.v2_notes.count_documents({
+        "user_id": user.user_id, "status": "processed",
+        "processed_at": {"$gte": today}
+    })
+    notes_created_today = await db.v2_notes.count_documents({
+        "user_id": user.user_id,
+        "created_at": {"$gte": today}
     })
     total_contacts = await db.v2_contacts.count_documents({"user_id": user.user_id})
 
@@ -640,7 +652,11 @@ async def get_dashboard(request: Request):
     })
     return {
         "reminders_today": reminders_today,
+        "reminders_completed_today": reminders_completed_today,
+        "reminders_created_today": reminders_created_today,
         "notes_pending": notes_pending,
+        "notes_processed_today": notes_processed_today,
+        "notes_created_today": notes_created_today,
         "total_contacts": total_contacts,
         "has_pro": bool(plan),
         "free_contacts_left": max(0, FREE_CONTACTS_LIMIT - total_contacts) if not plan else None,
@@ -1533,17 +1549,138 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
         except Exception as e:
             logger.warning(f"Apify error: {type(e).__name__}: {e}")
 
-    # ---- Placeholder (clearly marked)
-    base = [
-        {"title": "T3 lumineux", "sector": "69003 Lyon", "price": 285000, "surface": 71, "rooms": 3, "kind": "private", "photo": "/og-image-v2.png", "url": "https://www.leboncoin.fr", "posted_at": "2026-02-18"},
-        {"title": "Maison familiale", "sector": "33000 Bordeaux", "price": 520000, "surface": 145, "rooms": 6, "kind": "pro", "photo": "/og-image-v2.png", "url": "https://www.seloger.com", "posted_at": "2026-02-12"},
-        {"title": "Studio meublé", "sector": "75019 Paris", "price": 210000, "surface": 28, "rooms": 1, "kind": "private", "photo": "/og-image-v2.png", "url": "https://www.bienici.com", "posted_at": "2026-02-05"},
-        {"title": "Appartement balcon", "sector": "13001 Marseille", "price": 245000, "surface": 65, "rooms": 3, "kind": "pro", "photo": "/og-image-v2.png", "url": "https://www.leboncoin.fr", "posted_at": "2025-12-20"},
-    ]
-    items = base
-    if sector:
-        items = [r for r in items if sector.lower() in r["sector"].lower()]
-    if kind in {"private", "pro"}:
-        items = [r for r in items if r["kind"] == kind]
+    # ---- No live data available — return empty so the UI shows
+    # a clean "Analyse en cours" or "Aucun résultat" state.
+    # We DO NOT return fake/sample items here (per product brief: never show
+    # placeholder data to the user, it kills trust).
     await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind, "age": age})
-    return {"items": items, "source": "placeholder"}
+    return {
+        "items": [],
+        "source": "scraping_in_progress",
+        "hint": "Analyse en cours — récupération des annonces en arrière-plan.",
+    }
+
+
+# ============================================================================
+# PROMO CODES  /api/v2/promo/*
+# ============================================================================
+class PromoRedeemRequest(BaseModel):
+    code: str
+
+
+@router.post("/promo/redeem")
+async def promo_redeem(payload: PromoRedeemRequest, request: Request):
+    """Redeem a promo code → grants free Pro days to the user.
+
+    Codes are stored in `v2_promo_codes`:
+      { code, days, max_redemptions (None=unlimited), redeemed_count,
+        active, single_use, redeemed_by: [user_id, ...] }
+    """
+    user = await _get_user(request)
+    db = _get_db()
+    code = (payload.code or "").strip().upper()
+    if not code or len(code) < 3:
+        raise HTTPException(status_code=400, detail="Code invalide")
+
+    promo = await db.v2_promo_codes.find_one({"code": code})
+    if not promo or not promo.get("active", True):
+        raise HTTPException(status_code=404, detail="Ce code n'existe pas ou n'est plus actif.")
+
+    days = int(promo.get("days") or 0)
+    if days <= 0:
+        raise HTTPException(status_code=400, detail="Code invalide (durée nulle).")
+
+    redeemed_by = promo.get("redeemed_by") or []
+    if user.user_id in redeemed_by:
+        raise HTTPException(status_code=409, detail="Tu as déjà utilisé ce code.")
+
+    max_red = promo.get("max_redemptions")
+    redeemed_count = int(promo.get("redeemed_count") or 0)
+    if max_red is not None and redeemed_count >= int(max_red):
+        raise HTTPException(status_code=410, detail="Ce code a atteint sa limite d'utilisations.")
+
+    # Grant free Pro days: extend pro_bonus_until (same field used by referrals)
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0}) or {}
+    now = datetime.now(timezone.utc)
+    cur_until = user_doc.get("pro_bonus_until")
+    try:
+        base = datetime.fromisoformat(cur_until.replace("Z", "+00:00")) if isinstance(cur_until, str) else (cur_until or now)
+        if base.tzinfo is None:
+            base = base.replace(tzinfo=timezone.utc)
+        if base < now:
+            base = now
+    except Exception:
+        base = now
+    new_until = base + timedelta(days=days)
+
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"pro_bonus_until": new_until.isoformat(), "updated_at": now.isoformat()}},
+    )
+    await db.v2_promo_codes.update_one(
+        {"code": code},
+        {"$inc": {"redeemed_count": 1}, "$push": {"redeemed_by": user.user_id}},
+    )
+    return {
+        "ok": True,
+        "code": code,
+        "granted_days": days,
+        "pro_until": new_until.isoformat(),
+    }
+
+
+class PromoCreateRequest(BaseModel):
+    code: Optional[str] = None
+    days: int
+    max_redemptions: Optional[int] = None  # None = unlimited, 1 = single-use
+    label: Optional[str] = None
+
+
+def _gen_promo_code(n: int = 8) -> str:
+    import secrets, string
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(n))
+
+
+@router.post("/promo/admin/create")
+async def promo_admin_create(payload: PromoCreateRequest, request: Request):
+    """Admin-only: create a new promo code (single-use or multi-use)."""
+    user = await _get_user(request)
+    admin_email = os.environ.get("ADMIN_ALERT_EMAIL") or "elliot.cohenpressard@trykolo.io"
+    db = _get_db()
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"email": 1, "_id": 0}) or {}
+    if (user_doc.get("email") or "").lower() != admin_email.lower():
+        raise HTTPException(status_code=403, detail="Admin only")
+    code = (payload.code or _gen_promo_code()).upper()
+    if payload.days <= 0:
+        raise HTTPException(status_code=400, detail="days must be > 0")
+    doc = {
+        "code": code,
+        "days": int(payload.days),
+        "max_redemptions": int(payload.max_redemptions) if payload.max_redemptions is not None else None,
+        "redeemed_count": 0,
+        "redeemed_by": [],
+        "active": True,
+        "single_use": (payload.max_redemptions == 1),
+        "label": payload.label or "",
+        "created_by": user.user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.v2_promo_codes.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.get("/promo/admin/list")
+async def promo_admin_list(request: Request):
+    user = await _get_user(request)
+    admin_email = os.environ.get("ADMIN_ALERT_EMAIL") or "elliot.cohenpressard@trykolo.io"
+    db = _get_db()
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"email": 1, "_id": 0}) or {}
+    if (user_doc.get("email") or "").lower() != admin_email.lower():
+        raise HTTPException(status_code=403, detail="Admin only")
+    cursor = db.v2_promo_codes.find({}, {"_id": 0}).sort("created_at", -1)
+    items = []
+    async for d in cursor:
+        items.append(d)
+    return {"items": items}

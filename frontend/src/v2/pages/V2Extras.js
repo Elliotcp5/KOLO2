@@ -28,9 +28,19 @@ export const V2ProspectingPage = () => {
   const [items, setItems] = useState([]);
   const [source, setSource] = useState('');
   const [quotaError, setQuotaError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const pollTimerRef = React.useRef(null);
 
-  const reload = () => {
-    setQuotaError('');
+  const clearPoll = () => {
+    if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
+  };
+
+  const reload = (isPoll = false) => {
+    if (!isPoll) {
+      setQuotaError('');
+      setLoading(true);
+      clearPoll();
+    }
     if (mode === 'dpe') {
       const p = {};
       if (sector) p.sector = sector;
@@ -38,23 +48,38 @@ export const V2ProspectingPage = () => {
       if (age === '30') p.days = 30;
       if (age === '90') p.days = 90;
       v2api.dpe(p)
-        .then(r => { setItems(r.items); setSource(r.source || ''); })
+        .then(r => {
+          setItems(r.items || []);
+          setSource(r.source || '');
+          setLoading(false);
+        })
         .catch(e => {
-          setItems([]); setSource('');
+          setItems([]); setSource(''); setLoading(false);
           if ((e.message || '').includes('Quota')) setQuotaError(e.message);
         });
     } else {
       const p = {};
       if (sector) p.sector = sector;
       v2api.listings(p)
-        .then(r => { setItems(r.items); setSource(r.source || ''); })
+        .then(r => {
+          const src = r.source || '';
+          setItems(r.items || []);
+          setSource(src);
+          // If still scraping, keep loader on and poll every 8s (max ~3 min)
+          if (src === 'scraping_in_progress') {
+            pollTimerRef.current = setTimeout(() => reload(true), 8000);
+          } else {
+            setLoading(false);
+            clearPoll();
+          }
+        })
         .catch(e => {
-          setItems([]); setSource('');
+          setItems([]); setSource(''); setLoading(false); clearPoll();
           if ((e.message || '').includes('Quota')) setQuotaError(e.message);
         });
     }
   };
-  useEffect(() => { reload(); }, [mode, sector, score, age]);
+  useEffect(() => { reload(); return clearPoll; /* eslint-disable-next-line */ }, [mode, sector, score, age]);
   if (!user) return <div className="v2-app" />;
 
   const convertToCase = async (it) => {
@@ -118,24 +143,36 @@ export const V2ProspectingPage = () => {
         </div>
       )}
 
-      {mode === 'ads' && source === 'scraping_in_progress' && (
-        <div style={{ background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.25)', color: '#0A4DAB', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-scraping-in-progress">
-          Pige live en cours sur LeBonCoin + PAP — peut prendre 1 à 3 minutes la 1ère fois. Réessaie dans 30 secondes.
+      {/* Unified loader - clean spinner "Analyse en cours" */}
+      {loading && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '18px 16px', marginTop: 14,
+            background: 'var(--v2-surface)',
+            border: '1px solid var(--v2-line)',
+            borderRadius: 14,
+          }}
+          data-testid="prosp-loading"
+        >
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%',
+            border: '2.5px solid rgba(10,132,255,0.18)',
+            borderTopColor: '#0A84FF',
+            animation: 'v2spin 0.8s linear infinite',
+          }} />
+          <div style={{ fontSize: 14, color: 'var(--v2-ink)', fontWeight: 500 }}>
+            Analyse en cours…
+            <div style={{ fontSize: 12, color: 'var(--v2-muted)', marginTop: 2, fontWeight: 400 }}>
+              {mode === 'ads' ? 'Tu peux quitter cette page, on te notifie dès que c\'est prêt.' : 'Récupération des données ADEME en temps réel.'}
+            </div>
+          </div>
         </div>
       )}
-      {mode === 'ads' && source === 'placeholder' && (
-        <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-source-notice">
-          Données d'exemple — réessaie dans 1 minute, la pige live se charge.
-        </div>
-      )}
-      {mode === 'ads' && source === 'not_subscribed' && (
+
+      {mode === 'ads' && source === 'not_subscribed' && !loading && (
         <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: 12, padding: '10px 14px', marginTop: 12, fontSize: 12.5 }} data-testid="prosp-not-subscribed">
-          API Selogimmo non souscrite. Active "Subscribe to Test" sur RapidAPI (gratuit) puis recharge.
-        </div>
-      )}
-      {source && source !== 'placeholder' && source !== 'not_subscribed' && (
-        <div style={{ color: 'var(--v2-muted-2)', fontSize: 11.5, marginTop: 8 }} data-testid="prosp-source-badge">
-          Source : {source}
+          Service Pige indisponible — réessaie dans quelques minutes.
         </div>
       )}
 
@@ -284,6 +321,38 @@ export const V2SettingsPage = () => {
         {!dashboard?.has_pro && (
           <button className="v2-btn ai-btn full" style={{ marginTop: 12 }} onClick={() => navigate('/app-v2/settings/subscription')}>Passer Pro · 24,99€/mois</button>
         )}
+      </div>
+
+      <div className="v2-card" style={{ marginTop: 10 }}>
+        <div className="v2-tag">Langue</div>
+        <div className="v2-row-sub" style={{ marginTop: 6, marginBottom: 12 }}>
+          Choisis la langue de l'application.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }} data-testid="settings-language-grid">
+          {[
+            { code: 'fr', label: '🇫🇷  Français' },
+            { code: 'en', label: '🇬🇧  English' },
+            { code: 'de', label: '🇩🇪  Deutsch' },
+            { code: 'it', label: '🇮🇹  Italiano' },
+          ].map((l) => {
+            const current = (typeof localStorage !== 'undefined' && localStorage.getItem('kolo_locale')) || 'fr';
+            const active = current === l.code;
+            return (
+              <button
+                key={l.code}
+                type="button"
+                className={`v2-btn ${active ? 'primary' : 'secondary'}`}
+                onClick={() => {
+                  try { localStorage.setItem('kolo_locale', l.code); } catch (_) {}
+                  window.location.reload();
+                }}
+                data-testid={`settings-lang-${l.code}`}
+              >
+                {l.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="v2-card" style={{ marginTop: 10 }}>
