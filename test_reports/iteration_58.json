@@ -1,0 +1,65 @@
+{
+  "summary": "Iteration 58 review of 10 fixes (admin 404, dev_code, padding-top, iOS 2.1/9, language onboarding slide, push contextual nudges, last_seen_at). Backend: 11/11 pytest pass — send-email-code returns dev_code in preview, /me updates last_seen_at, /onboarding accepts optional `language`, notification_scheduler.run_once() returns dict with contextual_nudges_sent, Apple Review static code 424242 works, iOS project.pbxproj contains MARKETING_VERSION=2.1 / CURRENT_PROJECT_VERSION=9. Frontend: dev_code is NOT leaked into UI (good), language grid renders at step 0 with the 4 buttons fr/en/de/it and persists localStorage.kolo_locale, header padding-top=24px on /app-v2, burger visible. HOWEVER 3 CRITICAL BUGS in /app/frontend/src/v2/pages/V2OnboardingPage.js make the entire onboarding flow non-functional for new users.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/v2/onboarding",
+        "issue": "Pydantic model OnboardingPayload does not declare `language` field — request succeeds (200) because Pydantic silently ignores extras, but the language value is dropped and never persisted server-side. If main agent intended to persist the choice (the spec says 'utilisé pour persister la langue côté backend, optionnel'), add `language: Optional[str] = None` to OnboardingPayload and store on user doc."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "V2OnboardingPage.js (step 0 next-button gate)",
+        "issue": "P0 BLOCKER — onboarding cannot be completed by any new user. Line 278: `disabled={step === 0 && !data.accepted_terms}`. The new step 0 is the LANGUAGE picker which has NO accepted_terms checkbox, so the Continuer button is permanently disabled at step 0. Verified live: progress bar stays at 10%, button rendered grey, click does nothing. Should be `step === 1 && !data.accepted_terms` (terms acceptance is now on slide 1 = Privacy first).",
+        "selector": "[data-testid='onb-next']",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "V2OnboardingPage.js (duplicate step 1 block)",
+        "issue": "P0 — Lines 159 AND 173 both start with `{step === 1 && (`. When (and if) the user reaches step 1, BOTH the Privacy-first slide AND the 'Quel est ton rôle ?' slide will render stacked on the same screen. The 'Quel est ton rôle ?' block (line 173) should be `{step === 2 && (` and the subsequent steps shifted accordingly OR the Role block re-numbered. Steps after that (2..8) are also off-by-one with respect to the eyebrows ('Étape 1' shown on actual step 2 of 10).",
+        "selector": ".v2-onb-content",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "V2OnboardingPage.js (missing step 9 content)",
+        "issue": "P0 — STEPS=10 means valid step indices are 0..9 and the finish button only renders when `step === STEPS-1` (i.e. step 9). But the JSX renders content only for steps 0..8. So when a user finally reaches step 9 they will see an empty content area above the 'Démarrer avec KOLO' button. Either add a {step === 9 && ...} slide (e.g. final recap) or set STEPS=9 and re-number the 'Tu es prêt' slide to step 9.",
+        "selector": ".v2-onb-content",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_58.py",
+    "/app/test_reports/pytest/iter58.xml"
+  ],
+  "action_items": [
+    "FIX V2OnboardingPage.js line 278: change disabled gate from `step === 0 && !data.accepted_terms` to `step === 1 && !data.accepted_terms` (terms checkbox is on slide 1, not 0).",
+    "FIX V2OnboardingPage.js line 173: change `{step === 1 && (` to `{step === 2 && (` for the Role slide, and shift every subsequent step block (current 2→3, 3→4, …, 8→9). Update each eyebrow label ('Étape 1'..'Étape 7') so the displayed step number matches the UX step. Final 'Tu es prêt' slide should land on step 9 (STEPS-1).",
+    "ALTERNATIVELY: revert STEPS to 9 and treat the new language picker as part of a single combined slide 0 with the existing Privacy/terms content, keeping the original 9-step numbering intact.",
+    "OPTIONAL — backend: add `language: Optional[str] = None` to OnboardingPayload in /app/backend/v2_router.py line 114 and persist it on user doc inside save_onboarding to actually honor the language sent from the frontend (currently silently dropped)."
+  ],
+  "critical_code_review_comments": [
+    "V2OnboardingPage.js currently has unreachable / broken UI states for steps 1 and 9 — these would have been caught by a simple smoke test 'click through the entire onboarding once'. Recommend adding an e2e Playwright happy-path test that walks steps 0→9 and clicks Démarrer.",
+    "OnboardingPayload uses Pydantic's default extra-fields behaviour (ignored). Spec says 'language' should be persistable but ignoring it silently makes the API contract misleading. Either add the field explicitly or add `model_config = ConfigDict(extra='forbid')` to fail fast on unknown fields.",
+    "v2_router.py /me endpoint updates last_seen_at on every request — fine for now, but at scale this is one mongo write per request per user. Consider throttling (e.g. only update if last_seen_at is older than 60s) to reduce write load.",
+    "notification_scheduler.run_once() properly wraps send_contextual_nudges in try/except — good defensive coding, returns {contextual_nudges_sent:0} on error instead of crashing the whole job."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_58.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11)",
+    "frontend": "60% (6/10 spec items work: dev_code hidden, language grid renders + persists, header padding 24px, burger visible, iOS version bumped, Apple Review bypass works; 3 spec items unverifiable because onboarding is blocked at step 0; 1 spec item — onboarding language field — fails silently)"
+  },
+  "test_credentials": "Apple Review: applereview@trykolo.io / 424242 confirmed working. New users created on the fly via /api/v2/auth/send-email-code (dev_code returned in response).",
+  "seed_data_creation": "None — used disposable TEST_iter58_* emails for each test run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The onboarding flow is currently BLOCKED at the language slide because the Continuer button is disabled (legacy accepted_terms gate). Once main agent fixes V2OnboardingPage.js (3 critical bugs detailed in action_items), a full step-by-step walk-through of the onboarding (steps 0 through 9) must be re-tested in browser. Use a fresh email via /api/v2/auth/send-email-code (returns dev_code), then call /api/v2/auth/verify-email-code to get session_token, inject into localStorage.kolo_v2_session, navigate to /app-v2/onboarding. Backend tests test_iteration_58.py can be re-run as regression.",
+  "rca_of_the_issue": "The new language slide was inserted as step 0 but two pieces of legacy code still assume the OLD slide ordering: (1) the disabled-gate on the Continuer button still references accepted_terms at step 0, which is no longer where the terms checkbox lives; (2) the 'Quel est ton rôle ?' block was simply added with the same `step === 1` guard as the Privacy slide instead of being renumbered to step 2; (3) STEPS was bumped from 9 to 10 but no new slide content was added for the new index, leaving an empty step 9. All three issues will reproduce 100% on any new user account."
+}

@@ -149,6 +149,14 @@ async def me(request: Request):
         parts = user_doc["name"].split(" ", 1)
         user_doc["first_name"] = parts[0]
         user_doc["last_name"] = parts[1] if len(parts) > 1 else ""
+    # Track last_seen_at (for contextual inactivity nudges) — fire-and-forget
+    try:
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {"last_seen_at": datetime.now(timezone.utc).isoformat()}},
+        )
+    except Exception:
+        pass
     return user_doc
 
 

@@ -311,6 +311,83 @@ async def check_and_generate_follow_up_tasks():
     logger.info(f"Generated {tasks_created} follow-up tasks")
     return {"tasks_created": tasks_created}
 
+async def send_contextual_nudges():
+    """Send 5 contextual nudges (KOLO adoption boosters).
+    Idempotent: each (user_id, kind, day) is sent at most once via v2_push_log.
+    """
+    sent = 0
+    now = datetime.now(timezone.utc)
+    today_key = now.date().isoformat()
+
+    async def _already_sent(user_id: str, kind: str) -> bool:
+        return bool(await db.v2_push_log.find_one({"user_id": user_id, "kind": kind, "day": today_key}))
+
+    async def _mark_sent(user_id: str, kind: str):
+        await db.v2_push_log.insert_one({"user_id": user_id, "kind": kind, "day": today_key, "ts": now.isoformat()})
+
+    async def _push(user_id: str, kind: str, title: str, body: str, url: str = "/app-v2"):
+        nonlocal sent
+        if await _already_sent(user_id, kind):
+            return
+        sub = await get_push_subscription(user_id)
+        if not sub:
+            return
+        ok = await send_push_notification(sub, title, body, url)
+        if ok:
+            await _mark_sent(user_id, kind)
+            sent += 1
+
+    # Rule 1 — End of day (18:30 local approx → 17:30 UTC): "Ton RDV phare du jour ?"
+    if now.hour == 17 and now.minute < 60:
+        async for u in db.users.find({}, {"user_id": 1, "_id": 0}):
+            uid = u.get("user_id")
+            if uid:
+                await _push(uid, "end_of_day",
+                            "Comment s'est passée ta journée ?",
+                            "Raconte-moi en 30 sec ton RDV phare du jour — KOLO classera tout.",
+                            "/app-v2")
+
+    # Rule 2 — Pige terminée (déclenchée à part par finish_apify_scrape — voir hook)
+    pending = db.v2_prospecting_done.find({"notified": {"$ne": True}})
+    async for d in pending:
+        await _push(d.get("user_id"), f"pige_done_{d.get('_id')}",
+                    "Ta pige est terminée 🎯",
+                    "Découvre les biens fraîchement disponibles dans ta zone.",
+                    "/app-v2/prospecting")
+        await db.v2_prospecting_done.update_one({"_id": d.get("_id")}, {"$set": {"notified": True}})
+
+    # Rule 3 — Création de contact ou dossier inachevée (draft > 6h)
+    six_hours_ago = (now - timedelta(hours=6)).isoformat()
+    drafts = db.v2_drafts.find({"status": "draft", "updated_at": {"$lt": six_hours_ago}, "nudged": {"$ne": True}})
+    async for d in drafts:
+        kind = d.get("kind", "draft")
+        await _push(d.get("user_id"), f"draft_{kind}_{d.get('_id')}",
+                    "Tu as commencé quelque chose…",
+                    f"Termine ta {kind} commencée hier — 30 sec et c'est plié.",
+                    "/app-v2")
+        await db.v2_drafts.update_one({"_id": d.get("_id")}, {"$set": {"nudged": True}})
+
+    # Rule 4 — Inactivité 1 jour
+    yesterday = (now - timedelta(days=1)).isoformat()
+    two_days_ago = (now - timedelta(days=2)).isoformat()
+    async for u in db.users.find({"last_seen_at": {"$lt": yesterday, "$gte": two_days_ago}}, {"user_id": 1, "_id": 0}):
+        await _push(u.get("user_id"), "inactive_1d",
+                    "KOLO t'attend 👋",
+                    "1 minute pour faire ta pige du jour. C'est tout.",
+                    "/app-v2/prospecting")
+
+    # Rule 5 — Inactivité 2 jours (plus pressant)
+    three_days_ago = (now - timedelta(days=3)).isoformat()
+    async for u in db.users.find({"last_seen_at": {"$lt": two_days_ago, "$gte": three_days_ago}}, {"user_id": 1, "_id": 0}):
+        await _push(u.get("user_id"), "inactive_2d",
+                    "Tes prospects n'attendent pas",
+                    "2 jours sans KOLO. On rattrape ça en 3 minutes ?",
+                    "/app-v2")
+
+    logger.info(f"Contextual nudges sent: {sent}")
+    return {"contextual_nudges_sent": sent}
+
+
 async def run_scheduler():
     """Run the scheduler loop"""
     logger.info("KOLO Notification Scheduler started")
@@ -335,6 +412,11 @@ async def run_scheduler():
                 # Wait until next hour to avoid running multiple times
                 await asyncio.sleep(3600)
             else:
+                # Contextual nudges run every 15 minutes (idempotent by day)
+                try:
+                    await send_contextual_nudges()
+                except Exception as e:
+                    logger.warning(f"Contextual nudges error: {e}")
                 # Check every minute
                 await asyncio.sleep(60)
                 
@@ -347,8 +429,13 @@ async def run_once():
     logger.info("Running notification job (manual trigger)...")
     tasks_result = await check_and_generate_follow_up_tasks()
     notif_result = await send_daily_reminders()
+    try:
+        nudges_result = await send_contextual_nudges()
+    except Exception as e:
+        logger.warning(f"Contextual nudges error: {e}")
+        nudges_result = {"contextual_nudges_sent": 0}
     logger.info("Job complete")
-    return {**tasks_result, **notif_result}
+    return {**tasks_result, **notif_result, **nudges_result}
 
 if __name__ == "__main__":
     import sys

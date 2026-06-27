@@ -8,7 +8,7 @@ import { V2Logo } from '../V2Layout';
 import v2api from '../v2api';
 import '../../styles/v2.css';
 
-const STEPS = 9;
+const STEPS = 10;
 const ROLES = ['Mandataire immobilier', 'Agent immobilier', 'Directeur de réseau / agence'];
 const CRM_TOOLS = ['Orisha (AC3)', 'Hektor', 'Netty', 'Whise', 'Sweepbright', 'Adapt-Immo', 'Apimo', 'Dôme', 'ImmoSign', 'Autre'];
 const PLATFORMS = ['Leboncoin', 'Seloger', 'Bienlci', 'Jinka', 'Belles Demeures', 'Lux-Residence', 'Gens de confiance', 'Ouest France', 'Logic-immo', 'Figaro Immo', 'Etre-proprio'];
@@ -99,6 +99,9 @@ const SectorPicker = ({ selected = [], onChange }) => {
 export default function V2OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [lang, setLang] = useState(() => {
+    try { return localStorage.getItem('kolo_locale') || 'fr'; } catch (_) { return 'fr'; }
+  });
   const [data, setData] = useState({
     accepted_terms: false, role: null, activities: [], company_name: '', team_size: '',
     annual_revenue: '', main_activity: '', sectors: [], crm_tool: '', diffusion_platforms: [],
@@ -107,10 +110,15 @@ export default function V2OnboardingPage() {
   const set = (patch) => setData(d => ({ ...d, ...patch }));
   const toggle = (k, v) => setData(d => ({ ...d, [k]: d[k].includes(v) ? d[k].filter(x => x !== v) : [...d[k], v] }));
 
+  const setLanguage = (code) => {
+    try { localStorage.setItem('kolo_locale', code); } catch (_) {}
+    setLang(code);
+  };
+
   const next = () => setStep(s => Math.min(STEPS - 1, s + 1));
   const prev = () => setStep(s => Math.max(0, s - 1));
   const finish = async () => {
-    try { await v2api.saveOnboarding(data); navigate('/app-v2'); }
+    try { await v2api.saveOnboarding({ ...data, language: lang }); navigate('/app-v2'); }
     catch (e) { alert(e.message); }
   };
 
@@ -121,6 +129,34 @@ export default function V2OnboardingPage() {
       <div className="v2-onb-progress"><div style={{ width: `${((step + 1) / STEPS) * 100}%` }} /></div>
       <div className="v2-onb-content">
         {step === 0 && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><V2Logo size={56} /></div>
+            <div className="v2-onb-eyebrow">Welcome · Bienvenue · Willkommen · Benvenuto</div>
+            <h1 className="v2-onb-title">Choisis ta langue.</h1>
+            <p className="v2-onb-body">L'app et l'onboarding s'adaptent à ton choix. Tu pourras toujours la changer plus tard dans tes paramètres.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 22 }} data-testid="onb-lang-grid">
+              {[
+                { code: 'fr', flag: '🇫🇷', label: 'Je parle Français' },
+                { code: 'en', flag: '🇬🇧', label: 'I speak English' },
+                { code: 'de', flag: '🇩🇪', label: 'Ich spreche Deutsch' },
+                { code: 'it', flag: '🇮🇹', label: 'Parlo italiano' },
+              ].map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  className={`v2-choice ${lang === l.code ? 'selected' : ''}`}
+                  onClick={() => setLanguage(l.code)}
+                  data-testid={`onb-lang-${l.code}`}
+                  style={{ flexDirection: 'column', textAlign: 'center', padding: '18px 12px', gap: 6 }}
+                >
+                  <span style={{ fontSize: 28, lineHeight: 1 }}>{l.flag}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{l.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {step === 1 && (
           <>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><V2Logo size={56} /></div>
             <div className="v2-onb-eyebrow"><Lock size={11} style={{ display: 'inline', verticalAlign: -1 }} /> Privacy first</div>
