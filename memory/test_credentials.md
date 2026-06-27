@@ -32,6 +32,12 @@
 - Backend mappe `PRO_Plus → plan='pro'`
 - Frontend `iapStore.PRODUCT_IDS.*` tous → `'PRO_Plus'` (single source)
 
+
+## Promo codes pré-créés (collection v2_promo_codes)
+- **WELCOME30** : multi-usage, +30 jours Pro (1 fois par user max)
+- **VIP-ONCE** : single-use, +90 jours Pro
+- Création admin via `POST /api/v2/promo/admin/create` (réservé à elliot.cohenpressard@trykolo.io ou pressardelliot@gmail.com selon ADMIN_ALERT_EMAIL)
+
 ## Referral mechanics (validé end-to-end)
 1. Parrain reçoit son `code` via `/api/v2/referral/me`
 2. Invité s'inscrit + appelle `/api/v2/referral/attribute` avec le code

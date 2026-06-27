@@ -16,7 +16,19 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026) — UPDATED
-### Sprint Marketing Site Refonte (iter 56 — Feb 2026) ✨ NEW
+### Sprint App iOS V2 Fixes (iter 57 — Feb 2026) ✨ NEW
+🍎 **8 bugs critiques fixés sur l'app iOS V2** :
+- ✅ Page login/signup : logo K centré (display:block + margin:0 auto)
+- ✅ Code `(dev: XXXXXX)` retiré du UI (devCode state supprimé de V2AuthPage)
+- ✅ Bandeau jaune "Données d'exemple" remplacé par spinner moderne "Analyse en cours" (avec sous-texte "Tu peux quitter cette page, on te notifie dès que c'est prêt." pour les annonces)
+- ✅ Compteurs Rappels/Notes affichent fait/créé réels (X/Y) au lieu de hard-coded /3 et /5. Backend `/api/v2/dashboard` enrichi avec `reminders_completed_today`, `reminders_created_today`, `notes_processed_today`, `notes_created_today`
+- ✅ Safe-area-top : header `.v2-header` a maintenant `padding-top: calc(14px + env(safe-area-inset-top))` pour pas être collé au notch
+- ✅ Pige listings : backend ne renvoie PLUS d'items factices placeholder. Renvoie `items:[]` + `source:scraping_in_progress`. Polling auto toutes les 8s côté frontend.
+- ✅ Code promo Apple-compliant : champ + bouton dans V2SubscriptionPage. Endpoints backend `POST /api/v2/promo/redeem`, `POST /api/v2/promo/admin/create`, `GET /api/v2/promo/admin/list`. Codes single-use ou multi-use. Stockés dans `v2_promo_codes`. Codes de test : WELCOME30 (multi, 30 jours), VIP-ONCE (single, 90 jours).
+- ✅ Sélecteur de langue (FR/EN/DE/IT) dans Profil & paramètres. Met à jour `localStorage.kolo_locale` et reload.
+- ✅ Testing agent iter 57 : 17/17 backend tests passing, 13/13 frontend behaviors validated. Zéro régression.
+
+### Sprint Marketing Site Refonte (iter 56 — Feb 2026)
 🌐 **Refonte intégrale du site vitrine www.trykolo.io** (4 pages, style Revolut, lumineux, premium) :
 - ✅ Page d'accueil `/` (`HomePage.js`) — Hero "Le copilote des agents qui veulent vendre plus" avec mockup iPhone réel (live screenshot V2), eyebrow chip, 2 CTAs (App Store + Voir comment ça marche), floating cards animées, bandeau logos défilant infini, 3 piliers, 3 stats, 2 product showcase steps, social proof quote, final CTA.
 - ✅ Page `/comment-kolo` (`HowKoloPage.js`) — 4 étapes "Avant/Après" avec tags verts/rouges, mockups iPhone live et bullets concrets.
