@@ -124,6 +124,7 @@ class OnboardingPayload(BaseModel):
     phone_country: Optional[str] = "FR"
     phone: Optional[str] = ""
     accepted_terms: bool = False
+    language: Optional[str] = None
 
 
 # ============================================================================

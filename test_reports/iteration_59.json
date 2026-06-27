@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 59 — Re-test of 3 critical onboarding bugs from iter58. The 3 P0 frontend bugs (gate-disabled, slide duplication, missing step 9) are NOW FIXED and confirmed by a full step-0-to-9 Playwright walkthrough. However TWO issues found: (1) CRITICAL P0 — v2_router.py had a syntax error (stray garbage at lines 1697-1699) that made the ENTIRE /api/v2/* return 404 — backend startup log showed 'Failed to mount v2 router: invalid syntax (v2_router.py, line 1697)'. I removed the stray lines so testing could proceed — main agent MUST verify the fix is correct. (2) language field is NOT mirrored on user doc despite the iter59 fix spec — only persisted to v2_onboarding collection. /api/v2/me returns language=None after POST /onboarding{language:'fr'}.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "ALL /api/v2/*",
+        "issue": "v2_router.py had stray garbage at end of file (lines 1697-1699: 'c for d in cursor:\\n        items.append(d)\\n    return {\"items\": items}') causing SyntaxError, so the entire v2 router failed to mount and every /api/v2/* returned 404 'Not Found'. I removed the garbage as part of test prep (single-purpose fix). Please review my fix at the tail of v2_router.py.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/v2/onboarding",
+        "issue": "Spec says 'OnboardingPayload accepte maintenant language: Optional[str] et le persiste sur user doc' — payload IS accepted and persisted into v2_onboarding doc, but the users.update_one() call at v2_router.py line 1270-1275 does NOT mirror `language` onto the user doc. After POST /onboarding {language:'fr'}, GET /api/v2/me returns language=None. Add `\"language\": payload.language` to the $set dict."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_59.py",
+    "/app/test_reports/pytest/iter59.xml"
+  ],
+  "action_items": [
+    "CRITICAL — Review my hot-fix to /app/backend/v2_router.py (removed 3 stray garbage lines after line 1696 that caused SyntaxError). The endpoint /api/v2/promo/admin/list now ends cleanly with `return {\"items\": items}`. Confirm this is the intended final state.",
+    "Add `\"language\": payload.language` to the users.update_one() $set block at v2_router.py line ~1270 inside save_onboarding to actually mirror language on user doc as the spec requires.",
+    "Add a CI/lint step that runs `python -c 'import v2_router'` (or a smoke test that hits any /api/v2/* endpoint) before deploy — this iter, a stray edit completely broke the v2 backend and the previous testing agent's fix would have caught it instantly."
+  ],
+  "critical_code_review_comments": [
+    "v2_router.py is now ~1700 lines long — it should be split into per-resource modules (auth.py, onboarding.py, reminders.py, ai.py, prospecting.py, promo.py, referral.py). Beyond ~700 lines it becomes very easy to make accidental concat/leftover edits like the one we just observed.",
+    "save_onboarding (line ~1257) mirrors only role/company_name/sectors to user doc. Either mirror all relevant onboarding fields (language, phone, phone_country, crm_tool) for /me convenience, or document explicitly that the source of truth for those is v2_onboarding and have the frontend read from there.",
+    "_is_pro_user has dead-code after the return at line 712-713 (\"\"\"Returns True if user has an active or trialing subscription.\"\"\" docstring placed AFTER the return). Remove."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_59.py (new)",
+    "/app/backend/v2_router.py (REMOVED stray garbage at lines 1697-1699 that caused SyntaxError preventing v2 router from mounting)"
+  ],
+  "success_rate": {
+    "backend": "83% (5/6 — language-on-user-doc test fails; the v2 router only started working after I removed the stray syntax error)",
+    "frontend": "100% (full onboarding walkthrough 0→9 succeeds: language grid visible at step 0, next ACTIVE after language pick, exactly 1 slide rendered per step, eyebrows correct Étape 1..7, progress 100% at step 9, onb-finish navigates to /app-v2)"
+  },
+  "test_credentials": "Apple Review applereview@trykolo.io / 424242 confirmed still working. New users created via /api/v2/auth/send-email-code (dev_code returned).",
+  "seed_data_creation": "Disposable TEST_iter59_* users created on each test run, not cleaned up.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter59: All 3 iter58 P0 onboarding UI bugs are fixed and verified by Playwright walkthrough 0→9. TWO new issues: (1) CRITICAL — v2_router.py had a syntax error from leftover dev code, /api/v2/* returned 404 globally. I patched it. Main agent must confirm. (2) language field is NOT mirrored on user doc — only stored in v2_onboarding. Next test should verify both fixes by re-running test_iteration_59.py — once `language` mirroring is added, the test_onboarding_persists_language_on_user_doc test should pass.",
+  "rca_of_the_issue": "P0 syntax error: an editing accident left stray text 'c for d in cursor:\\n        items.append(d)\\n    return {\"items\": items}' at the very end of v2_router.py after the legitimate promo_admin_list function. Python raised SyntaxError at import time, server.py caught it and logged 'Failed to mount v2 router: invalid syntax (v2_router.py, line 1697)' but continued booting WITHOUT the v2 routes, so all /api/v2/* were 404. Fix: simple file truncation back to line 1696. Mitigation: add an explicit import check in CI."
+}

@@ -170,14 +170,14 @@ export default function V2OnboardingPage() {
             </label>
           </>
         )}
-        {step === 1 && (
+        {step === 2 && (
           <>
             <div className="v2-onb-eyebrow">Étape 1</div>
             <h1 className="v2-onb-title">Quel est ton rôle ?</h1>
             {ROLES.map(r => <Choice key={r} selected={data.role === r} onClick={() => set({ role: r })} testid={`onb-role-${r}`}>{r}</Choice>)}
           </>
         )}
-        {step === 2 && (
+        {step === 3 && (
           <>
             <div className="v2-onb-eyebrow">Étape 2</div>
             <h1 className="v2-onb-title">{isDirector ? 'Présente ton organisation' : 'Précise ton activité'}</h1>
@@ -202,7 +202,7 @@ export default function V2OnboardingPage() {
             )}
           </>
         )}
-        {step === 3 && (
+        {step === 4 && (
           <>
             <div className="v2-onb-eyebrow">Étape 3</div>
             <h1 className="v2-onb-title">Comment tu t'appelles ?</h1>
@@ -213,7 +213,7 @@ export default function V2OnboardingPage() {
             </div>
           </>
         )}
-        {step === 4 && (
+        {step === 5 && (
           <>
             <div className="v2-onb-eyebrow">Étape 4</div>
             <h1 className="v2-onb-title">Ton numéro de téléphone ?</h1>
@@ -226,7 +226,7 @@ export default function V2OnboardingPage() {
             </div>
           </>
         )}
-        {step === 5 && (
+        {step === 6 && (
           <>
             <div className="v2-onb-eyebrow">Étape 5</div>
             <h1 className="v2-onb-title">Ta zone de prospection ?</h1>
@@ -235,14 +235,14 @@ export default function V2OnboardingPage() {
             <p style={{ fontSize: 12.5, color: 'var(--v2-muted)', marginTop: 12 }}>Astuce : ta zone te débloque l'accès direct aux DPE et annonces du secteur.</p>
           </>
         )}
-        {step === 6 && (
+        {step === 7 && (
           <>
             <div className="v2-onb-eyebrow">Étape 6</div>
             <h1 className="v2-onb-title">Ton outil de gestion ?</h1>
             {CRM_TOOLS.map(t => <Choice key={t} selected={data.crm_tool === t} onClick={() => set({ crm_tool: t })} testid={`onb-crm-${t}`}>{t}</Choice>)}
           </>
         )}
-        {step === 7 && (
+        {step === 8 && (
           <>
             <div className="v2-onb-eyebrow">Étape 7</div>
             <h1 className="v2-onb-title">Tes plateformes de diffusion ?</h1>
@@ -251,7 +251,7 @@ export default function V2OnboardingPage() {
             </div>
           </>
         )}
-        {step === 8 && (
+        {step === 9 && (
           <>
             <div className="v2-onb-eyebrow">Tu es prêt</div>
             <h1 className="v2-onb-title">Prêt à booster ton business.</h1>
@@ -275,7 +275,7 @@ export default function V2OnboardingPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           {step > 0 && <button className="v2-btn secondary" onClick={prev} data-testid="onb-prev">Retour</button>}
           {step < STEPS - 1 ? (
-            <button className="v2-btn primary full" onClick={next} disabled={step === 0 && !data.accepted_terms} data-testid="onb-next">
+            <button className="v2-btn primary full" onClick={next} disabled={step === 1 && !data.accepted_terms} data-testid="onb-next">
               Continuer <ChevronRight size={16} />
             </button>
           ) : (
