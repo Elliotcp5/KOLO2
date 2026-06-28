@@ -4,10 +4,10 @@
 // =============================================================
 // Robust backend URL resolution:
 //   1. Use REACT_APP_BACKEND_URL baked at build time (CRA).
-//   2. If empty / misconfigured (e.g. trykolo.io as marketing site),
-//      fall back to the production custom domain (api.trykolo.io)
-//      which is a Cloudflare Worker proxy → Emergent backend.
-//   3. Last-chance fallback: the current preview URL.
+//   2. Defensive defaults if the env is wrong/missing:
+//      - trykolo.io (the Emergent prod deployment that serves both the
+//        marketing site at `/` and the API at `/api/*`)
+//      - the current preview URL (last-chance fallback)
 //
 // At runtime, on first launch, we ping a small chain of candidates
 // and PIN the first one that answers `/api/` with HTTP 200. The
@@ -15,15 +15,13 @@
 // This guarantees that even if a preview URL becomes stale or the
 // build-time env was wrong, the app finds its backend.
 const STATIC_FALLBACKS = [
-  'https://api.trykolo.io',
+  'https://trykolo.io',
   'https://responsive-kolo.preview.emergentagent.com',
 ];
 
 const cleanUrl = (u) => (u || '').trim().replace(/\/+$/, '');
 const RAW_API = cleanUrl(process.env.REACT_APP_BACKEND_URL);
-const BUILD_API = (!RAW_API || /^https?:\/\/(www\.)?trykolo\.io$/i.test(RAW_API))
-  ? 'https://api.trykolo.io'
-  : RAW_API;
+const BUILD_API = RAW_API || 'https://trykolo.io';
 
 // Ordered list of URLs we'll probe at boot, deduped.
 const CANDIDATES = [...new Set([BUILD_API, ...STATIC_FALLBACKS])];

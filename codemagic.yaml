@@ -16,11 +16,10 @@ workflows:
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
         # CRITICAL: backed at build time into the React bundle (CRA reads this
-        # via process.env.REACT_APP_BACKEND_URL). Points to the STABLE custom
-        # domain (Cloudflare Worker on trykolo.io that proxies to the Emergent
-        # preview/prod backend). NEVER use a *.preview.emergentagent.com URL
-        # directly — those rotate per session and will break older builds.
-        REACT_APP_BACKEND_URL: "https://api.trykolo.io"
+        # via process.env.REACT_APP_BACKEND_URL). Points to the STABLE Emergent
+        # deployment on the custom domain trykolo.io (same domain serves the
+        # marketing site at `/` and the API at `/api/*`).
+        REACT_APP_BACKEND_URL: "https://trykolo.io"
       node: 20
       xcode: latest
       cocoapods: default
@@ -48,7 +47,7 @@ workflows:
           cd frontend
           # Force the production API URL at build time. CRA inlines this into
           # the JS bundle, so the iOS WebView always talks to the real backend.
-          export REACT_APP_BACKEND_URL="${REACT_APP_BACKEND_URL:-https://api.trykolo.io}"
+          export REACT_APP_BACKEND_URL="${REACT_APP_BACKEND_URL:-https://trykolo.io}"
           echo "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
           CI=false yarn build
 
