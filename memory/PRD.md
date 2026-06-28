@@ -16,7 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026) — UPDATED
-### Sprint App iOS V2 — Suite (iter 58-59 — Feb 2026) ✨ NEW
+### Sprint App iOS V2.2 — Hotfix release (Feb 2026) 🔥 NEW
+🎯 **Bloqueurs P0 résolus avant resubmit App Store** :
+- ✅ **Fix HTTP 404 Login/Signup en production** — Racine : `process.env.REACT_APP_BACKEND_URL` n'était pas injecté à build-time sur Codemagic, le bundle iOS basculait alors sur une URL incorrecte. Triple ceinture :
+  - `codemagic.yaml` : ajout `vars.REACT_APP_BACKEND_URL` + export explicite dans le step `Build React app`.
+  - `frontend/.env.production` : déjà commité avec la bonne URL backend.
+  - `v2/v2api.js` : fallback défensif — si l'env est vide OU pointe par erreur vers `trykolo.io`, bascule automatique sur `https://responsive-kolo.preview.emergentagent.com`. Expose `window.__KOLO_API_BASE__` pour debug Safari Inspector.
+  - Vérifié : build CRA inline bien `responsive-kolo.preview.emergentagent.com` (zéro occurrence trykolo.io comme API).
+- ✅ **Transitions latérales fluides type Instagram** entre les 4 onglets bottom-nav (Accueil ↔ Dossiers ↔ Contacts ↔ Agenda) :
+  - `V2Layout.js` calcule la direction (gauche/droite) selon l'index du tab précédent stocké en `sessionStorage` (résiste au remount de V2Layout qui se fait par page).
+  - CSS pure (zéro lib) : `v2-page-enter-right` / `v2-page-enter-left` avec `translate3d(±60px,0,0)` + opacity, 280ms `cubic-bezier(0.22, 0.61, 0.36, 1)`. Pages non-onglet → fade vertical court par défaut.
+  - `overflow-x: hidden` sur `.v2-app > main` pour éviter le scrollbar horizontal momentané.
+- ✅ **Bump version 2.2 / build 10** dans `App.xcodeproj/project.pbxproj` (Codemagic incrémentera le build number à la volée selon TestFlight/App Store).
+
+### Sprint App iOS V2 — Suite (iter 58-59 — Feb 2026)
 🎯 **Tour de finition avant build 2.1** :
 - ✅ **Bump version Apple** : `MARKETING_VERSION 2.0 → 2.1`, `CURRENT_PROJECT_VERSION 8 → 9` dans `project.pbxproj` (Apple avait fermé le train 2.0)
 - ✅ **Onboarding slide 0 = sélecteur de langue** (4 pastilles 🇫🇷🇬🇧🇩🇪🇮🇹) avec persistance dans localStorage.kolo_locale + sur user doc backend. STEPS passé de 9 à 10, tous les blocs `step ===` shiftés cleanement, eyebrows "Étape X" mises à jour. Gate disabled corrigée (`step === 1` au lieu de `step === 0`).

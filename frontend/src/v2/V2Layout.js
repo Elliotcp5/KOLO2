@@ -272,10 +272,43 @@ export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) =
 };
 
 /* ---------- Main Layout ---------- */
+// Tab order used to compute the swipe direction (Instagram-like).
+const V2_TAB_ORDER = ['/app-v2', '/app-v2/dossiers', '/app-v2/contacts', '/app-v2/agenda'];
+const v2TabIndex = (pathname) => {
+  // Exact match for root, prefix match for others.
+  if (pathname === '/app-v2' || pathname === '/app-v2/') return 0;
+  for (let i = 1; i < V2_TAB_ORDER.length; i++) {
+    if (pathname === V2_TAB_ORDER[i] || pathname.startsWith(V2_TAB_ORDER[i] + '/')) return i;
+  }
+  return -1; // not a tab page (settings, onboarding, etc.)
+};
+
 export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = () => {}, dashboard = null }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
+  // Compute the slide direction on first render based on the previous pathname
+  // persisted in sessionStorage. V2Layout is mounted by each individual page,
+  // so a useRef would be reset between navigations — sessionStorage survives.
+  const computeInitialDir = () => {
+    try {
+      const prev = sessionStorage.getItem('kolo_v2_prev_path') || '';
+      const curr = location.pathname;
+      if (!prev || prev === curr) return 'none';
+      const pi = v2TabIndex(prev);
+      const ci = v2TabIndex(curr);
+      if (pi >= 0 && ci >= 0 && pi !== ci) return ci > pi ? 'right' : 'left';
+      return 'none';
+    } catch (_) { return 'none'; }
+  };
+  const [slideDir] = useState(computeInitialDir);
+
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+
+  // Persist current path so the next mount can compute direction.
+  useEffect(() => {
+    try { sessionStorage.setItem('kolo_v2_prev_path', location.pathname); } catch (_) { /* noop */ }
+  }, [location.pathname]);
+
   // V2 → FR by default (no marketing-site auto-overwrite). The user can still switch via settings.
   useEffect(() => {
     try {
@@ -285,6 +318,11 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
       }
     } catch (_) { /* noop */ }
   }, []);
+
+  const slideClass =
+    slideDir === 'right' ? 'v2-page-enter-right'
+    : slideDir === 'left' ? 'v2-page-enter-left'
+    : 'v2-page-fade';
 
   return (
     <div className="v2-app" data-testid="v2-app">
@@ -296,7 +334,11 @@ export const V2Layout = ({ children, user, showAddNoteFab = false, onAddNote = (
         <V2BellNotification />
       </header>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} user={user} dashboard={dashboard} />
-      <main className="v2-container">{children}</main>
+      <main className="v2-container" data-testid="v2-main">
+        <div className={`v2-page ${slideClass}`} data-testid="v2-page-anim">
+          {children}
+        </div>
+      </main>
       <V2BottomNav showCentralMic={showAddNoteFab} onMicClick={onAddNote} />
     </div>
   );

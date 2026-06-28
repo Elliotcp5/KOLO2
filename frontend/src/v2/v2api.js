@@ -2,7 +2,18 @@
 // KOLO v2 — API helper. Uses the same session token stored in
 // localStorage as the rest of the app, with a clean wrapper.
 // =============================================================
-const API = process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com';
+// IMPORTANT: REACT_APP_BACKEND_URL is baked at build time (CRA).
+// On Capacitor/iOS production builds, this MUST be set in codemagic.yaml.
+// Hard fallback to the public preview/production API to guarantee that an
+// older build (or a missing env at CI time) never falls back to trykolo.io.
+const PROD_FALLBACK = 'https://responsive-kolo.preview.emergentagent.com';
+const RAW_API = (process.env.REACT_APP_BACKEND_URL || '').trim();
+// Defensive: if the env was misconfigured at build time to the marketing site
+// (trykolo.io has no /api routes → 404), force the prod fallback.
+const API = (!RAW_API || /trykolo\.io/i.test(RAW_API)) ? PROD_FALLBACK : RAW_API.replace(/\/+$/, '');
+
+// Expose for debug (visible in Safari Web Inspector when attached to iOS).
+try { if (typeof window !== 'undefined') window.__KOLO_API_BASE__ = API; } catch (_) { /* noop */ }
 
 const getToken = () =>
   localStorage.getItem('kolo_v2_session') ||

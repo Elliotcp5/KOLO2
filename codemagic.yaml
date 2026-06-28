@@ -15,6 +15,10 @@ workflows:
         PACKAGE_NAME: "io.kolo.app"
         BUNDLE_ID: "io.kolo.app"
         APP_STORE_APPLE_ID: "6761818371"
+        # CRITICAL: backed at build time into the React bundle (CRA reads this
+        # via process.env.REACT_APP_BACKEND_URL). Without it, the iOS Capacitor
+        # bundle falls back to the marketing site → /api/v2/* returns HTTP 404.
+        REACT_APP_BACKEND_URL: "https://responsive-kolo.preview.emergentagent.com"
       node: 20
       xcode: latest
       cocoapods: default
@@ -40,6 +44,10 @@ workflows:
       - name: Build React app
         script: |
           cd frontend
+          # Force the production API URL at build time. CRA inlines this into
+          # the JS bundle, so the iOS WebView always talks to the real backend.
+          export REACT_APP_BACKEND_URL="${REACT_APP_BACKEND_URL:-https://responsive-kolo.preview.emergentagent.com}"
+          echo "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
           CI=false yarn build
 
       - name: Sync Capacitor (preserves custom iOS config)
