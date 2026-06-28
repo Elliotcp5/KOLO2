@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { V2Logo } from '../V2Layout';
-import v2api from '../v2api';
+import v2api, { getApiBase } from '../v2api';
 import '../../styles/v2.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
@@ -115,7 +115,7 @@ export default function V2AuthPage({ mode = 'login' }) {
                   redirectURI: `${window.location.origin}/app-v2/login`,
                   scopes: 'email name',
                 });
-                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/auth/apple/exchange`, {
+                const r = await fetch(`${getApiBase()}/api/v2/auth/apple/exchange`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -142,7 +142,7 @@ export default function V2AuthPage({ mode = 'login' }) {
             {false && (
             <button className="v2-btn secondary full" onClick={async () => {
               try {
-                const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/auth/google/client-id`);
+                const r = await fetch(`${getApiBase()}/api/auth/google/client-id`);
                 const d = await r.json();
                 if (!d.client_id) throw new Error('Google non configuré');
                 const redirectUri = window.location.origin + '/auth/google';

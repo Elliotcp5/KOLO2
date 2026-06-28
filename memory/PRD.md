@@ -16,7 +16,21 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026) — UPDATED
-### Sprint App iOS V2.3 — Hotfix release Pige + clavier iOS (Feb 2026) 🔥 NEW
+### Sprint App iOS V2.4 — Custom domain + runtime URL discovery (Feb 2026) 🔥 NEW
+🎯 **Fix DÉFINITIF du 404 prod (TestFlight inclus)** — Racine identifiée :
+- Les URLs `*.preview.emergentagent.com` sont des environnements de **preview** qui rotent entre sessions. Une IPA buildée pointant vers une preview URL morte → 404 systématique.
+- Solution architecturale en double-ceinture :
+  1. **URL custom stable** : `https://api.trykolo.io` (Cloudflare Worker hébergé sur le compte CF du user, proxy → backend Emergent avec rewrite du Host header). Voir `/app/DEPLOY-API-DOMAIN.md` pour le code du Worker + setup en 5 minutes.
+  2. **Runtime URL discovery côté app** (`v2api.js`) :
+     - Au boot, l'app teste la liste de candidats `[REACT_APP_BACKEND_URL, api.trykolo.io, responsive-kolo.preview.emergentagent.com]`, prend la première qui répond `/api/` 200, et la pin dans localStorage.
+     - Wrapper `req()` : chaque appel détecte un 404/502/503/504/network-error, relance la discovery et retry avec la nouvelle URL.
+     - Defensive : si l'env build-time pointe par erreur vers `trykolo.io` (marketing), bascule auto sur `api.trykolo.io`.
+- Tous les fetch directs vers `process.env.REACT_APP_BACKEND_URL` dans `V2Layout`, `V2AuthPage`, `V2SubscriptionPage`, `V2NotificationsPage` ont été migrés sur `getApiBase()` exporté par `v2api.js` (URL dynamique).
+- `codemagic.yaml` et `.env.production` pointent désormais vers `https://api.trykolo.io`.
+- ATS iOS : `trykolo.io` avec `NSIncludesSubdomains=true` couvre déjà `api.trykolo.io`.
+- **Bump version 2.4 / build 12**.
+
+### Sprint App iOS V2.3 — Hotfix release Pige + clavier iOS (Feb 2026)
 🎯 **Trois bugs critiques résolus avant resubmit App Store** :
 - ✅ **404 Login/Signup production** — déjà résolu en V2.2 par le triple-ceinture (`codemagic.yaml` injecte `REACT_APP_BACKEND_URL` au build + fallback défensif dans `v2api.js` + `.env.production` commité). Bundle JS de prod vérifié : zéro occurrence de `trykolo.io` comme API.
 - ✅ **Champs texte invisibles quand clavier iOS ouvert** — racine : le CSS keyboard-handling de `App.css` ciblait `[role="dialog"]` et `.kolo-bottom-sheet`, mais les modals V2 utilisent la classe `.v2-modal`. Ajout de `.v2-modal` aux sélecteurs, plus `max-height: calc(100vh - var(--kolo-keyboard-height) - 12px)` pour que la sheet rétrécisse au-dessus du clavier. Le hook `useIOSKeyboardScroll` (déjà branché dans `App.js`) s'occupe du `scrollIntoView` au focus. Inputs passés de `font-size: 15px → 16px` pour neutraliser le zoom-on-focus iOS.

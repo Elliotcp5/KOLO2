@@ -8,7 +8,7 @@ import {
   Menu, Home as HomeIcon, FolderOpen, Users, Calendar,
   Settings, LogOut, BookOpen, Search as SearchIcon, X, Mic, Sparkles, Mail, Bell
 } from 'lucide-react';
-import v2api from './v2api';
+import v2api, { getApiBase } from './v2api';
 import v2t from './v2i18n';
 
 /* ---------- Logo (wordmark KOLO — League Spartan) ---------- */
@@ -178,7 +178,7 @@ const V2BellNotification = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/notifications/unread`, { headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` } });
+        const r = await fetch(`${getApiBase()}/api/v2/notifications/unread`, { headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` } });
         if (!r.ok) return;
         const d = await r.json();
         if (!cancelled) setCount(d.count || 0);

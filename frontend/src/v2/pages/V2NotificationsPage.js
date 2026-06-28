@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Clock, Search as SearchIcon, ChevronLeft } from 'lucide-react';
 import V2Layout from '../V2Layout';
-import v2api from '../v2api';
+import v2api, { getApiBase } from '../v2api';
 import '../../styles/v2.css';
 
 const formatRelative = (dateStr) => {
@@ -39,7 +39,7 @@ export default function V2NotificationsPage() {
         v2api.me().catch(() => null),
         v2api.dashboard().catch(() => null),
         v2api.listReminders(today).catch(() => ({ items: [] })),
-        fetch(`${process.env.REACT_APP_BACKEND_URL || 'https://responsive-kolo.preview.emergentagent.com'}/api/v2/notifications/unread`, {
+        fetch(`${getApiBase()}/api/v2/notifications/unread`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('kolo_v2_session') || ''}` },
         }).then(r => r.ok ? r.json() : { count: 0, fresh_pige: 0, reminders_today: 0 }).catch(() => ({ count: 0, fresh_pige: 0, reminders_today: 0 })),
       ]);
