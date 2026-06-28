@@ -16,7 +16,18 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 ## Implemented (état Feb 2026) — UPDATED
-### Sprint App iOS V2.2 — Hotfix release (Feb 2026) 🔥 NEW
+### Sprint App iOS V2.3 — Hotfix release Pige + clavier iOS (Feb 2026) 🔥 NEW
+🎯 **Trois bugs critiques résolus avant resubmit App Store** :
+- ✅ **404 Login/Signup production** — déjà résolu en V2.2 par le triple-ceinture (`codemagic.yaml` injecte `REACT_APP_BACKEND_URL` au build + fallback défensif dans `v2api.js` + `.env.production` commité). Bundle JS de prod vérifié : zéro occurrence de `trykolo.io` comme API.
+- ✅ **Champs texte invisibles quand clavier iOS ouvert** — racine : le CSS keyboard-handling de `App.css` ciblait `[role="dialog"]` et `.kolo-bottom-sheet`, mais les modals V2 utilisent la classe `.v2-modal`. Ajout de `.v2-modal` aux sélecteurs, plus `max-height: calc(100vh - var(--kolo-keyboard-height) - 12px)` pour que la sheet rétrécisse au-dessus du clavier. Le hook `useIOSKeyboardScroll` (déjà branché dans `App.js`) s'occupe du `scrollIntoView` au focus. Inputs passés de `font-size: 15px → 16px` pour neutraliser le zoom-on-focus iOS.
+- ✅ **Pige codes postaux : sélection multiple + validation explicite** :
+  - Frontend : remplacement du simple input texte par un système de **chips** (style onboarding). L'utilisateur empile autant de codes postaux / villes qu'il veut (`75001`, `75002`, `Lyon 3`). Bouton `+` pour ajouter, `×` sur chaque chip pour retirer, paste avec virgules supporté.
+  - Bouton **« Rechercher »** explicite (au lieu d'auto-trigger à chaque keystroke) — règle le bug où le quota gratuit 1 search/semaine était consommé au 1er caractère tapé.
+  - Backend (`/api/v2/prospecting/dpe` + `/prospecting/listings`) : accepte maintenant `sector=75001,75002,Lyon 3`, split par virgule, construit une clause `OR` couvrant `code_postal_ban` et `nom_commune_ban` (DPE/ADEME) ou routage `postalCodes[]` / `cities[]` (Apify Pige Immo).
+  - Exemple corrigé : « 75001 » est bien Paris (pas Lyon).
+- ✅ **Bump version 2.3 / build 11** dans `App.xcodeproj/project.pbxproj`.
+
+### Sprint App iOS V2.2 — Hotfix release (Feb 2026)
 🎯 **Bloqueurs P0 résolus avant resubmit App Store** :
 - ✅ **Fix HTTP 404 Login/Signup en production** — Racine : `process.env.REACT_APP_BACKEND_URL` n'était pas injecté à build-time sur Codemagic, le bundle iOS basculait alors sur une URL incorrecte. Triple ceinture :
   - `codemagic.yaml` : ajout `vars.REACT_APP_BACKEND_URL` + export explicite dans le step `Build React app`.

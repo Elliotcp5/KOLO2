@@ -656,7 +656,11 @@ body, html, #root { background-color: var(--v2-bg); }
   border-radius: 13px;
   border: 1px solid var(--v2-line);
   background: rgba(255,255,255,0.85);
-  font-size: 15px; color: var(--v2-ink);
+  /* iOS auto-zooms on focus if font-size < 16px → keep 16px to prevent the
+     viewport from shifting and hiding the focused field behind the keyboard. */
+  font-size: 16px; color: var(--v2-ink);
+  -webkit-text-fill-color: var(--v2-ink);
+  -webkit-appearance: none;
   outline: none;
   transition: border 160ms ease, background 160ms ease;
   font-family: inherit;
@@ -712,7 +716,7 @@ body, html, #root { background-color: var(--v2-bg); }
   border-radius: 13px;
   padding: 11px 14px;
 }
-.v2-search input { flex: 1; border: none; outline: none; font-size: 14.5px; background: transparent; color: var(--v2-ink); }
+.v2-search input { flex: 1; border: none; outline: none; font-size: 16px; background: transparent; color: var(--v2-ink); -webkit-text-fill-color: var(--v2-ink); }
 .v2-search input::placeholder { color: var(--v2-muted-2); }
 
 /* ====== Modals (bottom sheet) ====== */

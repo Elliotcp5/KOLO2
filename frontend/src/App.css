@@ -236,8 +236,19 @@ html.capacitor-native .bottom-nav {
    en temps réel par useIOSKeyboardScroll. */
 html.kolo-keyboard-open .fixed.bottom-0,
 html.kolo-keyboard-open [role="dialog"],
-html.kolo-keyboard-open .kolo-bottom-sheet {
+html.kolo-keyboard-open .kolo-bottom-sheet,
+html.kolo-keyboard-open .v2-modal {
   padding-bottom: calc(var(--kolo-keyboard-height, 0px) + 20px) !important;
+}
+/* When the iOS keyboard is open, shrink V2 bottom-sheets so the content
+   above the keyboard remains scrollable and focused inputs stay visible. */
+html.kolo-keyboard-open .v2-modal {
+  max-height: calc(100vh - var(--kolo-keyboard-height, 0px) - 12px) !important;
+}
+/* Keep the focused input always within the visible viewport, even when the
+   modal already has its own scroll container. */
+html.kolo-keyboard-open .v2-modal {
+  scroll-padding-bottom: calc(var(--kolo-keyboard-height, 0px) + 40px);
 }
 
 html.capacitor-native,

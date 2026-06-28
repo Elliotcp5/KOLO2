@@ -1349,8 +1349,17 @@ async def prospecting_dpe(request: Request, sector: Optional[str] = None, score:
     import httpx
     qs = []
     if sector:
-        # ADEME supports q_fields=code_postal_ban,nom_commune_ban  with q=value
-        qs.append(("qs", f"code_postal_ban:{sector} OR nom_commune_ban:{sector}"))
+        # Multi-sectors: "75001,75002,Lyon 3" → OR clause covering both
+        # code_postal_ban and nom_commune_ban for each token.
+        parts = [p.strip() for p in sector.split(',') if p.strip()]
+        if parts:
+            clauses = []
+            for p in parts:
+                # Quote tokens with spaces to keep them as a single term in the qs DSL
+                token = f'"{p}"' if ' ' in p else p
+                clauses.append(f"code_postal_ban:{token}")
+                clauses.append(f"nom_commune_ban:{token}")
+            qs.append(("qs", "(" + " OR ".join(clauses) + ")"))
     if score:
         qs.append(("qs", f"etiquette_dpe:{score.upper()}"))
     if days:
@@ -1460,17 +1469,20 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                 logger.warning(f"Pending check failed: {e}")
 
         import httpx
-        # Apify input — actor schema: sources/cities/transaction/propertyTypes
-        is_postal = sector.strip().isdigit() and len(sector.strip()) == 5
+        # Multi-sector support: split comma-separated chips and route each
+        # token to postalCodes (if it's a 5-digit ZIP) or cities (otherwise).
+        parts = [p.strip() for p in sector.split(',') if p.strip()]
+        postal_codes = [p for p in parts if p.isdigit() and len(p) == 5]
+        cities = [p for p in parts if not (p.isdigit() and len(p) == 5)]
         apify_input = {
             "sources": ["leboncoin", "pap"],
             "transaction": "buy",
             "maxItems": 15,
         }
-        if is_postal:
-            apify_input["postalCodes"] = [sector.strip()]
-        else:
-            apify_input["cities"] = [sector.strip()]
+        if postal_codes:
+            apify_input["postalCodes"] = postal_codes
+        if cities:
+            apify_input["cities"] = cities
         if kind == "private":
             apify_input["onlyOwner"] = True
 
