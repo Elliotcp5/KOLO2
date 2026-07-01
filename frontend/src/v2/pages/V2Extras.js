@@ -484,6 +484,8 @@ export const V2SettingsPage = () => {
                     localStorage.setItem('kolo_locale', l.code);
                     localStorage.setItem('kolo_locale_manual', 'true');
                   } catch (_) { /* noop */ }
+                  // Persist server-side so the AI replies in this language.
+                  v2api.setLanguage(l.code).catch(() => { /* silent */ });
                   window.location.reload();
                 }}
                 data-testid={`settings-lang-${l.code}`}

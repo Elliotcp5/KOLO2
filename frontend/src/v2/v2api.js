@@ -191,6 +191,10 @@ export const v2api = {
     const q = new URLSearchParams(params).toString();
     return req(`/api/v2/prospecting/listings${q ? `?${q}` : ''}`);
   },
+
+  // Language preference (mirrors localStorage into the user DB so the AI
+  // answers in the same language the app displays).
+  setLanguage: (language) => req('/api/v2/user/language', { method: 'PATCH', body: JSON.stringify({ language }) }),
 };
 
 // Helper used by other modules that still need to compose a URL by hand

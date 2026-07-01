@@ -774,7 +774,16 @@ async def get_quota(request: Request):
 # ============================================================================
 # AI CHAT  /api/v2/ai/*
 # ============================================================================
-KOLO_SYSTEM_PROMPT = """Tu es KOLO, le copilote IA des agents immobiliers. Tu apportes une expertise terrain pointue : techniques de prospection, gestion de pipeline, relances commerciales, négociation, signaux marché DPE, droit immobilier (à valider par un pro). Tu réponds en français, ton chaleureux et direct, sans baratin. Pour chaque conseil, tu donnes du concret (chiffres, mots à dire, étapes). Si une question sort de ton expertise immo/commerciale, tu le dis et tu redirige."""
+KOLO_SYSTEM_PROMPT = """Tu es KOLO, le copilote IA des agents immobiliers. Tu apportes une expertise terrain pointue : techniques de prospection, gestion de pipeline, relances commerciales, négociation, signaux marché DPE, droit immobilier (à valider par un pro). Ton chaleureux et direct, sans baratin. Pour chaque conseil, tu donnes du concret (chiffres, mots à dire, étapes). Si une question sort de ton expertise immo/commerciale, tu le dis et tu rediriges."""
+
+
+LANG_INSTRUCTIONS = {
+    "fr": "Tu réponds STRICTEMENT en français.",
+    "en": "You MUST respond STRICTLY in English, regardless of the user's message language.",
+    "it": "Devi rispondere RIGOROSAMENTE in italiano, indipendentemente dalla lingua del messaggio utente.",
+    "de": "Antworte STRIKT auf Deutsch, unabhängig von der Sprache der Benutzernachricht.",
+    "es": "Debes responder ESTRICTAMENTE en español, independientemente del idioma del mensaje del usuario.",
+}
 
 
 def _build_role_specific_persona(onboarding: dict) -> str:
@@ -940,7 +949,14 @@ async def ai_chat(payload: AiChatIn, request: Request):
         if not api_key:
             raise RuntimeError("EMERGENT_LLM_KEY missing")
         adaptive_persona = _build_role_specific_persona(onboarding)
-        system_prompt = KOLO_SYSTEM_PROMPT + adaptive_persona
+        # Honor the user's language preference — captured at onboarding or
+        # updated later in Settings → Language. The AI MUST answer in that
+        # language even if the user's message is in another one.
+        user_lang = (user_doc.get("language") or "fr").lower()[:2]
+        if user_lang not in LANG_INSTRUCTIONS:
+            user_lang = "fr"
+        lang_directive = LANG_INSTRUCTIONS[user_lang]
+        system_prompt = f"{KOLO_SYSTEM_PROMPT}\n\n{lang_directive}\n\n{adaptive_persona}"
         chat = LlmChat(api_key=api_key, session_id=conv_id, system_message=system_prompt).with_model("anthropic", "claude-sonnet-4-5-20250929")
         msg = UserMessage(text=final_message)
         response_text = await chat.send_message(msg)
@@ -1029,7 +1045,12 @@ async def daily_tip(request: Request):
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         api_key = os.environ.get("EMERGENT_LLM_KEY") or ""
-        chat = LlmChat(api_key=api_key, session_id=f"tip_{user.user_id}_{datetime.now().date().isoformat()}", system_message=KOLO_SYSTEM_PROMPT + _build_role_specific_persona(onboarding)).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        user_lang = (user_doc.get("language") or "fr").lower()[:2]
+        if user_lang not in LANG_INSTRUCTIONS:
+            user_lang = "fr"
+        lang_directive = LANG_INSTRUCTIONS[user_lang]
+        tip_sys = f"{KOLO_SYSTEM_PROMPT}\n\n{lang_directive}\n\n{_build_role_specific_persona(onboarding)}"
+        chat = LlmChat(api_key=api_key, session_id=f"tip_{user.user_id}_{datetime.now().date().isoformat()}", system_message=tip_sys).with_model("anthropic", "claude-sonnet-4-5-20250929")
         msg = UserMessage(text=prompt)
         tip = await chat.send_message(msg)
     except Exception:
@@ -1322,6 +1343,7 @@ async def save_onboarding(payload: OnboardingPayload, request: Request):
             try:
                 from email_service import send_email  # type: ignore
                 admin_email = os.environ.get("ADMIN_ALERT_EMAIL") or "elliot.cohenpressard@trykolo.io"
+
                 subject = f"🚨 Compte Direction — {alert_doc['first_name']} {alert_doc['last_name']} ({payload.role})"
                 html = (
                     f"<h2 style='color:#0B0B0F;'>Nouveau compte de DIRIGEANT</h2>"
@@ -1345,6 +1367,25 @@ async def save_onboarding(payload: OnboardingPayload, request: Request):
             pass
 
     return {"ok": True}
+
+
+class LanguageIn(BaseModel):
+    language: str
+
+
+@router.patch("/user/language")
+async def update_user_language(payload: LanguageIn, request: Request):
+    """Persist the user's preferred language so the AI answers in it.
+    Called from Settings → Language when the user picks a new locale."""
+    user = await _get_user(request)
+    db = _get_db()
+    lang = (payload.language or "fr").lower()[:2]
+    if lang not in ("fr", "en", "it", "de", "es"):
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {"language": lang}})
+    await db.v2_onboarding.update_one({"user_id": user.user_id}, {"$set": {"language": lang}}, upsert=False)
+    return {"ok": True, "language": lang}
+
 
 
 @router.get("/onboarding")

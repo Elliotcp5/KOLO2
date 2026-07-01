@@ -202,7 +202,7 @@ export default function V2HomePage() {
                   const key = h < 12 ? 'home.hello_morning' : (h < 18 ? 'home.hello_afternoon' : 'home.hello_evening');
                   return v2t(key, { name: user.first_name || '' });
                 })()}
-                {!dashboard?.has_pro && <span className="v2-pro-badge" data-testid="home-pro-badge">Passer PRO</span>}
+                {!dashboard?.has_pro && <span className="v2-pro-badge" data-testid="home-pro-badge">{v2t('home.upgrade_pro')}</span>}
               </h1>
               <span className="v2-date" data-testid="home-date">
                 {formatDateFR(today)}
@@ -229,9 +229,9 @@ export default function V2HomePage() {
         >
           <div className="v2-tip-head">
             <div className="v2-tip-head-left">
-              <span className="v2-tip-eyebrow">{v2t('dailyAdvice')}</span>
+              <span className="v2-tip-eyebrow">{v2t('home.daily_advice')}</span>
               <span className="v2-tip-title">
-                {tip?.tip ? stripEmoji((tip.tip.split('\n')[0] || '').replace(/^#+\s*/, '')).slice(0, 70) : 'Ton conseil du jour t\'attend'}
+                {tip?.tip ? stripEmoji((tip.tip.split('\n')[0] || '').replace(/^#+\s*/, '')).slice(0, 70) : v2t('home.tip_hello', { name: user.first_name || '' })}
               </span>
               {!tipOpen && tip?.tip && (
                 <span className="v2-tip-teaser">
@@ -244,7 +244,7 @@ export default function V2HomePage() {
           {tipOpen && (
             <div className="v2-tip-body" data-testid="home-daily-advice-body">
               <div className="v2-tip-content">
-                {stripEmoji(tip?.tip || '') || 'Chargement de ton conseil personnalisé…'}
+                {stripEmoji(tip?.tip || '') || v2t('common.loading')}
               </div>
               <div className="v2-tip-actions">
                 <button
@@ -252,7 +252,7 @@ export default function V2HomePage() {
                   onClick={(e) => { e.stopPropagation(); setAiInitial(tip?.tip); setShowAI(true); }}
                   data-testid="home-tip-continue"
                 >
-                  {v2t('continueChat')}
+                  {v2t('chat.send')}
                 </button>
                 <button
                   className="v2-icon-btn"
@@ -290,13 +290,13 @@ export default function V2HomePage() {
           data-testid="home-ai-cta"
         >
           <span className="v2-ai-cta-icon"><Brain size={14} strokeWidth={2} /></span>
-          <span className="v2-ai-cta-title">{v2t('askKolo')}</span>
+          <span className="v2-ai-cta-title">{v2t('home.ask_kolo')}</span>
         </button>
 
         {/* SVG Activity Rings — REPLACES the flat stat cards */}
         <div className="v2-section-title" style={{ marginTop: 26 }}>
-          Aujourd'hui
-          <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">+ Rappel</button>
+          {v2t('home.today')}
+          <button className="link" onClick={() => setShowAddReminder(true)} data-testid="home-add-reminder">{v2t('home.add_reminder')}</button>
         </div>
 
         <div className="v2-rings-grid" data-testid="home-rings-grid">
@@ -321,13 +321,13 @@ export default function V2HomePage() {
                   <span className="sep">/</span>
                   <span className="total">{ringData.reminders.total}</span>
                 </span>
-                <span className="v2-ring-sub">faits</span>
+                <span className="v2-ring-sub">{v2t('home.done')}</span>
               </div>
             </div>
-            <span className="v2-ring-label">Rappels</span>
+            <span className="v2-ring-label">{v2t('home.reminders')}</span>
             <span className="v2-ring-status">
               <span className="dot" style={{ '--ring-color': '#32D74B' }} />
-              {ringData.reminders.pending > 0 ? `${ringData.reminders.pending} restants` : 'Tout est fait'}
+              {ringData.reminders.pending > 0 ? v2t('home.pending_short', { n: ringData.reminders.pending }) : v2t('home.all_done')}
             </span>
           </button>
 
@@ -352,25 +352,25 @@ export default function V2HomePage() {
                   <span className="sep">/</span>
                   <span className="total">{ringData.notes.total}</span>
                 </span>
-                <span className="v2-ring-sub">traitées</span>
+                <span className="v2-ring-sub">{v2t('home.processed')}</span>
               </div>
             </div>
-            <span className="v2-ring-label">Notes</span>
+            <span className="v2-ring-label">{v2t('home.notes')}</span>
             <span className="v2-ring-status">
               <span className="dot" style={{ '--ring-color': '#0A84FF' }} />
-              {ringData.notes.pending > 0 ? `${ringData.notes.pending} à traiter` : 'À jour'}
+              {ringData.notes.pending > 0 ? v2t('home.to_process', { n: ringData.notes.pending }) : v2t('home.up_to_date')}
             </span>
           </button>
         </div>
 
         <div className="v2-section-title" style={{ marginTop: 28 }}>
-          Dossiers récents
-          <button className="link" onClick={() => navigate('/app-v2/dossiers')}>Voir tout</button>
+          {v2t('home.recent_cases')}
+          <button className="link" onClick={() => navigate('/app-v2/dossiers')}>{v2t('home.see_all')}</button>
         </div>
         {recentCases.length === 0 ? (
           <div className="v2-empty">
-            <div className="title">Aucun dossier pour l'instant</div>
-            <div>Crée ton premier dossier depuis l'onglet « Dossiers ».</div>
+            <div className="title">{v2t('home.no_cases')}</div>
+            <div>{v2t('home.first_case_hint')}</div>
           </div>
         ) : (
           recentCases.map(c => {
