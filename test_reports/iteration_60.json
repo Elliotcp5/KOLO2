@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 60 — Frontend-only visual QA of the monochrome refonte of the marketing site (Home /, /comment-kolo, /a-propos, /ressources, /legal). Automated color-scan (excluding <img>/<picture>/.phone-screen content) confirms 0 non-monochrome computed colors (color/bg/border/fill/stroke and gradient stops) across every marketing component on every route. Manual screenshot review confirms the design intent: header sticky, KOLO logo, nav center, EN pill + Download; TRUSTED BY marquee immediately below header with grayscale logos; hero eyebrow with pulsing black dot; H1 Cabinet Grotesk + italic serif on 'agents'; two CTAs (black pill + ghost); CSS iPhone 15 Pro frame with Dynamic Island, titanium bezel and pure gray shadow (no colored gradient behind); floating cards fc-1/fc-2 with black icons on white; pillars section on #F5F5F7 gray-light; steps with strictly black checkmarks (rgb(0,0,0), stroke=rgb(0,0,0)); quote pull in Instrument Serif italic; final CTA fully black (rgb(0,0,0)) with white typography and italic serif; pricing card white on gray-light with badge, 24,90€/mois in display bold, 7 features with pure black SVG checks and CTA 'Commencer maintenant' pill black. Language switcher functional: FR/EN/DE/IT dropdown opens, EN highlighted in black. Mobile 390px: hero collapses to single column, burger appears, marquee scrolls.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/a-propos (AboutPage)",
+        "issues": [
+          "Founder photo does not visibly appear desaturated/grayscale-filtered as specified in the brief ('photo légèrement désaturée'). The <img> renders with natural skin tones (though the black t-shirt visually blends). Consider adding CSS `filter: grayscale(0.6) contrast(1.02);` (or similar) to the founder image wrapper to enforce the monochrome brand consistency called out in the requirements."
+        ]
+      },
+      {
+        "screen": "Global (App.css/themes.css)",
+        "issues": [
+          "Global body/theme-light text color is set to #0E0B1E (rgb(14,11,30)) in /app/frontend/src/styles/themes.css and /app/frontend/src/App.css. This slightly-purple near-black is inherited by <body> and any node NOT scoped by a .mkt-* class. All marketing components override it with pure #0A0A0A/#000, so it never renders visibly on the marketing routes today. BUT it is a landmine: any future raw text node in a marketing page that forgets to opt into an mkt- color will inherit rgb(14,11,30), which fails the strict monochrome rule. Suggest defining --ink for marketing scope as pure #0A0A0A on body.theme-light so the fallback is safe."
+        ]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_60.json"],
+  "action_items": [
+    "OPTIONAL: apply a CSS filter grayscale(~0.6) to the founder photo on /a-propos to match the 'photo légèrement désaturée' spec.",
+    "OPTIONAL/CLEAN-UP: override the global --ink token to pure #0A0A0A (currently #0E0B1E in /app/frontend/src/styles/themes.css line 39-50 and /app/frontend/src/App.css line 145) so the default inherited text color is strictly monochrome and future-proofs the palette."
+  ],
+  "critical_code_review_comments": [
+    "marketing.css is ~962 lines — still under the 1000-line comfort ceiling, but if any new marketing section is added it should be split (e.g., marketing.header.css / marketing.hero.css / marketing.phone.css). The phone-frame CSS block already accounts for a large share of the file.",
+    "PhoneFrame.js is only 38 lines but hardcodes a screen image src that lives inside a CSS bezel; if the app screenshot changes URL or shape, the mockup will visibly regress. Consider passing the screen image as a prop with a fallback and adding an aspect-ratio guard.",
+    "The global theme token --ink = #0E0B1E (subtly purple) is inconsistent with the strict monochrome brief. Not currently visible on any marketing route because every mkt-* rule overrides it, but it's a foot-gun for future edits."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped by request)", "frontend": "100% for the strict monochrome requirement on marketing routes (0 non-monochrome computed colors detected on / /comment-kolo /a-propos /ressources /legal at 1440px, and hero verified stacking correctly at 390px). Language switcher opens and lists FR/EN/DE/IT with EN active. Pricing shows 24,90€/mois with pure black checks. HowKolo Before tag is gray line-through / After tag is pure black."},
+  "test_credentials": "n/a",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Marketing monochrome refonte verified visually and via computed-style scan on all 5 marketing routes at desktop 1440px and mobile 390px. If E1 applies the two optional improvements (founder photo grayscale filter and --ink token cleanup), a quick re-scan of /a-propos plus a check that document.body computed color === 'rgb(10, 10, 10)' would fully close the loop. All Playwright verification scripts are inline in this iteration's test messages; no separate test file was created because the whole check was CSS/computed-style based (no state, no auth). data-testid coverage on marketing components is minimal — mostly relied on stable .mkt-* class selectors which worked fine.",
+  "rca_of_the_issue": "n/a — no bugs found. Two minor design observations only (founder photo saturation, global --ink token color). Neither blocks the strict monochrome rule on the visible marketing UI."
+}

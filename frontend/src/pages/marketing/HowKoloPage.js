@@ -57,7 +57,7 @@ const HowContent = () => {
                 <p className="mkt-subtle">{s.text}</p>
                 <ul className="mkt-step-bullets">
                   {(s.bullets || []).map((b, i) => (
-                    <li key={i}><Check size={18} color="#1E7A3C" strokeWidth={2.5} /><span>{b}</span></li>
+                    <li key={i}><Check size={18} strokeWidth={2.5} /><span>{b}</span></li>
                   ))}
                 </ul>
               </div>

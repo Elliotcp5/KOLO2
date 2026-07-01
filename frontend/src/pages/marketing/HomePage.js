@@ -51,7 +51,7 @@ const HomeContent = () => {
               </div>
               <div className="mkt-float-card fc-2" data-testid="mkt-hero-float-2">
                 <div className="mkt-fc-row">
-                  <div className="mkt-fc-icon" style={{ background: '#E6F7EC', color: '#1E7A3C' }}><TrendingUp size={16} /></div>
+                  <div className="mkt-fc-icon"><TrendingUp size={16} /></div>
                   <div>
                     <div className="mkt-fc-label">{t('home.float2_label')}</div>
                     <div className="mkt-fc-value">{t('home.float2_value')}</div>
@@ -124,7 +124,7 @@ const HomeContent = () => {
               <p className="mkt-subtle">{t('home.step1_lead')}</p>
               <ul className="mkt-step-bullets">
                 {(t('home.step1_bullets') || []).map((b, i) => (
-                  <li key={i}><Check size={18} color="#1E7A3C" strokeWidth={2.5} /><span>{b}</span></li>
+                  <li key={i}><Check size={18} strokeWidth={2.5} /><span>{b}</span></li>
                 ))}
               </ul>
             </div>
@@ -140,7 +140,7 @@ const HomeContent = () => {
               <p className="mkt-subtle">{t('home.step2_lead')}</p>
               <ul className="mkt-step-bullets">
                 {(t('home.step2_bullets') || []).map((b, i) => (
-                  <li key={i}><Check size={18} color="#1E7A3C" strokeWidth={2.5} /><span>{b}</span></li>
+                  <li key={i}><Check size={18} strokeWidth={2.5} /><span>{b}</span></li>
                 ))}
               </ul>
             </div>
@@ -205,13 +205,13 @@ const HomeContent = () => {
               <div className="mkt-price-sub">Sans engagement. Résiliable à tout moment.</div>
             </div>
             <ul className="mkt-price-features">
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> (Le Bon Coin, PAP)</span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Dictée vocale, transcriptions et notes terrain</span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Estimation de bien via DVF + comparables</span></li>
-              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>App iOS native, notifications push, mises à jour incluses</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> (Le Bon Coin, PAP)</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Dictée vocale, transcriptions et notes terrain</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Estimation de bien via DVF + comparables</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>App iOS native, notifications push, mises à jour incluses</span></li>
             </ul>
             <div className="mkt-price-cta-row">
               <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-primary" data-testid="mkt-price-cta">
