@@ -1,109 +1,120 @@
 {
-  "theme": "dark",
-  "archetype": "Archetype 5: Luxury mixed with Archetype 4 (High-Contrast)",
-  "rationale": "For high-end B2B real estate agents, the UI must feel like a premium metal credit card. Dark monochrome conveys authority, exclusivity, and focus. We reject flat grays in favor of deep obsidian and multi-layered glassmorphism to create depth. No purple, no pink, no emojis. Just raw volume, crisp edges, and smooth physics.",
-  "typography": {
-    "headings": {
-      "fontFamily": "Cabinet Grotesk",
-      "weights": ["500", "700", "800"],
-      "letterSpacing": "tracking-tight",
-      "description": "Premium, structural, and modern. Replaces generic sans. Gives the app a high-end editorial tech feel."
+  "theme_and_archetype": {
+    "theme": "Dark",
+    "archetype": "Archetype 4 (Swiss & High-Contrast) + Subliminal Archetype 7 accents",
+    "description": "Ultra-premium, Linear/Vercel-inspired B2B SaaS design for real estate independent agents. Dominant pure black/gray/white with very subtle, barely-there purple/blue gradient accents."
+  },
+  "color_system": {
+    "css_variables": {
+      "--mkt-bg-primary": "#000000",
+      "--mkt-bg-secondary": "#0A0A0A",
+      "--mkt-bg-tertiary": "#121212",
+      "--mkt-text-primary": "#FFFFFF",
+      "--mkt-text-secondary": "#A1A1AA",
+      "--mkt-border-light": "rgba(255, 255, 255, 0.08)",
+      "--mkt-border-hover": "rgba(255, 255, 255, 0.15)",
+      "--mkt-accent-purple": "#6B5CE7",
+      "--mkt-accent-blue": "#4B7BFF",
+      "--mkt-accent-glow": "linear-gradient(135deg, rgba(107, 92, 231, 0.08) 0%, rgba(75, 123, 255, 0.08) 100%)",
+      "--mkt-button-primary-bg": "#FFFFFF",
+      "--mkt-button-primary-text": "#000000",
+      "--mkt-button-primary-hover": "#E4E4E7"
     },
-    "body": {
-      "fontFamily": "Satoshi",
-      "weights": ["400", "500", "600"],
-      "description": "Clean, highly legible geometric sans for data, standard text, and microcopy."
+    "rules": [
+      "No solid purple/blue backgrounds or buttons. Accents must be restricted to faint radial blurs (opacity 0.06 - 0.12) or 1px hover borders.",
+      "Use radial-gradients for soft 'spotlight' effects behind key sections (like Hero and Pricing)."
+    ]
+  },
+  "typography_rules": {
+    "primary_display": "Cabinet Grotesk",
+    "primary_body": "Satoshi",
+    "scales": {
+      "h1": "text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1]",
+      "h2": "text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl font-bold tracking-tight text-white",
+      "body": "text-base sm:text-lg text-zinc-400 font-medium leading-relaxed",
+      "overline": "text-xs font-bold tracking-[0.2em] uppercase text-zinc-500"
+    },
+    "rules": [
+      "MANDATORY: Delete any usage of 'Instrument Serif'. No more italic serif mixing. The UI must feel like a precision tool.",
+      "Headings must exclusively use 'Cabinet Grotesk' with tight tracking to achieve the 'Apple/Linear' structural feel.",
+      "Never center paragraphs unless it's a short 1-2 line subtitle under a centered section heading."
+    ]
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous spacing. Elements must breathe. Avoid Bootstrap-like equal columns; prioritize asymmetry and tension.",
+    "mobile_responsive_strategy": {
+      "under_640px": "Stack vertically. CRITICAL: Increase gaps significantly (gap-8 to gap-12). Do NOT render full-height phone mockups here; crop the bottom using mask-image or a max-height container to show only the top UI so it doesn't dominate the screen.",
+      "640px_to_900px": "Use 2-column bento grids where applicable. Adjust paddings to px-8.",
+      "over_900px": "Unleash 12-column grids and high-end asymmetrical layouts. Use massive paddings (py-32) between sections."
     }
   },
-  "colors": {
-    "background": {
-      "base": "#040405",
-      "surface": "#121214",
-      "surface_elevated": "#1A1A1C",
-      "description": "Deep obsidian tones. NOT flat gray. Layers of darkness create physical volume. Background is near OLED black to make glassmorphism pop."
-    },
-    "text": {
-      "primary": "#FFFFFF",
-      "secondary": "#A1A1A6",
-      "tertiary": "#6E6E73",
-      "inverse": "#000000"
-    },
-    "accents": {
-      "brand": "#FFFFFF",
-      "interactive": "#2C2C2E",
-      "success": "#32D74B",
-      "warning": "#FF9F0A",
-      "error": "#FF453A",
-      "progress_reminders": "#32D74B",
-      "progress_notes": "#0A84FF",
-      "description": "Monochrome with stark, high-contrast functional accents (Apple Health/Revolut vibe). Only use colors for data/states, never for decoration."
-    },
-    "borders": {
-      "subtle": "rgba(255, 255, 255, 0.06)",
-      "strong": "rgba(255, 255, 255, 0.12)"
-    }
+  "iphone_mockup_solution": {
+    "approach": "Glassmorphic Abstract Frame + Exploded UI",
+    "description": "Abandon literal phone SVG frames with thick bezels. They look cheap.",
+    "css_implementation": [
+      "Wrap screenshots in a sleek container: `rounded-[40px] border border-white/10 shadow-[0_0_80px_rgba(255,255,255,0.03)] overflow-hidden`.",
+      "Apply a subtle 3D tilt on desktop: `transform: perspective(1200px) rotateY(-8deg) rotateX(4deg) scale(0.95)`.",
+      "Framer Motion Exploded UI: Add absolutely positioned floating glass cards over the phone. For example, extract the 'Dictée vocale' status into a small pill card `backdrop-blur-xl bg-black/60 border border-white/20` floating slightly outside the main phone bounds."
+    ]
   },
-  "shadows_and_volume": {
-    "glassmorphism_heavy": "backdrop-filter: blur(32px) saturate(1.5); background: rgba(18, 18, 20, 0.65);",
-    "glassmorphism_light": "backdrop-filter: blur(16px); background: rgba(26, 26, 28, 0.4);",
-    "inner_glow": "box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.05);",
-    "ambient_shadow": "box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5);"
+  "micro_animations": {
+    "framer_motion": [
+      "Scroll Reveals: Elements should fade up lazily. `initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}`.",
+      "Floating Elements: The Exploded UI cards should gently float using `animate={{ y: [-5, 5, -5] }} transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}`."
+    ],
+    "css_interactions": [
+      "Magnetic Hover: Primary App Store CTAs should slightly scale and follow the cursor if a library is available, or simply use a crisp `hover:scale-105 active:scale-95 transition-transform`.",
+      "Hover Glow Cards: For Bento grid cards, implement a custom CSS glow where a radial gradient follows the mouse, masked by the card bounds. Alternatively, a simple `hover:bg-white/5 hover:border-white/20 transition-all duration-300`."
+    ]
   },
-  "components": {
-    "hero_greeting": {
-      "title": "Interactive 'Bonjour {Prénom}' Hero",
-      "css_classes": "text-4xl sm:text-5xl font-bold tracking-tight text-white flex justify-between items-end",
-      "interaction": "The entire greeting block acts as a trigger. Tap scales it down (scale: 0.98) and opens a right-side drawer or sleek dropdown with Profile/Settings/Plan. Includes a circular avatar.",
-      "layout": "px-6 py-8"
-    },
-    "progress_rings": {
-      "title": "SVG Animated Activity Rings (Reminders & Notes)",
-      "layout": "Bento grid mode. Two square cards side-by-side (col-span-1 each).",
-      "implementation_details": "Use pure SVG <circle>. Base track stroke: rgba(255,255,255,0.08). Progress track stroke: solid pure color with a subtle drop-shadow filter (e.g., drop-shadow(0 0 8px rgba(50,215,75,0.4))). Add stroke-dasharray and stroke-dashoffset for the fill animation. stroke-linecap: round.",
-      "visuals": "Reminders Ring: #32D74B. Notes Ring: #0A84FF. Inside the ring: Large numbers (e.g. '5/10') in Cabinet Grotesk. Below the ring: small uppercase tracking-widest text (e.g. 'RAPPELS', 'NOTES').",
-      "container_style": "bg-[#121214] rounded-3xl p-5 border border-white/5 relative overflow-hidden. Add an absolute radial-gradient glow in the top-left corner matching the ring color at 5% opacity for depth."
-    },
-    "bottom_nav": {
-      "title": "Floating iOS Premium Nav",
-      "css_classes": "fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1.5 rounded-full z-50",
-      "styling": "Heavy glassmorphism base (bg-black/60, blur-2xl), 1px top inner border (white/15). Total width max 90vw.",
-      "items": "Width 60px, height 52px, flex flex-col justify-center items-center rounded-full transition-all duration-300. Unselected: text-white/40. Selected: text-white, background rgba(255,255,255,0.12).",
-      "typography": "Labels are optional, but if used: 10px font-medium mt-1. Better to rely on clear 24px icons (Phosphor or Lucide).",
-      "center_fab": "A prominent central action button ('Ask KOLO'). It should break the pill slightly. bg-white text-black rounded-full h-14 w-14 shadow-[0_8px_32px_rgba(255,255,255,0.25)] flex items-center justify-center -translate-y-2."
-    },
-    "onboarding_chips": {
-      "title": "Clickable Select Chips (Replaces inputs)",
-      "layout": "flex flex-wrap gap-3 mt-6",
-      "inactive_state": "bg-[#1A1A1C] border border-white/10 text-white/60 px-5 py-3 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer",
-      "active_state": "bg-white text-black border-transparent shadow-[0_0_16px_rgba(255,255,255,0.2)] scale-[1.02] cursor-pointer",
-      "animation": "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-    },
-    "header": {
-      "title": "App Header",
-      "layout": "flex justify-between items-center px-6 pt-safe pb-4 bg-transparent",
-      "elements": "Left: Burger menu icon (text-white). Center: Logo image. Right: Notification Bell with a pure red (#FF453A) 8px notification dot with animate-pulse."
-    }
-  },
-  "media": {
-    "logos": {
-      "recommended_primary": "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/2pinovzk_Positionner%20le%20K%20blanc%20au%20centre-2.png",
-      "description": "White 'K' with transparent background. Clean cut, high contrast. Use this as the main header logo (height: 28px, object-fit: contain) to avoid the 'dirty borders' issue."
-    }
-  },
-  "animations": {
-    "page_transitions": "opacity 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-    "ring_fill": "transition: stroke-dashoffset 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s",
-    "tap_feedback": "active:scale-95 transition-transform duration-100"
+  "implementation_plan": {
+    "css_scoping": "Ensure all global styles in `/app/frontend/src/pages/marketing/marketing.css` are wrapped under the `.mkt-root` class to prevent pollution into the iOS app.",
+    "sections": [
+      {
+        "name": "Header",
+        "details": "Sticky. Glassmorphism `backdrop-blur-xl bg-black/60 border-b border-white/5`. Contains nav links, EN/FR/DE/IT switcher, and a small download CTA."
+      },
+      {
+        "name": "Hero Landing",
+        "details": "Asymmetrical layout. Left: Massive H1, tight body text, premium App Store CTA. Right: The 3D tilted phone mockup of `live_home_john.jpeg` with floating UI pills. Background features the `--mkt-accent-glow` spotlight."
+      },
+      {
+        "name": "Trusted By Marquee",
+        "details": "Infinite smooth scrolling marquee. 15 real estate network logos (use Lucide icons or simple text SVGs as placeholders). Opacity 40%, pure white on hover."
+      },
+      {
+        "name": "Promise Section",
+        "details": "Bento Grid of 3 cards (Pige IA, Dictée vocale, Suivi dossiers). Dark glassmorphism (`bg-white/[0.02] border border-white/[0.08]`). Incorporate Lucide icons with a faint purple/blue drop-shadow."
+      },
+      {
+        "name": "Stats Section",
+        "details": "Minimalist grid displaying massive numbers: '30sec', '0 oubli', '1 app'. Text color pure white. Add a thin vertical 1px divider (`border-l border-white/10`) between stats on desktop."
+      },
+      {
+        "name": "Steps Section (How Kolo)",
+        "details": "Sticky scrolling track. Left column stays fixed explaining 'Pige' then 'Dictée vocale'. Right column scrolls the corresponding screenshots (`live_pige.jpeg`, `live_dossiers.jpeg`) wrapped in premium Abstract Frames."
+      },
+      {
+        "name": "Quote Section",
+        "details": "Centered. Large typography `text-3xl sm:text-4xl font-medium tracking-tight`. Text wrapped in quotes, with a floating avatar and agent name below."
+      },
+      {
+        "name": "Pricing",
+        "details": "One single centered premium card (24,90€/mois). Features an animated gradient border (using the barely-there purple/blue hexes via a spinning mask-image pseudo-element) to scream 'pro tool'. List 7 features."
+      },
+      {
+        "name": "Footer",
+        "details": "Deep dark gray `bg-[#050505]`. Huge 'KOLO' logo at the bottom. Product/Company/Legal links."
+      }
+    ],
+    "other_pages": "Apply the same typography, spacing, and glassmorphic card patterns to `/comment-kolo`, `/ressources`, `/a-propos`, and `/legal`."
   },
   "testing": {
-    "data_testid_rules": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case. e.g., data-testid='nav-home-tab', data-testid='hero-profile-trigger', data-testid='onboarding-chip-crm'."
-  },
-  "instructions_to_main_agent": [
-    "Migrate all existing gray backgrounds in v2.css and JS components to the deep obsidian palette defined in this blueprint.",
-    "Remove all references to the old comma-separated text inputs in V2OnboardingPage.js and replace them with the flex-wrap Clickable Select Chips.",
-    "Implement the SVG Circular Rings in V2HomePage.js. Do not use generic Shadcn/UI or flat HTML progress bars. Build them using pure SVG <circle> tags with stroke-dasharray and CSS transitions for the fill effect, adding the drop-shadow for volume.",
-    "Update V2Layout.js to include the floating bottom nav. Ensure the bottom nav is explicitly fixed at the bottom, uses backdrop-filter for glassmorphism, and handles iOS safe areas (env(safe-area-inset-bottom)). Implement the center FAB properly.",
-    "Make the 'Bonjour {Prénom}' hero fully interactive, wrapping it in a touch target (button) that triggers the right-side profile drawer.",
-    "Add 'data-testid' attributes to all new interactive components."
-  ]
+    "attributes": [
+      "Add `data-testid='mkt-hero-appstore-btn'` to primary CTA.",
+      "Add `data-testid='mkt-pricing-btn'` to the pricing CTA.",
+      "Add `data-testid='mkt-nav-link'` to header navigation items."
+    ]
+  }
 }
