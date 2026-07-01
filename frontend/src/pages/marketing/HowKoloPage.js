@@ -26,7 +26,7 @@ const HowContent = () => {
           </div>
           <h1 className="mkt-h1">
             {t('how.title_p1')}<br/>
-            <em>{t('how.title_em')}</em>
+            <span className="mkt-h1-accent">{t('how.title_em')}</span>
           </h1>
           <p className="mkt-lead" style={{ margin: '0 auto 36px' }}>{t('how.lead')}</p>
           <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-primary" data-testid="mkt-how-cta-top">
@@ -72,7 +72,7 @@ const HowContent = () => {
       <section className="mkt-section">
         <div className="mkt-container">
           <div className="mkt-final-cta mkt-reveal" data-testid="mkt-how-final-cta">
-            <h2>{t('how.final_title_p1')}<br/><em style={{ fontFamily: 'var(--mkt-font-serif)', fontStyle: 'italic', fontWeight: 400 }}>{t('how.final_title_em')}</em></h2>
+            <h2>{t('how.final_title_p1')}<br/><span className="mkt-h1-accent">{t('how.final_title_em')}</span></h2>
             <p>{t('how.final_lead')}</p>
             <div className="mkt-cta-row">
               <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-primary" data-testid="mkt-how-cta-bottom">

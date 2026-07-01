@@ -19,7 +19,7 @@ const AboutContent = () => {
               </div>
               <h1 className="mkt-h1">
                 {t('about.title_p1')}<br/>
-                <em>{t('about.title_em')}</em>
+                <span className="mkt-h1-accent">{t('about.title_em')}</span>
               </h1>
               <p className="mkt-lead">{t('about.lead')}</p>
             </div>
@@ -35,7 +35,7 @@ const AboutContent = () => {
           <div className="mkt-section-eyebrow">{t('about.founder_eyebrow')}</div>
           <h2 className="mkt-h2" style={{ marginBottom: 32 }}>
             {t('about.founder_title_p1')}<br/>
-            <em>{t('about.founder_title_em')}</em>
+            <span className="mkt-h1-accent">{t('about.founder_title_em')}</span>
           </h2>
 
           <div className="mkt-prose mkt-reveal" data-testid="mkt-about-story">
@@ -54,7 +54,7 @@ const AboutContent = () => {
         <div className="mkt-container">
           <div className="mkt-section-head mkt-reveal">
             <div className="mkt-section-eyebrow">{t('about.values_eyebrow')}</div>
-            <h2 className="mkt-h2">{t('about.values_title_p1')}<br/><em>{t('about.values_title_em')}</em></h2>
+            <h2 className="mkt-h2">{t('about.values_title_p1')}<br/><span className="mkt-h1-accent">{t('about.values_title_em')}</span></h2>
           </div>
 
           <div className="mkt-values" data-testid="mkt-about-values">
@@ -80,7 +80,7 @@ const AboutContent = () => {
       <section className="mkt-section">
         <div className="mkt-container">
           <div className="mkt-final-cta mkt-reveal" data-testid="mkt-about-final-cta">
-            <h2>{t('about.final_title_p1')}<br/><em style={{ fontFamily: 'var(--mkt-font-serif)', fontStyle: 'italic', fontWeight: 400 }}>{t('about.final_title_em')}</em></h2>
+            <h2>{t('about.final_title_p1')}<br/><span className="mkt-h1-accent">{t('about.final_title_em')}</span></h2>
             <p>{t('about.final_lead')}</p>
             <div className="mkt-cta-row">
               <a href="mailto:contact@trykolo.io" className="mkt-btn mkt-btn-primary" data-testid="mkt-about-contact-cta">
