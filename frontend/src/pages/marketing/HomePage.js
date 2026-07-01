@@ -11,6 +11,8 @@ const HomeContent = () => {
 
   return (
     <>
+      <LogoMarquee />
+
       <section className="mkt-hero" data-testid="mkt-home-hero">
         <div className="mkt-container">
           <div className="mkt-hero-inner">
@@ -61,7 +63,7 @@ const HomeContent = () => {
         </div>
       </section>
 
-      <LogoMarquee />
+      {/* No duplicate marquee here — it's already placed right under the header */}
 
       <section className="mkt-section">
         <div className="mkt-container">
@@ -172,6 +174,50 @@ const HomeContent = () => {
               <Link to="/comment-kolo" className="mkt-btn mkt-btn-ghost">
                 {t('home.final_cta_secondary')}
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================== PRICING — single all-inclusive tier ================== */}
+      <section className="mkt-section-tight mkt-pricing-section" data-testid="mkt-pricing">
+        <div className="mkt-container">
+          <div className="mkt-section-head mkt-reveal">
+            <div className="mkt-section-eyebrow">Tarif</div>
+            <h2 className="mkt-h2">
+              Un seul plan.<br/>
+              <em>Tout inclus, sans limite.</em>
+            </h2>
+            <p className="mkt-subtle" style={{ margin: '0 auto' }}>
+              L'outil le plus complet du marché, au prix le plus juste. Zéro option cachée, zéro palier.
+            </p>
+          </div>
+
+          <div className="mkt-price-card mkt-reveal" data-testid="mkt-price-card">
+            <div className="mkt-price-badge">Le plus complet · Le prix le plus juste</div>
+            <div className="mkt-price-head">
+              <div className="mkt-price-name">KOLO — Tout inclus</div>
+              <div className="mkt-price-amount">
+                <span className="mkt-price-currency">€</span>
+                <span className="mkt-price-value">24,90</span>
+                <span className="mkt-price-period">/mois</span>
+              </div>
+              <div className="mkt-price-sub">Sans engagement. Résiliable à tout moment.</div>
+            </div>
+            <ul className="mkt-price-features">
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> (Le Bon Coin, PAP)</span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Dictée vocale, transcriptions et notes terrain</span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>Estimation de bien via DVF + comparables</span></li>
+              <li><Check size={16} color="#1E7A3C" strokeWidth={2.5} /> <span>App iOS native, notifications push, mises à jour incluses</span></li>
+            </ul>
+            <div className="mkt-price-cta-row">
+              <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-primary" data-testid="mkt-price-cta">
+                Commencer maintenant <ArrowRight size={16} strokeWidth={2.5} />
+              </a>
+              <span className="mkt-price-guarantee">7 premiers jours offerts · Aucune carte requise</span>
             </div>
           </div>
         </div>

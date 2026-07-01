@@ -245,36 +245,115 @@ a.mkt-btn-ghost {
   z-index: 0;
 }
 
-/* Phone frame (iPhone-like) */
+/* ==========================================================
+   Photorealistic iPhone 15 Pro frame
+   ---------------------------------------------------------- */
 .mkt-phone {
   position: relative;
   width: 340px;
   aspect-ratio: 9 / 19.5;
-  border-radius: 48px;
-  background: #0A0A0A;
-  padding: 14px;
+  border-radius: 54px;
+  padding: 12px;
+  /* Titanium bezel — subtle radial + neutral dark tones matching Natural Titanium */
+  background:
+    radial-gradient(120% 60% at 50% 0%, #2a2a2c 0%, #151517 50%, #0a0a0c 100%);
   box-shadow:
-    0 0 0 1.5px rgba(10,10,10,0.06),
-    0 40px 90px -30px rgba(10,10,10,0.45),
-    inset 0 0 0 2px rgba(255,255,255,0.04);
+    /* outer soft ambient */
+    0 60px 120px -40px rgba(10, 10, 15, 0.55),
+    0 20px 40px -20px rgba(10, 10, 15, 0.35),
+    /* rim highlight (top) */
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.14),
+    /* rim highlight (sides) */
+    inset 1.5px 0 0 rgba(255, 255, 255, 0.05),
+    inset -1.5px 0 0 rgba(255, 255, 255, 0.05),
+    /* inner shadow to sink the screen */
+    inset 0 -1.5px 0 rgba(0, 0, 0, 0.35);
   z-index: 1;
+  isolation: isolate;
+  /* Subtle idle float animation for premium feel */
+  animation: mktPhoneIdle 8s ease-in-out infinite alternate;
+}
+@keyframes mktPhoneIdle {
+  from { transform: translateY(0) rotate(-0.15deg); }
+  to   { transform: translateY(-8px) rotate(0.15deg); }
 }
 .mkt-phone-screen {
-  width: 100%; height: 100%;
-  border-radius: 36px;
-  overflow: hidden;
-  background: #fff;
   position: relative;
+  width: 100%; height: 100%;
+  border-radius: 44px;
+  overflow: hidden;
+  background: #FAFAFB;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
-.mkt-phone-screen img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.mkt-phone-notch {
-  position: absolute; top: 14px; left: 50%;
+.mkt-phone-screen img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  transition: transform 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Soft top-left glare — gives the illusion of a curved glass */
+.mkt-phone-glare {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 32%),
+    linear-gradient(315deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 30%);
+  border-radius: inherit;
+  mix-blend-mode: screen;
+}
+/* Dynamic Island — the real 2023+ pill */
+.mkt-phone-island {
+  position: absolute;
+  top: 22px; left: 50%;
   transform: translateX(-50%);
-  width: 105px; height: 30px;
+  width: 116px; height: 34px;
   border-radius: 999px;
-  background: #0A0A0A;
-  z-index: 2;
+  background: #050506;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    0 2px 6px rgba(0,0,0,0.4);
+  z-index: 4;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 10px;
 }
+.mkt-phone-island-camera {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #1a1a1f 0%, #050505 60%, #000 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 0 2px rgba(59, 130, 246, 0.35);
+}
+/* Titanium side buttons */
+.mkt-phone-btn {
+  position: absolute;
+  background: linear-gradient(180deg, #3a3a3d 0%, #1e1e21 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+  z-index: 0;
+}
+.mkt-phone-btn-mute {
+  left: -2.5px; top: 100px;
+  width: 4px; height: 24px;
+  border-radius: 2px 0 0 2px;
+}
+.mkt-phone-btn-volup {
+  left: -2.5px; top: 145px;
+  width: 4px; height: 44px;
+  border-radius: 2px 0 0 2px;
+}
+.mkt-phone-btn-voldown {
+  left: -2.5px; top: 205px;
+  width: 4px; height: 44px;
+  border-radius: 2px 0 0 2px;
+}
+.mkt-phone-btn-power {
+  right: -2.5px; top: 145px;
+  width: 4px; height: 74px;
+  border-radius: 0 2px 2px 0;
+}
+/* Kill the legacy notch (no longer used) */
+.mkt-phone-notch { display: none; }
 
 /* small floating cards next to phone */
 .mkt-float-card {
@@ -311,19 +390,21 @@ a.mkt-btn-ghost {
   .mkt-float-card.fc-2 { right: 0; }
 }
 
-/* ========== Logo marquee ========== */
+/* ========== Logo marquee (positioned right under the header) ========== */
 .mkt-marquee {
-  border-top: 1px solid var(--mkt-line-2);
+  /* No border-top: sits flush under the header. Small breathing gap only. */
   border-bottom: 1px solid var(--mkt-line-2);
-  padding: 36px 0;
-  background: var(--mkt-bg);
+  padding: 22px 0 26px;
+  margin-top: 8px;
+  background:
+    linear-gradient(180deg, rgba(250, 250, 252, 0.7) 0%, var(--mkt-bg) 100%);
   overflow: hidden;
   position: relative;
 }
 .mkt-marquee-label {
-  text-align: center; font-size: 13px; color: var(--mkt-muted);
-  letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
-  margin-bottom: 24px;
+  text-align: center; font-size: 12px; color: var(--mkt-muted);
+  letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
+  margin-bottom: 18px;
 }
 .mkt-marquee-track-wrap {
   position: relative;
@@ -791,3 +872,124 @@ a.mkt-btn-ghost {
   color: var(--mkt-ink-2);
   margin: 0;
 }
+
+/* ==========================================================
+   Pricing section — single all-inclusive plan (24.90€)
+   Premium card with subtle gradient, glow accent, list.
+   ---------------------------------------------------------- */
+.mkt-pricing-section {
+  padding-top: 80px;
+  padding-bottom: 80px;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 90, 54, 0.06) 0%, transparent 60%),
+    var(--mkt-bg);
+}
+.mkt-price-card {
+  max-width: 620px;
+  margin: 48px auto 0;
+  background: #FFFFFF;
+  border: 1px solid var(--mkt-line);
+  border-radius: 28px;
+  padding: 44px 44px 36px;
+  position: relative;
+  box-shadow:
+    0 40px 120px -40px rgba(10, 10, 15, 0.20),
+    0 4px 12px -4px rgba(10, 10, 15, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+}
+.mkt-price-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px -1px auto -1px;
+  height: 3px;
+  background: linear-gradient(90deg, #FF5A36 0%, #F97316 50%, #FFB800 100%);
+  border-radius: 28px 28px 0 0;
+}
+.mkt-price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--mkt-coral-soft);
+  color: var(--mkt-coral);
+  font-family: var(--mkt-font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+}
+.mkt-price-head { text-align: center; margin-bottom: 28px; }
+.mkt-price-name {
+  font-family: var(--mkt-font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--mkt-muted);
+  margin-bottom: 12px;
+}
+.mkt-price-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--mkt-font-display);
+  font-weight: 800;
+  color: var(--mkt-ink);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.mkt-price-currency { font-size: 36px; font-weight: 700; align-self: flex-start; margin-top: 8px; }
+.mkt-price-value {
+  font-size: clamp(56px, 8vw, 78px);
+  background: linear-gradient(180deg, #0A0A0A 0%, #2a2a2c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.mkt-price-period { font-size: 20px; font-weight: 500; color: var(--mkt-muted); margin-left: 2px; }
+.mkt-price-sub { font-size: 13.5px; color: var(--mkt-muted); margin-top: 10px; }
+.mkt-price-features {
+  list-style: none; padding: 0; margin: 0 0 32px;
+  display: grid; gap: 12px;
+}
+.mkt-price-features li {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 15px; color: var(--mkt-ink-2); line-height: 1.5;
+}
+.mkt-price-features li svg { flex-shrink: 0; margin-top: 3px; }
+.mkt-price-features strong { color: var(--mkt-ink); font-weight: 700; }
+.mkt-price-cta-row {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--mkt-line-2);
+  margin-top: 4px;
+  padding-top: 24px;
+}
+.mkt-price-guarantee { font-size: 12.5px; color: var(--mkt-muted); text-align: center; }
+
+@media (max-width: 640px) {
+  .mkt-price-card { padding: 32px 24px 28px; }
+  .mkt-price-currency { font-size: 28px; margin-top: 6px; }
+  .mkt-price-period { font-size: 17px; }
+}
+
+/* ==========================================================
+   Extra polish — smoother reveals, dynamic hero background
+   ---------------------------------------------------------- */
+.mkt-hero {
+  position: relative;
+  overflow: hidden;
+}
+.mkt-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 40% at 20% 20%, rgba(255, 90, 54, 0.08) 0%, transparent 60%),
+    radial-gradient(50% 40% at 85% 30%, rgba(30, 122, 60, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+.mkt-hero > * { position: relative; z-index: 1; }
