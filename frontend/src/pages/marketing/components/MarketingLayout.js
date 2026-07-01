@@ -81,40 +81,15 @@ const HeaderInner = () => {
     <header className={`mkt-header ${open ? 'menu-open' : ''}`} data-testid="mkt-header">
       <div className="mkt-container mkt-header-inner">
         <KoloLogo />
-        <nav className="mkt-nav" data-testid="mkt-nav-desktop">
-          {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.to === '/'}
-              className={({ isActive }) => `mkt-nav-link ${isActive ? 'active' : ''}`}
-              data-testid={`mkt-nav-link-${n.to.replace(/\W/g, '') || 'home'}`}
-            >
-              {n.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <LanguageSwitcher />
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mkt-header-cta"
-            data-testid="mkt-header-appstore-cta"
-          >
-            {t('nav.cta')} <ArrowRight size={14} strokeWidth={2.5} />
-          </a>
-          <button
-            className="mkt-burger"
-            aria-label="Menu"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            data-testid="mkt-nav-burger"
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        <button
+          className="mkt-burger"
+          aria-label="Menu"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          data-testid="mkt-nav-burger"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
 
       <div className={`mkt-mobile-nav ${open ? 'open' : ''}`} data-testid="mkt-nav-mobile">
@@ -130,13 +105,16 @@ const HeaderInner = () => {
           </NavLink>
         ))}
         <div className="mkt-mobile-divider" />
+        <div className="mkt-mobile-lang">
+          <LanguageSwitcher />
+        </div>
         <a
           href={APP_STORE_URL}
           target="_blank"
           rel="noreferrer"
           className="mkt-btn mkt-btn-primary"
           data-testid="mkt-nav-mobile-appstore"
-          style={{ marginTop: 12 }}
+          style={{ marginTop: 12, justifyContent: 'center' }}
         >
           {t('nav.cta')} <ArrowRight size={16} strokeWidth={2.5} />
         </a>
