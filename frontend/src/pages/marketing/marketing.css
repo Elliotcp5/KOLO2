@@ -368,12 +368,25 @@ a.mkt-btn-ghost {
     inset 0 0 0 1.5px rgba(255, 255, 255, 0.06),
     inset 0 0 60px rgba(0, 0, 0, 0.4);
 }
+/* Blurred fill: same image as background, scaled + blurred so the top/bottom
+   "letterboxing" of the contained image is filled with the app's real colors,
+   not an ugly white bar. */
+.mkt-phone-screen-fill {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.1);
+  transform: scale(1.15);
+  z-index: 0;
+}
 .mkt-phone-screen img {
+  position: relative;
+  z-index: 1;
   width: 100%; height: 100%;
   object-fit: contain;
   object-position: center;
   display: block;
-  background: #FFFFFF;
+  background: transparent;
 }
 
 /* Subtle glass reflection — top-left arc */

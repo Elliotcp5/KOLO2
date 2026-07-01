@@ -18,11 +18,16 @@ const PhoneFrame = ({ src, alt = 'KOLO app screenshot', testId = 'mkt-phone', fi
     <span className="mkt-phone-btn mkt-phone-btn-power" aria-hidden />
 
     <div className="mkt-phone-screen">
+      <span
+        className="mkt-phone-screen-fill"
+        aria-hidden
+        style={{ backgroundImage: `url(${src})` }}
+      />
       <img
         src={src}
         alt={alt}
         loading="lazy"
-        style={{ objectFit: fit, transform: `scale(${scale})`, transformOrigin: 'center top' }}
+        style={{ objectFit: fit, transform: `scale(${scale})`, transformOrigin: 'center' }}
       />
       {/* Screen reflection — very subtle, top-left glare */}
       <span className="mkt-phone-glare" aria-hidden />
