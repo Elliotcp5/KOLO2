@@ -1211,3 +1211,48 @@ a.mkt-btn-ghost {
     transform: none !important;
   }
 }
+
+/* ========================================================
+   Custom cursor (Linear/Rauno signature)
+   ======================================================== */
+body.mkt-custom-cursor-on,
+body.mkt-custom-cursor-on * {
+  cursor: none !important;
+}
+.mkt-cursor-dot,
+.mkt-cursor-ring {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  mix-blend-mode: difference;
+}
+.mkt-cursor-dot {
+  width: 6px; height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+.mkt-cursor-ring {
+  width: 32px; height: 32px;
+  margin: -16px 0 0 -16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              margin 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 260ms ease,
+              background 260ms ease;
+}
+.mkt-cursor-ring.is-pointer {
+  width: 52px; height: 52px;
+  margin: -26px 0 0 -26px;
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  body.mkt-custom-cursor-on,
+  body.mkt-custom-cursor-on * { cursor: auto !important; }
+  .mkt-cursor-dot, .mkt-cursor-ring { display: none; }
+}
