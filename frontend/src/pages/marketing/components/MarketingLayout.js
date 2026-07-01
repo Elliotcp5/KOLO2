@@ -3,7 +3,6 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight, ChevronDown } from 'lucide-react';
 import '../marketing.css';
 import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
-import CustomCursor from './CustomCursor';
 
 const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
 
@@ -207,7 +206,6 @@ const Layout = ({ children }) => {
 
   return (
     <div className="mkt-root" data-testid="mkt-root">
-      <CustomCursor />
       <HeaderInner />
       <main>{children}</main>
       <FooterInner />
