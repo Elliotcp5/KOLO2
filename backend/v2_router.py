@@ -904,13 +904,34 @@ async def ai_chat(payload: AiChatIn, request: Request):
         f"\n\n[Profil agent]\nPrénom: {first_name or '—'}. "
         f"Rôle: {onboarding.get('role') or '—'}. "
         f"Activité: {onboarding.get('main_activity') or '—'}. "
+        f"CA annuel déclaré: {onboarding.get('annual_revenue') or '—'}. "
+        f"Taille équipe: {onboarding.get('team_size') or '—'}. "
         f"CRM: {onboarding.get('crm_tool') or '—'}. "
-        f"Secteurs: {', '.join(onboarding.get('sectors', [])) or '—'}.\n"
+        f"Secteurs: {', '.join(onboarding.get('sectors', [])) or '—'}. "
+        f"Langue préférée: {user_doc.get('language') or 'fr'}.\n"
         f"[État actuel]\nContacts: {contacts_count} · Dossiers: {cases_count} · Rappels aujourd'hui: {reminders_today}.\n"
         f"[5 derniers dossiers]\n{recent_cases_summary}"
     )
 
-    final_message = f"{payload.message}{context_snippet}{global_ctx}"
+    # Load the last 20 messages of this conversation so the LLM has real
+    # continuity across sessions (LlmChat's own session cache is not
+    # guaranteed to survive process restarts / worker rotations).
+    prior_msgs = []
+    if payload.conversation_id:
+        cursor = db.v2_ai_messages.find(
+            {"conversation_id": payload.conversation_id, "user_id": user.user_id},
+            {"_id": 0, "role": 1, "content": 1},
+        ).sort("created_at", -1).limit(20)
+        docs = await cursor.to_list(20)
+        docs.reverse()
+        for d in docs:
+            r = d.get("role")
+            c = d.get("content") or ""
+            if r and c:
+                prior_msgs.append(f"[{r.upper()}] {c}")
+    history_block = ("\n\n[Historique récent]\n" + "\n".join(prior_msgs)) if prior_msgs else ""
+
+    final_message = f"{payload.message}{context_snippet}{global_ctx}{history_block}"
 
     # Call LLM via emergentintegrations
     try:
@@ -1340,66 +1361,267 @@ async def get_onboarding(request: Request):
 @router.get("/prospecting/dpe")
 async def prospecting_dpe(request: Request, sector: Optional[str] = None, score: Optional[str] = None, days: Optional[int] = None):
     """
-    Real ADEME DPE API call:
-      https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines
+    Real ADEME DPE API call, dataset "dpe03existant" (logements existants
+    depuis juillet 2021). Uses q_fields to filter cleanly on code_postal_ban
+    (the qs= structured query is blocked by the nginx WAF for arbitrary
+    fields). Multi-sector queries are split into one call per token and
+    merged locally, then de-duplicated on numero_dpe.
+
+    Each item returned includes:
+      - numero_dpe   : the ADEME identifier
+      - dpe_url      : direct link to the official ADEME DPE viewer
+                       (https://observatoire-dpe-audit.ademe.fr/afficher-dpe/<id>)
     """
     user = await _get_user(request)
     db = _get_db()
     await _enforce_prospecting_quota(db, user.user_id)
     import httpx
-    qs = []
-    if sector:
-        # Multi-sectors: "75001,75002,Lyon 3" → OR clause covering both
-        # code_postal_ban and nom_commune_ban for each token.
-        parts = [p.strip() for p in sector.split(',') if p.strip()]
-        if parts:
-            clauses = []
-            for p in parts:
-                # Quote tokens with spaces to keep them as a single term in the qs DSL
-                token = f'"{p}"' if ' ' in p else p
-                clauses.append(f"code_postal_ban:{token}")
-                clauses.append(f"nom_commune_ban:{token}")
-            qs.append(("qs", "(" + " OR ".join(clauses) + ")"))
+    parts = [p.strip() for p in (sector or "").split(",") if p.strip()]
+    if not parts:
+        parts = [""]  # single un-scoped call
+
+    async def _fetch_one(token: str) -> list:
+        params = [
+            ("size", "30"),
+            ("select", "numero_dpe,adresse_ban,code_postal_ban,nom_commune_ban,surface_habitable_logement,etiquette_dpe,etiquette_ges,date_etablissement_dpe,type_batiment,periode_construction,annee_construction"),
+            ("sort", "-date_etablissement_dpe"),
+        ]
+        if token:
+            # Token = "75001" or "Lyon 3" → filter on the appropriate BAN field
+            if token.isdigit() and len(token) == 5:
+                params.append(("q_fields", "code_postal_ban"))
+                params.append(("q", token))
+            else:
+                params.append(("q_fields", "nom_commune_ban"))
+                params.append(("q", token))
+        if score:
+            # Score filter runs as an additional fulltext on etiquette_dpe.
+            # Because the WAF rejects `qs=`, we filter score client-side too.
+            pass
+        if days:
+            # Same: date filter applied post-fetch to stay under the WAF.
+            pass
+        try:
+            async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "KOLOApp/1.0 (contact@trykolo.io)"}) as client:
+                r = await client.get(
+                    "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
+                    params=params,
+                )
+                if r.status_code != 200:
+                    logger.warning(f"ADEME DPE HTTP {r.status_code} for token={token}")
+                    return []
+                return r.json().get("results", []) or []
+        except Exception as e:
+            logger.warning(f"ADEME DPE call failed for token={token}: {e}")
+            return []
+
+    # Fan-out (one call per sector token). Apify tokens rarely exceed 5-6.
+    import asyncio as _aio
+    all_rows = []
+    for chunk in await _aio.gather(*[_fetch_one(t) for t in parts]):
+        all_rows.extend(chunk)
+
+    # Client-side filters (score + freshness)
     if score:
-        qs.append(("qs", f"etiquette_dpe:{score.upper()}"))
+        s = score.upper()
+        all_rows = [r for r in all_rows if (r.get("etiquette_dpe") or "").upper() == s]
     if days:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
-        qs.append(("qs", f"date_etablissement_dpe:>={cutoff}"))
-    qs.append(("size", "20"))
-    qs.append(("select", "adresse_ban,code_postal_ban,nom_commune_ban,surface_habitable_logement,etiquette_dpe,etiquette_ges,date_etablissement_dpe,n_dpe"))
-    qs.append(("sort", "-date_etablissement_dpe"))
-    url = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines"
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=int(days))).date().isoformat()
+        all_rows = [r for r in all_rows if (r.get("date_etablissement_dpe") or "") >= cutoff]
+
+    # De-duplicate on numero_dpe, keep most recent (already sorted desc)
+    seen = set()
     items = []
+    for row in all_rows:
+        n = row.get("numero_dpe") or ""
+        if not n or n in seen:
+            continue
+        seen.add(n)
+        addr = row.get("adresse_ban") or ""
+        cp = row.get("code_postal_ban") or ""
+        commune = row.get("nom_commune_ban") or ""
+        # Some rows already contain CP+commune in adresse_ban; keep display clean.
+        display = addr if (cp in addr and commune in addr) else f"{addr}, {cp} {commune}".strip().strip(",")
+        items.append({
+            "numero_dpe": n,
+            "address": display,
+            "code_postal": cp,
+            "commune": commune,
+            "surface": row.get("surface_habitable_logement"),
+            "energy": row.get("etiquette_dpe") or "—",
+            "climate": row.get("etiquette_ges") or "—",
+            "issued_at": row.get("date_etablissement_dpe") or "",
+            "building_type": row.get("type_batiment") or "",
+            "construction_period": row.get("periode_construction") or "",
+            "construction_year": row.get("annee_construction") or None,
+            # Direct link to the official ADEME public DPE viewer.
+            "dpe_url": f"https://observatoire-dpe-audit.ademe.fr/afficher-dpe/{n}",
+        })
+        if len(items) >= 40:
+            break
+
+    await _log_prospecting(db, user.user_id, "dpe", {"sector": sector, "score": score, "days": days, "count": len(items)})
+    return {"items": items, "source": "ADEME", "total_returned": len(items)}
+
+
+# ============================================================================
+# Supabase enrichment helpers (listings table)
+# Contract: table `public.listings` created via /app/supabase_setup.sql.
+# We use the REST API directly (postgrest) with the service_role key so no
+# extra dependency is required — httpx is already in requirements.
+# ============================================================================
+def _supabase_config():
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
+    return (url, key) if (url and key) else (None, None)
+
+
+def _sb_headers(key: str, prefer: str = "return=representation") -> dict:
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": prefer,
+    }
+
+
+async def _read_supabase_listings(sector: str, age: Optional[str] = None, kind: Optional[str] = None, limit: int = 40) -> list:
+    """Read listings from Supabase filtered by postal codes + freshness.
+    Returns [] if the table doesn't exist yet or Supabase is unreachable.
+    """
+    url, key = _supabase_config()
+    if not url or not key:
+        return []
+    parts = [p.strip() for p in (sector or "").split(",") if p.strip()]
+    postal_codes = [p for p in parts if p.isdigit() and len(p) == 5]
+    if not postal_codes:
+        return []
+    # Freshness cutoff (age = '30' | '90' | '90+' matches app UI onglets)
+    cutoff = None
+    if age == "30":
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    elif age == "90":
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+    params = {
+        "select": "external_id,portal,postal_code,city,price,surface,rooms,title,url,thumbnail_url,energy_class,kind,first_seen_at,last_seen_at",
+        "is_active": "eq.true",
+        "postal_code": f"in.({','.join(postal_codes)})",
+        "order": "first_seen_at.desc",
+        "limit": str(limit),
+    }
+    if cutoff:
+        params["first_seen_at"] = f"gte.{cutoff}"
+    elif age == "90+":
+        cutoff_old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+        params["first_seen_at"] = f"lt.{cutoff_old}"
+    if kind == "private":
+        params["kind"] = "eq.private"
+
+    import httpx
     try:
         async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(url, params=qs)
-            if r.status_code == 200:
-                data = r.json()
-                for row in data.get("results", []):
-                    items.append({
-                        "address": f"{row.get('adresse_ban') or ''}, {row.get('code_postal_ban') or ''} {row.get('nom_commune_ban') or ''}".strip().strip(","),
-                        "surface": row.get("surface_habitable_logement"),
-                        "energy": row.get("etiquette_dpe") or "—",
-                        "climate": row.get("etiquette_ges") or "—",
-                        "parcel": row.get("n_dpe") or "",
-                        "issued_at": row.get("date_etablissement_dpe") or "",
-                    })
-    except Exception:
-        pass
-    if not items:
-        # fallback samples
-        items = [
-            {"address": "12 rue de la République, 69003 Lyon", "surface": 72, "energy": "D", "climate": "C", "parcel": "AB-0123", "issued_at": "2026-02-15"},
-            {"address": "8 avenue Jean Jaurès, 75019 Paris", "surface": 45, "energy": "E", "climate": "D", "parcel": "AC-0445", "issued_at": "2026-02-10"},
-        ]
-    await _log_prospecting(db, user.user_id, "dpe", {"sector": sector, "score": score, "days": days})
-    return {"items": items, "source": "ADEME"}
+            r = await client.get(f"{url}/rest/v1/listings", params=params, headers=_sb_headers(key))
+            if r.status_code != 200:
+                if r.status_code == 404 and "listings" in (r.text or ""):
+                    logger.info("Supabase listings table not found — did you run /app/supabase_setup.sql yet?")
+                else:
+                    logger.warning(f"Supabase read HTTP {r.status_code}: {r.text[:200]}")
+                return []
+            rows = r.json() or []
+    except Exception as e:
+        logger.warning(f"Supabase read failed: {e}")
+        return []
+
+    # Normalise to the same shape the mobile app expects.
+    out = []
+    for row in rows:
+        out.append({
+            "external_id": row.get("external_id"),
+            "title": row.get("title") or "Annonce",
+            "sector": row.get("city") or row.get("postal_code") or "",
+            "postal_code": row.get("postal_code") or "",
+            "price": row.get("price") or 0,
+            "surface": row.get("surface") or 0,
+            "rooms": row.get("rooms") or 0,
+            "kind": row.get("kind") or "private",
+            "photo": row.get("thumbnail_url") or "",
+            "url": row.get("url") or "",
+            "source_site": row.get("portal") or "",
+            "energy_class": row.get("energy_class") or "",
+            "posted_at": row.get("first_seen_at") or "",
+            "first_seen_at": row.get("first_seen_at") or "",
+            "last_seen_at": row.get("last_seen_at") or "",
+        })
+    return out
+
+
+async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin") -> int:
+    """Upsert normalised Apify rows into Supabase.
+    Preserves first_seen_at on conflict (portal, external_id).
+    """
+    url, key = _supabase_config()
+    if not url or not key or not rows:
+        return 0
+    import httpx, hashlib as _hh
+    payload = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for row in rows:
+        ext_id = row.get("external_id") or row.get("id") or row.get("url") or ""
+        if not ext_id:
+            continue
+        # Use a stable hash of the URL when the portal doesn't expose a real id.
+        if not str(ext_id).isdigit():
+            ext_id = _hh.sha1(str(ext_id).encode()).hexdigest()[:24]
+        portal = (row.get("source") or row.get("portal") or portal_default or "").lower() or portal_default
+        payload.append({
+            "external_id": str(ext_id),
+            "portal": portal,
+            "postal_code": str(row.get("postalCode") or row.get("postal_code") or "") or None,
+            "city": row.get("city") or row.get("commune") or None,
+            "price": int(row.get("price") or 0) or None,
+            "surface": int(row.get("surface") or row.get("area") or 0) or None,
+            "rooms": int(row.get("rooms") or row.get("nbRooms") or 0) or None,
+            "title": row.get("title") or (row.get("description") or "")[:120] or "Annonce",
+            "url": row.get("url") or row.get("link") or "",
+            "thumbnail_url": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
+            "energy_class": row.get("dpe") or row.get("energy") or None,
+            "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
+            "raw_data": row,
+            "last_seen_at": now_iso,
+            "is_active": True,
+            "updated_at": now_iso,
+        })
+    if not payload:
+        return 0
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                f"{url}/rest/v1/listings",
+                params={"on_conflict": "portal,external_id"},
+                headers={**_sb_headers(key, prefer="resolution=merge-duplicates,return=minimal")},
+                json=payload,
+            )
+            if r.status_code in (200, 201, 204):
+                return len(payload)
+            logger.warning(f"Supabase upsert HTTP {r.status_code}: {r.text[:200]}")
+            return 0
+    except Exception as e:
+        logger.warning(f"Supabase upsert failed: {e}")
+        return 0
+
 
 
 @router.get("/prospecting/listings")
 async def prospecting_listings(request: Request, sector: Optional[str] = None, kind: Optional[str] = None, age: Optional[str] = None):
     """Multi-source French real-estate listings via Apify (LBC + SeLoger + PAP + Bien'ici + Logic-immo).
     Uses actor `dltik/pige-immo-fr-scraper`. Cache 6h.
+
+    Priority read order:
+      1. Supabase `listings` table (fast, persistent, tracks first_seen_at
+         for accurate freshness filters — see /app/supabase_setup.sql)
+      2. In-app Mongo cache (6h TTL from a previous scrape)
+      3. Live Apify kickoff + short poll
+      4. Empty state with hint (no fake placeholder)
     """
     user = await _get_user(request)
     db = _get_db()
@@ -1407,7 +1629,16 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
     apify_token = os.environ.get("APIFY_API_TOKEN", "").strip()
     actor_id = os.environ.get("APIFY_ACTOR_PIGE_IMMO", "dltik/pige-immo-fr-scraper").strip().replace("/", "~")
 
-    # ---- REAL CALL via Apify Pige Immo
+    # ---- STEP 1: Try Supabase enrichment DB first ----
+    # Query the shared `listings` table by postal_code(s) with the age filter
+    # (age = '30' / '90' / '90+' matches ONBOARDING onglets).
+    if sector:
+        sb_items = await _read_supabase_listings(sector=sector, age=age, kind=kind)
+        if sb_items:
+            await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "source": "supabase", "count": len(sb_items)})
+            return {"items": sb_items, "source": "Pige (KOLO DB)", "hint": None}
+
+    # ---- REAL CALL via Apify Pige Immo (STEP 2/3) ----
     if apify_token and sector:
         cache_key = f"apify_pige_{sector}_{kind or 'any'}"
         cached = await db.v2_listings_cache.find_one({"key": cache_key}, {"_id": 0})
@@ -1457,6 +1688,12 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                         {"$set": {"key": cache_key, "items": items, "cached_at": datetime.now(timezone.utc).isoformat()}},
                                         upsert=True,
                                     )
+                                    # Enrich the shared Supabase DB so future
+                                    # queries on the same postal code are instant.
+                                    try:
+                                        await _upsert_supabase_listings(raw, portal_default="leboncoin")
+                                    except Exception as _sbe:
+                                        logger.warning(f"Supabase upsert (pending path) failed: {_sbe}")
                                     await db.v2_listings_pending.delete_one({"key": cache_key})
                                     await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "from_pending": True})
                                     return {"items": items, "source": "Pige Immo (LBC+PAP)"}
@@ -1544,6 +1781,11 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                     )
                                 except Exception:
                                     pass
+                                # Also persist to Supabase for the shared enrichment DB
+                                try:
+                                    await _upsert_supabase_listings(raw, portal_default="leboncoin")
+                                except Exception as _sbe:
+                                    logger.warning(f"Supabase upsert (fresh path) failed: {_sbe}")
                                 await _log_prospecting(db, user.user_id, "listings", {"sector": sector, "kind": kind})
                                 return {"items": items, "source": "Pige Immo (LBC+PAP)"}
                     # If still running, store run info so next call can pick up the dataset

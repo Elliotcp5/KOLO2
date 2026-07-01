@@ -181,15 +181,38 @@ export const AIChatModal = ({ open, onClose, caseId, initialReply }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+  // Persist conversation across sessions so KOLO keeps its memory.
+  // A per-case conversation is separate from the global one.
+  const convKey = caseId ? `kolo_v2_conv_id_case_${caseId}` : 'kolo_v2_conv_id_global';
+  const [conversationId, setConversationId] = useState(() => {
+    try { return localStorage.getItem(convKey) || null; } catch (_) { return null; }
+  });
   const { listening, start, stop } = useSpeech((t) => setInput(prev => (prev ? `${prev} ${t}` : t)));
 
   useEffect(() => {
     if (!open) return;
-    if (initialReply) setMessages([{ role: 'assistant', content: initialReply }]);
-    else setMessages([]);
-    setConversationId(null);
-  }, [open, initialReply]);
+    // Restore the persisted conversation on open. If none, start fresh but
+    // the backend will generate & return a conv_id we'll persist below.
+    let stored = null;
+    try { stored = localStorage.getItem(convKey); } catch (_) { /* noop */ }
+    setConversationId(stored);
+    setMessages([]);
+    if (initialReply) {
+      setMessages([{ role: 'assistant', content: initialReply }]);
+      return;
+    }
+    // Rehydrate previous exchanges (up to last 30) so the user sees continuity.
+    if (stored) {
+      v2api.getConversation(stored)
+        .then(r => {
+          const msgs = (r.messages || r || [])
+            .filter(m => m && m.role && m.content)
+            .map(m => ({ role: m.role, content: m.content }));
+          if (msgs.length) setMessages(msgs);
+        })
+        .catch(() => { /* silent — first launch or expired */ });
+    }
+  }, [open, initialReply, convKey]);
 
   const send = async (text) => {
     const msg = (text ?? input).trim();
@@ -200,6 +223,7 @@ export const AIChatModal = ({ open, onClose, caseId, initialReply }) => {
     try {
       const res = await v2api.aiChat({ message: msg, conversation_id: conversationId, case_id: caseId });
       setConversationId(res.conversation_id);
+      try { localStorage.setItem(convKey, res.conversation_id); } catch (_) { /* noop */ }
       setMessages(m => [...m, { role: 'assistant', content: res.reply }]);
     } catch (e) {
       setMessages(m => [...m, { role: 'assistant', content: `Erreur: ${e.message}` }]);

@@ -305,10 +305,20 @@ export const V2ProspectingPage = () => {
       {mode === 'dpe' ? items.map((it, i) => (
         <div key={i} className="v2-card" style={{ marginBottom: 10 }} data-testid={`prosp-dpe-item-${i}`}>
           <div className="v2-row-title">{it.address}</div>
-          <div className="v2-row-sub">Surface {it.surface}m² · Énergie {it.energy} · Climat {it.climate} · {it.issued_at}</div>
+          <div className="v2-row-sub">
+            {it.surface ? `Surface ${it.surface}m² · ` : ''}Énergie {it.energy} · Climat {it.climate} · {it.issued_at}
+            {it.building_type ? ` · ${it.building_type}` : ''}
+            {it.construction_period ? ` · Constr. ${it.construction_period}` : (it.construction_year ? ` · ${it.construction_year}` : '')}
+          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <a className="v2-btn secondary" href={`https://observatoire-dpe-audit.ademe.fr/?q=${encodeURIComponent(it.address)}`} target="_blank" rel="noopener noreferrer">
-              Voir DPE <ExternalLink size={14} />
+            <a
+              className="v2-btn secondary"
+              href={it.dpe_url || `https://observatoire-dpe-audit.ademe.fr/afficher-dpe/${encodeURIComponent(it.numero_dpe || '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid={`prosp-dpe-open-${i}`}
+            >
+              Voir la fiche DPE <ExternalLink size={14} />
             </a>
             <button className="v2-btn primary" onClick={() => convertToCase(it)} data-testid={`prosp-dpe-convert-${i}`}>
               <Plus size={14} /> Dossier
