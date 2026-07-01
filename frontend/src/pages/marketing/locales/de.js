@@ -9,7 +9,7 @@ const de = {
   },
   nav: {
     home: 'Startseite',
-    how: 'So funktioniert KOLO',
+    how: 'So funktioniert es',
     resources: 'Ressourcen',
     about: 'Über uns',
     legal: 'Rechtliches',

@@ -205,7 +205,7 @@ const HomeContent = () => {
               <div className="mkt-price-sub">Sans engagement. Résiliable à tout moment.</div>
             </div>
             <ul className="mkt-price-features">
-              <li><Check size={16} strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> (Le Bon Coin, PAP)</span></li>
+              <li><Check size={16} strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> sur tous les portails (SeLoger, LeBonCoin, PAP, Bien'ici, Logic-Immo…)</span></li>
               <li><Check size={16} strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
               <li><Check size={16} strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
               <li><Check size={16} strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>

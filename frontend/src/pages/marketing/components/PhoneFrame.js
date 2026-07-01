@@ -9,7 +9,7 @@ import React from 'react';
  *  - `fit` prop: 'cover' (default, full-bleed screenshot) | 'contain' (letterboxed)
  *  - `scale` prop: zoom in/out the screenshot within the screen (default 1.0)
  */
-const PhoneFrame = ({ src, alt = 'KOLO app screenshot', testId = 'mkt-phone', fit = 'cover', scale = 1 }) => (
+const PhoneFrame = ({ src, alt = 'KOLO app screenshot', testId = 'mkt-phone', fit = 'contain', scale = 1 }) => (
   <div className="mkt-phone" data-testid={testId}>
     {/* Titanium side buttons */}
     <span className="mkt-phone-btn mkt-phone-btn-mute" aria-hidden />

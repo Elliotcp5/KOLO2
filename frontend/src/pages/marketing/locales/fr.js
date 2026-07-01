@@ -9,7 +9,7 @@ const fr = {
   },
   nav: {
     home: 'Accueil',
-    how: 'Comment KOLO',
+    how: 'Comment ça marche',
     resources: 'Ressources',
     about: 'À propos',
     legal: 'Mentions légales',
