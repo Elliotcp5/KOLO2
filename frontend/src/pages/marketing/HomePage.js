@@ -171,28 +171,6 @@ const HomeContent = () => {
         </div>
       </section>
 
-      {/* ========== QUOTE ========== */}
-      <section className="mkt-section-tight">
-        <div className="mkt-container mkt-container-narrow">
-          <motion.div
-            className="mkt-quote-block"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, ease: easeOut }}
-          >
-            <p className="mkt-quote">« {t('home.quote')} »</p>
-            <div className="mkt-quote-author">
-              <div className="mkt-quote-avatar">CL</div>
-              <div>
-                <div className="mkt-quote-author-name">{t('home.quote_author')}</div>
-                <div className="mkt-quote-author-role">Utilise KOLO au quotidien</div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* ========== FINAL CTA ========== */}
       <section className="mkt-section">
         <div className="mkt-container">
