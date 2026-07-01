@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Mic, Send, MicOff, Plus, Phone, Mail, Clock, Brain } from 'lucide-react';
 import v2api from './v2api';
+import v2t from './v2i18n';
 
 const Modal = ({ open, onClose, title, children, testid }) => {
   if (!open) return null;
@@ -62,7 +63,7 @@ export const AddNoteModal = ({ open, onClose, onCreated }) => {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Nouvelle note terrain" testid="modal-add-note">
+    <Modal open={open} onClose={onClose} title={v2t('modal.new_note')} testid="modal-add-note">
       <textarea
         className="v2-textarea"
         rows={5}
@@ -109,7 +110,7 @@ export const AddReminderModal = ({ open, onClose, onCreated, defaultDate }) => {
     catch (e) { alert(e.message); } finally { setBusy(false); }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Nouveau rappel" testid="modal-add-reminder">
+    <Modal open={open} onClose={onClose} title={v2t('modal.new_reminder')} testid="modal-add-reminder">
       <div className="v2-field">
         <label className="v2-label">Titre</label>
         <div className="v2-input-with-mic">
@@ -233,7 +234,7 @@ export const AIChatModal = ({ open, onClose, caseId, initialReply }) => {
   const suggestions = ['Voir mes tâches du jour', 'Créer un contact vendeur', 'Recevoir un conseil de prospection'];
 
   return (
-    <Modal open={open} onClose={onClose} title="Parler à KOLO" testid="modal-ai-chat">
+    <Modal open={open} onClose={onClose} title={v2t('modal.speak_to_kolo')} testid="modal-ai-chat">
       <div className="v2-chat-list" data-testid="ai-chat-list">
         {messages.length === 0 && (
           <div className="v2-chat-msg assistant">Bonjour 👋 Je suis KOLO, ton copilote immo. Pose-moi une question (prospection, relance, négo…) ou dicte ton brief terrain.</div>
@@ -288,7 +289,7 @@ export const AddContactModal = ({ open, onClose, onCreated }) => {
     catch (e) { alert(e.message); } finally { setBusy(false); }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Nouveau contact" testid="modal-add-contact">
+    <Modal open={open} onClose={onClose} title={v2t('modal.new_contact')} testid="modal-add-contact">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div className="v2-field"><label className="v2-label">Civilité</label>
           <select className="v2-select" value={form.civility} onChange={set('civility')} data-testid="contact-civility">
@@ -352,7 +353,7 @@ export const AddCaseModal = ({ open, onClose, onCreated }) => {
     } catch (e) { alert(e.message); } finally { setBusy(false); }
   };
   return (
-    <Modal open={open} onClose={onClose} title="Nouveau dossier" testid="modal-add-case">
+    <Modal open={open} onClose={onClose} title={v2t('modal.new_case')} testid="modal-add-case">
       <div className="v2-filter-tabs" style={{ marginBottom: 14 }}>
         <button className={`v2-filter-tab ${type === 'seller' ? 'active' : ''}`} onClick={() => setType('seller')} data-testid="case-type-seller">Vendeur</button>
         <button className={`v2-filter-tab ${type === 'buyer' ? 'active' : ''}`} onClick={() => setType('buyer')} data-testid="case-type-buyer">Acquéreur</button>

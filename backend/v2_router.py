@@ -1827,6 +1827,193 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
 
 
 # ============================================================================
+# ESTIMATION IMMOBILIÈRE  /api/v2/estimate
+# Basée sur DVF (Base des Valeurs Foncières, data.gouv.fr) + annonces récentes
+# du secteur en base Supabase. Retourne prix estimé + fourchette + comparables.
+# ============================================================================
+class EstimateIn(BaseModel):
+    postal_code: str
+    surface_m2: float
+    rooms: Optional[int] = None
+    property_kind: Optional[str] = "apartment"  # 'apartment' | 'house'
+    dpe: Optional[str] = None  # A..G
+    year_built: Optional[int] = None
+    address: Optional[str] = None
+
+
+@router.post("/estimate")
+async def estimate_property(payload: EstimateIn, request: Request):
+    """Estimation immobilière basée sur DVF (transactions réelles) + annonces
+    actives du CP en base Supabase. Ajustements hédoniques (DPE, période).
+    Jamais de placeholder — si aucune donnée, on le dit clairement."""
+    user = await _get_user(request)
+    db = _get_db()
+    cp = payload.postal_code.strip()
+    surface = float(payload.surface_m2 or 0)
+    if not cp or surface <= 0:
+        raise HTTPException(status_code=400, detail="postal_code et surface_m2 requis")
+
+    import httpx
+    prices_per_m2 = []
+    comparables = []
+
+    # --- Source 1: DVF via api.cquest.org (open data DGFIP mirror) ---
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            type_local = "Appartement" if (payload.property_kind or "").lower().startswith("apart") else "Maison"
+            r = await client.get(
+                "https://api.cquest.org/dvf",
+                params={"code_postal": cp, "type_local": type_local, "limit": 200},
+            )
+            if r.status_code == 200:
+                data = r.json() or {}
+                for row in (data.get("resultats") or []):
+                    val = row.get("valeur_fonciere")
+                    s = row.get("surface_reelle_bati")
+                    if not val or not s or float(s) < 8 or float(s) > 500:
+                        continue
+                    ppm = float(val) / float(s)
+                    if 500 < ppm < 30000:
+                        prices_per_m2.append(ppm)
+                        if len(comparables) < 8:
+                            comparables.append({
+                                "source": "DVF",
+                                "price": int(float(val)),
+                                "surface": float(s),
+                                "rooms": row.get("nombre_pieces_principales"),
+                                "date": row.get("date_mutation"),
+                                "address": row.get("adresse_nom_voie") or row.get("commune", ""),
+                                "price_per_m2": round(ppm),
+                            })
+    except Exception as e:
+        logger.info(f"DVF fetch skipped: {e}")
+
+    # --- Source 2: Annonces récentes (Supabase listings) ---
+    if len(prices_per_m2) < 8:
+        sb_url, sb_key = _supabase_config()
+        if sb_url and sb_key:
+            try:
+                async with httpx.AsyncClient(timeout=6) as client:
+                    r = await client.get(
+                        f"{sb_url}/rest/v1/listings",
+                        params={
+                            "select": "price,surface,rooms,title,url,first_seen_at,city",
+                            "postal_code": f"eq.{cp}",
+                            "is_active": "eq.true",
+                            "order": "first_seen_at.desc",
+                            "limit": "100",
+                        },
+                        headers=_sb_headers(sb_key, prefer="return=representation"),
+                    )
+                    if r.status_code == 200:
+                        for row in r.json() or []:
+                            price = row.get("price") or 0
+                            s = row.get("surface") or 0
+                            if price > 10000 and s > 8:
+                                ppm = float(price) / float(s)
+                                if 500 < ppm < 30000:
+                                    prices_per_m2.append(ppm)
+                                    if len(comparables) < 12:
+                                        comparables.append({
+                                            "source": "Annonce",
+                                            "price": int(price),
+                                            "surface": float(s),
+                                            "rooms": row.get("rooms"),
+                                            "date": (row.get("first_seen_at") or "")[:10],
+                                            "address": row.get("city") or cp,
+                                            "url": row.get("url"),
+                                            "price_per_m2": round(ppm),
+                                        })
+            except Exception as e:
+                logger.info(f"Supabase estimate fetch skipped: {e}")
+
+    if not prices_per_m2:
+        return {
+            "ok": False,
+            "message": f"Pas assez de données publiques pour {cp}. Essaie une zone plus large ou lance une pige d'annonces d'abord.",
+            "postal_code": cp,
+        }
+
+    prices_per_m2.sort()
+    n = len(prices_per_m2)
+    p10 = prices_per_m2[max(0, n // 10)]
+    p90 = prices_per_m2[min(n - 1, (n * 9) // 10)]
+    trimmed = [p for p in prices_per_m2 if p10 <= p <= p90] or prices_per_m2
+    trimmed.sort()
+    median_ppm = trimmed[len(trimmed) // 2]
+
+    dpe_factor = {"A": 1.06, "B": 1.04, "C": 1.02, "D": 1.00, "E": 0.97, "F": 0.93, "G": 0.89}
+    factor = dpe_factor.get((payload.dpe or "").upper(), 1.0)
+    if payload.year_built:
+        if payload.year_built >= 2015: factor *= 1.03
+        elif payload.year_built <= 1948: factor *= 0.97
+    if surface < 25: factor *= 1.05
+    elif surface > 120: factor *= 0.97
+
+    est_ppm = median_ppm * factor
+    estimate = est_ppm * surface
+    conf_pct = 0.08 if n >= 30 else (0.10 if n >= 15 else 0.15)
+    return {
+        "ok": True,
+        "postal_code": cp,
+        "surface_m2": surface,
+        "sample_size": n,
+        "median_price_per_m2": round(median_ppm),
+        "adjusted_price_per_m2": round(est_ppm),
+        "estimate": round(estimate),
+        "min": round(estimate * (1 - conf_pct)),
+        "max": round(estimate * (1 + conf_pct)),
+        "confidence": "high" if n >= 30 else ("medium" if n >= 10 else "low"),
+        "adjustments_applied": {"dpe": payload.dpe, "year_built": payload.year_built, "factor": round(factor, 3)},
+        "comparables": comparables[:8],
+        "source": "DVF (data.gouv.fr) + annonces KOLO",
+    }
+
+
+# ============================================================================
+# CRON /api/v2/cron/collect-listings  (protégé par CRON_SECRET)
+# Déclenchable par GitHub Actions / Vercel Cron / n'importe quel scheduler.
+# ============================================================================
+@router.post("/cron/collect-listings")
+async def cron_collect_listings(request: Request):
+    """Auth: header `X-Cron-Secret: <CRON_SECRET>`. Boucle sur CRON_POSTAL_CODES
+    (defaults to major FR cities) et upsert dans Supabase."""
+    secret = os.environ.get("CRON_SECRET", "")
+    header_secret = request.headers.get("X-Cron-Secret", "") or request.headers.get("x-cron-secret", "")
+    if not secret or header_secret != secret:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Cron-Secret header")
+
+    apify_token = os.environ.get("APIFY_API_TOKEN", "").strip()
+    actor_id = os.environ.get("APIFY_ACTOR_PIGE_IMMO", "dltik/pige-immo-fr-scraper").strip().replace("/", "~")
+    if not apify_token:
+        raise HTTPException(status_code=503, detail="APIFY_API_TOKEN missing")
+
+    default_codes = "75001,75002,75003,75004,75005,75006,75007,75008,75009,75010,75011,75015,75016,75017,75018,69001,69002,69003,69006,69007,13001,13006,13008,33000,33200,31000,31100"
+    codes = [c.strip() for c in (os.environ.get("CRON_POSTAL_CODES") or default_codes).split(",") if c.strip()]
+
+    import httpx
+    results = []
+    async with httpx.AsyncClient(timeout=90) as client:
+        for cp in codes:
+            try:
+                apify_input = {"sources": ["leboncoin", "pap"], "transaction": "buy", "maxItems": 40, "postalCodes": [cp]}
+                r = await client.post(
+                    f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items?token={apify_token}",
+                    json=apify_input,
+                )
+                if r.status_code == 200:
+                    raw = r.json() or []
+                    n = await _upsert_supabase_listings(raw, portal_default="leboncoin")
+                    results.append({"cp": cp, "fetched": len(raw), "upserted": n})
+                else:
+                    results.append({"cp": cp, "error": f"apify HTTP {r.status_code}"})
+            except Exception as e:
+                results.append({"cp": cp, "error": str(e)[:120]})
+
+    return {"ok": True, "run_at": datetime.now(timezone.utc).isoformat(), "results": results}
+
+
+# ============================================================================
 # PROMO CODES  /api/v2/promo/*
 # ============================================================================
 class PromoRedeemRequest(BaseModel):

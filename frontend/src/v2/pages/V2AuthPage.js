@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { V2Logo } from '../V2Layout';
 import v2api, { getApiBase } from '../v2api';
+import v2t from '../v2i18n';
 import '../../styles/v2.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
@@ -76,24 +77,24 @@ export default function V2AuthPage({ mode = 'login' }) {
         {step === 'email' && (
           <>
             <div className="v2-field">
-              <label className="v2-label">Email</label>
-              <input className="v2-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ton@email.com" data-testid="auth-email" />
+              <label className="v2-label">{v2t('auth.email')}</label>
+              <input className="v2-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={v2t('auth.email_placeholder')} data-testid="auth-email" />
             </div>
             {mode === 'signup' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="v2-field">
-                  <label className="v2-label">Prénom</label>
+                  <label className="v2-label">{v2t('auth.first_name')}</label>
                   <input className="v2-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} data-testid="auth-firstname" />
                 </div>
                 <div className="v2-field">
-                  <label className="v2-label">Nom</label>
+                  <label className="v2-label">{v2t('auth.last_name')}</label>
                   <input className="v2-input" value={lastName} onChange={(e) => setLastName(e.target.value)} data-testid="auth-lastname" />
                 </div>
               </div>
             )}
             {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 0, marginBottom: 10 }}>{error}</p>}
             <button className="v2-btn primary full" onClick={sendCode} disabled={busy || !email} data-testid="auth-send-code">
-              {busy ? 'Envoi…' : 'Recevoir un code par email'}
+              {busy ? '…' : v2t('auth.send_code')}
             </button>
 
             {false && (

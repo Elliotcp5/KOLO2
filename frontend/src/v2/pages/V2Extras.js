@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ExternalLink, Plus, BookOpen, LogOut, Trash2, X as XIcon } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import v2api from '../v2api';
+import v2t from '../v2i18n';
 import '../../styles/v2.css';
 
 const useAuthedUser = () => {
@@ -154,14 +155,14 @@ export const V2ProspectingPage = () => {
   return (
     <V2Layout user={user}>
       <button className="v2-icon-btn" onClick={() => navigate(-1)} style={{ marginBottom: 12 }}><ChevronLeft size={16} /></button>
-      <h1 className="v2-hello" style={{ fontSize: 22 }}>Prospection</h1>
+      <h1 className="v2-hello" style={{ fontSize: 22 }}>{v2t('pige.title')}</h1>
       <div className="v2-filter-tabs" style={{ marginTop: 12 }}>
-        <button className={`v2-filter-tab ${mode === 'dpe' ? 'active' : ''}`} onClick={() => setMode('dpe')} data-testid="prosp-dpe">DPE (ADEME)</button>
-        <button className={`v2-filter-tab ${mode === 'ads' ? 'active' : ''}`} onClick={() => setMode('ads')} data-testid="prosp-ads">Annonces</button>
+        <button className={`v2-filter-tab ${mode === 'dpe' ? 'active' : ''}`} onClick={() => setMode('dpe')} data-testid="prosp-dpe">{v2t('pige.dpe')}</button>
+        <button className={`v2-filter-tab ${mode === 'ads' ? 'active' : ''}`} onClick={() => setMode('ads')} data-testid="prosp-ads">{v2t('pige.ads')}</button>
       </div>
 
       <div className="v2-field" style={{ marginTop: 14 }}>
-        <label className="v2-label">Secteurs (codes postaux ou villes)</label>
+        <label className="v2-label">{v2t('pige.sectors_label')}</label>
         {sectors.length > 0 && (
           <div className="v2-multi" style={{ marginBottom: 8 }} data-testid="prosp-sectors-selected">
             {sectors.map(s => (
@@ -189,7 +190,7 @@ export const V2ProspectingPage = () => {
                 addSector();
               }
             }}
-            placeholder="Ajouter un code postal (ex. 75001, 75002, Lyon 3)"
+            placeholder={v2t('pige.sectors_placeholder')}
             inputMode="search"
             enterKeyHint="done"
             autoCorrect="off"
@@ -210,7 +211,7 @@ export const V2ProspectingPage = () => {
           </button>
         </div>
         <p style={{ fontSize: 11.5, color: 'var(--v2-muted-2)', marginTop: 6 }}>
-          Sépare plusieurs codes par une virgule, ou touche <strong>+</strong> pour les empiler.
+          {v2t('pige.sectors_hint')}
         </p>
       </div>
       {mode === 'dpe' && (
@@ -479,7 +480,10 @@ export const V2SettingsPage = () => {
                 type="button"
                 className={`v2-btn ${active ? 'primary' : 'secondary'}`}
                 onClick={() => {
-                  try { localStorage.setItem('kolo_locale', l.code); } catch (_) {}
+                  try {
+                    localStorage.setItem('kolo_locale', l.code);
+                    localStorage.setItem('kolo_locale_manual', 'true');
+                  } catch (_) { /* noop */ }
                   window.location.reload();
                 }}
                 data-testid={`settings-lang-${l.code}`}

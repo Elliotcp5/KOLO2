@@ -5,10 +5,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Settings, LogOut, CreditCard, ChevronRight, Clock, Brain, X as XIcon } from 'lucide-react';
 import V2Layout from '../V2Layout';
+import v2t from '../v2i18n';
 import { AddNoteModal, AddReminderModal, AIChatModal, CaseDetailModal } from '../V2Modals';
 import V2NotificationPrompt from '../V2NotificationPrompt';
 import v2api from '../v2api';
-import v2t from '../v2i18n';
 import '../../styles/v2.css';
 
 const stripEmoji = (s) => (s || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2700}-\u{27BF}\u{1F000}-\u{1F2FF}]/gu, '').replace(/\s+/g, ' ').trim();
@@ -197,7 +197,11 @@ export default function V2HomePage() {
           >
             <div className="v2-hero-left">
               <h1 className="v2-hello" data-testid="home-hello">
-                Bonjour <span className="v2-hello-name">{user.first_name || ''}</span>
+                {(() => {
+                  const h = new Date().getHours();
+                  const key = h < 12 ? 'home.hello_morning' : (h < 18 ? 'home.hello_afternoon' : 'home.hello_evening');
+                  return v2t(key, { name: user.first_name || '' });
+                })()}
                 {!dashboard?.has_pro && <span className="v2-pro-badge" data-testid="home-pro-badge">Passer PRO</span>}
               </h1>
               <span className="v2-date" data-testid="home-date">

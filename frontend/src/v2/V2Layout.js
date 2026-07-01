@@ -215,10 +215,10 @@ const triggerHapticImpact = async () => {
 
 export const V2BottomNav = ({ showCentralMic = false, onMicClick = () => {} }) => {
   const tabs = [
-    { to: '/app-v2', icon: HomeIcon, label: 'Accueil', exact: true, tid: 'tab-home' },
-    { to: '/app-v2/dossiers', icon: FolderOpen, label: 'Dossiers', tid: 'tab-cases' },
-    { to: '/app-v2/contacts', icon: Users, label: 'Contacts', tid: 'tab-contacts' },
-    { to: '/app-v2/agenda', icon: Calendar, label: 'Agenda', tid: 'tab-agenda' },
+    { to: '/app-v2', icon: HomeIcon, label: v2t('nav.home'), exact: true, tid: 'tab-home' },
+    { to: '/app-v2/dossiers', icon: FolderOpen, label: v2t('nav.cases'), tid: 'tab-cases' },
+    { to: '/app-v2/contacts', icon: Users, label: v2t('nav.contacts'), tid: 'tab-contacts' },
+    { to: '/app-v2/agenda', icon: Calendar, label: v2t('nav.agenda'), tid: 'tab-agenda' },
   ];
   // When central mic is shown, split tabs 2|MIC|2
   const left = tabs.slice(0, 2);

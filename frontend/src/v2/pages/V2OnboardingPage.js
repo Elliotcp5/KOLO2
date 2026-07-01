@@ -111,7 +111,11 @@ export default function V2OnboardingPage() {
   const toggle = (k, v) => setData(d => ({ ...d, [k]: d[k].includes(v) ? d[k].filter(x => x !== v) : [...d[k], v] }));
 
   const setLanguage = (code) => {
-    try { localStorage.setItem('kolo_locale', code); } catch (_) {}
+    try {
+      localStorage.setItem('kolo_locale', code);
+      // Pin so V2Layout's default-locale useEffect doesn't override it later.
+      localStorage.setItem('kolo_locale_manual', 'true');
+    } catch (_) { /* noop */ }
     setLang(code);
   };
 
