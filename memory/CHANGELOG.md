@@ -1,5 +1,33 @@
 # KOLO - Changelog
 
+## Version 2.10.0 - 1er Juillet 2026
+
+### Refonte Site Marketing (www.trykolo.io) — Palette monochrome stricte
+
+#### Design system
+- Palette 100% Noir / Blanc / Gris (aucune autre couleur autorisée)
+  - Ink: #000 / #0A0A0A / #1A1A1A / #3A3A3A
+  - Muted: #6E6E73 / #86868B
+  - Lines: #E5E5E7 / #F0F0F2
+  - BG soft: #F5F5F7
+- Purge complète des anciennes couleurs (corail #FF5A36, vert #1E7A3C, ivoire crème, gradients pêche/bleu)
+- Inspiration Qonto / Revolut / Vercel / Linear (éditorial, whitespace, hiérarchie type)
+
+#### Composants refaits
+- `marketing.css` : réécrit intégralement (962 lignes, tokens CSS scopés à `.mkt-root`)
+- `PhoneFrame.js` : mockup iPhone 15 Pro CSS-only photoréaliste (Dynamic Island, bezel titane, boutons latéraux, glare, animation flottement)
+- `HomePage.js` : checks & floating cards monochromes, pricing 24,90€/mois tout-inclus intact
+- `HowKoloPage.js` : tags Before (barré gris) / After (noir plein blanc) monochromes
+- Ombres portées : gris pur uniquement (plus de radial gradients roses/bleus/jaunes)
+- Sections alternées : fond blanc / fond gris clair `#F5F5F7`
+- Photo fondateur : filtre `grayscale(60%) contrast(1.02)` pour cohérence de marque
+
+#### Validation
+- Testing agent (iteration_60) : 100% de conformité monochrome sur les 5 routes marketing (/, /comment-kolo, /a-propos, /ressources, /legal)
+- Zéro couleur non-monochrome détectée (color/bg/border/fill/stroke + gradient stops)
+- Responsive desktop 1440px et mobile 390px validés
+
+
 ## Version 2.0.0 - 11 Mars 2026
 
 ### Nouvelles fonctionnalites
