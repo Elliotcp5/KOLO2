@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Mic, Target, Check, Folder, Sparkles } from 'lucide-react';
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
 import LogoMarquee from './components/LogoMarquee';
+import AnimatedCounter from './components/AnimatedCounter';
+import MagneticButton from './components/MagneticButton';
 import { useI18n } from './i18n';
 
 const easeOut = [0.22, 1, 0.36, 1];
@@ -44,7 +46,7 @@ const HomeContent = () => {
               {t('home.lead')}
             </motion.p>
             <motion.div variants={fadeUp} className="mkt-cta-row">
-              <a
+              <MagneticButton
                 href={APP_STORE_URL}
                 target="_blank"
                 rel="noreferrer"
@@ -52,14 +54,16 @@ const HomeContent = () => {
                 data-testid="mkt-hero-appstore-btn"
               >
                 {t('home.cta_primary')} <ArrowRight size={15} strokeWidth={2.5} />
-              </a>
-              <Link
+              </MagneticButton>
+              <MagneticButton
+                as={Link}
                 to="/comment-kolo"
                 className="mkt-btn mkt-btn-ghost"
                 data-testid="mkt-hero-secondary-cta"
+                strength={0.18}
               >
                 {t('home.cta_secondary')}
-              </Link>
+              </MagneticButton>
             </motion.div>
           </motion.div>
         </div>
@@ -124,7 +128,7 @@ const HomeContent = () => {
           >
             {[1, 2, 3].map((i) => (
               <motion.div key={i} variants={fadeUp} className="mkt-stat">
-                <div className="mkt-stat-num">{t(`home.stat${i}_num`)}</div>
+                <div className="mkt-stat-num"><AnimatedCounter value={t(`home.stat${i}_num`)} testId={`mkt-stat-${i}-num`} /></div>
                 <div className="mkt-stat-label">{t(`home.stat${i}_label`)}</div>
               </motion.div>
             ))}

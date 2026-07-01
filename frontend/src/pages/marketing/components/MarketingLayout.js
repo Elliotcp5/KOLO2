@@ -3,6 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight, ChevronDown } from 'lucide-react';
 import '../marketing.css';
 import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
+import Aurora from './Aurora';
 
 const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
 
@@ -182,8 +183,23 @@ const Layout = ({ children }) => {
     return () => io.disconnect();
   }, [location.pathname]);
 
+  useEffect(() => {
+    // Cursor-tracked highlight for pillars & any element with .mkt-glow
+    const handler = (e) => {
+      const target = e.target.closest('.mkt-pillar, .mkt-glow');
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      target.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+      target.style.setProperty('--my', `${e.clientY - rect.top}px`);
+    };
+    window.addEventListener('mousemove', handler);
+    return () => window.removeEventListener('mousemove', handler);
+  }, []);
+
   return (
     <div className="mkt-root" data-testid="mkt-root">
+      <Aurora />
+      <div className="mkt-aurora-3" aria-hidden />
       <HeaderInner />
       <main>{children}</main>
       <FooterInner />
