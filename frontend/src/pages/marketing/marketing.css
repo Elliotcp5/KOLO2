@@ -375,8 +375,8 @@ a.mkt-btn-ghost {
   position: absolute; inset: 0;
   background-size: cover;
   background-position: center;
-  filter: blur(28px) saturate(1.1);
-  transform: scale(1.15);
+  filter: blur(36px) saturate(1.15);
+  transform: scale(1.25);
   z-index: 0;
 }
 .mkt-phone-screen img {
@@ -387,6 +387,22 @@ a.mkt-btn-ghost {
   object-position: center;
   display: block;
   background: transparent;
+  /* Feather top & bottom so the sharp image fades into the blurred fill,
+     making the border seam completely invisible. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+          mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
 }
 
 /* Subtle glass reflection — top-left arc */
