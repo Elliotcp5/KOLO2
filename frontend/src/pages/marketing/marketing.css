@@ -144,10 +144,10 @@
   100% { transform: translate(-12vw, 8vh) scale(1.25); }
 }
 
-/* Ensure content sits above aurora (exclude aurora layers themselves) */
-.mkt-root > header,
-.mkt-root > main,
+/* Ensure content sits above aurora (aurora keeps its fixed pos) */
+.mkt-root > main { position: relative; z-index: 1; }
 .mkt-root > footer { position: relative; z-index: 1; }
+/* header already has position:sticky + z-index:50 — do not override */
 
 /* ========================================================
    Magnetic button + click ripple
