@@ -226,42 +226,82 @@ const HomeContent = () => {
           </motion.div>
 
           <motion.div
-            className="mkt-price-card"
-            data-testid="mkt-price-card"
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            className="mkt-price-grid"
+            data-testid="mkt-price-grid"
+            initial="hidden"
+            whileInView="show"
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.8, ease: easeOut }}
+            variants={stagger}
           >
-            <div className="mkt-price-badge">Le plus complet · Le prix le plus juste</div>
-            <div className="mkt-price-name">KOLO — Tout inclus</div>
-            <div className="mkt-price-amount">
-              <span className="mkt-price-currency">€</span>
-              <span className="mkt-price-value">24,90</span>
-              <span className="mkt-price-period">/mois</span>
-            </div>
-            <div className="mkt-price-sub">Sans engagement. Résiliable à tout moment.</div>
-            <ul className="mkt-price-features">
-              <li><Check size={16} strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> sur tous les portails (SeLoger, LeBonCoin, PAP, Bien&apos;ici, Logic-Immo…)</span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>Dictée vocale, transcriptions et notes terrain</span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>Estimation de bien via DVF + comparables</span></li>
-              <li><Check size={16} strokeWidth={2.5} /> <span>App iOS native, notifications push, mises à jour incluses</span></li>
-            </ul>
-            <div className="mkt-price-cta-row">
-              <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="mkt-btn mkt-btn-primary"
-                data-testid="mkt-price-btn"
-              >
-                Commencer maintenant <ArrowRight size={15} strokeWidth={2.5} />
-              </a>
-              <span className="mkt-price-guarantee">7 premiers jours offerts · Aucune carte requise</span>
-            </div>
+            {/* ---- FREE ---- */}
+            <motion.div
+              className="mkt-price-card mkt-price-card-free"
+              data-testid="mkt-price-card-free"
+              variants={fadeUp}
+            >
+              <div className="mkt-price-badge">Gratuit</div>
+              <div className="mkt-price-name">KOLO — Découverte</div>
+              <div className="mkt-price-amount">
+                <span className="mkt-price-currency">€</span>
+                <span className="mkt-price-value">0</span>
+                <span className="mkt-price-period">/mois</span>
+              </div>
+              <div className="mkt-price-sub">Pour découvrir KOLO à votre rythme.</div>
+              <ul className="mkt-price-features">
+                <li><Check size={16} strokeWidth={2.5} /> <span><strong>10 contacts</strong> maximum</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span><strong>1 prospection IA</strong> par semaine</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Accès aux notes et rappels</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>App iOS native</span></li>
+              </ul>
+              <div className="mkt-price-cta-row">
+                <MagneticButton
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mkt-btn mkt-btn-ghost"
+                  data-testid="mkt-price-free-btn"
+                  strength={0.16}
+                >
+                  Commencer gratuitement
+                </MagneticButton>
+              </div>
+            </motion.div>
+
+            {/* ---- PRO ---- */}
+            <motion.div
+              className="mkt-price-card mkt-price-card-pro"
+              data-testid="mkt-price-card"
+              variants={fadeUp}
+            >
+              <div className="mkt-price-badge">Recommandé · Tout inclus</div>
+              <div className="mkt-price-name">KOLO PRO</div>
+              <div className="mkt-price-amount">
+                <span className="mkt-price-currency">€</span>
+                <span className="mkt-price-value">24,90</span>
+                <span className="mkt-price-period">/mois</span>
+              </div>
+              <div className="mkt-price-sub">Sans engagement. Résiliable à tout moment.</div>
+              <ul className="mkt-price-features">
+                <li><Check size={16} strokeWidth={2.5} /> <span>Pige immo <strong>illimitée</strong> sur tous les portails (SeLoger, LeBonCoin, PAP, Bien&apos;ici, Logic-Immo…)</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Recherche DPE <strong>illimitée</strong> sur toute la France (ADEME)</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Assistant IA KOLO <strong>illimité</strong> — mémoire persistante</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Dossiers, contacts et rappels <strong>illimités</strong></span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Dictée vocale, transcriptions et notes terrain</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Estimation de bien via DVF + comparables</span></li>
+                <li><Check size={16} strokeWidth={2.5} /> <span>Notifications push, mises à jour incluses</span></li>
+              </ul>
+              <div className="mkt-price-cta-row">
+                <MagneticButton
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mkt-btn mkt-btn-primary"
+                  data-testid="mkt-price-btn"
+                >
+                  Passer à KOLO PRO <ArrowRight size={15} strokeWidth={2.5} />
+                </MagneticButton>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>

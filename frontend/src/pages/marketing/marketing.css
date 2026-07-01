@@ -83,8 +83,8 @@
   pointer-events: none;
   --aurora-x: 50%;
   --aurora-y: 35%;
-  filter: blur(80px);
-  opacity: 0.85;
+  filter: blur(70px);
+  opacity: 1;
 }
 .mkt-aurora::before,
 .mkt-aurora::after {
@@ -94,54 +94,73 @@
   will-change: transform;
 }
 .mkt-aurora::before {
-  width: 60vw; height: 60vw;
-  left: calc(var(--aurora-x) - 30vw);
-  top:  calc(var(--aurora-y) - 30vw);
+  width: 65vw; height: 65vw;
+  left: calc(var(--aurora-x) - 32vw);
+  top:  calc(var(--aurora-y) - 32vw);
   background: radial-gradient(circle at center,
-    rgba(122, 105, 210, 0.28) 0%,
-    rgba(122, 105, 210, 0.14) 40%,
+    rgba(122, 105, 210, 0.42) 0%,
+    rgba(122, 105, 210, 0.22) 40%,
     transparent 70%);
   animation: mktAurora1 22s ease-in-out infinite alternate;
 }
 .mkt-aurora::after {
-  width: 55vw; height: 55vw;
-  right: calc(100% - var(--aurora-x) - 26vw);
-  bottom: calc(100% - var(--aurora-y) - 26vw);
+  width: 60vw; height: 60vw;
+  right: calc(100% - var(--aurora-x) - 30vw);
+  bottom: calc(100% - var(--aurora-y) - 30vw);
   background: radial-gradient(circle at center,
-    rgba(82, 128, 195, 0.22) 0%,
-    rgba(82, 128, 195, 0.11) 40%,
+    rgba(82, 128, 195, 0.36) 0%,
+    rgba(82, 128, 195, 0.18) 40%,
     transparent 70%);
   animation: mktAurora2 26s ease-in-out infinite alternate;
 }
 @keyframes mktAurora1 {
   0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(6vw, -4vh) scale(1.15); }
-  100% { transform: translate(-4vw, 5vh) scale(0.95); }
+  50%  { transform: translate(10vw, -6vh) scale(1.25); }
+  100% { transform: translate(-6vw, 8vh) scale(0.9); }
 }
 @keyframes mktAurora2 {
   0%   { transform: translate(0, 0) scale(1.05); }
-  50%  { transform: translate(-7vw, 6vh) scale(0.9); }
-  100% { transform: translate(5vw, -5vh) scale(1.2); }
+  50%  { transform: translate(-10vw, 8vh) scale(0.85); }
+  100% { transform: translate(8vw, -6vh) scale(1.3); }
 }
-/* Additional third floating blob for depth */
 .mkt-aurora-3 {
   position: fixed;
-  width: 40vw; height: 40vw;
-  left: 60%;
-  top: 40%;
+  width: 50vw; height: 50vw;
+  left: 55%;
+  top: 55%;
   border-radius: 50%;
   background: radial-gradient(circle at center,
-    rgba(207, 178, 105, 0.14) 0%,
-    rgba(207, 178, 105, 0.06) 40%,
+    rgba(207, 178, 105, 0.22) 0%,
+    rgba(207, 178, 105, 0.10) 40%,
     transparent 70%);
-  filter: blur(90px);
+  filter: blur(80px);
   pointer-events: none;
   z-index: 0;
   animation: mktAurora3 30s ease-in-out infinite alternate;
 }
 @keyframes mktAurora3 {
   0%   { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-12vw, 8vh) scale(1.25); }
+  50%  { transform: translate(-14vw, 10vh) scale(1.35); }
+  100% { transform: translate(10vw, -8vh) scale(0.9); }
+}
+/* Conic mesh sweep for the "background video" feel */
+.mkt-root::after {
+  content: '';
+  position: fixed; inset: -30%;
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(122, 105, 210, 0.06),
+    rgba(82, 128, 195, 0.05),
+    rgba(207, 178, 105, 0.05),
+    rgba(122, 105, 210, 0.06));
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: mktConicSweep 60s linear infinite;
+  opacity: 0.9;
+}
+@keyframes mktConicSweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* Ensure content sits above aurora (aurora keeps its fixed pos) */
@@ -878,16 +897,36 @@ a.mkt-btn-ghost {
 }
 .mkt-pricing-section > * { position: relative; z-index: 1; }
 
-.mkt-price-card {
-  max-width: 640px;
+.mkt-price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 940px;
   margin: 0 auto;
+  align-items: stretch;
+}
+@media (max-width: 800px) {
+  .mkt-price-grid { grid-template-columns: 1fr; }
+}
+
+.mkt-price-card {
+  max-width: none;
   background: var(--mkt-bg-card);
   border-radius: 24px;
-  padding: 44px 44px 36px;
+  padding: 36px 32px 28px;
   position: relative;
-  box-shadow: var(--mkt-shadow-xl);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--mkt-shadow);
+  border: 1px solid var(--mkt-line);
 }
-.mkt-price-card::before {
+.mkt-price-card-free { }
+.mkt-price-card-pro {
+  box-shadow: var(--mkt-shadow-xl);
+  border: 1px solid transparent;
+  transform: translateY(-6px);
+}
+.mkt-price-card-pro::before {
   content: '';
   position: absolute; inset: -1px;
   border-radius: 25px;
@@ -904,6 +943,7 @@ a.mkt-btn-ghost {
   animation: mktBorderShine 8s linear infinite;
   background-size: 200% 200%;
 }
+.mkt-price-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: auto; }
 @keyframes mktBorderShine {
   0%   { background-position: 0% 0%; }
   100% { background-position: 200% 200%; }
