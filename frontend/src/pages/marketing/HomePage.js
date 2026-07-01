@@ -70,7 +70,7 @@ const HomeContent = () => {
               transition={{ duration: 0.9, ease: easeOut, delay: 0.15 }}
             >
               <PhoneFrame
-                src="/marketing/assets/live_home_john.jpeg"
+                src="/marketing/assets/mockup_hero.png"
                 alt="KOLO app dashboard"
                 testId="mkt-hero-phone"
               />
@@ -227,7 +227,7 @@ const HomeContent = () => {
             </div>
             <div className="mkt-step-visual">
               <PhoneFrame
-                src="/marketing/assets/live_pige.jpeg"
+                src="/marketing/assets/mockup_hero.png"
                 alt="KOLO listings"
                 testId="mkt-home-pige-phone"
               />
@@ -253,7 +253,7 @@ const HomeContent = () => {
             </div>
             <div className="mkt-step-visual">
               <PhoneFrame
-                src="/marketing/assets/live_home_john.jpeg"
+                src="/marketing/assets/mockup_hero.png"
                 alt="KOLO voice dictation"
                 testId="mkt-home-dictee-phone"
               />
