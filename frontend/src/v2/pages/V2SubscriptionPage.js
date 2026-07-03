@@ -203,6 +203,34 @@ export default function V2SubscriptionPage() {
               )}
             </div>
 
+            {/* Bouton natif App Store — pour les codes distribués via App Store Connect */}
+            <button
+              type="button"
+              className="v2-btn secondary full"
+              style={{ marginTop: 12, fontSize: 13.5 }}
+              data-testid="sub-appstore-code-btn"
+              onClick={async () => {
+                setPromoMsg('');
+                try {
+                  const { Capacitor } = await import('@capacitor/core');
+                  if (!Capacitor?.isNativePlatform?.()) {
+                    setPromoMsg("Disponible uniquement dans l'app iOS.");
+                    return;
+                  }
+                  const plugin = Capacitor.Plugins?.KoloIAP;
+                  if (!plugin?.presentCodeRedemptionSheet) {
+                    setPromoMsg("Plugin App Store non installé. Contacte le support.");
+                    return;
+                  }
+                  await plugin.presentCodeRedemptionSheet();
+                } catch (e) {
+                  setPromoMsg(e?.message || 'Erreur lors de l\'ouverture de la fenêtre App Store');
+                }
+              }}
+            >
+              J&apos;ai un code App Store
+            </button>
+
             <button
               className="v2-btn primary full"
               style={{ marginTop: 20, fontSize: 15 }}

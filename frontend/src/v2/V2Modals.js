@@ -21,27 +21,69 @@ const Modal = ({ open, onClose, title, children, testid }) => {
 };
 
 /* ---------- Web Speech API hook (graceful fallback if not available) ---------- */
+const LANG_MAP = { fr: 'fr-FR', en: 'en-US', de: 'de-DE', it: 'it-IT' };
+const getSTTLang = () => {
+  try {
+    const l = (localStorage.getItem('v2_lang') || 'fr').toLowerCase();
+    return LANG_MAP[l] || 'fr-FR';
+  } catch { return 'fr-FR'; }
+};
+
 const useSpeech = (onResult) => {
   const recRef = useRef(null);
+  const shouldContinueRef = useRef(false);
+  const finalBufferRef = useRef('');
   const [listening, setListening] = useState(false);
+
   const start = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { alert("La saisie vocale n'est pas disponible sur ce navigateur."); return; }
     const rec = new SR();
-    rec.lang = 'fr-FR';
-    rec.interimResults = false;
+    rec.lang = getSTTLang();
+    rec.interimResults = true;
+    rec.continuous = true;
     rec.maxAlternatives = 1;
+    finalBufferRef.current = '';
+
     rec.onresult = (ev) => {
-      const transcript = Array.from(ev.results).map(r => r[0].transcript).join(' ');
-      onResult(transcript);
+      let finalText = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) finalText += t + ' ';
+      }
+      if (finalText.trim()) {
+        finalBufferRef.current += finalText;
+        onResult(finalText.trim());
+      }
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onend = () => {
+      // iOS Safari auto-ends on silence — auto-restart if user hasn't tapped stop
+      if (shouldContinueRef.current) {
+        try { rec.start(); } catch { setListening(false); shouldContinueRef.current = false; }
+      } else {
+        setListening(false);
+      }
+    };
+    rec.onerror = (e) => {
+      // Fatal errors: stop for good
+      if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture')) {
+        shouldContinueRef.current = false;
+        setListening(false);
+        alert("Micro non autorisé. Activez le micro dans les Réglages iOS.");
+      }
+      // 'no-speech' / 'aborted' → let onend auto-restart
+    };
     recRef.current = rec;
+    shouldContinueRef.current = true;
     setListening(true);
-    rec.start();
+    try { rec.start(); } catch { setListening(false); shouldContinueRef.current = false; }
   };
-  const stop = () => { try { recRef.current && recRef.current.stop(); } catch {} setListening(false); };
+
+  const stop = () => {
+    shouldContinueRef.current = false;
+    try { recRef.current && recRef.current.stop(); } catch {}
+    setListening(false);
+  };
   return { listening, start, stop };
 };
 

@@ -104,34 +104,37 @@ body, html, #root { background-color: var(--v2-bg); }
 .v2-container, .v2-app > main, .v2-app > section {
   /* Animation moved to .v2-page wrapper for directional slide transitions */
 }
-/* ====== Page transitions (Instagram-like horizontal slide) ====== */
+/* ====== Page transitions (smooth Instagram-like) ====== */
 .v2-page {
   will-change: transform, opacity;
-  /* Prevent the briefly-offscreen page from creating a horizontal scrollbar */
   position: relative;
+  transform: translateZ(0);
+  contain: layout style paint;
+  /* All pages get a baseline fade so navigation feels fluid, not brutal */
+  animation: v2PageFade 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .v2-page-enter-right {
-  animation: v2SlideInRight 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: v2SlideInRight 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 .v2-page-enter-left {
-  animation: v2SlideInLeft 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: v2SlideInLeft 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 .v2-page-fade {
-  animation: v2PageFade 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: v2PageFade 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 @keyframes v2SlideInRight {
-  from { opacity: 0; transform: translate3d(60px, 0, 0); }
+  from { opacity: 0; transform: translate3d(24px, 0, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 @keyframes v2SlideInLeft {
-  from { opacity: 0; transform: translate3d(-60px, 0, 0); }
+  from { opacity: 0; transform: translate3d(-24px, 0, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 /* Clip horizontal overflow on the scrollable main while a slide is running */
-.v2-app > main { overflow-x: hidden; }
+.v2-app > main { overflow-x: hidden; scroll-behavior: smooth; }
 @keyframes v2PageFade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ====== KOLO Wordmark ====== */
@@ -914,6 +917,37 @@ body, html, #root { background-color: var(--v2-bg); }
 .v2-onb-shell > * { position: relative; z-index: 1; }
 .v2-onb-progress { height: 3px; background: rgba(11,11,15,0.08); position: sticky; top: 0; z-index: 10; }
 .v2-onb-progress > div { height: 100%; background: var(--v2-ink); transition: width 360ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Onboarding consent (Privacy slide) */
+.v2-onb-consent {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--v2-line);
+  border-radius: 14px;
+  background: var(--v2-bg-2, rgba(0,0,0,0.02));
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.v2-onb-consent:hover { border-color: var(--v2-ink); }
+.v2-onb-checkbox {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  margin: 2px 0 0;
+  cursor: pointer;
+  accent-color: var(--v2-ink);
+}
+.v2-onb-consent-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--v2-ink-2, var(--v2-ink));
+}
+.v2-onb-consent-text a {
+  color: var(--v2-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .v2-onb-content { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 32px 22px 24px; }
 .v2-onb-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--v2-muted); }
 .v2-onb-title { font-family: var(--v2-font-display); font-size: 30px; font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin: 10px 0 12px; color: var(--v2-ink); }

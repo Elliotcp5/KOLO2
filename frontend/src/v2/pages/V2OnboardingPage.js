@@ -162,15 +162,27 @@ export default function V2OnboardingPage() {
         )}
         {step === 1 && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><V2Logo size={56} /></div>
-            <div className="v2-onb-eyebrow"><Lock size={11} style={{ display: 'inline', verticalAlign: -1 }} /> Privacy first</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}><V2Logo size={64} /></div>
+            <div className="v2-onb-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Lock size={11} strokeWidth={2.2} /> Privacy first
+            </div>
             <h1 className="v2-onb-title">Tes données restent les tiennes.</h1>
             <p className="v2-onb-body">
               Les informations de tes clients sont ce que tu as de plus précieux. Tout ce que tu confies à KOLO est privé, chiffré au repos comme en transit, et jamais cédé à des tiers.
             </p>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 22, fontSize: 13.5, color: 'var(--v2-muted)' }}>
-              <input type="checkbox" checked={data.accepted_terms} onChange={(e) => set({ accepted_terms: e.target.checked })} data-testid="onb-accept-terms" style={{ marginTop: 3 }} />
-              J'ai lu et j'accepte les <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--v2-accent)' }}>CGU</a> et la <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--v2-accent)' }}>Charte de confidentialité</a>.
+            <label className="v2-onb-consent" style={{ marginTop: 28 }}>
+              <input
+                type="checkbox"
+                className="v2-onb-checkbox"
+                checked={data.accepted_terms}
+                onChange={(e) => set({ accepted_terms: e.target.checked })}
+                data-testid="onb-accept-terms"
+              />
+              <span className="v2-onb-consent-text">
+                J&apos;ai lu et j&apos;accepte les{' '}
+                <a href="/terms" target="_blank" rel="noopener">CGU</a>{' '}et la{' '}
+                <a href="/privacy" target="_blank" rel="noopener">Charte de confidentialité</a>.
+              </span>
             </label>
           </>
         )}

@@ -103,67 +103,67 @@ const Sidebar = ({ open, onClose, user, dashboard }) => {
               onClick={() => { onClose(); navigate('/app-v2/settings/subscription'); }}
               data-testid="drawer-upgrade-btn"
             >
-              Passer Pro · 24,99€/mois
+              {v2t('drawer.upgrade_pro')}
             </button>
           )}
         </div>
 
-        <div className="v2-drawer-section">Fonctionnalités</div>
+        <div className="v2-drawer-section">{v2t('drawer.features')}</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/prospecting'); }} data-testid="drawer-prospecting">
-          <SearchIcon size={18} /> <span>Pige & Prospection</span>
+          <SearchIcon size={18} /> <span>{v2t('drawer.prospecting')}</span>
           <span className="arrow">›</span>
         </button>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/referral'); }} data-testid="drawer-referral">
-          <Sparkles size={18} /> <span>Parrainage</span>
+          <Sparkles size={18} /> <span>{v2t('drawer.referral')}</span>
           <span className="arrow">›</span>
         </button>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/guide'); }} data-testid="drawer-guide">
-          <BookOpen size={18} /> <span>Guide KOLO</span>
+          <BookOpen size={18} /> <span>{v2t('drawer.guide')}</span>
           <span className="arrow">›</span>
         </button>
         <a className="v2-drawer-item" href="https://www.trykolo.io/guide" target="_blank" rel="noopener noreferrer" onClick={onClose} data-testid="drawer-guide-online">
-          <BookOpen size={18} /> <span>Guide complet (web)</span>
+          <BookOpen size={18} /> <span>{v2t('drawer.guide_web')}</span>
           <span className="arrow">↗</span>
         </a>
 
-        <div className="v2-drawer-section">Compte</div>
+        <div className="v2-drawer-section">{v2t('drawer.account')}</div>
         <button className="v2-drawer-item" onClick={() => { onClose(); navigate('/app-v2/settings'); }} data-testid="drawer-profile">
-          <Settings size={18} /> <span>Profil & paramètres</span>
+          <Settings size={18} /> <span>{v2t('drawer.profile')}</span>
           <span className="arrow">›</span>
         </button>
         <button
           className="v2-drawer-item"
           onClick={() => {
-            const subject = encodeURIComponent('Demande d\'assistance KOLO');
+            const subject = encodeURIComponent(v2t('drawer.support_subject'));
             const body = encodeURIComponent(`Bonjour,\n\n[Décris ton besoin ici]\n\n--\nApp: KOLO v2.0\nUser: ${user?.email || user?.user_id || ''}`);
             window.location.href = `mailto:contact@trykolo.io?subject=${subject}&body=${body}`;
           }}
           data-testid="drawer-contact"
         >
-          <Mail size={18} /> <span>Contact / Assistance</span>
+          <Mail size={18} /> <span>{v2t('drawer.contact')}</span>
           <span className="arrow">›</span>
         </button>
         <button className="v2-drawer-item" onClick={onLogout} data-testid="drawer-logout">
-          <LogOut size={18} /> <span>Se déconnecter</span>
+          <LogOut size={18} /> <span>{v2t('drawer.logout')}</span>
         </button>
 
-        <div className="v2-drawer-section" style={{ marginTop: 24 }}>Informations légales</div>
+        <div className="v2-drawer-section" style={{ marginTop: 24 }}>{v2t('drawer.legal')}</div>
         <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/privacy', '_blank')} data-testid="drawer-privacy">
-          Politique de confidentialité
+          {v2t('drawer.privacy')}
         </button>
         <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/terms', '_blank')} data-testid="drawer-terms">
-          Conditions générales d'utilisation
+          {v2t('drawer.terms')}
         </button>
         <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/legal', '_blank')} data-testid="drawer-legal">
-          Mentions légales
+          {v2t('drawer.legal_notice')}
         </button>
         <button className="v2-drawer-item tiny" onClick={() => window.open('https://trykolo.io/iap-terms', '_blank')} data-testid="drawer-iap-terms">
-          Conditions d'achat in-app
+          {v2t('drawer.iap_terms')}
         </button>
 
         <div className="v2-drawer-section" style={{ marginTop: 32 }}>&nbsp;</div>
         <button className="v2-drawer-item tiny danger" onClick={() => { onClose(); navigate('/app-v2/settings/delete'); }} data-testid="drawer-delete">
-          Supprimer mon compte
+          {v2t('drawer.delete_account')}
         </button>
       </aside>
     </>

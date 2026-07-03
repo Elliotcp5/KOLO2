@@ -1884,53 +1884,120 @@ class EstimateIn(BaseModel):
 
 @router.post("/estimate")
 async def estimate_property(payload: EstimateIn, request: Request):
-    """Estimation immobilière basée sur DVF (transactions réelles) + annonces
-    actives du CP en base Supabase. Ajustements hédoniques (DPE, période).
-    Jamais de placeholder — si aucune donnée, on le dit clairement."""
-    user = await _get_user(request)
+    """Estimation immobilière avec :
+    - Comparables DVF (data.gouv.fr) pondérés par similarité (surface, pièces)
+    - Revalorisation temporelle (+2.5%/an) sur transactions anciennes
+    - Fallback sur CP voisins si le CP demandé a trop peu de données
+    - Trim 10-90 percentile pour éliminer outliers
+    - Ajustements hédoniques (DPE, année de construction, taille)
+    """
+    user = await _get_user(request)  # auth gate — raises 401 if unauthenticated
+    _ = user
     db = _get_db()
+    _ = db
     cp = payload.postal_code.strip()
     surface = float(payload.surface_m2 or 0)
+    target_rooms = int(payload.rooms or 0) if payload.rooms else 0
     if not cp or surface <= 0:
         raise HTTPException(status_code=400, detail="postal_code et surface_m2 requis")
 
     import httpx
-    prices_per_m2 = []
+    from datetime import date as _date
+
+    # weighted samples: list of (ppm, weight)
+    samples: list[tuple[float, float]] = []
     comparables = []
 
-    # --- Source 1: DVF via api.cquest.org (open data DGFIP mirror) ---
-    try:
-        async with httpx.AsyncClient(timeout=8) as client:
+    def _time_factor(iso_date: str) -> float:
+        """Revalorise une transaction en fonction de son ancienneté (~+2.5%/an)."""
+        try:
+            y = int((iso_date or "")[:4]) if iso_date else 0
+            if y < 2015: return 1.0  # trop vieux, on garde sans revalo
+            years = max(0, _date.today().year - y)
+            return 1.025 ** years
+        except Exception:
+            return 1.0
+
+    def _similarity_weight(row_surface: float, row_rooms: int) -> float:
+        """Poids [0.2..1.0] selon proximité surface + pièces."""
+        if not row_surface: return 0.5
+        # surface delta ratio
+        delta = abs(row_surface - surface) / max(surface, 1.0)
+        w_surf = max(0.2, 1.0 - min(1.0, delta * 1.5))  # 0m² diff = 1, 66% diff = 0
+        w_rooms = 1.0
+        if target_rooms and row_rooms:
+            dr = abs(int(row_rooms) - target_rooms)
+            w_rooms = max(0.4, 1.0 - 0.18 * dr)
+        return round(w_surf * w_rooms, 3)
+
+    async def _fetch_dvf(client, code_postal):
+        """Fetch DVF for a given postal code. Returns (samples, comparables_added)."""
+        added_samples = []
+        try:
             type_local = "Appartement" if (payload.property_kind or "").lower().startswith("apart") else "Maison"
             r = await client.get(
                 "https://api.cquest.org/dvf",
-                params={"code_postal": cp, "type_local": type_local, "limit": 200},
+                params={"code_postal": code_postal, "type_local": type_local, "limit": 300},
             )
-            if r.status_code == 200:
-                data = r.json() or {}
-                for row in (data.get("resultats") or []):
-                    val = row.get("valeur_fonciere")
-                    s = row.get("surface_reelle_bati")
-                    if not val or not s or float(s) < 8 or float(s) > 500:
-                        continue
-                    ppm = float(val) / float(s)
-                    if 500 < ppm < 30000:
-                        prices_per_m2.append(ppm)
-                        if len(comparables) < 8:
-                            comparables.append({
-                                "source": "DVF",
-                                "price": int(float(val)),
-                                "surface": float(s),
-                                "rooms": row.get("nombre_pieces_principales"),
-                                "date": row.get("date_mutation"),
-                                "address": row.get("adresse_nom_voie") or row.get("commune", ""),
-                                "price_per_m2": round(ppm),
-                            })
-    except Exception as e:
-        logger.info(f"DVF fetch skipped: {e}")
+            if r.status_code != 200:
+                return added_samples
+            data = r.json() or {}
+            for row in (data.get("resultats") or []):
+                val = row.get("valeur_fonciere")
+                s = row.get("surface_reelle_bati")
+                if not val or not s or float(s) < 8 or float(s) > 500:
+                    continue
+                s_f = float(s)
+                # Surface similarity gate: only consider ±60% surface
+                if s_f < surface * 0.4 or s_f > surface * 2.2:
+                    continue
+                ppm_raw = float(val) / s_f
+                if not (500 < ppm_raw < 30000):
+                    continue
+                # Time revalue
+                d = row.get("date_mutation") or ""
+                ppm = ppm_raw * _time_factor(d)
+                r_rooms = int(row.get("nombre_pieces_principales") or 0)
+                w = _similarity_weight(s_f, r_rooms)
+                # Only count as sample if from requested CP (not neighbors)
+                is_primary = (code_postal == cp)
+                added_samples.append((ppm, w if is_primary else w * 0.6))
+                if len(comparables) < 10 and is_primary:
+                    comparables.append({
+                        "source": "DVF",
+                        "price": int(float(val)),
+                        "surface": s_f,
+                        "rooms": r_rooms or None,
+                        "date": d,
+                        "address": row.get("adresse_nom_voie") or row.get("commune", ""),
+                        "price_per_m2": round(ppm_raw),
+                        "revalued_ppm": round(ppm),
+                        "weight": w,
+                    })
+        except Exception as e:
+            logger.info(f"DVF fetch skipped for {code_postal}: {e}")
+        return added_samples
 
-    # --- Source 2: Annonces récentes (Supabase listings) ---
-    if len(prices_per_m2) < 8:
+    async with httpx.AsyncClient(timeout=8) as client:
+        # Primary CP
+        samples.extend(await _fetch_dvf(client, cp))
+        # Fallback: if less than 12 samples, try adjacent CP (± last digit)
+        if len(samples) < 12 and cp.isdigit() and len(cp) == 5:
+            base = cp[:4]
+            neighbors = []
+            for delta in (-1, 1, -2, 2):
+                try:
+                    nb_last = int(cp[-1]) + delta
+                    if 0 <= nb_last <= 9:
+                        neighbors.append(base + str(nb_last))
+                except Exception:
+                    pass
+            for nb_cp in neighbors:
+                if len(samples) >= 25: break
+                samples.extend(await _fetch_dvf(client, nb_cp))
+
+    # Supabase active listings (asking prices, not sale prices → lower weight)
+    if len(samples) < 20:
         sb_url, sb_key = _supabase_config()
         if sb_url and sb_key:
             try:
@@ -1950,11 +2017,13 @@ async def estimate_property(payload: EstimateIn, request: Request):
                         for row in r.json() or []:
                             price = row.get("price") or 0
                             s = row.get("surface") or 0
-                            if price > 10000 and s > 8:
-                                ppm = float(price) / float(s)
+                            if price > 10000 and s > 8 and (s * 0.4 <= surface <= s * 2.5 or s * 0.5 <= surface):
+                                # asking prices → discount 5% to approximate sale price
+                                ppm = (float(price) / float(s)) * 0.95
                                 if 500 < ppm < 30000:
-                                    prices_per_m2.append(ppm)
-                                    if len(comparables) < 12:
+                                    w = _similarity_weight(float(s), int(row.get("rooms") or 0)) * 0.7
+                                    samples.append((ppm, w))
+                                    if len(comparables) < 14:
                                         comparables.append({
                                             "source": "Annonce",
                                             "price": int(price),
@@ -1963,51 +2032,69 @@ async def estimate_property(payload: EstimateIn, request: Request):
                                             "date": (row.get("first_seen_at") or "")[:10],
                                             "address": row.get("city") or cp,
                                             "url": row.get("url"),
-                                            "price_per_m2": round(ppm),
+                                            "price_per_m2": round(float(price) / float(s)),
+                                            "weight": w,
                                         })
             except Exception as e:
                 logger.info(f"Supabase estimate fetch skipped: {e}")
 
-    if not prices_per_m2:
+    if not samples:
         return {
             "ok": False,
-            "message": f"Pas assez de données publiques pour {cp}. Essaie une zone plus large ou lance une pige d'annonces d'abord.",
+            "message": f"Pas assez de données publiques pour {cp}. Élargis la zone ou lance une pige d'annonces d'abord.",
             "postal_code": cp,
         }
 
-    prices_per_m2.sort()
-    n = len(prices_per_m2)
-    p10 = prices_per_m2[max(0, n // 10)]
-    p90 = prices_per_m2[min(n - 1, (n * 9) // 10)]
-    trimmed = [p for p in prices_per_m2 if p10 <= p <= p90] or prices_per_m2
-    trimmed.sort()
-    median_ppm = trimmed[len(trimmed) // 2]
+    # Trim 10-90 percentile on the ppm values, then weighted median.
+    ppms_sorted = sorted(s[0] for s in samples)
+    n = len(ppms_sorted)
+    p10 = ppms_sorted[max(0, n // 10)]
+    p90 = ppms_sorted[min(n - 1, (n * 9) // 10)]
+    kept = [(p, w) for p, w in samples if p10 <= p <= p90] or samples
 
+    # Weighted median: cumulative weights method
+    kept.sort(key=lambda x: x[0])
+    total_w = sum(w for _, w in kept) or 1.0
+    cum = 0.0
+    median_ppm = kept[len(kept) // 2][0]
+    for p, w in kept:
+        cum += w
+        if cum >= total_w / 2:
+            median_ppm = p
+            break
+
+    # Hedonic adjustments
     dpe_factor = {"A": 1.06, "B": 1.04, "C": 1.02, "D": 1.00, "E": 0.97, "F": 0.93, "G": 0.89}
     factor = dpe_factor.get((payload.dpe or "").upper(), 1.0)
     if payload.year_built:
         if payload.year_built >= 2015: factor *= 1.03
         elif payload.year_built <= 1948: factor *= 0.97
-    if surface < 25: factor *= 1.05
-    elif surface > 120: factor *= 0.97
+    # Small surface premium (studios/T1 sell higher per m²)
+    if surface < 25: factor *= 1.06
+    elif surface > 120: factor *= 0.96
 
     est_ppm = median_ppm * factor
     estimate = est_ppm * surface
-    conf_pct = 0.08 if n >= 30 else (0.10 if n >= 15 else 0.15)
+    # Confidence based on effective sample size (kept & weighted)
+    eff_n = int(total_w)
+    conf_pct = 0.08 if eff_n >= 30 else (0.11 if eff_n >= 15 else 0.16)
+    confidence = "high" if eff_n >= 30 else ("medium" if eff_n >= 10 else "low")
+
     return {
         "ok": True,
         "postal_code": cp,
         "surface_m2": surface,
         "sample_size": n,
+        "effective_sample_size": eff_n,
         "median_price_per_m2": round(median_ppm),
         "adjusted_price_per_m2": round(est_ppm),
         "estimate": round(estimate),
         "min": round(estimate * (1 - conf_pct)),
         "max": round(estimate * (1 + conf_pct)),
-        "confidence": "high" if n >= 30 else ("medium" if n >= 10 else "low"),
+        "confidence": confidence,
         "adjustments_applied": {"dpe": payload.dpe, "year_built": payload.year_built, "factor": round(factor, 3)},
         "comparables": comparables[:8],
-        "source": "DVF (data.gouv.fr) + annonces KOLO",
+        "source": "DVF (data.gouv.fr) + annonces KOLO — pondération surface × ancienneté",
     }
 
 
