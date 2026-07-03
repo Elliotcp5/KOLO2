@@ -228,7 +228,7 @@ export default function V2SubscriptionPage() {
                 }
               }}
             >
-              J&apos;ai un code App Store
+              J&apos;ai un code promo
             </button>
 
             <button
