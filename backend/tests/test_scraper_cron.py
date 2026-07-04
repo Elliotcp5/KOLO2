@@ -16,7 +16,6 @@ from scripts.scrape_listings_cron import (  # noqa: E402
     STATIC_TOP_ZIPS,
     _batch,
     _dedupe_by_url,
-    MAX_ZIPS_PER_BATCH,
 )
 
 
@@ -33,9 +32,10 @@ def test_batch_splits_correctly():
 
 
 def test_batch_never_exceeds_size_cap():
-    # 57 static zips at cap 20 → 3 batches (20, 20, 17)
-    batches = list(_batch(STATIC_TOP_ZIPS, MAX_ZIPS_PER_BATCH))
-    assert all(len(b) <= MAX_ZIPS_PER_BATCH for b in batches)
+    # Generic batching correctness — still used by test infra even though
+    # the scraper itself now runs 1 ZIP per Apify run.
+    batches = list(_batch(STATIC_TOP_ZIPS, 20))
+    assert all(len(b) <= 20 for b in batches)
     assert sum(len(b) for b in batches) == len(STATIC_TOP_ZIPS)
 
 
