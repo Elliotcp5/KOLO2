@@ -2305,17 +2305,56 @@ async def promo_admin_list(request: Request):
 # Admin — trigger the Apify → Supabase scraper on demand
 # Super-admin only (guarded by KOLO_SUPER_ADMIN_EMAILS in server.py).
 # ============================================================================
+# In-process marker so a second POST doesn't spin up a parallel scrape.
+_SCRAPER_TASK: Optional[object] = None
+
+
+async def _run_scraper_background(explicit_zips: Optional[List[str]]) -> None:
+    """Background worker: runs the scraper, updates the 6h marker, then exits."""
+    global _SCRAPER_TASK  # noqa: PLW0603
+    try:
+        from scripts.scrape_listings_cron import run_once as _scrape_run
+        summary = await _scrape_run(explicit_zips=explicit_zips)
+        db = _get_db()
+        await db.v2_scraper_last_run.update_one(
+            {"_id": "singleton"},
+            {"$set": {
+                "last_run_at": datetime.now(timezone.utc).isoformat(),
+                "last_summary": {
+                    "batches": summary.get("batches"),
+                    "total_upserted": summary.get("total_upserted"),
+                    "total_unique": summary.get("total_unique"),
+                    "target_zips_count": summary.get("target_zips_count"),
+                    "finished_at": summary.get("finished_at"),
+                },
+            }},
+            upsert=True,
+        )
+        logger.info(f"[scraper] background run done: {summary.get('total_upserted')} upserted across {summary.get('batches')} batches")
+    except Exception as e:
+        logger.error(f"[scraper] background run failed: {e}")
+    finally:
+        _SCRAPER_TASK = None
+
+
 @router.post("/admin/scraper/run")
 async def admin_scraper_run(request: Request):
-    """Kick off the scraper immediately, ignoring the 6h throttle marker.
-    Returns the run summary once done (blocks up to ~4 min per batch).
+    """FIRE-AND-FORGET: kicks off the scraper as a background task and returns
+    IMMEDIATELY (Cloudflare / edge proxies kill sync requests > 60-100s).
+
+    Poll `/api/v2/admin/scraper/status` to see progress.
+    Body (optional): {"zips":["75001","69001"]} to override auto-target list.
     """
+    global _SCRAPER_TASK  # noqa: PLW0603
     user = await _get_user(request)
     from server import is_super_admin_email  # type: ignore
     db = _get_db()
     user_doc = await db.users.find_one({"user_id": user.user_id}, {"email": 1, "_id": 0}) or {}
     if not is_super_admin_email(user_doc.get("email")):
         raise HTTPException(status_code=403, detail="Super admin only")
+
+    if _SCRAPER_TASK is not None:
+        return {"already_running": True, "hint": "Poll /api/v2/admin/scraper/status"}
 
     body = {}
     try:
@@ -2330,20 +2369,28 @@ async def admin_scraper_run(request: Request):
         elif isinstance(raw, list):
             explicit_zips = [str(z).strip() for z in raw if str(z).strip()]
 
-    from scripts.scrape_listings_cron import run_once as _scrape_run
-    summary = await _scrape_run(explicit_zips=explicit_zips)
-    # Also refresh the 6h marker so the auto-tick doesn't re-fire right after.
+    # Mark start immediately + fire the background task
     await db.v2_scraper_last_run.update_one(
         {"_id": "singleton"},
-        {"$set": {"last_run_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "running": True,
+            "explicit_zips": explicit_zips,
+        }},
         upsert=True,
     )
-    return summary
+    import asyncio as _aio
+    _SCRAPER_TASK = _aio.create_task(_run_scraper_background(explicit_zips))
+    return {
+        "started": True,
+        "explicit_zips": explicit_zips,
+        "hint": "Poll GET /api/v2/admin/scraper/status every 30s. Full run of 57 cities takes ~10-15 min.",
+    }
 
 
 @router.get("/admin/scraper/status")
 async def admin_scraper_status(request: Request):
-    """Last scraper run summary + last 10 run history."""
+    """Last scraper run summary + last 10 run history + running flag."""
     user = await _get_user(request)
     from server import is_super_admin_email  # type: ignore
     db = _get_db()
@@ -2356,5 +2403,9 @@ async def admin_scraper_status(request: Request):
     history = []
     async for row in history_cursor:
         history.append(row)
-    return {"last": marker, "history": history}
+    return {
+        "is_running_now": _SCRAPER_TASK is not None,
+        "last": marker,
+        "history": history,
+    }
 
