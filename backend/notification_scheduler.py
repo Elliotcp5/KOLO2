@@ -388,6 +388,45 @@ async def send_contextual_nudges():
     return {"contextual_nudges_sent": sent}
 
 
+async def run_scraper_tick():
+    """Trigger the Apify → Supabase scraper. Guarded to only run once per
+    6h window by writing a marker in `v2_scraper_last_run`.
+    """
+    now = datetime.now(timezone.utc)
+    marker = await db.v2_scraper_last_run.find_one({"_id": "singleton"}) or {}
+    last_iso = marker.get("last_run_at")
+    if last_iso:
+        try:
+            last = datetime.fromisoformat(last_iso)
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            if (now - last) < timedelta(hours=6):
+                return {"skipped": True, "next_in_min": int((timedelta(hours=6) - (now - last)).total_seconds() // 60)}
+        except Exception:
+            pass
+
+    # Import lazily so a missing/misconfigured script never breaks the
+    # notification loop itself.
+    logger.info("Scraper tick: kicking off Apify → Supabase run")
+    try:
+        from scripts.scrape_listings_cron import run_once as _scrape_run
+        summary = await _scrape_run()
+        await db.v2_scraper_last_run.update_one(
+            {"_id": "singleton"},
+            {"$set": {"last_run_at": now.isoformat(), "summary": {
+                "batches": summary.get("batches"),
+                "total_upserted": summary.get("total_upserted"),
+                "total_unique": summary.get("total_unique"),
+                "target_zips_count": summary.get("target_zips_count"),
+            }}},
+            upsert=True,
+        )
+        return summary
+    except Exception as e:
+        logger.error(f"Scraper tick failed: {e}")
+        return {"error": str(e)}
+
+
 async def run_scheduler():
     """Run the scheduler loop"""
     logger.info("KOLO Notification Scheduler started")
@@ -417,6 +456,11 @@ async def run_scheduler():
                     await send_contextual_nudges()
                 except Exception as e:
                     logger.warning(f"Contextual nudges error: {e}")
+                # Apify → Supabase scraper tick (self-throttled to 6h)
+                try:
+                    await run_scraper_tick()
+                except Exception as e:
+                    logger.warning(f"Scraper tick error: {e}")
                 # Check every minute
                 await asyncio.sleep(60)
                 
@@ -444,6 +488,11 @@ if __name__ == "__main__":
         # Run once for testing
         result = asyncio.run(run_once())
         print(json.dumps(result, indent=2))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--scrape":
+        # Trigger the Apify → Supabase scraper immediately (bypasses the 6h guard)
+        from scripts.scrape_listings_cron import run_once as _scrape_run
+        result = asyncio.run(_scrape_run())
+        print(json.dumps(result, indent=2, default=str))
     else:
         # Run scheduler loop
         asyncio.run(run_scheduler())

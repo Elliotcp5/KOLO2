@@ -15,6 +15,57 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - MongoDB (motor async)
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
+### Sprint Apify → Supabase Cron Scraper (Feb 2026) 🔥 LATEST
+Le scraper autonome est en place. Fini les 1-3 min d'attente Apify live à chaque recherche : le mobile lit maintenant instantanément depuis Supabase déjà pré-rempli.
+
+**Architecture** :
+- Script standalone `/app/backend/scripts/scrape_listings_cron.py`
+- Sources Apify : `leboncoin + pap + seloger + bienici + logic-immo` (max coverage)
+- Dedupe automatique par URL (in-batch, avant upsert)
+- Batches de 20 codes postaux max par run Apify (contrainte mémoire actor)
+- 30 annonces max par code postal
+- Poll toutes les 5s, timeout 4 min par batch
+- Upsert Supabase avec conflit sur `(portal, external_id)` → idempotent
+
+**Cibles** (union dédupliquée) :
+- Codes postaux cherchés par les users dans les 7 derniers jours (`v2_prospecting_logs`)
+- Liste statique curated top-57 villes FR (Paris arrondissements + Marseille + Lyon + Toulouse + Nice + Nantes + Montpellier + Strasbourg + Bordeaux + Lille + Rennes + Reims + Saint-Étienne + Le Havre + Toulon + Grenoble + Dijon + Angers + Villeurbanne + Le Mans + Aix + Brest + Nîmes + Limoges + Clermont + Tours + Amiens + Metz + Perpignan + Boulogne-Billancourt)
+
+**Scheduler** :
+- Hook dans `notification_scheduler.py` (déjà lancé par server startup, pas de nouveau process)
+- Auto-throttle à 6h via marker `v2_scraper_last_run` en Mongo
+- Chaque run logué dans `v2_scraper_runs` (batches, upserted, unique, timing)
+
+**API admin** (super-admin only) :
+- `POST /api/v2/admin/scraper/run` — trigger manuel (accepte `{zips:['75001','75002']}` pour override)
+- `GET /api/v2/admin/scraper/status` — dernier run + 10 derniers runs
+
+**Fix connexe : extraction thumbnails**
+- L'actor `dltik/pige-immo-fr-scraper` retourne les miniatures sous `main_photo_url` (pas `photos[0]`).
+- `_upsert_supabase_listings` mis à jour pour scanner `main_photo_url` en 1er, puis `thumbnail_url`, `photos[0]`, `photo`, `image`.
+
+**Validation end-to-end** :
+- Test réel : `curl POST /api/v2/admin/scraper/run {zips:['75003']}` → 40 annonces réelles LBC/PAP/SeLoger/BienIci upsertées en 24s
+- `GET /api/v2/prospecting/listings?sector=75003` renvoie instantanément 40 items avec 0 URL `kolo_seed`, 100% http(s), 50% avec thumbnail (le reste sans photo côté portail source)
+- 9/9 tests pytest passent (`test_scraper_cron.py` + `test_iteration_61.py`)
+
+**Runnable en CLI** :
+```bash
+# One-shot scrape
+cd /app/backend && python -m scripts.scrape_listings_cron --once
+# Avec ZIP override
+cd /app/backend && python -m scripts.scrape_listings_cron --once --zips 75001,75002,69001
+# Via le scheduler (bypass le throttle 6h)
+cd /app/backend && python notification_scheduler.py --scrape
+```
+
+**Fichiers créés/modifiés** :
+- `/app/backend/scripts/scrape_listings_cron.py` (nouveau)
+- `/app/backend/notification_scheduler.py` (hook + CLI `--scrape`)
+- `/app/backend/v2_router.py` (`_upsert_supabase_listings` thumbnail fix + 2 admin endpoints)
+- `/app/backend/tests/test_scraper_cron.py` (nouveau, 5 tests unitaires)
+
+
 ### Sprint iOS Perf + Promo + 404 (Feb 2026) 🔥 LATEST
 Trois fixes P0/P1 appliqués sur cette itération :
 

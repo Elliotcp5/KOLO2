@@ -1634,9 +1634,24 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
             "rooms": int(row.get("rooms") or row.get("nbRooms") or 0) or None,
             "title": row.get("title") or (row.get("description") or "")[:120] or "Annonce",
             "url": row.get("url") or row.get("link") or "",
-            "thumbnail_url": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
-            "energy_class": row.get("dpe") or row.get("energy") or None,
-            "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
+            # Thumbnails come under different field names depending on portal:
+            #   - Apify `pige-immo-fr-scraper`: `main_photo_url`
+            #   - Some LBC scrapers: `photos[0]` (array of URLs)
+            #   - Others: `photo` / `image` / `thumbnail_url`
+            "thumbnail_url": (
+                row.get("main_photo_url")
+                or row.get("thumbnail_url")
+                or ((row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else None)
+                or row.get("photo")
+                or row.get("image")
+                or ""
+            ),
+            "energy_class": row.get("dpe") or row.get("energy") or row.get("energy_class") or None,
+            "kind": "pro" if (
+                row.get("ownerType") == "agency"
+                or row.get("isPro")
+                or (row.get("is_owner_listing") is False)
+            ) else "private",
             "raw_data": row,
             "last_seen_at": now_iso,
             "is_active": True,
@@ -2284,3 +2299,62 @@ async def promo_admin_list(request: Request):
     async for d in cursor:
         items.append(d)
     return {"items": items}
+
+
+# ============================================================================
+# Admin — trigger the Apify → Supabase scraper on demand
+# Super-admin only (guarded by KOLO_SUPER_ADMIN_EMAILS in server.py).
+# ============================================================================
+@router.post("/admin/scraper/run")
+async def admin_scraper_run(request: Request):
+    """Kick off the scraper immediately, ignoring the 6h throttle marker.
+    Returns the run summary once done (blocks up to ~4 min per batch).
+    """
+    user = await _get_user(request)
+    from server import is_super_admin_email  # type: ignore
+    db = _get_db()
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"email": 1, "_id": 0}) or {}
+    if not is_super_admin_email(user_doc.get("email")):
+        raise HTTPException(status_code=403, detail="Super admin only")
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    explicit_zips = None
+    if isinstance(body, dict) and body.get("zips"):
+        raw = body.get("zips")
+        if isinstance(raw, str):
+            explicit_zips = [z.strip() for z in raw.split(",") if z.strip()]
+        elif isinstance(raw, list):
+            explicit_zips = [str(z).strip() for z in raw if str(z).strip()]
+
+    from scripts.scrape_listings_cron import run_once as _scrape_run
+    summary = await _scrape_run(explicit_zips=explicit_zips)
+    # Also refresh the 6h marker so the auto-tick doesn't re-fire right after.
+    await db.v2_scraper_last_run.update_one(
+        {"_id": "singleton"},
+        {"$set": {"last_run_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return summary
+
+
+@router.get("/admin/scraper/status")
+async def admin_scraper_status(request: Request):
+    """Last scraper run summary + last 10 run history."""
+    user = await _get_user(request)
+    from server import is_super_admin_email  # type: ignore
+    db = _get_db()
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"email": 1, "_id": 0}) or {}
+    if not is_super_admin_email(user_doc.get("email")):
+        raise HTTPException(status_code=403, detail="Super admin only")
+
+    marker = await db.v2_scraper_last_run.find_one({"_id": "singleton"}, {"_id": 0}) or {}
+    history_cursor = db.v2_scraper_runs.find({}, {"_id": 0, "results": 0}).sort("started_at", -1).limit(10)
+    history = []
+    async for row in history_cursor:
+        history.append(row)
+    return {"last": marker, "history": history}
+
