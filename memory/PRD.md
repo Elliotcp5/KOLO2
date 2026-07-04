@@ -15,6 +15,51 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - MongoDB (motor async)
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
+### Sprint iOS Perf + Promo + 404 (Feb 2026) 🔥 LATEST
+Trois fixes P0/P1 appliqués sur cette itération :
+
+**1. Menu lag iOS (P0) — RÉSOLU**
+- Cause racine : `.v2-app::before` = radial mesh gradient avec `filter: blur(42px) saturate(135%)` + animation qui animait `filter` + `hue-rotate` + `will-change: transform, filter`. Sur Capacitor iOS WebView, chaque remount de `V2Layout` (à chaque changement d'onglet) re-payait le composite complet à 60fps → coupures visibles.
+- Fix (`/app/frontend/src/styles/v2.css`) :
+  - Keyframes `meshDrift` : suppression totale de `filter` + `hue-rotate` de l'animation (transform-only, GPU-cheap).
+  - Durée passée de 26s → 60s (moins de recalcul par navigation).
+  - `will-change: transform` (au lieu de `transform, filter`).
+  - Bloc `.capacitor-native .v2-app::before { animation: none; will-change: auto; }` → mesh figé sur natif.
+  - `.capacitor-native .v2-app::after { display: none; }` → noise SVG désactivée sur natif.
+  - `.capacitor-native .v2-page { animation-duration: 180ms; contain: layout paint; }` → transitions plus courtes.
+  - Média `prefers-reduced-motion` respecté partout.
+  - Même traitement appliqué à `.v2-onb-shell::before` et `.v2-ref-landing::before`.
+
+**2. Codes promo App Store (P0) — RÉSOLU**
+- Plugin Swift `KoloIAPPlugin.swift` (`/app/frontend/ios/App/App/` + `/app/ios_native/`) upgradé :
+  - iOS 16+ : `AppStore.presentOfferCodeRedeemSheet(in: windowScene)` (StoreKit 2, non-deprecated).
+  - iOS 14–15 : fallback `SKPaymentQueue.default().presentCodeRedemptionSheet()`.
+- JS wrapper (`V2SubscriptionPage.js` bouton `sub-appstore-code-btn`) :
+  - Si plugin dispo → appel natif.
+  - Si plugin absent OU rejet natif → fallback automatique vers `https://apps.apple.com/redeem?ctx=offercodes&id=6761818371` via `@capacitor/browser` (Universal Link qui ouvre l'App Store natif sur iPhone).
+  - Garantit que l'utilisateur peut TOUJOURS entrer un code promo, même si le custom plugin n'est pas dans l'IPA.
+
+**3. URLs 404 dans la prospection (P1) — RÉSOLU**
+- Cause racine : Supabase `listings` avait été seedée avec des URLs bidons (`kolo_seed_*`) → clic → 404 Leboncoin.
+- Fix backend (`/app/backend/v2_router.py` `_read_supabase_listings`) — double-ceinture :
+  - Filtre PostgREST côté Supabase : `url=not.ilike.*kolo_seed*`.
+  - Filtre défensif côté Python : drop tout row où `url` contient `kolo_seed` OU ne commence pas par `http(s)://`.
+  - Ajout du champ `thumbnail_url` en sortie (utilisé par les miniatures UI ajoutées à `V2Extras.js`).
+- Mêmes garde-fous appliqués aux chemins Apify fresh-scrape + pending-run.
+- Tests pytest : `/app/backend/tests/test_iteration_61.py` — 4/4 PASSED (itération 61).
+
+**Fichiers modifiés :**
+- `/app/frontend/src/styles/v2.css`
+- `/app/frontend/src/v2/pages/V2SubscriptionPage.js`
+- `/app/frontend/ios/App/App/KoloIAPPlugin.swift`
+- `/app/ios_native/KoloIAPPlugin.swift`
+- `/app/backend/v2_router.py`
+
+**À valider par l'utilisateur sur iPhone réel :**
+- Fluidité de la navigation entre onglets (attendu : plus de « cut » visible).
+- Bouton « J'ai un code promo » ouvre soit la feuille native, soit l'App Store en fallback.
+
+
 ## Implemented (état Feb 2026) — UPDATED
 ### Sprint App iOS V2.4 — Custom domain + runtime URL discovery (Feb 2026) 🔥 NEW
 🎯 **Fix DÉFINITIF du 404 prod (TestFlight inclus)** — Racine identifiée :
