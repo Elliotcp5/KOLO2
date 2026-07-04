@@ -1,0 +1,24 @@
+{
+  "summary": "Backend-only verification of /api/v2/prospecting/listings kolo_seed filter + thumbnail_url field. All 4 pytest cases PASSED. Auth via dev_code flow worked. In current preview env, Supabase listings table returns 0 rows for tested sectors (source='scraping_in_progress'), so the filter passes vacuously — however code inspection of _read_supabase_listings (v2_router.py L1529-1606) confirms both the server-side Supabase filter (url=not.ilike.*kolo_seed*) AND defensive Python-side filter (drops kolo_seed + non-http URLs) are correctly implemented, and thumbnail_url is always present in the output dict.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_61.py",
+    "/app/test_reports/pytest/iteration_61.xml"
+  ],
+  "action_items": [
+    "Not a bug — but to strengthen future regression coverage, seed a small set of real (http) Supabase listing rows for sector 75001 in the preview env so the filter is exercised with non-empty data rather than vacuously.",
+    "Frontend and iOS native fixes (mesh gradient perf, StoreKit 2 redeem sheet) require manual iPhone testing — out of scope here."
+  ],
+  "critical_code_review_comments": [
+    "v2_router.py _read_supabase_listings: filter logic is correct and defensive (double filter — server-side + Python side). thumbnail_url always emitted as string (empty fallback). Good.",
+    "Endpoint returns 200 with items=[] and source='scraping_in_progress' when Supabase table is empty — graceful, no 500s on empty/invalid sector. Confirmed."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration_61.py"],
+  "success_rate": { "backend": "100% (4/4)", "frontend": "not tested (backend-only request)" },
+  "test_credentials": "pressardelliot@gmail.com via dev_code from /api/v2/auth/send-email-code (preview only)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iteration_61.py is idempotent and safe to re-run. It skips gracefully if quota-blocked (402/403). If Supabase gets real rows, the same tests will validate them non-vacuously. iOS StoreKit and mesh gradient perf need physical device testing."
+}

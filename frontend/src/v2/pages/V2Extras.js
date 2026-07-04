@@ -327,14 +327,24 @@ export const V2ProspectingPage = () => {
           </div>
         </div>
       )) : items.map((it, i) => (
-        <div key={i} className="v2-card" style={{ marginBottom: 10 }} data-testid={`prosp-ad-item-${i}`}>
-          <div className="v2-row-title">{it.title}</div>
-          <div className="v2-row-sub">{it.sector} · {it.surface}m² · {it.rooms}p · {it.price?.toLocaleString('fr-FR')}€ · {it.kind === 'pro' ? 'Pro' : 'Particulier'}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <a className="v2-btn secondary" href={it.url} target="_blank" rel="noopener noreferrer">Voir plus <ExternalLink size={14} /></a>
-            <button className="v2-btn primary" onClick={() => convertToCase(it)} data-testid={`prosp-ad-convert-${i}`}>
-              <Plus size={14} /> Dossier
-            </button>
+        <div key={i} className="v2-card" style={{ marginBottom: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }} data-testid={`prosp-ad-item-${i}`}>
+          {it.thumbnail_url && (
+            <img
+              src={it.thumbnail_url}
+              alt=""
+              style={{ width: 84, height: 84, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'var(--v2-line, #E5E5E7)' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="v2-row-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</div>
+            <div className="v2-row-sub">{it.sector || it.postal_code} · {it.surface}m² · {it.rooms}p · {it.price?.toLocaleString('fr-FR')}€ · {it.kind === 'pro' ? 'Pro' : 'Particulier'}</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              <a className="v2-btn secondary" href={it.url} target="_blank" rel="noopener noreferrer">Voir plus <ExternalLink size={14} /></a>
+              <button className="v2-btn primary" onClick={() => convertToCase(it)} data-testid={`prosp-ad-convert-${i}`}>
+                <Plus size={14} /> Dossier
+              </button>
+            </div>
           </div>
         </div>
       ))}

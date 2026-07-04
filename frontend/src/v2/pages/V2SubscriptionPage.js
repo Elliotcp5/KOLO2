@@ -211,6 +211,10 @@ export default function V2SubscriptionPage() {
               data-testid="sub-appstore-code-btn"
               onClick={async () => {
                 setPromoMsg('');
+                // App Store fallback URL (universal link that opens the redeem
+                // sheet in the App Store app on iOS). Used when our custom
+                // Capacitor plugin isn't registered in the running IPA.
+                const APPSTORE_REDEEM_URL = 'https://apps.apple.com/redeem?ctx=offercodes&id=6761818371';
                 try {
                   const { Capacitor } = await import('@capacitor/core');
                   if (!Capacitor?.isNativePlatform?.()) {
@@ -218,13 +222,33 @@ export default function V2SubscriptionPage() {
                     return;
                   }
                   const plugin = Capacitor.Plugins?.KoloIAP;
-                  if (!plugin?.presentCodeRedemptionSheet) {
-                    setPromoMsg("Plugin App Store non installé. Contacte le support.");
-                    return;
+                  if (plugin?.presentCodeRedemptionSheet) {
+                    try {
+                      const r = await plugin.presentCodeRedemptionSheet();
+                      // Success — the native sheet is now on screen.
+                      // eslint-disable-next-line no-console
+                      console.log('[KoloIAP] sheet presented via', r?.api || 'unknown');
+                      return;
+                    } catch (nativeErr) {
+                      // Fall through to the URL fallback below.
+                      // eslint-disable-next-line no-console
+                      console.warn('[KoloIAP] native failed, falling back to URL:', nativeErr);
+                    }
                   }
-                  await plugin.presentCodeRedemptionSheet();
+                  // Fallback: open the App Store redemption page directly.
+                  // Works on every iPhone with the App Store app installed,
+                  // even if our custom plugin wasn't shipped in this build.
+                  try {
+                    const { Browser } = await import('@capacitor/browser');
+                    await Browser.open({ url: APPSTORE_REDEEM_URL });
+                  } catch (_) {
+                    window.location.href = APPSTORE_REDEEM_URL;
+                  }
                 } catch (e) {
-                  setPromoMsg(e?.message || 'Erreur lors de l\'ouverture de la fenêtre App Store');
+                  // Last-resort fallback
+                  try { window.location.href = APPSTORE_REDEEM_URL; } catch (_) {
+                    setPromoMsg(e?.message || "Impossible d'ouvrir la fenêtre App Store");
+                  }
                 }
               }}
             >

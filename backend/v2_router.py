@@ -1547,6 +1547,10 @@ async def _read_supabase_listings(sector: str, age: Optional[str] = None, kind: 
         "select": "external_id,portal,postal_code,city,price,surface,rooms,title,url,thumbnail_url,energy_class,kind,first_seen_at,last_seen_at",
         "is_active": "eq.true",
         "postal_code": f"in.({','.join(postal_codes)})",
+        # NEVER return seed URLs — they resolve to Leboncoin 404s in the app.
+        # Only real scraped URLs (starting with http…, without our seed marker)
+        # get returned to the client.
+        "url": "not.ilike.*kolo_seed*",
         "order": "first_seen_at.desc",
         "limit": str(limit),
     }
@@ -1574,8 +1578,13 @@ async def _read_supabase_listings(sector: str, age: Optional[str] = None, kind: 
         return []
 
     # Normalise to the same shape the mobile app expects.
+    # Extra safety: also filter out anything that slipped through the Supabase
+    # filter — seed URLs OR non-http URLs would give the user a 404.
     out = []
     for row in rows:
+        _u = (row.get("url") or "").strip()
+        if not _u or "kolo_seed" in _u or not _u.startswith(("http://", "https://")):
+            continue
         out.append({
             "external_id": row.get("external_id"),
             "title": row.get("title") or "Annonce",
@@ -1586,7 +1595,8 @@ async def _read_supabase_listings(sector: str, age: Optional[str] = None, kind: 
             "rooms": row.get("rooms") or 0,
             "kind": row.get("kind") or "private",
             "photo": row.get("thumbnail_url") or "",
-            "url": row.get("url") or "",
+            "thumbnail_url": row.get("thumbnail_url") or "",
+            "url": _u,
             "source_site": row.get("portal") or "",
             "energy_class": row.get("energy_class") or "",
             "posted_at": row.get("first_seen_at") or "",
@@ -1710,6 +1720,10 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                 raw = dr.json() or []
                                 items = []
                                 for row in raw[:30]:
+                                    _thumb = (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or "")
+                                    _url = row.get("url") or row.get("link") or ""
+                                    if not _url or not _url.startswith(("http://", "https://")):
+                                        continue
                                     items.append({
                                         "title": row.get("title") or row.get("description", "")[:60] or "Annonce",
                                         "sector": str(row.get("city") or row.get("postalCode") or sector),
@@ -1717,8 +1731,9 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                         "surface": row.get("surface") or row.get("area") or 0,
                                         "rooms": row.get("rooms") or row.get("nbRooms") or 0,
                                         "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
-                                        "photo": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
-                                        "url": row.get("url") or row.get("link") or "",
+                                        "photo": _thumb,
+                                        "thumbnail_url": _thumb,
+                                        "url": _url,
                                         "source_site": row.get("source") or row.get("portal") or "",
                                         "energy_class": row.get("dpe") or row.get("energy") or "",
                                         "posted_at": row.get("publishedAt") or row.get("date") or "",
@@ -1800,6 +1815,10 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                             raw = dr.json() or []
                             items = []
                             for row in raw[:30]:
+                                _thumb = (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or "")
+                                _url = row.get("url") or row.get("link") or ""
+                                if not _url or not _url.startswith(("http://", "https://")):
+                                    continue
                                 items.append({
                                     "title": row.get("title") or row.get("description", "")[:60] or "Annonce",
                                     "sector": str(row.get("city") or row.get("postalCode") or sector),
@@ -1807,8 +1826,9 @@ async def prospecting_listings(request: Request, sector: Optional[str] = None, k
                                     "surface": row.get("surface") or row.get("area") or 0,
                                     "rooms": row.get("rooms") or row.get("nbRooms") or 0,
                                     "kind": "pro" if (row.get("ownerType") == "agency" or row.get("isPro")) else "private",
-                                    "photo": (row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else (row.get("photo") or ""),
-                                    "url": row.get("url") or row.get("link") or "",
+                                    "photo": _thumb,
+                                    "thumbnail_url": _thumb,
+                                    "url": _url,
                                     "source_site": row.get("source") or row.get("portal") or "",
                                     "energy_class": row.get("dpe") or row.get("energy") or "",
                                     "posted_at": row.get("publishedAt") or row.get("date") or "",
