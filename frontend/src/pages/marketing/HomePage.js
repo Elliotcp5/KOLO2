@@ -4,14 +4,21 @@ import { ArrowRight, Check, Search, Sparkles, CalendarDays } from 'lucide-react'
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
 
 // ---------------------------------------------------------------------------
-// iOS screenshots delivered by the user for the animated 3D mockup in the hero
+// iOS screenshots delivered by the user for the animated 3D mockup in the hero.
+// Mixing several app views so a first-time visitor immediately understands
+// what the app does: main dashboard, prospection, KOLO chat, agenda, contacts.
 // ---------------------------------------------------------------------------
 const IOS_SCREENS = [
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/mzeeky1t_IMG_5692.PNG',
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/ex6rdugb_IMG_5691.PNG',
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/74uzhn02_IMG_5690.PNG',
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/wcwcq6xp_IMG_5689.PNG',
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/zibhtrf0_IMG_5688.PNG',
+  // Center phone — main dashboard (most representative)
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/koky24nz_IMG_0805.PNG',
+  // Right phone — prospection multi-portails view
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/kldljvw7_IMG_0804.PNG',
+  // Left phone — KOLO assistant chat view
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/5d1uv06m_IMG_0803.PNG',
+  // Right-far phone — additional feature (agenda / contact)
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/szhp9s8r_IMG_0796.PNG',
+  // Left-far phone — additional feature
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/fl35qbir_IMG_0794.PNG',
 ];
 
 const FOUNDER_PHOTO = 'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png';
@@ -229,15 +236,14 @@ const VisualOrganisation = () => (
 // ---------------------------------------------------------------------------
 const HomeContent = () => (
   <>
+    {/* -------- TRUST BAR (moved above the fold as requested) -------- */}
+    <TrustBar />
+
     {/* -------- HERO -------- */}
     <section className="mkt-hero" data-testid="mkt-home-hero">
       <div className="mkt-container">
         <div className="mkt-hero-inner">
           <motion.div initial="hidden" animate="show" variants={stagger}>
-            <motion.span variants={fadeUp} className="mkt-eyebrow" data-testid="mkt-hero-eyebrow">
-              <span className="mkt-eyebrow-dot" />
-              Disponible sur l&apos;App Store
-            </motion.span>
             <motion.h1 variants={fadeUp} className="mkt-h1" data-testid="mkt-hero-title">
               Le co&#8209;pilote intelligent<br />
               qui booste le <em>chiffre d&apos;affaires</em><br />
@@ -270,10 +276,6 @@ const HomeContent = () => (
         </div>
       </div>
     </section>
-
-    {/* -------- TRUST BAR -------- */}
-    <TrustBar />
-
     {/* -------- FEATURES -------- */}
     <section className="mkt-section" data-testid="mkt-features">
       <div className="mkt-container">
@@ -361,28 +363,28 @@ const HomeContent = () => (
         </div>
 
         <div className="mkt-pricing-grid">
-          <div className="mkt-price-card mkt-reveal" data-testid="price-starter">
-            <div className="mkt-price-plan">Starter</div>
-            <div className="mkt-price-name">Starter</div>
+          <div className="mkt-price-card mkt-reveal" data-testid="price-free">
+            <div className="mkt-price-plan">Gratuit</div>
+            <div className="mkt-price-name">Free</div>
             <div className="mkt-price-amount">
-              <span className="val">9,99&nbsp;€</span>
+              <span className="val">0&nbsp;€</span>
               <span className="per">/ mois</span>
             </div>
             <p className="mkt-price-desc">
-              Pour tester KOLO sur votre quotidien d&apos;agent. L&apos;essentiel de la prospection et de l&apos;assistant.
+              Pour découvrir KOLO sans engagement. Les fondamentaux, gratuits.
             </p>
             <ul className="mkt-price-list">
-              <li><Check size={16} strokeWidth={2.5} /> Prospection multi-portails</li>
-              <li><Check size={16} strokeWidth={2.5} /> 20 estimations par mois</li>
-              <li><Check size={16} strokeWidth={2.5} /> Agenda + annuaire de contacts</li>
-              <li><Check size={16} strokeWidth={2.5} /> Support par email</li>
+              <li><Check size={16} strokeWidth={2.5} /> 1 prospection IA par semaine</li>
+              <li><Check size={16} strokeWidth={2.5} /> 10 contacts max dans l&apos;annuaire</li>
+              <li><Check size={16} strokeWidth={2.5} /> Agenda intégré</li>
+              <li><Check size={16} strokeWidth={2.5} /> Assistant intelligent (usage limité)</li>
             </ul>
             <a
               href={APP_STORE_URL}
               target="_blank"
               rel="noreferrer"
               className="mkt-cta-ghost"
-              data-testid="price-starter-cta"
+              data-testid="price-free-cta"
               style={{ width: '100%', justifyContent: 'center' }}
             >
               Télécharge l&apos;app
@@ -397,13 +399,13 @@ const HomeContent = () => (
               <span className="per">/ mois</span>
             </div>
             <p className="mkt-price-desc">
-              Pour les agents qui prospectent à plein régime. Tout illimité, DPE inclus.
+              Pour les agents qui prospectent sans limite. Tout illimité, DPE inclus.
             </p>
             <ul className="mkt-price-list">
-              <li><Check size={16} strokeWidth={2.5} /> Tout ce qui est dans Starter</li>
-              <li><Check size={16} strokeWidth={2.5} /> Estimations illimitées (DVF)</li>
+              <li><Check size={16} strokeWidth={2.5} /> Prospections IA <strong style={{color:'#fff'}}>illimitées</strong></li>
+              <li><Check size={16} strokeWidth={2.5} /> Annuaire de contacts illimité</li>
+              <li><Check size={16} strokeWidth={2.5} /> Assistant intelligent illimité (DVF, juridique, coaching)</li>
               <li><Check size={16} strokeWidth={2.5} /> Accès aux DPE de votre secteur</li>
-              <li><Check size={16} strokeWidth={2.5} /> Assistant IA en illimité (juridique, coaching)</li>
               <li><Check size={16} strokeWidth={2.5} /> Support prioritaire</li>
             </ul>
             <a
@@ -425,7 +427,7 @@ const HomeContent = () => (
     <section className="mkt-section" data-testid="mkt-founder" style={{ paddingTop: 80 }}>
       <div className="mkt-container">
         <div className="mkt-reveal">
-          <div className="mkt-section-eyebrow">Qui est derrière</div>
+          <div className="mkt-section-eyebrow">Le fondateur</div>
         </div>
         <div className="mkt-founder mkt-reveal">
           <div className="mkt-founder-photo">
@@ -433,7 +435,10 @@ const HomeContent = () => (
           </div>
           <div className="mkt-founder-quote">
             <p>
-              « Ex-agent immobilier dans deux grands réseaux, puis parcours dans la tech. J&apos;ai été frappé par le manque d&apos;outils vraiment pensés par des agents immo pour des agents immo. On a construit KOLO main dans la main avec des agents en réseau, mandataires et conseillers indépendants. »
+              Ex-agent immobilier dans deux grands réseaux, puis parcours dans la tech.
+            </p>
+            <p style={{ marginBottom: 20 }}>
+              «&nbsp;J&apos;ai été frappé par le manque d&apos;outils vraiment pensés par des agents immo pour des agents immo. On a construit KOLO main dans la main avec des agents en réseau, mandataires et conseillers indépendants pour régler ce problème.&nbsp;»
             </p>
             <div className="mkt-founder-sign">Elliot — Fondateur de KOLO</div>
           </div>
@@ -445,7 +450,7 @@ const HomeContent = () => (
     <section className="mkt-final-cta" data-testid="mkt-final-cta">
       <div className="mkt-container">
         <div className="mkt-final-cta-inner mkt-reveal">
-          <h2>Prêt à prospecter comme jamais ?</h2>
+          <h2>Prêt à signer comme jamais&nbsp;?</h2>
           <p>Téléchargez KOLO sur l&apos;App Store. Deux minutes pour être opérationnel.</p>
           <a
             href={APP_STORE_URL}

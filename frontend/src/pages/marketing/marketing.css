@@ -7,38 +7,62 @@
 @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800,900&f[]=satoshi@400,500,700&display=swap');
 
 :root {
-  /* --- Palette --- */
-  --bg:            #050505;
-  --surface-1:     #0A0A0A;
-  --surface-2:     #121212;
-  --surface-3:     #1A1A1A;
+  /* --- Palette (scoped inside .mkt-root only — see below) --- */
+  --mkt-bg:            #050505;
+  --mkt-surface-1:     #0A0A0A;
+  --mkt-surface-2:     #121212;
+  --mkt-surface-3:     #1A1A1A;
 
-  --text:          #FFFFFF;
-  --text-2:        #A1A1AA;   /* zinc-400 */
-  --text-3:        #71717A;   /* zinc-500 */
-  --text-4:        #52525B;   /* zinc-600 */
+  --mkt-text:          #FFFFFF;
+  --mkt-text-2:        #A1A1AA;   /* zinc-400 */
+  --mkt-text-3:        #71717A;   /* zinc-500 */
+  --mkt-text-4:        #52525B;   /* zinc-600 */
 
-  --border-1:      rgba(255, 255, 255, 0.06);
-  --border-2:      rgba(255, 255, 255, 0.10);
-  --border-3:      rgba(255, 255, 255, 0.18);
+  --mkt-border-1:      rgba(255, 255, 255, 0.06);
+  --mkt-border-2:      rgba(255, 255, 255, 0.10);
+  --mkt-border-3:      rgba(255, 255, 255, 0.18);
 
-  --accent:        #FFFFFF;
-  --accent-ink:    #050505;
+  --mkt-accent:        #FFFFFF;
+  --mkt-accent-ink:    #050505;
 
-  /* Subtle brand color glimmer — used sparingly on hover */
-  --glow-warm:     rgba(255, 220, 165, 0.10);
-  --glow-cold:     rgba(150, 210, 255, 0.08);
+  --mkt-shadow-card:   0 20px 60px -30px rgba(0, 0, 0, 0.9), inset 0 1px 0 0 rgba(255,255,255,0.05);
+  --mkt-shadow-lift:   0 30px 80px -20px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255,255,255,0.08);
 
-  --shadow-card:   0 20px 60px -30px rgba(0, 0, 0, 0.9), inset 0 1px 0 0 rgba(255,255,255,0.05);
-  --shadow-lift:   0 30px 80px -20px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255,255,255,0.08);
+  --mkt-radius-s:      12px;
+  --mkt-radius-m:      18px;
+  --mkt-radius-l:      28px;
+  --mkt-radius-xl:     36px;
 
-  --radius-s:      12px;
-  --radius-m:      18px;
-  --radius-l:      28px;
-  --radius-xl:     36px;
+  --mkt-font-head:     'Cabinet Grotesk', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --mkt-font-body:     'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+}
 
-  --font-head:     'Cabinet Grotesk', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
-  --font-body:     'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+/* Backwards-compat aliases inside .mkt-root only.
+   The global themes.css defines its own --text / --bg / --accent for the iOS app,
+   so we MUST NOT reuse those names at :root level. We keep the short names but
+   scope them under .mkt-root so no cross-contamination happens either way. */
+.mkt-root {
+  --bg:            var(--mkt-bg);
+  --surface-1:     var(--mkt-surface-1);
+  --surface-2:     var(--mkt-surface-2);
+  --surface-3:     var(--mkt-surface-3);
+  --text:          var(--mkt-text);
+  --text-2:        var(--mkt-text-2);
+  --text-3:        var(--mkt-text-3);
+  --text-4:        var(--mkt-text-4);
+  --border-1:      var(--mkt-border-1);
+  --border-2:      var(--mkt-border-2);
+  --border-3:      var(--mkt-border-3);
+  --accent:        var(--mkt-accent);
+  --accent-ink:    var(--mkt-accent-ink);
+  --shadow-card:   var(--mkt-shadow-card);
+  --shadow-lift:   var(--mkt-shadow-lift);
+  --radius-s:      var(--mkt-radius-s);
+  --radius-m:      var(--mkt-radius-m);
+  --radius-l:      var(--mkt-radius-l);
+  --radius-xl:     var(--mkt-radius-xl);
+  --font-head:     var(--mkt-font-head);
+  --font-body:     var(--mkt-font-body);
 }
 
 /* ---------- reset ---------- */
@@ -143,7 +167,7 @@ body:has(.mkt-root) { background: #050505 !important; }
   letter-spacing: -0.04em;
   color: var(--text);
 }
-.mkt-logo img { height: 34px; width: auto; display: block; }
+.mkt-logo img { height: 28px; width: 28px; display: block; border-radius: 7px; }
 
 .mkt-header-actions {
   display: flex;

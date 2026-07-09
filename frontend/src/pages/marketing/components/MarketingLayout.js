@@ -7,12 +7,14 @@ import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
 // Official App Store URL for the iOS app (used as primary CTA everywhere).
 const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
 
-// New dark KOLO logo (same as the one used inside the iOS app).
-const KOLO_LOGO_DARK = 'https://customer-assets.emergentagent.com/job_2eb24348-efe6-47cf-8c87-199c35e66909/artifacts/ah5kfmpv_META%20LOGO%20WEB%20APP.png';
+// New dark KOLO logo — same asset as the iOS app icon (public/kolo-mark-v5-180.png).
+// Using the local /public asset guarantees it stays in sync with the app icon.
+const KOLO_LOGO_DARK = '/kolo-mark-v5-180.png';
 
 const KoloLogo = () => (
   <Link to="/" className="mkt-logo" data-testid="mkt-logo-home" aria-label="KOLO — retour à l'accueil">
     <img src={KOLO_LOGO_DARK} alt="KOLO" />
+    <span style={{ marginLeft: 4 }}>KOLO</span>
   </Link>
 );
 
