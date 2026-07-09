@@ -4,21 +4,20 @@ import { ArrowRight, Check, Search, Sparkles, CalendarDays } from 'lucide-react'
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
 
 // ---------------------------------------------------------------------------
-// iOS screenshots delivered by the user for the animated 3D mockup in the hero.
-// Mixing several app views so a first-time visitor immediately understands
-// what the app does: main dashboard, prospection, KOLO chat, agenda, contacts.
+// iOS screenshots — REAL app captures delivered by the user.
+// Order in the cascade: center, right1, left1, right2, left2.
 // ---------------------------------------------------------------------------
 const IOS_SCREENS = [
-  // Center phone — main dashboard (most representative)
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/koky24nz_IMG_0805.PNG',
-  // Right phone — prospection multi-portails view
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/kldljvw7_IMG_0804.PNG',
-  // Left phone — KOLO assistant chat view
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/5d1uv06m_IMG_0803.PNG',
-  // Right-far phone — additional feature (agenda / contact)
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/szhp9s8r_IMG_0796.PNG',
-  // Left-far phone — additional feature
-  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/fl35qbir_IMG_0794.PNG',
+  // Center — Home "Bon après-midi …" (dashboard)
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/z7ee6z7t_IMG_6511.webp',
+  // Right — Prospection
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/w2b9gvuk_IMG_6513.webp',
+  // Left — Parler à KOLO chat
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/jn28f7py_IMG_6517.webp',
+  // Right-far — Dossiers
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/uw71z1u2_IMG_6514.webp',
+  // Left-far — Contacts
+  'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/mpva8qq7_IMG_6515.webp',
 ];
 
 const FOUNDER_PHOTO = 'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png';
@@ -112,36 +111,48 @@ const TrustBar = () => {
 
 // ---------------------------------------------------------------------------
 // Feature visuals (bento-style, one per feature row)
+// These reproduce the *real* KOLO screens with fake but realistic data
+// (first name Jean, real listing formats, real chat quick-actions) so a
+// visitor understands the app without ever having opened it.
 // ---------------------------------------------------------------------------
 const VisualProspection = () => (
   <div className="mkt-feature-visual" data-testid="visual-prospection">
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
       <Search size={16} color="#A1A1AA" />
       <span style={{ color: '#A1A1AA', fontSize: 13.5, fontWeight: 500 }}>
-        Prospection · Paris 75001
+        Prospection · 75016
       </span>
     </div>
-    <div className="mkt-visual-portals" style={{ position: 'relative', height: 300 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {[
-        { src: 'Leboncoin',   time: 'il y a 3 min',  price: '890 000 €', top: 0 },
-        { src: 'SeLoger',     time: 'il y a 12 min', price: '740 000 €', top: 70 },
-        { src: 'Bien\u2019ici', time: 'il y a 22 min', price: '1 250 000 €', top: 140 },
-        { src: 'PAP',         time: 'il y a 34 min', price: '625 000 €', top: 210 },
-      ].map((p, i) => (
+        { title: 'Vente Appartement 6 pièces', meta: 'Paris 16e · 129 m² · 6p · 1 695 000 €', tag: 'Particulier' },
+        { title: 'Vente Appartement 5 pièces', meta: 'Paris 16e · 133 m² · 5p · 1 795 000 €', tag: 'Particulier' },
+        { title: 'Studio · Avenue d\u2019Iéna',        meta: 'Paris 16e · 22 m² · 1p · 279 000 €',     tag: 'Particulier' },
+        { title: 'Vente Appartement 3 pièces', meta: 'Paris 16e · 68 m² · 3p · 890 000 €',   tag: 'Agence' },
+      ].map((row, i) => (
         <motion.div
-          key={p.src}
-          className="mkt-portal-card"
-          style={{ top: p.top }}
-          initial={{ opacity: 0, x: -20 }}
+          key={row.title + i}
+          initial={{ opacity: 0, x: -18 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: i * 0.12, ease: easeOut }}
+          transition={{ duration: 0.5, delay: i * 0.1, ease: easeOut }}
+          style={{
+            padding: '12px 14px',
+            borderRadius: 14,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
         >
-          <div>
-            <div className="p-name">3 pièces · 68 m²</div>
-            <div className="p-meta">{p.src} · {p.time}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: '#fff', fontWeight: 600, fontSize: 13.5, marginBottom: 2 }}>{row.title}</div>
+              <div style={{ color: '#A1A1AA', fontSize: 12.5 }}>{row.meta}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <span style={{ padding: '3px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: 10.5, fontWeight: 600 }}>{row.tag}</span>
+              <span style={{ padding: '3px 8px', borderRadius: 999, background: '#fff', color: '#050505', fontSize: 10.5, fontWeight: 700 }}>+ Dossier</span>
+            </div>
           </div>
-          <div className="p-pill">{p.price}</div>
         </motion.div>
       ))}
     </div>
@@ -150,48 +161,59 @@ const VisualProspection = () => (
 
 const VisualAssistant = () => (
   <div className="mkt-feature-visual" data-testid="visual-assistant">
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
       <Sparkles size={16} color="#A1A1AA" />
-      <span style={{ color: '#A1A1AA', fontSize: 13.5, fontWeight: 500 }}>
-        Assistant KOLO
-      </span>
+      <span style={{ color: '#A1A1AA', fontSize: 13.5, fontWeight: 500 }}>Parler à KOLO</span>
     </div>
-    <div className="mkt-visual-chat">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <motion.div
-        className="mkt-chat-bubble user"
+        className="mkt-chat-bubble kolo"
         initial={{ opacity: 0, y: 8 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.4, ease: easeOut }}
+        style={{ maxWidth: '90%' }}
       >
-        Estime moi ce 3 pièces de 68 m² à Paris 3e.
+        Bonjour <span aria-hidden>👋</span> Je suis KOLO, ton copilote immo. Pose-moi une question (prospection, relance, négo…) ou dicte ton brief terrain.
       </motion.div>
       <motion.div
-        className="mkt-chat-bubble kolo"
         initial={{ opacity: 0, y: 8 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: 0.4, ease: easeOut }}
+        transition={{ duration: 0.4, delay: 0.3, ease: easeOut }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
       >
-        Fourchette <strong>862 000 &ndash; 918 000 €</strong> sur la base des 14 comparables DVF vendus dans les 6 derniers mois. Prix au m² médian du secteur : <strong>13 250 €</strong>.
+        {['Voir mes tâches du jour', 'Créer un contact vendeur', 'Recevoir un conseil de prospection'].map((q, i) => (
+          <div key={q} style={{
+            padding: '10px 14px',
+            borderRadius: 999,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.02)',
+            color: '#fff',
+            fontSize: 13.5,
+            fontWeight: 500,
+            textAlign: 'left',
+          }}>{q}</div>
+        ))}
       </motion.div>
       <motion.div
         className="mkt-chat-bubble user"
         initial={{ opacity: 0, y: 8 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: 1.0, ease: easeOut }}
+        transition={{ duration: 0.4, delay: 0.9, ease: easeOut }}
       >
-        Qu&apos;est-ce que je dois relancer aujourd&apos;hui ?
+        Estime moi ce 3 pièces de 68 m² à Paris 16e.
       </motion.div>
       <motion.div
         className="mkt-chat-bubble kolo"
         initial={{ opacity: 0, y: 8 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: 1.4, ease: easeOut }}
+        transition={{ duration: 0.4, delay: 1.3, ease: easeOut }}
+        style={{ maxWidth: '90%' }}
       >
-        3 dossiers en attente depuis plus de 5 jours. Le plus chaud : <strong>Mme Petit</strong> — visite planifiée jeudi, aucune relance depuis.
+        Fourchette <strong>862 000 &ndash; 918 000&nbsp;€</strong> sur la base de 14 comparables DVF vendus dans les 6 derniers mois.
       </motion.div>
     </div>
   </div>
@@ -199,32 +221,71 @@ const VisualAssistant = () => (
 
 const VisualOrganisation = () => (
   <div className="mkt-feature-visual" data-testid="visual-organisation">
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
       <CalendarDays size={16} color="#A1A1AA" />
-      <span style={{ color: '#A1A1AA', fontSize: 13.5, fontWeight: 500 }}>
-        Aujourd&apos;hui · Mardi 8 juillet
-      </span>
+      <span style={{ color: '#A1A1AA', fontSize: 13.5, fontWeight: 500 }}>Accueil · jeudi 9 juillet</span>
     </div>
-    <div className="mkt-visual-agenda">
+
+    {/* Greeting */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em', color: '#fff' }}>
+        Bon après-midi Jean
+      </div>
+      <div style={{ width: 40, height: 40, borderRadius: 999, background: 'rgba(255,255,255,0.08)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, position: 'relative' }}>
+        JD
+        <span style={{ position: 'absolute', bottom: 2, right: 2, width: 8, height: 8, borderRadius: 999, background: '#34d399', border: '2px solid #0A0A0A' }} />
+      </div>
+    </div>
+
+    {/* Progress cards */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: easeOut }}
+        style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}
+      >
+        <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 28, color: '#fff', letterSpacing: '-0.02em' }}>4/6</div>
+        <div style={{ color: '#A1A1AA', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>Faits</div>
+        <div style={{ color: '#fff', fontWeight: 600, fontSize: 12.5, marginTop: 8 }}>Rappels</div>
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.15, ease: easeOut }}
+        style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}
+      >
+        <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 28, color: '#fff', letterSpacing: '-0.02em' }}>3/5</div>
+        <div style={{ color: '#A1A1AA', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>Traitées</div>
+        <div style={{ color: '#fff', fontWeight: 600, fontSize: 12.5, marginTop: 8 }}>Notes</div>
+      </motion.div>
+    </div>
+
+    {/* Dossiers récents */}
+    <div style={{ color: '#A1A1AA', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8, fontWeight: 500 }}>
+      Dossiers récents
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {[
-        { time: '09:30', label: 'Visite — Rue de Turenne', badge: 'Chaud', tone: 'hot' },
-        { time: '11:00', label: 'Signature compromis — Dubois', badge: 'Signé', tone: '' },
-        { time: '14:15', label: 'Estimation — 42 m² Bastille',   badge: 'DVF ok', tone: 'warm' },
-        { time: '16:00', label: 'Relance Mme Petit',              badge: '5 jours', tone: 'hot' },
-        { time: '17:30', label: 'RDV mandataire — Fauveau',       badge: 'Nouveau', tone: '' },
-      ].map((r, i) => (
+        { role: 'VENDEUR',  name: 'M. Dubois',   meta: '35 m² · 2 pièces · Paris 3e' },
+        { role: 'VENDEUR',  name: 'Mme Petit',   meta: '25.6 m² · 11b Rue Lemercier 75017' },
+        { role: 'ACQUÉREUR', name: 'M. Moreau',  meta: 'Recherche 3p · Paris 11e · < 750 k€' },
+      ].map((d, i) => (
         <motion.div
-          key={r.time}
-          className="mkt-agenda-row"
-          initial={{ opacity: 0, x: 20 }}
+          key={d.name}
+          initial={{ opacity: 0, x: 18 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: i * 0.08, ease: easeOut }}
+          style={{ padding: '10px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <span className={`dot ${r.tone}`} />
-          <span className="time">{r.time}</span>
-          <span className="label">{r.label}</span>
-          <span className="badge">{r.badge}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: '#A1A1AA', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em' }}>{d.role}</span>
+            <span style={{ color: '#fff', fontWeight: 600, fontSize: 13.5 }}>{d.name}</span>
+          </div>
+          <div style={{ color: '#A1A1AA', fontSize: 12, marginTop: 4 }}>{d.meta}</div>
         </motion.div>
       ))}
     </div>
@@ -250,7 +311,7 @@ const HomeContent = () => (
               des agents immo.
             </motion.h1>
             <motion.p variants={fadeUp} className="mkt-lead" data-testid="mkt-hero-subtitle">
-              Prospection multi-portails, estimations précises, agenda et dossiers réunis dans une seule app iPhone. Fait par des agents immo, pour des agents immo.
+              Prospection multi-portails, estimations précises, agenda et dossiers réunis dans une seule app sur ton téléphone. Fait par des agents immo, pour des agents immo.
             </motion.p>
             <motion.div variants={fadeUp} className="mkt-cta-row">
               <a
@@ -282,7 +343,7 @@ const HomeContent = () => (
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Ce que fait KOLO</div>
           <h2 className="mkt-section-title">
-            Tout ce dont un agent a besoin, dans son iPhone.
+            Tout ce dont un agent a besoin, dans son téléphone.
           </h2>
           <p className="mkt-section-lead">
             Trois piliers, pensés main dans la main avec des agents et mandataires en réseau et indépendants.
@@ -295,7 +356,7 @@ const HomeContent = () => (
             <div className="mkt-feature-tag">01 · Prospection</div>
             <h3>Tous les portails, une seule vue.</h3>
             <p>
-              Leboncoin, SeLoger, Bien&apos;ici, PAP, Logic-immo — chaque nouveau bien qui apparaît dans votre secteur remonte en temps réel dans KOLO. Fini le multi-tabs.
+              Leboncoin, SeLoger, Bien&apos;ici, PAP, Logic-immo — chaque nouveau bien qui apparaît dans votre secteur remonte en temps réel dans KOLO. Fini de jongler entre 5 sites, 3 alertes email et une feuille Excel qui traîne.
             </p>
             <p>
               Un bien retient votre attention ? En un tap il devient un dossier KOLO, toutes les infos pré-remplies.

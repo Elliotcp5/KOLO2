@@ -36,7 +36,7 @@ const AboutContent = () => (
           </div>
           <div className="mkt-founder-quote">
             <p style={{ marginBottom: 20 }}>
-              « J&apos;ai été agent immobilier dans deux grands réseaux avant de basculer dans la tech. Là, j&apos;ai été frappé par une chose : personne n&apos;avait vraiment pensé un outil pour nous, sur le terrain, un iPhone à la main.
+              « J&apos;ai été agent immobilier dans deux grands réseaux avant de basculer dans la tech. Là, j&apos;ai été frappé par une chose : personne n&apos;avait vraiment pensé un outil pour nous, sur le terrain, un téléphone à la main.
             </p>
             <p style={{
               fontFamily: 'inherit',
@@ -67,7 +67,7 @@ const AboutContent = () => (
           gap: 24,
         }}>
           {[
-            { t: 'Simple', d: 'Une app iPhone. Pas de setup, pas de formation. On ouvre, on l\u2019utilise.' },
+            { t: 'Simple', d: 'Une app dans ta poche. Pas de setup, pas de formation. On ouvre, on l\u2019utilise.' },
             { t: 'Précis',  d: 'Nos estimations s\u2019appuient sur DVF, les vraies transactions. Pas de moyenne pondérée d\u2019un algo opaque.' },
             { t: 'Juste',   d: 'Un tarif clair, sans engagement. On garde nos utilisateurs parce qu\u2019on est utile — pas parce qu\u2019on les a bloqués.' },
           ].map((v, i) => (

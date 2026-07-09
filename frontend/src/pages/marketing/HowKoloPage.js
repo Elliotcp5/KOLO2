@@ -34,7 +34,7 @@ const HowContent = () => (
               n: '01',
               t: 'Vous ouvrez l\u2019app.',
               d: 'Login par email en 10 secondes. Aucune installation locale, aucun paramétrage. Vous êtes sur l\u2019accueil.',
-              items: ['Connexion par email · pas de mot de passe à retenir', 'Sync iCloud entre iPhone et iPad', 'Notifications push pour les leads chauds'],
+              items: ['Connexion par email · pas de mot de passe à retenir', 'Sync entre tous vos appareils', 'Notifications push pour les leads chauds'],
             },
             {
               n: '02',
@@ -96,7 +96,7 @@ const HowContent = () => (
     <section className="mkt-final-cta" data-testid="mkt-how-cta">
       <div className="mkt-container">
         <div className="mkt-final-cta-inner">
-          <h2>Voyez-le tourner sur votre iPhone.</h2>
+          <h2>Voyez-le tourner sur votre téléphone.</h2>
           <p>2 min pour être opérationnel. Zéro CB demandée pour tester.</p>
           <a
             href={APP_STORE_URL}

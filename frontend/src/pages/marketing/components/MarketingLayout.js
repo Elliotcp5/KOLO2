@@ -139,7 +139,7 @@ const Footer = () => (
       <div className="mkt-footer-grid">
         <div className="mkt-footer-brand">
           <KoloLogo />
-          <p>Le co-pilote intelligent des agents immobiliers. Disponible sur iPhone.</p>
+          <p>Le co-pilote intelligent des agents immobiliers. Disponible sur téléphone.</p>
         </div>
         <div className="mkt-footer-col">
           <h5>Produit</h5>
