@@ -1,120 +1,101 @@
 {
-  "theme_and_archetype": {
-    "theme": "Dark",
-    "archetype": "Archetype 4 (Swiss & High-Contrast) + Subliminal Archetype 7 accents",
-    "description": "Ultra-premium, Linear/Vercel-inspired B2B SaaS design for real estate independent agents. Dominant pure black/gray/white with very subtle, barely-there purple/blue gradient accents."
-  },
-  "color_system": {
-    "css_variables": {
-      "--mkt-bg-primary": "#000000",
-      "--mkt-bg-secondary": "#0A0A0A",
-      "--mkt-bg-tertiary": "#121212",
-      "--mkt-text-primary": "#FFFFFF",
-      "--mkt-text-secondary": "#A1A1AA",
-      "--mkt-border-light": "rgba(255, 255, 255, 0.08)",
-      "--mkt-border-hover": "rgba(255, 255, 255, 0.15)",
-      "--mkt-accent-purple": "#6B5CE7",
-      "--mkt-accent-blue": "#4B7BFF",
-      "--mkt-accent-glow": "linear-gradient(135deg, rgba(107, 92, 231, 0.08) 0%, rgba(75, 123, 255, 0.08) 100%)",
-      "--mkt-button-primary-bg": "#FFFFFF",
-      "--mkt-button-primary-text": "#000000",
-      "--mkt-button-primary-hover": "#E4E4E7"
+  "project_name": "KOLO Marketing Site",
+  "theme": "premium_dark",
+  "typography": {
+    "headings": {
+      "font": "Cabinet Grotesk",
+      "css_import": "@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,500,700,900&display=swap');",
+      "weights": ["500", "700", "800"],
+      "usage": "Use tight tracking (tracking-tight or tracking-tighter) for all H1 and H2. Never use Inter or standard fonts for headings to maintain a premium Qonto-like edge."
     },
-    "rules": [
-      "No solid purple/blue backgrounds or buttons. Accents must be restricted to faint radial blurs (opacity 0.06 - 0.12) or 1px hover borders.",
-      "Use radial-gradients for soft 'spotlight' effects behind key sections (like Hero and Pricing)."
-    ]
-  },
-  "typography_rules": {
-    "primary_display": "Cabinet Grotesk",
-    "primary_body": "Satoshi",
-    "scales": {
-      "h1": "text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1]",
-      "h2": "text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight",
-      "h3": "text-xl sm:text-2xl font-bold tracking-tight text-white",
-      "body": "text-base sm:text-lg text-zinc-400 font-medium leading-relaxed",
-      "overline": "text-xs font-bold tracking-[0.2em] uppercase text-zinc-500"
-    },
-    "rules": [
-      "MANDATORY: Delete any usage of 'Instrument Serif'. No more italic serif mixing. The UI must feel like a precision tool.",
-      "Headings must exclusively use 'Cabinet Grotesk' with tight tracking to achieve the 'Apple/Linear' structural feel.",
-      "Never center paragraphs unless it's a short 1-2 line subtitle under a centered section heading."
-    ]
-  },
-  "layout_and_spacing": {
-    "philosophy": "Generous spacing. Elements must breathe. Avoid Bootstrap-like equal columns; prioritize asymmetry and tension.",
-    "mobile_responsive_strategy": {
-      "under_640px": "Stack vertically. CRITICAL: Increase gaps significantly (gap-8 to gap-12). Do NOT render full-height phone mockups here; crop the bottom using mask-image or a max-height container to show only the top UI so it doesn't dominate the screen.",
-      "640px_to_900px": "Use 2-column bento grids where applicable. Adjust paddings to px-8.",
-      "over_900px": "Unleash 12-column grids and high-end asymmetrical layouts. Use massive paddings (py-32) between sections."
+    "body": {
+      "font": "Satoshi",
+      "css_import": "@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');",
+      "weights": ["400", "500"],
+      "usage": "Highly legible, clean geometric sans for paragraphs, UI elements, and data points."
     }
   },
-  "iphone_mockup_solution": {
-    "approach": "Glassmorphic Abstract Frame + Exploded UI",
-    "description": "Abandon literal phone SVG frames with thick bezels. They look cheap.",
-    "css_implementation": [
-      "Wrap screenshots in a sleek container: `rounded-[40px] border border-white/10 shadow-[0_0_80px_rgba(255,255,255,0.03)] overflow-hidden`.",
-      "Apply a subtle 3D tilt on desktop: `transform: perspective(1200px) rotateY(-8deg) rotateX(4deg) scale(0.95)`.",
-      "Framer Motion Exploded UI: Add absolutely positioned floating glass cards over the phone. For example, extract the 'Dictée vocale' status into a small pill card `backdrop-blur-xl bg-black/60 border border-white/20` floating slightly outside the main phone bounds."
-    ]
+  "colors": {
+    "background": {
+      "base": "#050505",
+      "surface_1": "#0A0A0A",
+      "surface_2": "#121212"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "muted": "#52525B"
+    },
+    "border": {
+      "subtle": "rgba(255, 255, 255, 0.08)",
+      "active": "rgba(255, 255, 255, 0.2)"
+    },
+    "accent": {
+      "primary": "#FFFFFF",
+      "primary_text": "#000000",
+      "glow": "rgba(255, 255, 255, 0.05)"
+    }
   },
-  "micro_animations": {
-    "framer_motion": [
-      "Scroll Reveals: Elements should fade up lazily. `initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}`.",
-      "Floating Elements: The Exploded UI cards should gently float using `animate={{ y: [-5, 5, -5] }} transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}`."
+  "visual_enhancers": {
+    "glassmorphism": "Use high-end glass for the sticky header and floating elements: `backdrop-blur-xl bg-[#050505]/60 border-b border-white/10`. NEVER use full transparency where text overlays content.",
+    "shadows": "Replace standard drop shadows with deep ambient light bleeds or sharp 1px inner glows (`shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]`).",
+    "borders": "Use 'Tracing Beam' or dynamic subtle borders on feature bento cards. Default border should be extremely faint (`border-white/5` to `border-white/10`)."
+  },
+  "layouts": {
+    "global_spacing": "Generous spacing. Use `py-24` to `py-32` between major sections to let the content breathe. This creates the 'premium' feel.",
+    "header": "Fixed top, ultra-minimal. Left: New Dark KOLO Logo. Right: CTA 'Télécharge l\\'app' (Pill-shaped, pure white bg, black text).",
+    "hero_section": "Massive impact. Left-aligned or perfectly centered text. H1: 'Le co-pilote intelligent qui booste le chiffre d\\'affaires des agents immobiliers.' (Cabinet Grotesk, text-5xl to text-7xl, tracking-tighter). A giant Apple App Store button CTA. Background: The requested 3D animated mockup.",
+    "mockup_3d_specs": "DO NOT use a static image. Build a 3D isometric composition using `framer-motion`. Arrange the 5 provided iOS screenshots inside `motion.div` wrappers with CSS 3D transforms (`rotateX`, `rotateY`, `rotateZ`). Stagger their vertical floating animation (y-axis translation with `repeatType: 'mirror'`) to create a 'living, breathing' tech environment. Add a subtle radial gradient behind them so they pop against the #050505 background.",
+    "trust_bar": "Marquee showing: Century21, Orpi, Laforêt, IAD, Safti, Guy Hoquet, ERA, Stéphane Plaza. Render these as sleek typographic text-logos in `#52525B` (Zinc-600) to keep it sober and premium.",
+    "features_bento": "Qonto-style dynamic bento grid. 3 major blocks:\n1. Prospection: Focus on Leboncoin, Bien Ici, SeLoger aggregation + DPE. Visual: A stacked card UI animation.\n2. Assistant Intelligent: 'Le meilleur agent dans votre téléphone' (DVF data, legal). Visual: A sleek chat/insight UI abstraction.\n3. Organisation: Agenda, contacts, dossiers. Visual: Clean, dense lists.",
+    "pricing_section": "Clean 2-column grid. Starter vs Pro. No complex tables. Just pure value proposition in a premium card with a subtle hover lift (`-translate-y-1`) and border highlight.",
+    "founder_section": "Human and sober. `flex-row` on desktop. Left: Elliot's photo (transparent png) over a subtle dark gradient blob. Right: His quote. 'Ex-agent immo...'. No over-dramatization, pure professional trust."
+  },
+  "motion": {
+    "page_load": "Fade up elements sequentially using Framer Motion. H1 first, then subtitle, then CTA, then 3D background.",
+    "scroll_reveal": "All bento cards and sections should have a subtle `whileInView={{ opacity: 1, y: 0 }}` from `y: 20` and `opacity: 0`.",
+    "hover_states": "Buttons should have a micro-scale (`scale: 0.98` on tap). Cards should subtly illuminate their borders on hover."
+  },
+  "image_urls": {
+    "logo": {
+      "url": "https://customer-assets.emergentagent.com/job_2eb24348-efe6-47cf-8c87-199c35e66909/artifacts/ah5kfmpv_META%20LOGO%20WEB%20APP.png",
+      "description": "Nouveau logo sombre KOLO. Use in Header and Meta OG image."
+    },
+    "founder_photo": {
+      "url": "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png",
+      "description": "Founder Elliot (transparent background). Use in About/Founder section."
+    },
+    "ios_screenshots": [
+      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/mzeeky1t_IMG_5692.PNG",
+      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/ex6rdugb_IMG_5691.PNG",
+      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/74uzhn02_IMG_5690.PNG",
+      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/wcwcq6xp_IMG_5689.PNG",
+      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/zibhtrf0_IMG_5688.PNG"
     ],
-    "css_interactions": [
-      "Magnetic Hover: Primary App Store CTAs should slightly scale and follow the cursor if a library is available, or simply use a crisp `hover:scale-105 active:scale-95 transition-transform`.",
-      "Hover Glow Cards: For Bento grid cards, implement a custom CSS glow where a radial gradient follows the mouse, masked by the card bounds. Alternatively, a simple `hover:bg-white/5 hover:border-white/20 transition-all duration-300`."
-    ]
+    "ambient_texture": {
+      "url": "https://images.unsplash.com/photo-1710438399422-2fca27686bcd",
+      "description": "Abstract deep dark 3d glass. Use sparingly as an ambient background overlay with low opacity (e.g., 5-10%) in the pricing or features section to avoid 'flatness'."
+    }
   },
-  "implementation_plan": {
-    "css_scoping": "Ensure all global styles in `/app/frontend/src/pages/marketing/marketing.css` are wrapped under the `.mkt-root` class to prevent pollution into the iOS app.",
-    "sections": [
-      {
-        "name": "Header",
-        "details": "Sticky. Glassmorphism `backdrop-blur-xl bg-black/60 border-b border-white/5`. Contains nav links, EN/FR/DE/IT switcher, and a small download CTA."
-      },
-      {
-        "name": "Hero Landing",
-        "details": "Asymmetrical layout. Left: Massive H1, tight body text, premium App Store CTA. Right: The 3D tilted phone mockup of `live_home_john.jpeg` with floating UI pills. Background features the `--mkt-accent-glow` spotlight."
-      },
-      {
-        "name": "Trusted By Marquee",
-        "details": "Infinite smooth scrolling marquee. 15 real estate network logos (use Lucide icons or simple text SVGs as placeholders). Opacity 40%, pure white on hover."
-      },
-      {
-        "name": "Promise Section",
-        "details": "Bento Grid of 3 cards (Pige IA, Dictée vocale, Suivi dossiers). Dark glassmorphism (`bg-white/[0.02] border border-white/[0.08]`). Incorporate Lucide icons with a faint purple/blue drop-shadow."
-      },
-      {
-        "name": "Stats Section",
-        "details": "Minimalist grid displaying massive numbers: '30sec', '0 oubli', '1 app'. Text color pure white. Add a thin vertical 1px divider (`border-l border-white/10`) between stats on desktop."
-      },
-      {
-        "name": "Steps Section (How Kolo)",
-        "details": "Sticky scrolling track. Left column stays fixed explaining 'Pige' then 'Dictée vocale'. Right column scrolls the corresponding screenshots (`live_pige.jpeg`, `live_dossiers.jpeg`) wrapped in premium Abstract Frames."
-      },
-      {
-        "name": "Quote Section",
-        "details": "Centered. Large typography `text-3xl sm:text-4xl font-medium tracking-tight`. Text wrapped in quotes, with a floating avatar and agent name below."
-      },
-      {
-        "name": "Pricing",
-        "details": "One single centered premium card (24,90€/mois). Features an animated gradient border (using the barely-there purple/blue hexes via a spinning mask-image pseudo-element) to scream 'pro tool'. List 7 features."
-      },
-      {
-        "name": "Footer",
-        "details": "Deep dark gray `bg-[#050505]`. Huge 'KOLO' logo at the bottom. Product/Company/Legal links."
-      }
-    ],
-    "other_pages": "Apply the same typography, spacing, and glassmorphic card patterns to `/comment-kolo`, `/ressources`, `/a-propos`, and `/legal`."
-  },
-  "testing": {
-    "attributes": [
-      "Add `data-testid='mkt-hero-appstore-btn'` to primary CTA.",
-      "Add `data-testid='mkt-pricing-btn'` to the pricing CTA.",
-      "Add `data-testid='mkt-nav-link'` to header navigation items."
-    ]
-  }
+  "instructions_to_main_agent": [
+    "ABANDON the existing 'aurora animated' theme completely. The user explicitly stated it feels like an AI template. Transition entirely to the 'Premium Deep Dark' aesthetic (like Qonto in dark mode).",
+    "Update `marketing.css` to import Cabinet Grotesk and Satoshi fonts. Remove Inter.",
+    "In `HomePage.js`, implement the 3D animated hero background using Framer Motion and the provided iOS screenshots. Array them in a visually stunning isometric or cascading layout that floats continuously. Do not use a static image.",
+    "Rewrite all placeholder text to sound like it was written by real estate agents for real estate agents. No generic AI SaaS jargon. Use terms like 'DPE', 'DVF', 'Prospection multi-portails'.",
+    "Ensure the primary CTA is ALWAYS 'Télécharge l\\'app' and points to the `APP_STORE_URL` constant. Make it a pill-shaped button, pure white with black text for maximum contrast against the dark theme.",
+    "Build the Trust Marquee with the specified network names using sleek, gray typography if logos aren't present. It is crucial social proof.",
+    "Ensure the entire app is fully responsive. The 3D screenshot hero should scale down gracefully on mobile (perhaps showing fewer screens or a tighter stack).",
+    "The files to modify are `.js` files, not TypeScript. Write clean React code using Tailwind classes.",
+    "Update Meta Tags and Open Graph images to use the new dark logo provided.",
+    "All interactive elements MUST include a `data-testid` attribute (e.g., `data-testid=\"app-store-cta\"`)."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use generic centered layouts or simplistic linear gradients.",
+    "Create depth through layered design elements with z-index hierarchy and glassmorphism (12-24px blur).",
+    "Never apply `transition: all`. Target specific properties like `transition-transform`, `transition-opacity`.",
+    "Do not center align the app container text globally.",
+    "Use modern button styles (pill-shaped) with interaction animations.",
+    "Never use AI assistant Emoji characters (🤖🧠💭💡🔮🎯) for icons. Use Phosphor or Lucide icons.",
+    "Include micro-animations for every interaction (hover states, parallax, entrance)."
+  ]
 }
