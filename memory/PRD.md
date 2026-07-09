@@ -15,6 +15,57 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - MongoDB (motor async)
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
+### Marketing Site www.trykolo.io — REFONTE COMPLÈTE v3 (Feb 2026) 🔥 LATEST
+Ancienne homepage "aurora animated" totalement abandonnée (jugée "template Claude AI-slop"). Refonte complète style **Qonto premium dark**.
+
+**Nouveau design system :**
+- **Fonts** : Cabinet Grotesk 800/900 (titres) + Satoshi 400/700 (body) via Fontshare CDN
+- **Palette** : obsidian `#050505` base + surfaces `#0A0A0A/#121212/#1A1A1A` + accent blanc pur `#FFFFFF` sur ink `#050505`
+- **Spacing** : très aéré (py-24 → py-32 entre sections)
+- **Motion** : Framer Motion partout, easing `[0.22, 1, 0.36, 1]`, staggered reveals
+- **Ambient** : radial gradients blancs très subtils (0.045 opacity) + noise SVG en `mix-blend-mode: overlay`
+
+**Nouvelle homepage (`/app/frontend/src/pages/marketing/HomePage.js`) :**
+1. **Hero** : eyebrow "Disponible sur l'App Store" (dot vert) + H1 massif "Le co-pilote intelligent qui booste le chiffre d'affaires des agents immo." (gradient argenté sur l'em) + lead + CTA pill blanche "Télécharge l'app" + **mockup 3D iOS** (5 iPhones réels de l'app, cascade isométrique, chacun avec son propre `motion.div` float staggered → effet vidéo qui bouge tout seul, comme demandé style Qonto)
+2. **Trust marquee** : "Des agents de ces réseaux nous font déjà confiance" — Century 21, Orpi, Laforêt, IAD France, Safti, Guy Hoquet, ERA, Stéphane Plaza, L'Adresse, Nestenn, Human Immobilier, Sextant (marquee CSS 40s loop, mask-image gradient sur les bords)
+3. **3 features bento** avec visuel dédié :
+   - Prospection (portails cards animées Leboncoin/SeLoger/Bien'ici/PAP)
+   - Assistant intelligent (chat bubbles utilisateur ↔ KOLO avec estimation DVF)
+   - Organisation (agenda-day view avec dots colorés)
+4. **Pricing** : 2 cards (Starter 9,99€ / Pro 24,99€ featured avec badge "RECOMMANDÉ" et boutons "Télécharge l'app")
+5. **Founder** : photo Elliot (transparent PNG) sur gradient + citation courte sobre "Ex-agent immo dans deux grands réseaux, puis parcours tech..."
+6. **Final CTA** : "Prêt à prospecter comme jamais ?" + CTA pill large
+
+**Header** : sticky glass (`backdrop-filter: blur(20px)` sur rgba(5,5,5,0.72)) + nouveau logo dark KOLO (`META LOGO WEB APP.png` de l'app iOS) + language switcher discret + CTA pill blanche persistante
+
+**Footer** : minimal, 4 colonnes, tagline "Fait par des agents immo, pour des agents immo."
+
+**AboutPage** simplifiée avec la citation Elliot version longue + 3 valeurs (Simple, Précis, Juste). **HowKoloPage** : 4 étapes "01 → 04" avec chiffres géants en gradient argenté. **ResourcesPage** : mini-grid de 6 articles thématiques.
+
+**Meta / SEO refaits (`/app/frontend/public/index.html`) :**
+- Title : "KOLO — Le co-pilote intelligent des agents immobiliers"
+- Description alignée sur le nouveau positionnement (retirées les mentions "CRM", "relances automatiques", "essai 14 jours", "promoteurs/foncières/développeurs" → recentré sur agents immo iPhone)
+- `theme-color` = `#050505`
+- Open Graph image = nouveau logo dark `META LOGO WEB APP.png`
+- Twitter card idem
+- Structured data JSON-LD : applicationSubCategory "Real Estate", image mise à jour
+
+**Fichiers touchés :**
+- `/app/frontend/src/pages/marketing/marketing.css` (rewrite complet)
+- `/app/frontend/src/pages/marketing/components/MarketingLayout.js` (rewrite)
+- `/app/frontend/src/pages/marketing/HomePage.js` (rewrite)
+- `/app/frontend/src/pages/marketing/AboutPage.js` (rewrite)
+- `/app/frontend/src/pages/marketing/HowKoloPage.js` (rewrite)
+- `/app/frontend/src/pages/marketing/ResourcesPage.js` (rewrite)
+- `/app/frontend/public/index.html` (meta tags v3)
+- `/app/design_guidelines.json` (blueprint conservé pour référence)
+
+**Défi technique résolu** : le CSS global de l'app iOS (`themes.css`, `App.css`) applique `background-color: var(--bg)` et gradient `#004AAD → #CB6CE6` à `h1`, `.btn-primary`, etc. avec spécificité 0-0-1. Pour éviter le fond gris/violet indésirable sur les pages marketing sans dupliquer tout le CSS, on force :
+- `html, body` via `document.body.style.setProperty('background','#050505','important')` dans `MarketingLayout` (au montage uniquement, restauré au unmount → pas de fuite sur les routes app-v2)
+- `.mkt-root` et titres avec sélecteurs très spécifiques + `!important`
+- `.mkt-cta-pill` avec `a.mkt-cta-pill, button.mkt-cta-pill` (spécificité 0-1-1) + `!important`
+
+
 ### Sprint Apify → Supabase Cron Scraper (Feb 2026) 🔥 LATEST
 Le scraper autonome est en place. Fini les 1-3 min d'attente Apify live à chaque recherche : le mobile lit maintenant instantanément depuis Supabase déjà pré-rempli.
 

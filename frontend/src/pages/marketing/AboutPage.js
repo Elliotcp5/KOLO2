@@ -1,101 +1,113 @@
 import React from 'react';
-import { ArrowRight, Heart, Target, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
-import { useI18n } from './i18n';
 
-const AboutContent = () => {
-  const { t } = useI18n();
-  const story = t('about.story') || [];
+const FOUNDER_PHOTO = 'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png';
 
-  return (
-    <>
-      <section className="mkt-hero" data-testid="mkt-about-hero">
-        <div className="mkt-container">
-          <div className="mkt-about-hero">
-            <div>
-              <div className="mkt-eyebrow" data-testid="mkt-about-eyebrow">
-                <span className="mkt-eyebrow-dot" />
-                {t('about.eyebrow')}
-              </div>
-              <h1 className="mkt-h1">
-                {t('about.title_p1')}<br/>
-                <span className="mkt-h1-accent">{t('about.title_em')}</span>
-              </h1>
-              <p className="mkt-lead">{t('about.lead')}</p>
-            </div>
-            <div className="mkt-founder-photo">
-              <img src="/marketing/assets/founder.png" alt="Elliot Coen-Pressard, fondateur de KOLO" data-testid="mkt-about-founder-photo" />
-            </div>
+const easeOut = [0.22, 1, 0.36, 1];
+
+const AboutContent = () => (
+  <>
+    <section className="mkt-hero" style={{ paddingBottom: 40 }} data-testid="mkt-about-hero">
+      <div className="mkt-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: easeOut }}
+          style={{ maxWidth: 800 }}
+        >
+          <div className="mkt-section-eyebrow">À propos</div>
+          <h1 className="mkt-h1" style={{ marginBottom: 24 }}>
+            Fait par des agents immo,<br />pour des agents immo.
+          </h1>
+          <p className="mkt-lead">
+            KOLO est né d&apos;un constat simple : les outils qu&apos;on nous vend n&apos;ont jamais été construits par ceux qui les utilisent.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+
+    <section className="mkt-section" style={{ paddingTop: 32 }} data-testid="mkt-about-founder">
+      <div className="mkt-container">
+        <div className="mkt-founder">
+          <div className="mkt-founder-photo">
+            <img src={FOUNDER_PHOTO} alt="Elliot, fondateur de KOLO" />
+          </div>
+          <div className="mkt-founder-quote">
+            <p style={{ marginBottom: 20 }}>
+              « J&apos;ai été agent immobilier dans deux grands réseaux avant de basculer dans la tech. Là, j&apos;ai été frappé par une chose : personne n&apos;avait vraiment pensé un outil pour nous, sur le terrain, un iPhone à la main.
+            </p>
+            <p style={{
+              fontFamily: 'inherit',
+              fontSize: '1.0625rem',
+              color: 'var(--text-2)',
+              fontWeight: 400,
+              letterSpacing: 0,
+              lineHeight: 1.6,
+              marginBottom: 16,
+            }}>
+              On a construit KOLO avec ceux qui allaient s&apos;en servir — agents en réseau, mandataires, conseillers indépendants. On a testé, itéré, retesté. Le résultat, c&apos;est une app qui vous fait gagner du temps sans vous demander d&apos;apprendre un nouveau logiciel. »
+            </p>
+            <div className="mkt-founder-sign">Elliot — Fondateur de KOLO</div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="mkt-section-tight">
-        <div className="mkt-container mkt-container-narrow">
-          <div className="mkt-section-eyebrow">{t('about.founder_eyebrow')}</div>
-          <h2 className="mkt-h2" style={{ marginBottom: 32 }}>
-            {t('about.founder_title_p1')}<br/>
-            <span className="mkt-h1-accent">{t('about.founder_title_em')}</span>
-          </h2>
-
-          <div className="mkt-prose mkt-reveal" data-testid="mkt-about-story">
-            {story.map((p, i) => <p key={i}>{p}</p>)}
-          </div>
-
-          <div className="mkt-founder-quote" data-testid="mkt-about-quote">
-            « {t('about.quote')} »
-          </div>
-          <div className="mkt-founder-name">{t('about.founder_name')}</div>
-          <div className="mkt-founder-role">{t('about.founder_role')}</div>
+    <section className="mkt-section" style={{ paddingTop: 40 }} data-testid="mkt-about-values">
+      <div className="mkt-container">
+        <div className="mkt-reveal" style={{ maxWidth: 640, marginBottom: 40 }}>
+          <div className="mkt-section-eyebrow">Ce qui nous guide</div>
+          <h2 className="mkt-section-title">Trois principes, tenus.</h2>
         </div>
-      </section>
-
-      <section className="mkt-section">
-        <div className="mkt-container">
-          <div className="mkt-section-head mkt-reveal">
-            <div className="mkt-section-eyebrow">{t('about.values_eyebrow')}</div>
-            <h2 className="mkt-h2">{t('about.values_title_p1')}<br/><span className="mkt-h1-accent">{t('about.values_title_em')}</span></h2>
-          </div>
-
-          <div className="mkt-values" data-testid="mkt-about-values">
-            <div className="mkt-value mkt-reveal">
-              <div className="mkt-pillar-icon" style={{ marginBottom: 18 }}><Target size={22} strokeWidth={2} /></div>
-              <h4>{t('about.value1_title')}</h4>
-              <p>{t('about.value1_desc')}</p>
-            </div>
-            <div className="mkt-value mkt-reveal">
-              <div className="mkt-pillar-icon" style={{ marginBottom: 18 }}><Zap size={22} strokeWidth={2} /></div>
-              <h4>{t('about.value2_title')}</h4>
-              <p>{t('about.value2_desc')}</p>
-            </div>
-            <div className="mkt-value mkt-reveal">
-              <div className="mkt-pillar-icon" style={{ marginBottom: 18 }}><Heart size={22} strokeWidth={2} /></div>
-              <h4>{t('about.value3_title')}</h4>
-              <p>{t('about.value3_desc')}</p>
-            </div>
-          </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 24,
+        }}>
+          {[
+            { t: 'Simple', d: 'Une app iPhone. Pas de setup, pas de formation. On ouvre, on l\u2019utilise.' },
+            { t: 'Précis',  d: 'Nos estimations s\u2019appuient sur DVF, les vraies transactions. Pas de moyenne pondérée d\u2019un algo opaque.' },
+            { t: 'Juste',   d: 'Un tarif clair, sans engagement. On garde nos utilisateurs parce qu\u2019on est utile — pas parce qu\u2019on les a bloqués.' },
+          ].map((v, i) => (
+            <motion.div
+              key={v.t}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: easeOut }}
+              className="mkt-feature-visual"
+              style={{ minHeight: 'auto', padding: '28px 24px' }}
+            >
+              <h3 style={{ fontSize: '1.5rem', marginBottom: 12 }}>{v.t}</h3>
+              <p style={{ color: 'var(--text-2)', fontSize: 15 }}>{v.d}</p>
+            </motion.div>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="mkt-section">
-        <div className="mkt-container">
-          <div className="mkt-final-cta mkt-reveal" data-testid="mkt-about-final-cta">
-            <h2>{t('about.final_title_p1')}<br/><span className="mkt-h1-accent">{t('about.final_title_em')}</span></h2>
-            <p>{t('about.final_lead')}</p>
-            <div className="mkt-cta-row">
-              <a href="mailto:contact@trykolo.io" className="mkt-btn mkt-btn-primary" data-testid="mkt-about-contact-cta">
-                {t('about.final_cta')} <ArrowRight size={16} strokeWidth={2.5} />
-              </a>
-              <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-ghost" data-testid="mkt-about-appstore-cta">
-                {t('about.final_cta_secondary')}
-              </a>
-            </div>
-          </div>
+    <section className="mkt-final-cta" data-testid="mkt-about-cta">
+      <div className="mkt-container">
+        <div className="mkt-final-cta-inner">
+          <h2>Voyez par vous-même.</h2>
+          <p>Téléchargez KOLO. Vous vous ferez votre propre avis.</p>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mkt-cta-pill large"
+            data-testid="mkt-about-cta-appstore"
+          >
+            Télécharge l&apos;app
+            <ArrowRight size={16} strokeWidth={2.5} />
+          </a>
         </div>
-      </section>
-    </>
-  );
-};
+      </div>
+    </section>
+  </>
+);
 
 const AboutPage = () => (
   <MarketingLayout>

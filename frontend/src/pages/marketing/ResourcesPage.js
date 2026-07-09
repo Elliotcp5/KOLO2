@@ -1,140 +1,85 @@
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, Clock } from 'lucide-react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
-import { useI18n } from './i18n';
 
-const ResourcesContent = () => {
-  const { t } = useI18n();
-  const items = t('resources.items') || [];
-  const categories = t('resources.categories') || [];
-  const ALL = categories[0] || 'All';
+const easeOut = [0.22, 1, 0.36, 1];
 
-  const [filter, setFilter] = useState(ALL);
-  const [active, setActive] = useState(null);
-
-  // Reset filter when language changes (categories names change)
-  React.useEffect(() => {
-    setFilter(ALL);
-    setActive(null);
-  }, [ALL]);
-
-  const filtered = useMemo(() => {
-    if (filter === ALL) return items;
-    return items.filter((r) => r.cat === filter);
-  }, [filter, items, ALL]);
-
-  const activeResource = useMemo(
-    () => (active ? items.find((r) => r.id === active) : null),
-    [active, items]
-  );
-
-  return (
-    <>
-      <section className="mkt-hero" data-testid="mkt-res-hero">
-        <div className="mkt-container mkt-container-narrow" style={{ textAlign: 'center' }}>
-          <div className="mkt-eyebrow" style={{ margin: '0 auto 24px', display: 'inline-flex' }}>
-            <span className="mkt-eyebrow-dot" />
-            {t('resources.eyebrow')}
-          </div>
-          <h1 className="mkt-h1">
-            {t('resources.title_p1')}<br/>
-            <span className="mkt-h1-accent">{t('resources.title_em')}</span>
+// Minimal resources page. Kept for route continuity /ressources.
+const ResourcesContent = () => (
+  <>
+    <section className="mkt-hero" style={{ paddingBottom: 40 }} data-testid="mkt-resources-hero">
+      <div className="mkt-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: easeOut }}
+          style={{ maxWidth: 800 }}
+        >
+          <div className="mkt-section-eyebrow">Ressources</div>
+          <h1 className="mkt-h1" style={{ marginBottom: 24 }}>
+            Ce qui rend<br />un agent efficace.
           </h1>
-          <p className="mkt-lead" style={{ margin: '0 auto' }}>{t('resources.lead')}</p>
+          <p className="mkt-lead">
+            Retours de terrain, méthodes, mini-guides. Le tout écrit par des agents ou avec des agents.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+
+    <section className="mkt-section" style={{ paddingTop: 32 }} data-testid="mkt-resources-grid">
+      <div className="mkt-container">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 20,
+        }}>
+          {[
+            { tag: 'Méthode',   t: 'Comment lire une DVF sans se faire piéger.', d: 'Les 3 biais classiques qui plombent une estimation, et comment les corriger en 30 secondes.' },
+            { tag: 'Terrain',   t: 'Décrocher un mandat exclusif : ce qui fait la différence.', d: 'Les 5 phrases qui font pivoter un vendeur, testées sur 40+ RDV.' },
+            { tag: 'Juridique', t: 'Compromis vs promesse : le récap sans jargon.', d: 'Différences pratiques pour un agent, avec les cas où ça compte vraiment.' },
+            { tag: 'Prospection', t: 'DPE, un signal sous-exploité.', d: 'Pourquoi 70 % des DPE sont réalisés dans les 6 mois avant la mise en vente.' },
+            { tag: 'Outils',    t: 'Un dossier prêt en 2 minutes, pas 20.', d: 'Comment KOLO pré-remplit les 12 champs habituellement chiants d\u2019un dossier.' },
+            { tag: 'Retour',    t: '“J\u2019ai gagné 4h par semaine.”', d: 'Ce que ça change concrètement dans une semaine d\u2019agent en réseau.' },
+          ].map((r, i) => (
+            <motion.article
+              key={r.t}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: (i % 3) * 0.08, ease: easeOut }}
+              className="mkt-feature-visual"
+              style={{ minHeight: 'auto', padding: 24, cursor: 'default' }}
+            >
+              <div className="mkt-feature-tag" style={{ marginBottom: 12 }}>{r.tag}</div>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: 10, lineHeight: 1.2 }}>{r.t}</h3>
+              <p style={{ color: 'var(--text-2)', fontSize: 14.5, lineHeight: 1.5 }}>{r.d}</p>
+            </motion.article>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="mkt-section-tight">
-        <div className="mkt-container">
-          {!activeResource && (
-            <>
-              <div className="mkt-res-filters" data-testid="mkt-res-filters">
-                {categories.map((c, idx) => (
-                  <button
-                    key={c}
-                    className={`mkt-res-filter ${filter === c ? 'active' : ''}`}
-                    onClick={() => setFilter(c)}
-                    data-testid={`mkt-res-filter-${idx}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mkt-res-grid" data-testid="mkt-res-grid">
-                {filtered.map((r) => (
-                  <article
-                    key={r.id}
-                    className="mkt-res-card mkt-reveal"
-                    onClick={() => setActive(r.id)}
-                    data-testid={`mkt-res-card-${r.id}`}
-                  >
-                    <div className="mkt-res-card-meta">
-                      <span className="mkt-res-cat">{r.cat}</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={13} /> {r.readTime}
-                      </span>
-                    </div>
-                    <h3>{r.title}</h3>
-                    <p>{r.excerpt}</p>
-                    <span className="mkt-res-readmore">
-                      {t('resources.read_label')} <ArrowRight size={14} strokeWidth={2.5} />
-                    </span>
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-
-          {activeResource && (
-            <div style={{ maxWidth: 760, margin: '0 auto' }} data-testid="mkt-res-article">
-              <button
-                onClick={() => setActive(null)}
-                className="mkt-btn mkt-btn-ghost"
-                style={{ marginBottom: 32 }}
-                data-testid="mkt-res-back-btn"
-              >
-                <ChevronLeft size={16} strokeWidth={2.5} /> {t('resources.back')}
-              </button>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
-                <span className="mkt-res-cat">{activeResource.cat}</span>
-                <span style={{ fontSize: 13, color: 'var(--mkt-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={13} /> {activeResource.readTime}
-                </span>
-              </div>
-              <h1 className="mkt-h2" style={{ marginBottom: 32 }}>{activeResource.title}</h1>
-              <div className="mkt-res-article">
-                <div className="mkt-prose">
-                  {(activeResource.body || []).map((p, i) => <p key={i}>{p}</p>)}
-                </div>
-              </div>
-            </div>
-          )}
+    <section className="mkt-final-cta" data-testid="mkt-resources-cta">
+      <div className="mkt-container">
+        <div className="mkt-final-cta-inner">
+          <h2>Le meilleur outil, c&apos;est celui qu&apos;on utilise.</h2>
+          <p>Testez KOLO. Vous vous rendrez compte tout seul.</p>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mkt-cta-pill large"
+            data-testid="mkt-resources-cta-appstore"
+          >
+            Télécharge l&apos;app
+            <ArrowRight size={16} strokeWidth={2.5} />
+          </a>
         </div>
-      </section>
-
-      {!activeResource && (
-        <section className="mkt-section">
-          <div className="mkt-container">
-            <div className="mkt-final-cta mkt-reveal">
-              <h2>{t('resources.final_title_p1')}<br/><span className="mkt-h1-accent">{t('resources.final_title_em')}</span></h2>
-              <p>{t('resources.final_lead')}</p>
-              <div className="mkt-cta-row">
-                <a href={APP_STORE_URL} target="_blank" rel="noreferrer" className="mkt-btn mkt-btn-primary" data-testid="mkt-res-final-cta-appstore">
-                  {t('resources.final_cta')} <ArrowRight size={16} strokeWidth={2.5} />
-                </a>
-                <Link to="/comment-kolo" className="mkt-btn mkt-btn-ghost">
-                  {t('resources.final_cta_secondary')}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-    </>
-  );
-};
+      </div>
+    </section>
+  </>
+);
 
 const ResourcesPage = () => (
   <MarketingLayout>
