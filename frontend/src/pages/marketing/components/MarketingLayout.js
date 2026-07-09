@@ -84,7 +84,6 @@ const Header = () => {
       <div className="mkt-container mkt-header-inner">
         <KoloLogo />
         <div className="mkt-header-actions">
-          <LanguageSwitcher />
           <a
             href={APP_STORE_URL}
             target="_blank"

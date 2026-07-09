@@ -216,10 +216,8 @@ const Mockup3D = () => (
     <motion.div className="mkt-mockup-phone p-right1" {...floatAnim(0.6)}>
       <img src={IOS_SCREENS[1]} alt="" loading="eager" />
     </motion.div>
-    {/* CENTER phone = synthetic HTML mockup so we control the copy
-        (Bonjour Jean, JN avatar, 4/6, 3/5 …). */}
     <motion.div className="mkt-mockup-phone p-center" {...floatAnim(0.2, 12)}>
-      <HomeMockupScreen />
+      <img src={IOS_SCREENS[0]} alt="KOLO app" loading="eager" />
     </motion.div>
   </div>
 );
