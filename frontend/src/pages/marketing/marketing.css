@@ -337,8 +337,8 @@ button.mkt-cta-pill:hover,
 }
 @media (min-width: 1024px) {
   .mkt-hero-inner {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: 80px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
   }
 }
 
@@ -437,7 +437,9 @@ button.mkt-cta-pill:hover,
 .mkt-mockup-phone img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
-/* Phone positions (relative to stage). Centered around 50% 50%. */
+/* Phone positions (relative to stage). Centered around 50% 50%.
+   Visible phones (center + left1 + right1) are fully opaque. Only the two
+   back-plane phones (left2/right2) get subtle opacity + blur for depth. */
 .mkt-mockup-phone.p-center {
   left: 50%; top: 50%;
   transform: translate(-50%, -50%) rotateY(-4deg) rotateX(2deg);
@@ -447,27 +449,27 @@ button.mkt-cta-pill:hover,
   left: 15%; top: 45%;
   transform: translate(-50%, -50%) rotate(-14deg) rotateY(18deg);
   z-index: 3;
-  opacity: 0.82;
+  opacity: 1;
 }
 .mkt-mockup-phone.p-left2 {
-  left: 0%; top: 70%;
+  left: 0%; top: 74%;
   transform: translate(-50%, -50%) rotate(-22deg) rotateY(22deg);
   z-index: 2;
-  opacity: 0.55;
-  filter: blur(1px);
+  opacity: 0.45;
+  filter: blur(1.5px);
 }
 .mkt-mockup-phone.p-right1 {
   left: 82%; top: 42%;
   transform: translate(-50%, -50%) rotate(12deg) rotateY(-16deg);
   z-index: 3;
-  opacity: 0.82;
+  opacity: 1;
 }
 .mkt-mockup-phone.p-right2 {
-  left: 100%; top: 72%;
+  left: 100%; top: 76%;
   transform: translate(-50%, -50%) rotate(20deg) rotateY(-24deg);
   z-index: 2;
-  opacity: 0.55;
-  filter: blur(1px);
+  opacity: 0.45;
+  filter: blur(1.5px);
 }
 
 /* ============================================================================

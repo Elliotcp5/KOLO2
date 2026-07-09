@@ -59,6 +59,143 @@ const floatAnim = (delay = 0, distance = 18) => ({
 });
 
 // ---------------------------------------------------------------------------
+// Synthetic Home-screen mockup rendered as JSX inside the CENTER phone.
+// User asked for a full "Bonjour Jean" home view with avatar JN, Conseil du
+// jour, and 4/6 · 3/5 metrics. Because we render it as HTML (not a raw
+// screenshot), we can control every piece of copy.
+// ---------------------------------------------------------------------------
+const HomeMockupScreen = () => (
+  <div style={{
+    width: '100%', height: '100%',
+    background: 'linear-gradient(180deg, #F5EAE2 0%, #E9D5CC 32%, #C8BEE6 72%, #A9B5E8 100%)',
+    padding: '46px 14px 14px',
+    display: 'flex', flexDirection: 'column', gap: 10,
+    fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+    color: '#1B1B25',
+    overflow: 'hidden',
+    position: 'relative',
+  }}>
+    <div style={{
+      position: 'absolute', top: 8, left: 0, right: 0,
+      display: 'flex', justifyContent: 'space-between',
+      padding: '0 22px', fontSize: 10, fontWeight: 600, color: '#1B1B25',
+    }}>
+      <span>14:23</span>
+      <span>••• 5G ●●●</span>
+    </div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+      <div style={{ width: 22, height: 14, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <span style={{ width: '100%', height: 2, background: '#1B1B25', borderRadius: 1 }} />
+        <span style={{ width: '80%', height: 2, background: '#1B1B25', borderRadius: 1 }} />
+        <span style={{ width: '60%', height: 2, background: '#1B1B25', borderRadius: 1 }} />
+      </div>
+      <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 900, fontSize: 22, color: '#1B1B25' }}>K</div>
+      <div style={{ width: 22, height: 22, borderRadius: 999, border: '1.5px solid #1B1B25', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>🔔</div>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 6 }}>
+      <div>
+        <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.1 }}>Bonjour Jean</div>
+        <div style={{ fontSize: 9.5, color: 'rgba(27,27,37,0.6)', marginTop: 2 }}>jeudi 9 juillet</div>
+      </div>
+      <div style={{
+        width: 30, height: 30, borderRadius: 999,
+        background: 'rgba(27,27,37,0.12)',
+        color: '#1B1B25', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: 10.5,
+      }}>JN</div>
+    </div>
+    <div style={{
+      marginTop: 4,
+      padding: '10px 12px',
+      borderRadius: 14,
+      background: 'rgba(255,255,255,0.55)',
+      border: '1px solid rgba(255,255,255,0.7)',
+      backdropFilter: 'blur(8px)',
+    }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(27,27,37,0.55)', marginBottom: 4 }}>◆ CONSEIL DU JOUR</div>
+      <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>Salut Jean !</div>
+      <div style={{ fontSize: 9.5, lineHeight: 1.4, color: 'rgba(27,27,37,0.75)' }}>
+        Salut Jean ! Avant de démarrer, pense à relancer les 2 vendeurs en attente depuis 5 jours.
+      </div>
+      <div style={{
+        marginTop: 8,
+        padding: '7px 10px',
+        borderRadius: 999,
+        background: '#1B1B25', color: '#F5EAE2',
+        fontSize: 9.5, fontWeight: 700, textAlign: 'center',
+      }}>◆ Demander à KOLO</div>
+    </div>
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(27,27,37,0.55)', marginBottom: 6 }}>AUJOURD&apos;HUI</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div style={{
+          padding: '10px 8px',
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.55)',
+          border: '1px solid rgba(255,255,255,0.7)',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', color: '#1B1B25' }}>4/6</div>
+          <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(27,27,37,0.55)', marginTop: 2 }}>FAITS</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#1B1B25', marginTop: 3 }}>RAPPELS</div>
+          <div style={{ fontSize: 8, color: 'rgba(27,27,37,0.55)', marginTop: 1 }}>2 restants</div>
+        </div>
+        <div style={{
+          padding: '10px 8px',
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.55)',
+          border: '1px solid rgba(255,255,255,0.7)',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: 'Cabinet Grotesk, sans-serif', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', color: '#1B1B25' }}>3/5</div>
+          <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(27,27,37,0.55)', marginTop: 2 }}>TRAITÉES</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#1B1B25', marginTop: 3 }}>NOTES</div>
+          <div style={{ fontSize: 8, color: 'rgba(27,27,37,0.55)', marginTop: 1 }}>À jour</div>
+        </div>
+      </div>
+    </div>
+    <div style={{ marginTop: 4, flex: 1 }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(27,27,37,0.55)', marginBottom: 4 }}>DOSSIERS RÉCENTS</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {[
+          { role: 'V', name: 'M. Dubois',  meta: '35 m² · Paris 3e' },
+          { role: 'V', name: 'Mme Petit',  meta: '25.6 m² · Lemercier' },
+          { role: 'A', name: 'M. Moreau',  meta: '3p · Paris 11e' },
+        ].map((d) => (
+          <div key={d.name} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 8px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.35)',
+          }}>
+            <span style={{
+              width: 14, height: 14, borderRadius: 999,
+              background: d.role === 'V' ? '#1B1B25' : 'rgba(27,27,37,0.35)',
+              color: '#F5EAE2', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 7, fontWeight: 700,
+            }}>{d.role}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#1B1B25' }}>{d.name}</span>
+            <span style={{ fontSize: 8, color: 'rgba(27,27,37,0.55)' }}>{d.meta}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div style={{
+      marginTop: 4,
+      display: 'flex', justifyContent: 'space-around',
+      padding: '8px 0 4px',
+      borderTop: '1px solid rgba(27,27,37,0.12)',
+      fontSize: 8, fontWeight: 600, color: 'rgba(27,27,37,0.45)',
+    }}>
+      <span style={{ color: '#1B1B25' }}>◆ Accueil</span>
+      <span>Prospection</span>
+      <span>Dossiers</span>
+      <span>Contacts</span>
+      <span>Agenda</span>
+    </div>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 // 3D iOS mockup — 5 phones arrayed in an isometric cascade
 // Each phone floats on its own timing → the whole feels like a subtle
 // stop-motion video, not a static screenshot. That's the "give life to the
@@ -79,8 +216,10 @@ const Mockup3D = () => (
     <motion.div className="mkt-mockup-phone p-right1" {...floatAnim(0.6)}>
       <img src={IOS_SCREENS[1]} alt="" loading="eager" />
     </motion.div>
+    {/* CENTER phone = synthetic HTML mockup so we control the copy
+        (Bonjour Jean, JN avatar, 4/6, 3/5 …). */}
     <motion.div className="mkt-mockup-phone p-center" {...floatAnim(0.2, 12)}>
-      <img src={IOS_SCREENS[0]} alt="KOLO iOS app" loading="eager" />
+      <HomeMockupScreen />
     </motion.div>
   </div>
 );
