@@ -117,16 +117,18 @@ const Header = () => {
             {n.label}
           </NavLink>
         ))}
-        <a
-          href={APP_STORE_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="mkt-cta-pill large"
-          style={{ marginTop: 24, justifyContent: 'center' }}
-          data-testid="mkt-nav-mobile-appstore"
-        >
-          Télécharge l&apos;app
-        </a>
+        <div className="mkt-mobile-nav-cta-wrap">
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mkt-cta-pill large"
+            style={{ minWidth: 240, justifyContent: 'center' }}
+            data-testid="mkt-nav-mobile-appstore"
+          >
+            Télécharge l&apos;app
+          </a>
+        </div>
       </div>
     </header>
   );

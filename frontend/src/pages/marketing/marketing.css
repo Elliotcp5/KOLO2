@@ -298,24 +298,33 @@ button.mkt-cta-pill:hover,
 .mkt-mobile-nav {
   position: fixed;
   inset: 72px 0 0 0;
-  background: var(--bg);
-  padding: 32px 24px;
+  /* Opaque solid background so the underlying page never bleeds through */
+  background: #050505;
+  padding: 40px 24px;
   display: none;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   z-index: 40;
+  overflow-y: auto;
 }
 .mkt-mobile-nav.open { display: flex; }
 .mkt-mobile-nav a {
-  padding: 14px 4px;
+  padding: 18px 4px;
   font-family: var(--font-head);
   font-weight: 700;
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: #FFFFFF;
   border-bottom: 1px solid var(--border-1);
 }
-.mkt-mobile-nav a.active { color: var(--text); }
+.mkt-mobile-nav a.active { color: #FFFFFF; }
+.mkt-mobile-nav-cta-wrap {
+  margin-top: auto;
+  padding-top: 32px;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+  display: flex;
+  justify-content: center;
+}
 
 /* ============================================================================
    HERO
@@ -326,6 +335,12 @@ button.mkt-cta-pill:hover,
   overflow: hidden;
 }
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
+@media (max-width: 767px) {
+  /* Tight the mobile hero: halve the top padding + shrink gap to the mockup */
+  .mkt-hero { padding: 32px 0 40px; }
+  .mkt-hero-inner { gap: 20px; }
+  .mkt-mockup-stage { height: 380px; margin-top: 8px; }
+}
 
 .mkt-hero-inner {
   position: relative;
@@ -489,6 +504,12 @@ button.mkt-cta-pill:hover,
   text-transform: uppercase;
   font-weight: 500;
   margin-bottom: 20px;
+}
+@media (max-width: 767px) {
+  .mkt-trust { padding: 20px 0 4px; }
+  .mkt-trust-label { font-size: 10px; letter-spacing: 0.1em; padding: 0 24px; margin-bottom: 10px; }
+  .mkt-marquee-item { font-size: 16px; }
+  .mkt-marquee-track { gap: 40px; padding: 6px 0 12px; }
 }
 .mkt-marquee {
   overflow: hidden;
