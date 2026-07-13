@@ -297,34 +297,44 @@ button.mkt-cta-pill:hover,
 
 .mkt-mobile-nav {
   position: fixed;
-  inset: 72px 0 0 0;
-  /* Opaque solid background so the underlying page never bleeds through */
-  background: #050505;
-  padding: 40px 24px;
+  top: 72px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* SOLID opaque black so nothing bleeds through the fixed nav */
+  background: #050505 !important;
+  padding: 32px 24px calc(24px + env(safe-area-inset-bottom, 0px));
   display: none;
   flex-direction: column;
   gap: 4px;
   z-index: 40;
   overflow-y: auto;
+  width: 100%;
 }
-.mkt-mobile-nav.open { display: flex; }
-.mkt-mobile-nav a {
+.mkt-mobile-nav.open { display: flex !important; }
+.mkt-mobile-nav a,
+.mkt-mobile-nav .mkt-nav-link {
+  display: block !important;
   padding: 18px 4px;
   font-family: var(--font-head);
   font-weight: 700;
   font-size: 22px;
   letter-spacing: -0.02em;
-  color: #FFFFFF;
-  border-bottom: 1px solid var(--border-1);
+  color: #FFFFFF !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  width: 100%;
 }
-.mkt-mobile-nav a.active { color: #FFFFFF; }
+.mkt-mobile-nav a.active,
+.mkt-mobile-nav .mkt-nav-link.active { color: #FFFFFF !important; }
 .mkt-mobile-nav-cta-wrap {
   margin-top: auto;
-  padding-top: 32px;
-  padding-bottom: env(safe-area-inset-bottom, 24px);
+  padding-top: 40px;
   display: flex;
   justify-content: center;
+  border-bottom: none;
 }
+.mkt-mobile-nav-cta-wrap a { border-bottom: none !important; padding: 0 !important; width: auto !important; }
 
 /* ============================================================================
    HERO
@@ -336,10 +346,10 @@ button.mkt-cta-pill:hover,
 }
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
 @media (max-width: 767px) {
-  /* Tight the mobile hero: halve the top padding + shrink gap to the mockup */
-  .mkt-hero { padding: 32px 0 40px; }
-  .mkt-hero-inner { gap: 20px; }
-  .mkt-mockup-stage { height: 380px; margin-top: 8px; }
+  /* Compact mobile hero: minimal padding + tight gap to mockup (~2 cm) */
+  .mkt-hero { padding: 20px 0 32px; }
+  .mkt-hero-inner { gap: 8px; }
+  .mkt-mockup-stage { height: 340px; margin-top: 0; }
 }
 
 .mkt-hero-inner {
@@ -506,10 +516,18 @@ button.mkt-cta-pill:hover,
   margin-bottom: 20px;
 }
 @media (max-width: 767px) {
-  .mkt-trust { padding: 20px 0 4px; }
-  .mkt-trust-label { font-size: 10px; letter-spacing: 0.1em; padding: 0 24px; margin-bottom: 10px; }
-  .mkt-marquee-item { font-size: 16px; }
-  .mkt-marquee-track { gap: 40px; padding: 6px 0 12px; }
+  .mkt-trust { padding: 12px 0 4px; }
+  .mkt-trust-label {
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    padding: 0 24px;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mkt-marquee-item { font-size: 14px; }
+  .mkt-marquee-track { gap: 32px; padding: 4px 0 8px; }
 }
 .mkt-marquee {
   overflow: hidden;
