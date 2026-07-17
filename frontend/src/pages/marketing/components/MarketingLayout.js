@@ -94,13 +94,14 @@ const Header = () => {
             Télécharge l&apos;app
           </a>
           <button
+            type="button"
             className="mkt-burger"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
             data-testid="mkt-nav-burger"
           >
-            {open ? <X size={18} /> : <Menu size={18} />}
+            {open ? <X size={20} strokeWidth={2.5} /> : <Menu size={20} strokeWidth={2.5} />}
           </button>
         </div>
       </div>

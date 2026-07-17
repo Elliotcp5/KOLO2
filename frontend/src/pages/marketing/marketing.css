@@ -144,7 +144,7 @@ body:has(.mkt-root) { background: #050505 !important; }
 .mkt-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 60;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   background: rgba(5, 5, 5, 0.72);
@@ -278,16 +278,26 @@ button.mkt-cta-pill:hover,
 .mkt-lang-item:hover { background: var(--surface-3); color: var(--text); }
 .mkt-lang-item.active { color: var(--text); }
 
-/* Mobile menu button — hidden on desktop */
+/* Mobile menu button — hidden on desktop, prominent + accessible on mobile */
 .mkt-burger {
   display: none;
   background: transparent;
-  border: 1px solid var(--border-2);
-  color: var(--text);
-  width: 40px; height: 40px;
+  border: 1px solid rgba(255,255,255,0.16);
+  color: #FFFFFF;
+  width: 44px; height: 44px;
   border-radius: 999px;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.2);
+  touch-action: manipulation;
+  position: relative;
+  z-index: 60;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+.mkt-burger:hover, .mkt-burger:active {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.05);
 }
 @media (max-width: 767px) {
   .mkt-header-actions > .mkt-cta-pill,
@@ -301,13 +311,14 @@ button.mkt-cta-pill:hover,
   left: 0;
   right: 0;
   bottom: 0;
-  /* SOLID opaque black so nothing bleeds through the fixed nav */
+  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
   background: #050505 !important;
   padding: 32px 24px calc(24px + env(safe-area-inset-bottom, 0px));
   display: none;
   flex-direction: column;
   gap: 4px;
-  z-index: 40;
+  z-index: 100;
   overflow-y: auto;
   width: 100%;
 }
@@ -346,10 +357,19 @@ button.mkt-cta-pill:hover,
 }
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
 @media (max-width: 767px) {
-  /* Compact mobile hero: minimal padding + tight gap to mockup (~2 cm) */
-  .mkt-hero { padding: 20px 0 32px; }
-  .mkt-hero-inner { gap: 8px; }
+  /* Mobile hero — breathe a little more (was too cramped) */
+  .mkt-hero { padding: 32px 0 40px; }
+  .mkt-hero-inner { gap: 12px; }
   .mkt-mockup-stage { height: 340px; margin-top: 0; }
+  .mkt-h1 { line-height: 1.08; }
+  .mkt-lead { margin-bottom: 20px; margin-top: 8px; }
+
+  /* Sections tighter on mobile so there's less "big black wall" */
+  .mkt-section { padding: 56px 0; }
+  .mkt-section-title { margin-bottom: 12px; }
+  .mkt-section-lead { margin-bottom: 32px; }
+  .mkt-feature { padding: 20px 0; gap: 28px; }
+  .mkt-feature-visual { min-height: 300px; padding: 20px; }
 }
 
 .mkt-hero-inner {
@@ -555,6 +575,130 @@ button.mkt-cta-pill:hover,
   to   { transform: translate3d(-50%, 0, 0); }
 }
 
+/* ============================================================================
+   VALUE PROMISE — the main added-value pitch (right under the hero)
+   Big impactful number that must be the first thing after the mockups.
+   ============================================================================ */
+.mkt-value {
+  position: relative;
+  padding: 72px 0 80px;
+  overflow: hidden;
+  border-top: 1px solid var(--border-1);
+  border-bottom: 1px solid var(--border-1);
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 60%),
+    linear-gradient(180deg, #070707 0%, #050505 60%, #060606 100%);
+}
+.mkt-value-inner {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.mkt-value-eyebrow {
+  color: var(--text-3);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+.mkt-value-number {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: clamp(3.5rem, 10vw, 7.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #C8C8D0 45%, #7A7A85 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 20px;
+}
+.mkt-value-label {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  color: var(--text) !important;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+.mkt-value-sublabel {
+  color: var(--text-2) !important;
+  font-size: 1rem;
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+/* Subtle animated glow around the value number */
+.mkt-value-glow {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 600px; height: 240px;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 30% 40%, rgba(180, 210, 255, 0.10) 0%, transparent 60%),
+    radial-gradient(circle at 70% 60%, rgba(255, 210, 180, 0.08) 0%, transparent 60%);
+  filter: blur(50px);
+  animation: valueGlow 12s ease-in-out infinite alternate;
+  z-index: 1;
+}
+@keyframes valueGlow {
+  from { transform: translate(-50%, -50%) scale(1); }
+  to   { transform: translate(-50%, -50%) scale(1.15); }
+}
+@media (max-width: 767px) {
+  .mkt-value { padding: 48px 0 52px; }
+  .mkt-value-number { font-size: 4.5rem; }
+}
+
+/* ============================================================================
+   SECTION DIVIDERS — subtle gradient lines to break the big black block
+   ============================================================================ */
+.mkt-divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.14) 50%, transparent 100%);
+  margin: 0;
+}
+
+/* Feature section — add a color-accented layered bg per section for rhythm */
+.mkt-section.section-accent-warm::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 320px;
+  background: radial-gradient(80% 100% at 20% 0%, rgba(255, 200, 165, 0.05) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+.mkt-section.section-accent-cool::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 320px;
+  background: radial-gradient(80% 100% at 80% 0%, rgba(150, 195, 255, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+.mkt-section.section-accent-violet::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 320px;
+  background: radial-gradient(80% 100% at 50% 0%, rgba(200, 175, 255, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Section divider that goes AT THE TOP of each section for visual rhythm */
+.mkt-section-hairline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.10) 20%, rgba(255,255,255,0.20) 50%, rgba(255,255,255,0.10) 80%, transparent 100%);
+}
 /* ============================================================================
    SECTIONS
    ============================================================================ */

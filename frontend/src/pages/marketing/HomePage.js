@@ -474,8 +474,44 @@ const HomeContent = () => (
         </div>
       </div>
     </section>
+
+    {/* -------- VALUE PROMISE -------- */}
+    <section className="mkt-value" data-testid="mkt-value-promise">
+      <div className="mkt-value-glow" aria-hidden />
+      <div className="mkt-value-inner">
+        <motion.div className="mkt-value-eyebrow"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: easeOut }}>
+          Notre promesse
+        </motion.div>
+        <motion.div className="mkt-value-number"
+          initial={{ opacity: 0, y: 16, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.9, ease: easeOut, delay: 0.05 }}>
+          +20&nbsp;000&nbsp;€
+        </motion.div>
+        <motion.div className="mkt-value-label"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: easeOut, delay: 0.15 }}>
+          de chiffre d&apos;affaires en plus, en moyenne, pour les agents qui utilisent KOLO.
+        </motion.div>
+        <motion.p className="mkt-value-sublabel"
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: easeOut, delay: 0.25 }}>
+          Prospection en temps réel, estimations DVF, dossiers pré-remplis. Vous gagnez du temps sur le tri, vous en donnez plus à la vente.
+        </motion.p>
+      </div>
+    </section>
+
     {/* -------- FEATURES -------- */}
-    <section className="mkt-section" data-testid="mkt-features">
+    <section className="mkt-section section-accent-warm" data-testid="mkt-features">
       <div className="mkt-container">
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Ce que fait KOLO</div>
@@ -550,7 +586,7 @@ const HomeContent = () => (
     </section>
 
     {/* -------- PRICING -------- */}
-    <section className="mkt-section" data-testid="mkt-pricing" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.02) 40%, transparent 100%)' }}>
+    <section className="mkt-section section-accent-violet" data-testid="mkt-pricing">
       <div className="mkt-container">
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Tarifs</div>
@@ -622,7 +658,7 @@ const HomeContent = () => (
     </section>
 
     {/* -------- FOUNDER -------- */}
-    <section className="mkt-section" data-testid="mkt-founder" style={{ paddingTop: 80 }}>
+    <section className="mkt-section section-accent-cool" data-testid="mkt-founder" style={{ paddingTop: 80 }}>
       <div className="mkt-container">
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Le fondateur</div>
