@@ -357,22 +357,24 @@ button.mkt-cta-pill:hover,
 }
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
 @media (max-width: 767px) {
-  /* Mobile hero — compact but aéré */
-  .mkt-hero { padding: 40px 0 12px; }
-  .mkt-hero-inner { gap: 0; }
-  .mkt-h1 { line-height: 1.08; margin-bottom: 20px; }
+  /* Mobile hero — compact but aéré. !important because base styles below
+     define `.mkt-hero-inner { gap: 48px }` etc. at the same specificity
+     later in the file, which would otherwise win the cascade. */
+  .mkt-hero { padding: 40px 0 12px !important; }
+  .mkt-hero-inner { gap: 0 !important; }
+  .mkt-h1 { line-height: 1.08 !important; margin-bottom: 20px !important; }
   /* Real breathing room between paragraph and CTA button */
-  .mkt-lead { margin-top: 12px; margin-bottom: 56px; }
+  .mkt-lead { margin-top: 12px !important; margin-bottom: 56px !important; }
   /* Tight coupling between the "sans engagement" note and the mockups */
-  .mkt-cta-row { margin-bottom: 0; }
-  .mkt-cta-note { display: block; margin-top: 10px; margin-left: 0; }
+  .mkt-cta-row { margin-bottom: 0 !important; }
+  .mkt-cta-note { display: block !important; margin-top: 10px !important; margin-left: 0 !important; }
 
   /* Sections tighter on mobile so there's less "big black wall" */
-  .mkt-section { padding: 56px 0; }
-  .mkt-section-title { margin-bottom: 12px; }
-  .mkt-section-lead { margin-bottom: 32px; }
-  .mkt-feature { padding: 20px 0; gap: 28px; }
-  .mkt-feature-visual { min-height: 300px; padding: 20px; }
+  .mkt-section { padding: 56px 0 !important; }
+  .mkt-section-title { margin-bottom: 12px !important; }
+  .mkt-section-lead { margin-bottom: 32px !important; }
+  .mkt-feature { padding: 20px 0 !important; gap: 28px !important; }
+  .mkt-feature-visual { min-height: 300px !important; padding: 20px !important; }
 }
 
 .mkt-hero-inner {
@@ -456,20 +458,22 @@ button.mkt-cta-pill:hover,
   .mkt-mockup-stage { height: 480px; margin-top: 32px; }
 }
 @media (max-width: 767px) {
-  /* Ultra-compact mockup stack, glued to the CTA note above */
+  /* Ultra-compact mockup stack, glued to the CTA note above.
+     !important because the tablet rule above and the base rule below can
+     otherwise win the cascade on same-specificity later-declared selectors. */
   .mkt-mockup-stage {
-    height: 320px;
-    margin-top: -32px;
-    overflow: visible;
+    height: 320px !important;
+    margin-top: -32px !important;
+    overflow: visible !important;
   }
-  .mkt-mockup-phone { width: 140px; border-radius: 22px; }
-  .mkt-mockup-glow { width: 300px; height: 300px; }
+  .mkt-mockup-phone { width: 140px !important; border-radius: 22px !important; }
+  .mkt-mockup-glow { width: 300px !important; height: 300px !important; }
   /* Bring all phones higher inside the shorter mobile stage */
-  .mkt-mockup-phone.p-center { top: 48%; }
-  .mkt-mockup-phone.p-left1  { top: 44%; }
-  .mkt-mockup-phone.p-right1 { top: 41%; }
-  .mkt-mockup-phone.p-left2  { top: 64%; }
-  .mkt-mockup-phone.p-right2 { top: 66%; }
+  .mkt-mockup-phone.p-center { top: 48% !important; }
+  .mkt-mockup-phone.p-left1  { top: 44% !important; }
+  .mkt-mockup-phone.p-right1 { top: 41% !important; }
+  .mkt-mockup-phone.p-left2  { top: 64% !important; }
+  .mkt-mockup-phone.p-right2 { top: 66% !important; }
 }
 .mkt-mockup-glow {
   position: absolute;
