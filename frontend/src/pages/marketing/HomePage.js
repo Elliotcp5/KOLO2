@@ -448,7 +448,7 @@ const HomeContent = () => (
               des agents immo.
             </motion.h1>
             <motion.p variants={fadeUp} className="mkt-lead" data-testid="mkt-hero-subtitle">
-              Prospection multi-portails, estimations précises, agenda et dossiers réunis dans une seule app sur ton téléphone. Fait par des agents immo, pour des agents immo.
+              Une seule app pour prospecter, estimer un bien, suivre vos dossiers et gérer vos contacts. Fait par des agents immo, pour des agents immo.
             </motion.p>
             <motion.div variants={fadeUp} className="mkt-cta-row">
               <a
@@ -458,10 +458,10 @@ const HomeContent = () => (
                 className="mkt-cta-pill large"
                 data-testid="mkt-hero-cta-appstore"
               >
-                Télécharge l&apos;app
+                Télécharge KOLO gratuitement
                 <ArrowRight size={16} strokeWidth={2.5} />
               </a>
-              <span className="mkt-cta-note">iOS · 2 min pour démarrer</span>
+              <span className="mkt-cta-note">Téléchargement gratuit et sans engagement</span>
             </motion.div>
           </motion.div>
           <motion.div
@@ -498,14 +498,14 @@ const HomeContent = () => (
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: easeOut, delay: 0.15 }}>
-          de chiffre d&apos;affaires en plus, en moyenne, pour les agents qui utilisent KOLO.
+          C&apos;est en moyenne ce que chaque agent fait en plus dès la première année avec KOLO.
         </motion.div>
         <motion.p className="mkt-value-sublabel"
           initial={{ opacity: 0, y: 8 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: easeOut, delay: 0.25 }}>
-          Prospection en temps réel, estimations DVF, dossiers pré-remplis. Vous gagnez du temps sur le tri, vous en donnez plus à la vente.
+          Plus de biens repérés, plus vite. Plus de vendeurs identifiés. Moins de temps perdu à jongler entre les outils.
         </motion.p>
       </div>
     </section>
@@ -529,15 +529,15 @@ const HomeContent = () => (
             <div className="mkt-feature-tag">01 · Prospection</div>
             <h3>Tous les portails, une seule vue.</h3>
             <p>
-              Leboncoin, SeLoger, Bien&apos;ici, PAP, Logic-immo — chaque nouveau bien qui apparaît dans votre secteur remonte en temps réel dans KOLO. Fini de jongler entre 5 sites, 3 alertes email et une feuille Excel qui traîne.
+              Leboncoin, SeLoger, Bien&apos;ici, PAP, Logic-immo. Chaque nouveau bien de votre secteur remonte en direct dans KOLO.
             </p>
             <p>
-              Un bien retient votre attention ? En un tap il devient un dossier KOLO, toutes les infos pré-remplies.
+              On liste aussi <strong style={{color:'#fff'}}>tous les DPE émis dans votre zone</strong> : ce sont vos futurs vendeurs, avant tout le monde.
             </p>
             <ul className="mkt-feature-list">
-              <li><Check size={16} strokeWidth={2.5} /> Flux temps réel des 5 principaux portails</li>
-              <li><Check size={16} strokeWidth={2.5} /> Accès aux DPE émis dans votre secteur (adresse, surface, date)</li>
-              <li><Check size={16} strokeWidth={2.5} /> Alertes ciblées par prix, surface, code postal</li>
+              <li><Check size={16} strokeWidth={2.5} /> Nouveaux biens en temps réel, sur les 5 grands portails</li>
+              <li><Check size={16} strokeWidth={2.5} /> Tous les DPE de votre secteur (adresse, surface, date)</li>
+              <li><Check size={16} strokeWidth={2.5} /> Alertes push sur ce qui correspond à vos critères</li>
             </ul>
           </div>
           <VisualProspection />
@@ -549,15 +549,15 @@ const HomeContent = () => (
             <div className="mkt-feature-tag">02 · Assistant intelligent</div>
             <h3>Le meilleur agent immo, dans votre poche.</h3>
             <p>
-              Une estimation en 3 secondes, un conseil juridique, un plan d&apos;action pour un dossier bloqué — KOLO répond, sourcé, en langage d&apos;agent.
+              Une estimation en 3 secondes. Un conseil sur un dossier. Une précision juridique. KOLO répond, en langage d&apos;agent.
             </p>
             <p>
-              Les estimations s&apos;appuient sur DVF, la base publique des ventes réelles. Pas des tendances : des transactions.
+              Les estimations sont basées sur DVF, les vraies ventes récentes. Pas des tendances de marché : des transactions.
             </p>
             <ul className="mkt-feature-list">
-              <li><Check size={16} strokeWidth={2.5} /> Estimations basées sur les comparables DVF de votre secteur</li>
-              <li><Check size={16} strokeWidth={2.5} /> Coaching et suggestions d&apos;actions sur vos dossiers en cours</li>
-              <li><Check size={16} strokeWidth={2.5} /> Précisions juridiques et contractuelles à la demande</li>
+              <li><Check size={16} strokeWidth={2.5} /> Estimations basées sur les ventes DVF de votre secteur</li>
+              <li><Check size={16} strokeWidth={2.5} /> Coaching sur vos dossiers en cours</li>
+              <li><Check size={16} strokeWidth={2.5} /> Réponses juridiques et contractuelles à la demande</li>
             </ul>
           </div>
           <VisualAssistant />
@@ -569,15 +569,15 @@ const HomeContent = () => (
             <div className="mkt-feature-tag">03 · Organisation</div>
             <h3>Une seule app. Zéro dispersion.</h3>
             <p>
-              Agenda, annuaire de contacts, dossiers en cours — tout est réuni. Vous voyez d&apos;un coup d&apos;œil où vous en êtes sur chaque affaire.
+              Agenda, contacts, dossiers en cours — tout est réuni. Vous voyez d&apos;un coup d&apos;œil où vous en êtes sur chaque affaire.
             </p>
             <p>
-              Plus d&apos;outils = plus d&apos;erreurs. KOLO remplace les 4 apps que vous jonglez au quotidien.
+              KOLO remplace les 4 apps que vous jonglez au quotidien.
             </p>
             <ul className="mkt-feature-list">
               <li><Check size={16} strokeWidth={2.5} /> Agenda synchronisé avec vos dossiers actifs</li>
-              <li><Check size={16} strokeWidth={2.5} /> Annuaire acheteurs, vendeurs, apporteurs — segmenté</li>
-              <li><Check size={16} strokeWidth={2.5} /> Vue pipeline : mandat → visite → offre → signature</li>
+              <li><Check size={16} strokeWidth={2.5} /> Contacts triés : acheteurs, vendeurs, apporteurs</li>
+              <li><Check size={16} strokeWidth={2.5} /> Suivi visuel : mandat → visite → offre → signature</li>
             </ul>
           </div>
           <VisualOrganisation />
