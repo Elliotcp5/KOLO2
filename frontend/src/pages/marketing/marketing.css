@@ -357,14 +357,16 @@ button.mkt-cta-pill:hover,
 }
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
 @media (max-width: 767px) {
-  /* Mobile hero — breathe a little more (was too cramped) */
-  .mkt-hero { padding: 32px 0 24px; }
-  /* Bring mockup closer to the CTA text above */
-  .mkt-hero-inner { gap: 0; }
-  .mkt-mockup-stage { height: 320px; margin-top: -8px; }
-  .mkt-h1 { line-height: 1.08; }
-  /* Space lead a bit further from the CTA button so they don't feel glued */
-  .mkt-lead { margin-top: 12px; margin-bottom: 32px; }
+  /* Mobile hero — compact but aéré */
+  .mkt-hero { padding: 40px 0 16px; }
+  /* Tighter grid gap between the CTA column and the mockup column */
+  .mkt-hero-inner { gap: 4px; }
+  .mkt-h1 { line-height: 1.08; margin-bottom: 20px; }
+  /* Breathing room between the paragraph and the CTA button */
+  .mkt-lead { margin-top: 12px; margin-bottom: 44px; }
+  /* Cut the huge gap between "sans engagement" and the mockups by 3× */
+  .mkt-cta-row { margin-bottom: 0; }
+  .mkt-cta-note { display: block; margin-top: 10px; margin-left: 0; }
 
   /* Sections tighter on mobile so there's less "big black wall" */
   .mkt-section { padding: 56px 0; }
@@ -451,8 +453,14 @@ button.mkt-cta-pill:hover,
   perspective: 1600px;
   perspective-origin: 50% 50%;
 }
-@media (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .mkt-mockup-stage { height: 480px; margin-top: 32px; }
+}
+@media (max-width: 767px) {
+  /* Compact mockup on mobile — pulled close to the CTA note */
+  .mkt-mockup-stage { height: 360px; margin-top: 8px; }
+  .mkt-mockup-phone { width: 160px; border-radius: 26px; }
+  .mkt-mockup-glow { width: 380px; height: 380px; }
 }
 .mkt-mockup-glow {
   position: absolute;

@@ -516,28 +516,25 @@ const HomeContent = () => (
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Ce que fait KOLO</div>
           <h2 className="mkt-section-title">
-            Tout ce dont un agent a besoin, dans son téléphone.
+            3 leviers. Zéro perte de temps.
           </h2>
           <p className="mkt-section-lead">
-            Trois piliers, pensés main dans la main avec des agents et mandataires en réseau et indépendants.
+            L&apos;essentiel de votre métier, dans une seule app.
           </p>
         </div>
 
         {/* Prospection */}
         <div className="mkt-feature mkt-reveal" data-testid="feature-prospection">
           <div className="mkt-feature-copy">
-            <div className="mkt-feature-tag">01 · Prospection</div>
-            <h3>Tous les portails, une seule vue.</h3>
+            <div className="mkt-feature-tag">01 · Trouvez des mandats</div>
+            <h3>Tous les mandats à saisir, en un coup d&apos;œil.</h3>
             <p>
-              Leboncoin, SeLoger, Bien&apos;ici, PAP, Logic-immo. Chaque nouveau bien de votre secteur remonte en direct dans KOLO.
-            </p>
-            <p>
-              On liste aussi <strong style={{color:'#fff'}}>tous les DPE émis dans votre zone</strong> : ce sont vos futurs vendeurs, avant tout le monde.
+              Les 5 grands portails + <strong style={{color:'#fff'}}>tous les DPE émis dans votre secteur</strong>. Chaque projet de vente qui apparaît, vous le voyez avant les autres.
             </p>
             <ul className="mkt-feature-list">
-              <li><Check size={16} strokeWidth={2.5} /> Nouveaux biens en temps réel, sur les 5 grands portails</li>
-              <li><Check size={16} strokeWidth={2.5} /> Tous les DPE de votre secteur (adresse, surface, date)</li>
-              <li><Check size={16} strokeWidth={2.5} /> Alertes push sur ce qui correspond à vos critères</li>
+              <li><Check size={16} strokeWidth={2.5} /> Vue multi-portails en direct sur votre zone</li>
+              <li><Check size={16} strokeWidth={2.5} /> DPE émis = futurs vendeurs identifiés</li>
+              <li><Check size={16} strokeWidth={2.5} /> Alertes push sur les nouveaux biens</li>
             </ul>
           </div>
           <VisualProspection />
@@ -546,18 +543,15 @@ const HomeContent = () => (
         {/* Assistant */}
         <div className="mkt-feature reverse mkt-reveal" data-testid="feature-assistant">
           <div className="mkt-feature-copy">
-            <div className="mkt-feature-tag">02 · Assistant intelligent</div>
-            <h3>Le meilleur agent immo, dans votre poche.</h3>
+            <div className="mkt-feature-tag">02 · Signez plus de mandats</div>
+            <h3>L&apos;expert qui vous coache avant chaque R1.</h3>
             <p>
-              Une estimation en 3 secondes. Un conseil sur un dossier. Une précision juridique. KOLO répond, en langage d&apos;agent.
-            </p>
-            <p>
-              Les estimations sont basées sur DVF, les vraies ventes récentes. Pas des tendances de marché : des transactions.
+              Estimation DVF en 3 secondes, argumentaire de signature, réponse juridique. KOLO répond, en langage d&apos;agent.
             </p>
             <ul className="mkt-feature-list">
-              <li><Check size={16} strokeWidth={2.5} /> Estimations basées sur les ventes DVF de votre secteur</li>
-              <li><Check size={16} strokeWidth={2.5} /> Coaching sur vos dossiers en cours</li>
-              <li><Check size={16} strokeWidth={2.5} /> Réponses juridiques et contractuelles à la demande</li>
+              <li><Check size={16} strokeWidth={2.5} /> Estimation basée sur les ventes DVF de l&apos;immeuble et du quartier</li>
+              <li><Check size={16} strokeWidth={2.5} /> Stratégie de signature par prospect</li>
+              <li><Check size={16} strokeWidth={2.5} /> Relances suggérées automatiquement</li>
             </ul>
           </div>
           <VisualAssistant />
@@ -566,18 +560,15 @@ const HomeContent = () => (
         {/* Organisation */}
         <div className="mkt-feature mkt-reveal" data-testid="feature-organisation">
           <div className="mkt-feature-copy">
-            <div className="mkt-feature-tag">03 · Organisation</div>
-            <h3>Une seule app. Zéro dispersion.</h3>
+            <div className="mkt-feature-tag">03 · Restez rentable</div>
+            <h3>Vos notes, votre agenda, vos dossiers. Ensemble.</h3>
             <p>
-              Agenda, contacts, dossiers en cours — tout est réuni. Vous voyez d&apos;un coup d&apos;œil où vous en êtes sur chaque affaire.
-            </p>
-            <p>
-              KOLO remplace les 4 apps que vous jonglez au quotidien.
+              Dictez une note vocale entre deux visites, KOLO la classe. Vos rappels, contacts et dossiers en cours sont au même endroit. Fini les 4 apps.
             </p>
             <ul className="mkt-feature-list">
-              <li><Check size={16} strokeWidth={2.5} /> Agenda synchronisé avec vos dossiers actifs</li>
-              <li><Check size={16} strokeWidth={2.5} /> Contacts triés : acheteurs, vendeurs, apporteurs</li>
-              <li><Check size={16} strokeWidth={2.5} /> Suivi visuel : mandat → visite → offre → signature</li>
+              <li><Check size={16} strokeWidth={2.5} /> Notes vocales entre deux rendez-vous</li>
+              <li><Check size={16} strokeWidth={2.5} /> Agenda et rappels synchronisés</li>
+              <li><Check size={16} strokeWidth={2.5} /> Chaque dossier suivi : mandat → visite → offre → signature</li>
             </ul>
           </div>
           <VisualOrganisation />

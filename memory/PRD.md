@@ -15,6 +15,17 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - MongoDB (motor async)
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
+
+### Marketing Site Mobile Fixes & Features Rewrite (Feb 24, 2026) 🔥 LATEST
+- **Hero mobile aéré** : marge lead→CTA passée à 44px (au lieu de 32), respiration correcte texte→bouton
+- **Mockups mobile rapprochés** : `.mkt-mockup-stage` isolé en `@media (max-width: 767px)` (height 360px, phones 160px, glow 380px, margin-top 8px). Le bug d'override par la règle tablet `@media (max-width: 1023px)` a été corrigé en la scoping à `min-width: 768px and max-width: 1023px`
+- **Section fonctionnalités refondue** — copy ultra-clair orienté agent immo :
+  - "3 leviers. Zéro perte de temps." (au lieu de "Tout ce dont un agent a besoin…")
+  - 01 · **Trouvez des mandats** (multi-portails + DPE émis)
+  - 02 · **Signez plus de mandats** (estimation DVF + argumentaire + relances)
+  - 03 · **Restez rentable** (notes vocales + agenda + dossiers)
+- Testé sur mobile 390×844 et desktop 1440×900 via screenshot tool
+
 ### Marketing Site www.trykolo.io — REFONTE COMPLÈTE v3 (Feb 2026) 🔥 LATEST
 Ancienne homepage "aurora animated" totalement abandonnée (jugée "template Claude AI-slop"). Refonte complète style **Qonto premium dark**.
 
