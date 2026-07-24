@@ -484,7 +484,7 @@ const HomeContent = () => (
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: easeOut }}>
-          Notre promesse
+          Concrètement, ça donne quoi&nbsp;?
         </motion.div>
         <motion.div className="mkt-value-number"
           initial={{ opacity: 0, y: 16, scale: 0.96 }}
@@ -581,9 +581,9 @@ const HomeContent = () => (
       <div className="mkt-container">
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Tarifs</div>
-          <h2 className="mkt-section-title">Gratuit pour essayer. 24,99 € quand ça rapporte.</h2>
+          <h2 className="mkt-section-title">Deux plans. Zéro surprise.</h2>
           <p className="mkt-section-lead">
-            Pas d&apos;engagement. Facturé via l&apos;App Store.
+            Free pour tester. Pro quand vous voulez tout.
           </p>
         </div>
 

@@ -617,26 +617,13 @@ button.mkt-cta-pill:hover,
   padding: 0 24px;
 }
 .mkt-value-eyebrow {
-  color: var(--text-2);
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  color: var(--text-3);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.02);
-}
-.mkt-value-eyebrow::before,
-.mkt-value-eyebrow::after {
-  content: '';
-  width: 6px; height: 6px; border-radius: 999px;
-  background: #FFFFFF;
-  box-shadow: 0 0 12px #FFFFFF;
+  display: block;
 }
 .mkt-value-number {
   font-family: var(--font-head);
@@ -687,9 +674,10 @@ button.mkt-cta-pill:hover,
   to   { transform: translate(-50%, -50%) scale(1.15); }
 }
 @media (max-width: 767px) {
-  .mkt-value { padding: 64px 0 72px; }
-  .mkt-value-number { font-size: 5.5rem; }
-  .mkt-value-label { font-size: 1.15rem; }
+  .mkt-value { padding: 56px 0 64px; }
+  .mkt-value-number { font-size: 3.75rem; letter-spacing: -0.045em; }
+  .mkt-value-label { font-size: 1.05rem; }
+  .mkt-value-inner { padding: 0 16px; }
 }
 
 /* ============================================================================
