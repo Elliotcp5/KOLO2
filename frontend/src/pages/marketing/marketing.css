@@ -433,7 +433,7 @@ button.mkt-cta-pill:hover,
   line-height: 1.55;
   color: var(--text-2);
   max-width: 540px;
-  margin-bottom: 32px;
+  margin-bottom: 56px !important;
 }
 .mkt-cta-row {
   display: flex;
