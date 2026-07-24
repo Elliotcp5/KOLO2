@@ -358,13 +358,12 @@ button.mkt-cta-pill:hover,
 @media (min-width: 900px) { .mkt-hero { padding: 128px 0 96px; } }
 @media (max-width: 767px) {
   /* Mobile hero — compact but aéré */
-  .mkt-hero { padding: 40px 0 16px; }
-  /* Tighter grid gap between the CTA column and the mockup column */
-  .mkt-hero-inner { gap: 4px; }
+  .mkt-hero { padding: 40px 0 12px; }
+  .mkt-hero-inner { gap: 0; }
   .mkt-h1 { line-height: 1.08; margin-bottom: 20px; }
-  /* Breathing room between the paragraph and the CTA button */
-  .mkt-lead { margin-top: 12px; margin-bottom: 44px; }
-  /* Cut the huge gap between "sans engagement" and the mockups by 3× */
+  /* Real breathing room between paragraph and CTA button */
+  .mkt-lead { margin-top: 12px; margin-bottom: 56px; }
+  /* Tight coupling between the "sans engagement" note and the mockups */
   .mkt-cta-row { margin-bottom: 0; }
   .mkt-cta-note { display: block; margin-top: 10px; margin-left: 0; }
 
@@ -457,10 +456,20 @@ button.mkt-cta-pill:hover,
   .mkt-mockup-stage { height: 480px; margin-top: 32px; }
 }
 @media (max-width: 767px) {
-  /* Compact mockup on mobile — pulled close to the CTA note */
-  .mkt-mockup-stage { height: 360px; margin-top: 8px; }
-  .mkt-mockup-phone { width: 160px; border-radius: 26px; }
-  .mkt-mockup-glow { width: 380px; height: 380px; }
+  /* Ultra-compact mockup stack, glued to the CTA note above */
+  .mkt-mockup-stage {
+    height: 320px;
+    margin-top: -32px;
+    overflow: visible;
+  }
+  .mkt-mockup-phone { width: 140px; border-radius: 22px; }
+  .mkt-mockup-glow { width: 300px; height: 300px; }
+  /* Bring all phones higher inside the shorter mobile stage */
+  .mkt-mockup-phone.p-center { top: 48%; }
+  .mkt-mockup-phone.p-left1  { top: 44%; }
+  .mkt-mockup-phone.p-right1 { top: 41%; }
+  .mkt-mockup-phone.p-left2  { top: 64%; }
+  .mkt-mockup-phone.p-right2 { top: 66%; }
 }
 .mkt-mockup-glow {
   position: absolute;

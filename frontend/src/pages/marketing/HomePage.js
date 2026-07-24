@@ -505,7 +505,7 @@ const HomeContent = () => (
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: easeOut, delay: 0.25 }}>
-          Plus de biens repérés, plus vite. Plus de vendeurs identifiés. Moins de temps perdu à jongler entre les outils.
+          Plus de mandats signés. Moins d&apos;heures perdues.
         </motion.p>
       </div>
     </section>
@@ -581,9 +581,9 @@ const HomeContent = () => (
       <div className="mkt-container">
         <div className="mkt-reveal">
           <div className="mkt-section-eyebrow">Tarifs</div>
-          <h2 className="mkt-section-title">Deux plans. Zéro friction.</h2>
+          <h2 className="mkt-section-title">Gratuit pour essayer. 24,99 € quand ça rapporte.</h2>
           <p className="mkt-section-lead">
-            Pas d&apos;engagement, pas de frais cachés. Facturé via l&apos;App Store.
+            Pas d&apos;engagement. Facturé via l&apos;App Store.
           </p>
         </div>
 
@@ -596,7 +596,7 @@ const HomeContent = () => (
               <span className="per">/ mois</span>
             </div>
             <p className="mkt-price-desc">
-              Pour découvrir KOLO sans engagement. Les fondamentaux, gratuits.
+              Pour tester KOLO sans sortir la carte bleue.
             </p>
             <ul className="mkt-price-list">
               <li><Check size={16} strokeWidth={2.5} /> 1 prospection IA par semaine</li>
@@ -624,7 +624,7 @@ const HomeContent = () => (
               <span className="per">/ mois</span>
             </div>
             <p className="mkt-price-desc">
-              Pour les agents qui prospectent sans limite. Tout illimité, DPE inclus.
+              Prospection illimitée. DPE inclus. Tout, sans limite.
             </p>
             <ul className="mkt-price-list">
               <li><Check size={16} strokeWidth={2.5} /> Prospections IA <strong style={{color:'#fff'}}>illimitées</strong></li>
@@ -675,8 +675,8 @@ const HomeContent = () => (
     <section className="mkt-final-cta" data-testid="mkt-final-cta">
       <div className="mkt-container">
         <div className="mkt-final-cta-inner mkt-reveal">
-          <h2>Prêt à signer comme jamais&nbsp;?</h2>
-          <p>Téléchargez KOLO sur l&apos;App Store. Deux minutes pour être opérationnel.</p>
+          <h2>Prêt à signer plus&nbsp;?</h2>
+          <p>Téléchargez KOLO. Deux minutes, vous êtes opérationnel.</p>
           <a
             href={APP_STORE_URL}
             target="_blank"
