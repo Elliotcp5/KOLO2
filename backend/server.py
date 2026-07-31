@@ -2240,8 +2240,7 @@ async def admin_grant_plan_by_email(request: Request):
     identified by email, for a given number of months (from today).
 
     Protected by ADMIN_SECRET header — usable directly via curl without
-    having to log in as super admin. Idempotent: re-running extends only if
-    the requested expiration is later than the existing one.
+    having to log in as super admin.
     """
     body = await request.json()
     admin_key = body.get("admin_key") or request.headers.get("X-Admin-Secret")
@@ -2286,6 +2285,33 @@ async def admin_grant_plan_by_email(request: Request):
         "months": months,
         "user_id": updated.get("user_id") if updated else None,
     }
+
+
+@api_router.get("/admin/list-users")
+async def admin_list_users_by_secret(admin_key: str, limit: int = 500):
+    """
+    List all KOLO users (email + created_at + subscription plan + last login),
+    newest first. Protected by ADMIN_SECRET query param.
+    """
+    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    limit = max(1, min(2000, int(limit)))
+    projection = {
+        "_id": 0,
+        "user_id": 1,
+        "email": 1,
+        "name": 1,
+        "created_at": 1,
+        "last_login_at": 1,
+        "subscription_plan": 1,
+        "subscription_expires_at": 1,
+        "subscription_granted_by": 1,
+    }
+    cursor = db.users.find({}, projection).sort("created_at", -1).limit(limit)
+    users = await cursor.to_list(length=limit)
+    total = await db.users.count_documents({})
+    return {"count": len(users), "total": total, "users": users}
 
 
 # ==================== KOLO SUPER ADMIN ENDPOINTS ====================
