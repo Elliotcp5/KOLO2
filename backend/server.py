@@ -2233,6 +2233,61 @@ async def list_enterprise_leads(admin_key: str, status: Optional[str] = None, li
     return {"count": len(leads), "leads": leads}
 
 
+@api_router.post("/admin/grant-plan-by-email")
+async def admin_grant_plan_by_email(request: Request):
+    """
+    Grant a subscription plan (free / pro / pro_plus / enterprise) to a user
+    identified by email, for a given number of months (from today).
+
+    Protected by ADMIN_SECRET header — usable directly via curl without
+    having to log in as super admin. Idempotent: re-running extends only if
+    the requested expiration is later than the existing one.
+    """
+    body = await request.json()
+    admin_key = body.get("admin_key") or request.headers.get("X-Admin-Secret")
+    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    email = (body.get("email") or "").strip().lower()
+    plan = (body.get("plan") or "pro").strip().lower()
+    months = max(1, min(36, int(body.get("months") or 2)))
+    note = (body.get("note") or "").strip() or None
+
+    if not email:
+        raise HTTPException(status_code=400, detail="email is required")
+    if plan not in {"free", "pro", "pro_plus", "enterprise"}:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail=f"User not found: {email}")
+
+    now = datetime.now(timezone.utc)
+    expires_at_dt = now + timedelta(days=30 * months)
+    expires_at = expires_at_dt.isoformat()
+
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {
+            "subscription_plan": plan,
+            "subscription_expires_at": expires_at,
+            "subscription_granted_by": "admin-secret",
+            "subscription_note": note,
+            "subscription_updated_at": now.isoformat(),
+        }},
+    )
+    updated = await db.users.find_one({"email": email}, {"_id": 0, "password": 0})
+    return {
+        "ok": True,
+        "email": email,
+        "plan": plan,
+        "granted_from": now.isoformat(),
+        "expires_at": expires_at,
+        "months": months,
+        "user_id": updated.get("user_id") if updated else None,
+    }
+
+
 # ==================== KOLO SUPER ADMIN ENDPOINTS ====================
 # Session-authenticated admin space (/kolo-admin). The current user's email
 # must be in KOLO_SUPER_ADMIN_EMAILS. Used by the AdminDashboard React page.
