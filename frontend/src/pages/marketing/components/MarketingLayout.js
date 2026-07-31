@@ -3,6 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import '../marketing.css';
 import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
+import { trackPageView, trackCTA } from '../../../utils/koloTracker';
 
 // Official App Store URL for the iOS app (used as primary CTA everywhere).
 const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
@@ -90,6 +91,7 @@ const Header = () => {
             rel="noreferrer"
             className="mkt-cta-pill"
             data-testid="mkt-header-cta"
+            onClick={() => trackCTA('header-appstore', location.pathname)}
           >
             Télécharge l&apos;app
           </a>
@@ -126,6 +128,7 @@ const Header = () => {
             className="mkt-cta-pill large"
             style={{ minWidth: 240, justifyContent: 'center' }}
             data-testid="mkt-nav-mobile-appstore"
+            onClick={() => trackCTA('mobile-nav-appstore', location.pathname)}
           >
             Télécharge l&apos;app
           </a>
@@ -173,6 +176,12 @@ const Footer = () => (
 const Layout = ({ children }) => {
   const location = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+
+  // First-party analytics — send a page view to /api/track/pageview on every
+  // route change. Silent, non-blocking, no cookie needed (first-party UUIDs).
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
 
   // While a marketing route is mounted, force the html/body bg to obsidian
   // so the fixed glass header + any FOUC don't flash a light color.

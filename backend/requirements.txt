@@ -144,3 +144,6 @@ websockets==15.0.1
 wrapt==2.1.2
 yarl==1.22.0
 zipp==3.23.0
+ua-parser==1.0.2
+ua-parser-builtins==202606
+user-agents==2.2.0

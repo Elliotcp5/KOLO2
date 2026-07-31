@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Search, Sparkles, CalendarDays } from 'lucide-react';
 import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
+import { trackCTA } from '../../utils/koloTracker';
 
 // ---------------------------------------------------------------------------
 // iOS screenshots — REAL app captures delivered by the user.
@@ -457,6 +458,7 @@ const HomeContent = () => (
                 rel="noreferrer"
                 className="mkt-cta-pill large"
                 data-testid="mkt-hero-cta-appstore"
+                onClick={() => trackCTA('hero-appstore')}
               >
                 Télécharge KOLO gratuitement
                 <ArrowRight size={16} strokeWidth={2.5} />
@@ -611,6 +613,7 @@ const HomeContent = () => (
               className="mkt-cta-ghost"
               data-testid="price-free-cta"
               style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => trackCTA('price-free')}
             >
               Télécharge l&apos;app
             </a>
@@ -640,6 +643,7 @@ const HomeContent = () => (
               className="mkt-cta-pill"
               data-testid="price-pro-cta"
               style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => trackCTA('price-pro')}
             >
               Télécharge l&apos;app
             </a>
@@ -683,6 +687,7 @@ const HomeContent = () => (
             rel="noreferrer"
             className="mkt-cta-pill large"
             data-testid="mkt-final-cta-appstore"
+            onClick={() => trackCTA('final-appstore')}
           >
             Télécharge l&apos;app
             <ArrowRight size={16} strokeWidth={2.5} />

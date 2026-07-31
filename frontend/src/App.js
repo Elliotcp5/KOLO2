@@ -23,6 +23,10 @@ import MarketingHowKoloPage from "./pages/marketing/HowKoloPage";
 import MarketingResourcesPage from "./pages/marketing/ResourcesPage";
 import MarketingAboutPage from "./pages/marketing/AboutPage";
 import MarketingLegalPage from "./pages/marketing/LegalPage";
+
+// KOLO private analytics dashboard (/dashboard on trykolo.io)
+import DashboardLogin from "./pages/dashboard/DashboardLogin";
+import Dashboard from "./pages/dashboard/Dashboard";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import SubscribePage from "./pages/SubscribePage";
@@ -141,6 +145,9 @@ const AppRouter = () => {
       <Route path="/legal" element={<MarketingLegalPage />} />
       <Route path="/privacy" element={<MarketingLegalPage />} />
       <Route path="/terms" element={<MarketingLegalPage />} />
+      {/* Private analytics dashboard — password-gated (elliot only) */}
+      <Route path="/dashboard/login" element={<DashboardLogin />} />
+      <Route path="/dashboard" element={<Dashboard />} />
       {/* Legacy landing accessible via /landing-old pour fallback temporaire */}
       <Route path="/landing-old" element={<LandingPageNew />} />
       <Route path="/login" element={<LoginPage />} />

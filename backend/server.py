@@ -8412,6 +8412,18 @@ async def root():
 app.include_router(api_router)
 
 # ============================================================================
+# KOLO Private Dashboard (/dashboard on trykolo.io)
+# Standalone analytics — separate JWT, separate collections (page_views,
+# cta_clicks). Not related to the old super_admin code.
+# ============================================================================
+try:
+    from kolo_dashboard import build_router as build_dashboard_router
+    app.include_router(build_dashboard_router(db))
+    logger.info("KOLO dashboard router mounted (/api/dashboard/*, /api/track/*)")
+except Exception as _dash_err:
+    logger.error(f"Failed to mount dashboard router: {_dash_err}")
+
+# ============================================================================
 # KOLO v2 — Webapp refonte intégrale (4 onglets mobile, IA copilote)
 # Loaded after api_router so it is exposed under /api/v2/*.
 # ============================================================================
