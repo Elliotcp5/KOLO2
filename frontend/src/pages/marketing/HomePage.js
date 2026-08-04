@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Search, Sparkles, CalendarDays } from 'lucide-react';
-import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
-import { trackCTA } from '../../utils/koloTracker';
+import MarketingLayout from './components/MarketingLayout';
+import { appStoreLinkProps } from '../../utils/appStore';
 
 // ---------------------------------------------------------------------------
 // iOS screenshots — REAL app captures delivered by the user.
@@ -453,12 +453,9 @@ const HomeContent = () => (
             </motion.p>
             <motion.div variants={fadeUp} className="mkt-cta-row">
               <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noreferrer"
                 className="mkt-cta-pill large"
                 data-testid="mkt-hero-cta-appstore"
-                onClick={() => trackCTA('hero-appstore')}
+                {...appStoreLinkProps('hero-appstore')}
               >
                 Télécharge KOLO gratuitement
                 <ArrowRight size={16} strokeWidth={2.5} />
@@ -607,13 +604,10 @@ const HomeContent = () => (
               <li><Check size={16} strokeWidth={2.5} /> Assistant intelligent (usage limité)</li>
             </ul>
             <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noreferrer"
               className="mkt-cta-ghost"
               data-testid="price-free-cta"
               style={{ width: '100%', justifyContent: 'center' }}
-              onClick={() => trackCTA('price-free')}
+              {...appStoreLinkProps('price-free')}
             >
               Télécharge l&apos;app
             </a>
@@ -637,13 +631,10 @@ const HomeContent = () => (
               <li><Check size={16} strokeWidth={2.5} /> Support prioritaire</li>
             </ul>
             <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noreferrer"
               className="mkt-cta-pill"
               data-testid="price-pro-cta"
               style={{ width: '100%', justifyContent: 'center' }}
-              onClick={() => trackCTA('price-pro')}
+              {...appStoreLinkProps('price-pro')}
             >
               Télécharge l&apos;app
             </a>
@@ -682,12 +673,9 @@ const HomeContent = () => (
           <h2>Prêt à signer plus&nbsp;?</h2>
           <p>Téléchargez KOLO. Deux minutes, vous êtes opérationnel.</p>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill large"
             data-testid="mkt-final-cta-appstore"
-            onClick={() => trackCTA('final-appstore')}
+            {...appStoreLinkProps('final-appstore')}
           >
             Télécharge l&apos;app
             <ArrowRight size={16} strokeWidth={2.5} />

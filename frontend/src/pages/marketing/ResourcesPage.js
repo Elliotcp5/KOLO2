@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
+import MarketingLayout from './components/MarketingLayout';
+import { appStoreLinkProps } from '../../utils/appStore';
 
 const easeOut = [0.22, 1, 0.36, 1];
 
@@ -66,11 +67,9 @@ const ResourcesContent = () => (
           <h2>Le meilleur outil, c&apos;est celui qu&apos;on utilise.</h2>
           <p>Testez KOLO. Vous vous rendrez compte tout seul.</p>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill large"
             data-testid="mkt-resources-cta-appstore"
+            {...appStoreLinkProps('resources-appstore')}
           >
             Télécharge l&apos;app
             <ArrowRight size={16} strokeWidth={2.5} />

@@ -3,10 +3,8 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import '../marketing.css';
 import { I18nProvider, useI18n, LANGUAGES } from '../i18n';
-import { trackPageView, trackCTA } from '../../../utils/koloTracker';
-
-// Official App Store URL for the iOS app (used as primary CTA everywhere).
-const APP_STORE_URL = 'https://apps.apple.com/fr/app/kolo-ai-real-estate/id6761818371';
+import { trackPageView } from '../../../utils/koloTracker';
+import { appStoreLinkProps, unlockScroll, APP_STORE_URL } from '../../../utils/appStore';
 
 // New dark KOLO logo — same asset as the iOS app icon (public/kolo-mark-v5-180.png).
 // Using the local /public asset guarantees it stays in sync with the app icon.
@@ -69,9 +67,29 @@ const Header = () => {
   const location = useLocation();
 
   useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // Body scroll lock while the mobile menu is open. Aggressive cleanup on
+  // multiple triggers to fix the "site frozen, can't scroll" bug: users who
+  // tap an App Store CTA from inside the open menu leave the tab and come
+  // back with the body still locked.
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      unlockScroll();
+    }
+    // Always unlock when the tab regains focus/visibility (defensive)
+    const onFocus = () => unlockScroll();
+    const onVisibility = () => { if (!document.hidden) unlockScroll(); };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('pageshow', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      unlockScroll();
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pageshow', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [open]);
 
   const NAV = [
@@ -86,12 +104,9 @@ const Header = () => {
         <KoloLogo />
         <div className="mkt-header-actions">
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill"
             data-testid="mkt-header-cta"
-            onClick={() => trackCTA('header-appstore', location.pathname)}
+            {...appStoreLinkProps('header-appstore')}
           >
             Télécharge l&apos;app
           </a>
@@ -122,13 +137,10 @@ const Header = () => {
         ))}
         <div className="mkt-mobile-nav-cta-wrap">
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill large"
             style={{ minWidth: 240, justifyContent: 'center' }}
             data-testid="mkt-nav-mobile-appstore"
-            onClick={() => trackCTA('mobile-nav-appstore', location.pathname)}
+            {...appStoreLinkProps('mobile-nav-appstore')}
           >
             Télécharge l&apos;app
           </a>
@@ -149,7 +161,7 @@ const Footer = () => (
         <div className="mkt-footer-col">
           <h5>Produit</h5>
           <Link to="/comment-kolo" data-testid="mkt-footer-how">Fonctionnalités</Link>
-          <a href={APP_STORE_URL} target="_blank" rel="noreferrer" data-testid="mkt-footer-download">
+          <a {...appStoreLinkProps('footer-download')} data-testid="mkt-footer-download">
             Télécharger
           </a>
         </div>
@@ -176,6 +188,15 @@ const Footer = () => (
 const Layout = ({ children }) => {
   const location = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+
+  // Global safety net — every time the marketing app mounts or the user
+  // navigates to a new page, force-unlock scroll. Fixes reports of "site
+  // frozen, can't scroll" that survived a hard-refresh on the previous
+  // build (usually caused by an orphaned overflow:hidden from the mobile
+  // menu, or from a third-party widget).
+  useEffect(() => {
+    unlockScroll();
+  }, [location.pathname]);
 
   // First-party analytics — send a page view to /api/track/pageview on every
   // route change. Silent, non-blocking, no cookie needed (first-party UUIDs).

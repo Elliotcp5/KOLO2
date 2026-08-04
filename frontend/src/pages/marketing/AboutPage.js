@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
+import MarketingLayout from './components/MarketingLayout';
+import { appStoreLinkProps } from '../../utils/appStore';
 
 const FOUNDER_PHOTO = 'https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png';
 
@@ -94,11 +95,9 @@ const AboutContent = () => (
           <h2>Voyez par vous-même.</h2>
           <p>Téléchargez KOLO. Vous vous ferez votre propre avis.</p>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill large"
             data-testid="mkt-about-cta-appstore"
+            {...appStoreLinkProps('about-appstore')}
           >
             Télécharge l&apos;app
             <ArrowRight size={16} strokeWidth={2.5} />

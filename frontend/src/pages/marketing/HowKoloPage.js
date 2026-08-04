@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check } from 'lucide-react';
-import MarketingLayout, { APP_STORE_URL } from './components/MarketingLayout';
+import MarketingLayout from './components/MarketingLayout';
+import { appStoreLinkProps } from '../../utils/appStore';
 
 const easeOut = [0.22, 1, 0.36, 1];
 
@@ -99,11 +100,9 @@ const HowContent = () => (
           <h2>Voyez-le tourner sur votre téléphone.</h2>
           <p>2 min pour être opérationnel. Zéro CB demandée pour tester.</p>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
             className="mkt-cta-pill large"
             data-testid="mkt-how-cta-appstore"
+            {...appStoreLinkProps('how-appstore')}
           >
             Télécharge l&apos;app
             <ArrowRight size={16} strokeWidth={2.5} />
