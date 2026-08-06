@@ -684,10 +684,11 @@ FREE_PROSPECTING_PER_WEEK = 1
 
 
 async def _is_pro_user(db, user_id: str) -> bool:
-    """Pro check unifié : abonnement Apple/Stripe actif OU bonus parrainage actif OU lifetime admin."""
+    """Pro check unifié : abonnement Apple/Stripe actif OU bonus parrainage actif OU lifetime admin OU grant admin manuel (dashboard)."""
     user_doc = await db.users.find_one(
         {"user_id": user_id},
-        {"_id": 0, "subscription_status": 1, "pro_bonus_until": 1, "pro_lifetime": 1, "email": 1},
+        {"_id": 0, "subscription_status": 1, "pro_bonus_until": 1, "pro_lifetime": 1,
+         "subscription_plan": 1, "subscription_expires_at": 1, "email": 1},
     ) or {}
     # 1) Pro à vie (admin/testers Apple)
     if user_doc.get("pro_lifetime"):
@@ -706,6 +707,23 @@ async def _is_pro_user(db, user_id: str) -> bool:
             if bonus_dt.tzinfo is None:
                 bonus_dt = bonus_dt.replace(tzinfo=timezone.utc)
             if bonus_dt > datetime.now(timezone.utc):
+                return True
+        except Exception:
+            pass
+    # 4) Grant admin manuel (bouton "Grant Pro" du dashboard, /admin/grant-plan-by-email)
+    #    Écrit subscription_plan + subscription_expires_at, doit débloquer Pro
+    #    jusqu'à expiration.
+    granted_plan = user_doc.get("subscription_plan")
+    granted_exp = user_doc.get("subscription_expires_at")
+    if granted_plan and granted_plan not in ("free", None) and granted_exp:
+        try:
+            if isinstance(granted_exp, str):
+                exp_dt = datetime.fromisoformat(granted_exp.replace("Z", "+00:00"))
+            else:
+                exp_dt = granted_exp
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            if exp_dt > datetime.now(timezone.utc):
                 return True
         except Exception:
             pass
