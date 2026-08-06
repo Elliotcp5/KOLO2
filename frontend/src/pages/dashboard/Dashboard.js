@@ -284,8 +284,7 @@ const Dashboard = () => {
                 <Kpi
                   testid="kpi-plans"
                   label="Par plan"
-                  value={<span style={{ fontSize: 18 }}>{(plans.pro || 0) + (plans.pro_plus || 0)} Pro / {plans.free || 0} Free</span>}
-                  sub={plans.pro_plus ? `dont ${plans.pro_plus} Pro+` : ''}
+                  value={<span style={{ fontSize: 18 }}>{plans.pro || 0} Pro / {plans.free || 0} Free</span>}
                 />
               </div>
             </section>

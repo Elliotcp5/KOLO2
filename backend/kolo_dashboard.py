@@ -254,7 +254,11 @@ def build_router(db: AsyncIOMotorDatabase) -> APIRouter:
         ]
         plan_dist = {}
         async for row in db.users.aggregate(plan_pipeline):
-            plan_dist[row["_id"] or "free"] = row["count"]
+            # Legacy pro_plus records count as pro
+            key = row["_id"] or "free"
+            if key == "pro_plus":
+                key = "pro"
+            plan_dist[key] = plan_dist.get(key, 0) + row["count"]
 
         # Web analytics
         total_pageviews = await db.page_views.count_documents({})
@@ -366,6 +370,10 @@ def build_router(db: AsyncIOMotorDatabase) -> APIRouter:
         }
         cursor = db.users.find(query, projection).sort("created_at", -1).limit(limit)
         users = await cursor.to_list(length=limit)
+        # Collapse legacy pro_plus into pro so the dashboard only shows 2 plans.
+        for u in users:
+            if u.get("subscription_plan") == "pro_plus":
+                u["subscription_plan"] = "pro"
         total = await db.users.count_documents(query)
         return {"count": len(users), "total": total, "users": users}
 
@@ -527,8 +535,8 @@ def build_router(db: AsyncIOMotorDatabase) -> APIRouter:
         months = int(body.get("months") or 1)
         note = (body.get("note") or "").strip() or None
 
-        if plan not in {"free", "pro", "pro_plus", "enterprise"}:
-            raise HTTPException(status_code=400, detail="Invalid plan")
+        if plan not in {"free", "pro"}:
+            raise HTTPException(status_code=400, detail="Invalid plan (only 'free' or 'pro')")
         months = max(1, min(36, months))
 
         user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})

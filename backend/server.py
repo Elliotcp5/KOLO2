@@ -293,17 +293,19 @@ PLAN_FEATURES = {
         "max_prospects": None,  # Unlimited
         "daily_ai_suggestions": None,  # Unlimited
         "sms_one_click": True,
-        "heat_score": False,
-        "roi_dashboard": False,
+        "heat_score": True,
+        "roi_dashboard": True,
         "interaction_history": True,
-        "weekly_report": False,
+        "weekly_report": True,
         "budget_slider": True,
         "contextual_notes": True,
-        "behavioral_alerts": False,
-        "ultra_contextual_suggestions": False,
-        "dedicated_support": False,
-        "priority_access": False,
+        "behavioral_alerts": True,
+        "ultra_contextual_suggestions": True,
+        "dedicated_support": True,
+        "priority_access": True,
     },
+    # Legacy alias — some historical records still carry `pro_plus`. Kept
+    # identical to `pro` so we never accidentally regress an existing user.
     "pro_plus": {
         "max_prospects": None,  # Unlimited
         "daily_ai_suggestions": None,  # Unlimited
@@ -2908,7 +2910,8 @@ def get_user_effective_plan(user_doc: dict) -> str:
             if granted_exp_dt.tzinfo is None:
                 granted_exp_dt = granted_exp_dt.replace(tzinfo=timezone.utc)
             if now < granted_exp_dt:
-                return granted_plan
+                # Legacy pro_plus records collapse into the single "pro" plan.
+                return "pro" if granted_plan == "pro_plus" else granted_plan
         except Exception:
             pass
 
