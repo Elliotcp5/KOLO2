@@ -241,6 +241,39 @@
 .dash-plan-pro_plus { background: rgba(180, 210, 255, 0.14); color: #B8D0FF; }
 .dash-plan-enterprise { background: rgba(255, 210, 180, 0.15); color: #FFD1B8; }
 
+/* Grant Pro / Revoke cell */
+.dash-grant-actions {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.dash-grant-months {
+  height: 28px; padding: 0 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px; color: #fff;
+  font-size: 11.5px; font-weight: 500;
+  cursor: pointer;
+}
+.dash-grant-btn {
+  height: 28px; padding: 0 12px;
+  border: none; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: -0.01em; cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  white-space: nowrap;
+}
+.dash-grant-btn:hover { transform: translateY(-1px); }
+.dash-grant-btn:active { transform: scale(0.96); }
+.dash-grant-pro {
+  background: #34d399; color: #04220f;
+}
+.dash-grant-pro:hover { background: #4de6a6; box-shadow: 0 6px 20px -6px rgba(52, 211, 153, 0.5); }
+.dash-grant-revoke {
+  background: rgba(255, 107, 107, 0.12); color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.25);
+}
+.dash-grant-revoke:hover { background: rgba(255, 107, 107, 0.2); }
+
 .dash-empty { padding: 24px; color: #71717A; font-size: 13px; text-align: center; }
 
 .dash-2col {

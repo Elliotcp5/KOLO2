@@ -7,6 +7,47 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const TOKEN_KEY = 'kolo_dashboard_token';
 
 // ---------------------------------------------------------------------------
+// Per-user "Grant Pro / Revoke" actions cell
+// ---------------------------------------------------------------------------
+const UserGrantActions = ({ user, isPro, onGrant }) => {
+  const [months, setMonths] = useState(1);
+  return (
+    <div className="dash-grant-actions" data-testid={`grant-actions-${user.user_id}`}>
+      <select
+        className="dash-grant-months"
+        value={months}
+        onChange={(e) => setMonths(parseInt(e.target.value, 10))}
+        aria-label="Nombre de mois"
+        data-testid={`grant-months-${user.user_id}`}
+      >
+        <option value={1}>1 mois</option>
+        <option value={2}>2 mois</option>
+        <option value={3}>3 mois</option>
+        <option value={6}>6 mois</option>
+        <option value={12}>12 mois</option>
+      </select>
+      <button
+        className="dash-grant-btn dash-grant-pro"
+        onClick={() => onGrant(user, 'pro', months)}
+        data-testid={`grant-pro-${user.user_id}`}
+      >
+        Grant Pro
+      </button>
+      {isPro && (
+        <button
+          className="dash-grant-btn dash-grant-revoke"
+          onClick={() => onGrant(user, 'free', 0)}
+          data-testid={`revoke-${user.user_id}`}
+          title="Repasser en Free"
+        >
+          Révoquer
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // API helper — auto-redirects to /dashboard/login on 401
 // ---------------------------------------------------------------------------
 const useApi = () => {
@@ -149,6 +190,32 @@ const Dashboard = () => {
     } catch (_) { /* redirect handled inside useApi */ }
   }, [api, hideTest, search]);
 
+  const grantPlan = useCallback(async (user, plan, months) => {
+    if (!user?.user_id) return;
+    const label = plan === 'free' ? 'révoquer Pro' : `accorder ${plan.toUpperCase()} ${months} mois`;
+    if (!window.confirm(`Confirmer : ${label} pour ${user.email} ?`)) return;
+    try {
+      const r = await api(`/api/dashboard/users/${encodeURIComponent(user.user_id)}/grant-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, months }),
+      });
+      // Update the row inline so the UI feels instant
+      setUsers((prev) => prev.map((u) => (u.user_id === user.user_id ? {
+        ...u,
+        subscription_plan: r.plan,
+        subscription_expires_at: r.expires_at,
+      } : u)));
+      window.alert(
+        plan === 'free'
+          ? `✅ ${user.email} repassé en Free`
+          : `✅ ${user.email} → ${plan.toUpperCase()} pendant ${months} mois\nExpire : ${String(r.expires_at || '').slice(0, 10)}`
+      );
+    } catch (e) {
+      window.alert(`❌ Erreur : ${e.message}`);
+    }
+  }, [api]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -281,13 +348,14 @@ const Dashboard = () => {
                     <th>Créé le</th>
                     <th>Dernière connexion</th>
                     <th>Localisation</th>
-                    <th>Onboarding</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u, i) => {
                     const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.name || '';
                     const loc = [u.last_login_city, u.last_login_country].filter(Boolean).join(', ');
+                    const isPro = (u.subscription_plan || 'free') !== 'free';
                     return (
                       <tr key={u.user_id || u.email || i}>
                         <td>{i + 1}</td>
@@ -302,7 +370,13 @@ const Dashboard = () => {
                         <td>{u.created_at ? String(u.created_at).slice(0, 10) : '—'}</td>
                         <td>{u.last_login_at ? String(u.last_login_at).slice(0, 16).replace('T', ' ') : '—'}</td>
                         <td>{loc || '—'}</td>
-                        <td>{u.onboarding_completed ? '✓' : '—'}</td>
+                        <td>
+                          <UserGrantActions
+                            user={u}
+                            isPro={isPro}
+                            onGrant={grantPlan}
+                          />
+                        </td>
                       </tr>
                     );
                   })}

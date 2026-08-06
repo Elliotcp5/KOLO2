@@ -513,4 +513,61 @@ def build_router(db: AsyncIOMotorDatabase) -> APIRouter:
             "by_cta": [{"cta_id": r["_id"] or "unknown", "count": r["count"]} for r in rows],
         }
 
+    # --------------------- GRANT PRO / REVOKE (protected) ---------------------
+    @router.post("/dashboard/users/{user_id}/grant-plan")
+    async def dashboard_grant_plan(user_id: str, request: Request):
+        """
+        Grant (or revoke) a subscription plan to a KOLO iOS user directly from
+        the dashboard. The plan takes effect immediately on the user's next
+        `/me` refresh in the iOS app.
+        """
+        _require_auth(request)
+        body = await request.json()
+        plan = (body.get("plan") or "pro").strip().lower()
+        months = int(body.get("months") or 1)
+        note = (body.get("note") or "").strip() or None
+
+        if plan not in {"free", "pro", "pro_plus", "enterprise"}:
+            raise HTTPException(status_code=400, detail="Invalid plan")
+        months = max(1, min(36, months))
+
+        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        now = _now()
+        if plan == "free":
+            # Revoke — clear expiration + set plan back to free
+            update = {
+                "$set": {
+                    "subscription_plan": "free",
+                    "subscription_updated_at": now.isoformat(),
+                    "subscription_granted_by": "dashboard",
+                    "subscription_note": note,
+                },
+                "$unset": {"subscription_expires_at": ""},
+            }
+        else:
+            expires_at = (now + timedelta(days=30 * months)).isoformat()
+            update = {
+                "$set": {
+                    "subscription_plan": plan,
+                    "subscription_expires_at": expires_at,
+                    "subscription_granted_by": "dashboard",
+                    "subscription_note": note,
+                    "subscription_updated_at": now.isoformat(),
+                }
+            }
+
+        await db.users.update_one({"user_id": user_id}, update)
+        updated = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0})
+        return {
+            "ok": True,
+            "user_id": user_id,
+            "email": updated.get("email") if updated else None,
+            "plan": plan,
+            "months": months if plan != "free" else 0,
+            "expires_at": updated.get("subscription_expires_at") if updated else None,
+        }
+
     return router

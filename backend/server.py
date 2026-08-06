@@ -2893,7 +2893,25 @@ def get_user_effective_plan(user_doc: dict) -> str:
         
         if now < trial_end:
             return trial_plan
-    
+
+    # Manual admin grant (dashboard "Grant Pro" or /admin/grant-plan-by-email).
+    # These writes populate `subscription_plan` + `subscription_expires_at`
+    # and must unlock the plan in the iOS app until expiration.
+    granted_plan = user_doc.get("subscription_plan")
+    granted_exp = user_doc.get("subscription_expires_at")
+    if granted_plan and granted_plan != "free" and granted_exp:
+        try:
+            if isinstance(granted_exp, str):
+                granted_exp_dt = datetime.fromisoformat(granted_exp.replace('Z', '+00:00'))
+            else:
+                granted_exp_dt = granted_exp
+            if granted_exp_dt.tzinfo is None:
+                granted_exp_dt = granted_exp_dt.replace(tzinfo=timezone.utc)
+            if now < granted_exp_dt:
+                return granted_plan
+        except Exception:
+            pass
+
     # Check subscription status
     sub_status = user_doc.get("subscription_status", "none")
     stored_plan = user_doc.get("plan", "free")
