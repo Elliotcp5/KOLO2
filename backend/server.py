@@ -8455,6 +8455,34 @@ try:
 except Exception as _v2_err:
     logger.error(f"Failed to mount v2 router: {_v2_err}")
 
+
+# ============================================================================
+# INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
+# Registered directly on `app` (not `api_router`) because api_router has
+# already been included above. Protected by X-Admin-Secret.
+# ============================================================================
+@app.post("/api/ingest/apify")
+async def ingest_apify_endpoint(request: Request):
+    """
+    Read the items from the LATEST SUCCEEDED Apify run of the configured
+    actor (`dltik/pige-immo-fr-scraper`) and upsert them into Supabase
+    `listings`. Also flags as `is_active=false` any listing whose
+    postal_code was in this run's coverage and whose `last_seen_at` is
+    older than `stale_hours` (default 48).
+
+    Auth
+    ----
+    Header `X-Admin-Secret: <ADMIN_SECRET>` OR body `{"admin_key": "..."}`.
+
+    Response
+    --------
+    { run_id, run_started_at, items_fetched, rows_kept_after_map_dedupe,
+      rows_sent_to_supabase, inserted, updated, deactivated,
+      postal_codes_count, stale_hours }
+    """
+    from v2_router import _ingest_apify_handler  # type: ignore
+    return await _ingest_apify_handler(request)
+
 # CORS configuration - simplified since we don't use cookies anymore
 app.add_middleware(
     CORSMiddleware,

@@ -389,8 +389,13 @@ async def send_contextual_nudges():
 
 
 async def run_scraper_tick():
-    """Trigger the Apify → Supabase scraper. Guarded to only run once per
-    6h window by writing a marker in `v2_scraper_last_run`.
+    """
+    Daily Apify→Supabase pipeline. Two-step, resumable:
+      1. Kick off a new Apify run (via `scripts.scrape_listings_cron.run_once`).
+      2. Ingest the latest SUCCEEDED run into Supabase with insert/update/
+         deactivate counters (via `scripts.ingest_apify.ingest_latest_run`).
+
+    The marker `v2_scraper_last_run` prevents running more than once per 24 h.
     """
     now = datetime.now(timezone.utc)
     marker = await db.v2_scraper_last_run.find_one({"_id": "singleton"}) or {}
@@ -400,31 +405,69 @@ async def run_scraper_tick():
             last = datetime.fromisoformat(last_iso)
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
-            if (now - last) < timedelta(hours=6):
-                return {"skipped": True, "next_in_min": int((timedelta(hours=6) - (now - last)).total_seconds() // 60)}
+            if (now - last) < timedelta(hours=24):
+                return {"skipped": True, "next_in_min": int((timedelta(hours=24) - (now - last)).total_seconds() // 60)}
         except Exception:
             pass
 
-    # Import lazily so a missing/misconfigured script never breaks the
-    # notification loop itself.
-    logger.info("Scraper tick: kicking off Apify → Supabase run")
+    # Step 1 — kick off a fresh Apify scrape (blocks until the run has completed
+    # or timed-out, which is fine for a daily job).
+    logger.info("[scraper-cron] STEP 1 — kicking off Apify scrape run")
+    scrape_summary: dict = {}
     try:
-        from scripts.scrape_listings_cron import run_once as _scrape_run
-        summary = await _scrape_run()
-        await db.v2_scraper_last_run.update_one(
-            {"_id": "singleton"},
-            {"$set": {"last_run_at": now.isoformat(), "summary": {
-                "batches": summary.get("batches"),
-                "total_upserted": summary.get("total_upserted"),
-                "total_unique": summary.get("total_unique"),
-                "target_zips_count": summary.get("target_zips_count"),
-            }}},
-            upsert=True,
-        )
-        return summary
+        from scripts.scrape_listings_cron import run_once as _scrape_run  # type: ignore
+        scrape_summary = await _scrape_run()
     except Exception as e:
-        logger.error(f"Scraper tick failed: {e}")
-        return {"error": str(e)}
+        logger.error(f"[scraper-cron] STEP 1 failed: {e}")
+        scrape_summary = {"error": str(e)}
+
+    # Step 2 — ingest the latest SUCCEEDED run into Supabase with counters.
+    logger.info("[scraper-cron] STEP 2 — ingesting latest run into Supabase")
+    ingest_summary: dict = {}
+    try:
+        from scripts.ingest_apify import ingest_latest_run  # type: ignore
+        ingest_summary = await ingest_latest_run(stale_hours=48)
+    except Exception as e:
+        logger.error(f"[scraper-cron] STEP 2 failed: {e}")
+        ingest_summary = {"error": str(e)}
+
+    # Persist marker so we don't run again for 24 h and so admins can see the
+    # counters in the dashboard / /status endpoint.
+    combined = {
+        "last_run_at": now.isoformat(),
+        "scrape": {
+            "batches": scrape_summary.get("batches"),
+            "total_upserted": scrape_summary.get("total_upserted"),
+            "total_unique": scrape_summary.get("total_unique"),
+            "target_zips_count": scrape_summary.get("target_zips_count"),
+            "error": scrape_summary.get("error"),
+        },
+        "ingest": {
+            "inserted": ingest_summary.get("inserted"),
+            "updated": ingest_summary.get("updated"),
+            "deactivated": ingest_summary.get("deactivated"),
+            "items_fetched": ingest_summary.get("items_fetched"),
+            "run_id": ingest_summary.get("run_id"),
+            "error": ingest_summary.get("error"),
+        },
+    }
+    await db.v2_scraper_last_run.update_one(
+        {"_id": "singleton"},
+        {"$set": combined},
+        upsert=True,
+    )
+    try:
+        await db.v2_scraper_runs.insert_one({"kind": "daily_scrape_ingest", **combined})
+    except Exception:
+        pass
+
+    logger.info(
+        f"[scraper-cron] Done — scraped:{scrape_summary.get('total_upserted') or 0} "
+        f"| ingested inserted:{ingest_summary.get('inserted') or 0}, "
+        f"updated:{ingest_summary.get('updated') or 0}, "
+        f"deactivated:{ingest_summary.get('deactivated') or 0}"
+    )
+    return combined
 
 
 async def run_scheduler():

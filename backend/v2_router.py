@@ -2427,3 +2427,56 @@ async def admin_scraper_status(request: Request):
         "history": history,
     }
 
+
+# ============================================================================
+# INGEST APIFY  /api/ingest/apify  (protected by ADMIN_SECRET)
+# ============================================================================
+# Runs the "read latest successful Apify run → upsert to Supabase → deactivate
+# stale" pipeline. Callable manually via curl OR triggered by the daily cron.
+# ============================================================================
+
+# We expose it on the top-level `api_router` (not `router`), because the user
+# spec asked for POST /ingest/apify (not /api/v2/ingest/apify). We register
+# the route from server.py at import time.
+
+async def _ingest_apify_handler(request: Request) -> dict:
+    """Shared handler used by both the top-level route and (potentially)
+    manual invocations from the scheduler.
+    """
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    admin_key = (body or {}).get("admin_key") or request.headers.get("x-admin-secret") or ""
+    expected = os.environ.get("ADMIN_SECRET", "kolo_admin_2026")
+    if admin_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    stale_hours = int((body or {}).get("stale_hours") or 48)
+    stale_hours = max(1, min(720, stale_hours))
+
+    # Import lazily so a broken module never blocks server startup.
+    from scripts.ingest_apify import ingest_latest_run  # type: ignore
+
+    result = await ingest_latest_run(stale_hours=stale_hours)
+
+    # Persist a summary so the dashboard / /status endpoint can surface it.
+    try:
+        db = _get_db()
+        summary_doc = {
+            "kind": "ingest_apify",
+            "ran_at": datetime.now(timezone.utc).isoformat(),
+            **{k: v for k, v in result.items() if k != "raw_data"},
+        }
+        await db.v2_ingest_runs.insert_one(summary_doc)
+        await db.v2_ingest_last_run.update_one(
+            {"_id": "singleton"},
+            {"$set": summary_doc},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.warning(f"Could not persist ingest summary: {e}")
+
+    return result
+
