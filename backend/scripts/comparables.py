@@ -14,7 +14,7 @@ import logging
 import math
 import os
 from datetime import datetime, timezone, timedelta
-from statistics import median
+from statistics import median, quantiles
 from typing import Optional
 
 import httpx
@@ -267,6 +267,58 @@ async def get_comparables(
         local_prices = [c["prix_m2"] for c in comparables if c.get("prix_m2")]
         local_median = round(median(local_prices)) if local_prices else None
 
+        # Dispersion (min / Q1 / median / Q3 / max + ratio) — used by the
+        # iOS estimation flow to build a HONEST range instead of a fake
+        # ±X% around the median.
+        dispersion: Optional[dict] = None
+        fourchette_basse: Optional[int] = None
+        fourchette_haute: Optional[int] = None
+        fiabilite: Optional[str] = None
+        if len(local_prices) >= 4:
+            # statistics.quantiles with n=4 uses the exclusive method by
+            # default → gives us Q1, Q2, Q3 as linearly interpolated
+            # quartile boundaries, robust with as few as 4 values.
+            qs = quantiles(local_prices, n=4, method="exclusive")
+            q1, _q2, q3 = qs[0], qs[1], qs[2]
+            mn = min(local_prices)
+            mx = max(local_prices)
+            ratio = mx / mn if mn > 0 else None
+            dispersion = {
+                "min": round(mn),
+                "q1": round(q1),
+                "mediane": local_median,
+                "q3": round(q3),
+                "max": round(mx),
+                "ratio_max_min": round(ratio, 2) if ratio is not None else None,
+            }
+            # Fourchette basse/haute = Q1/Q3 (real dispersion, not fake ±%).
+            fourchette_basse = round(q1)
+            fourchette_haute = round(q3)
+            # Reliability score based on how tight the ratio is.
+            if ratio is None:
+                fiabilite = "faible"
+            elif ratio < 1.8:
+                fiabilite = "élevée"
+            elif ratio < 2.5:
+                fiabilite = "moyenne"
+            else:
+                fiabilite = "faible"
+        elif local_prices:
+            # Not enough comps for meaningful quartiles — expose raw
+            # min/median/max only so the client can still show something,
+            # but flag the estimation as low-confidence.
+            mn = min(local_prices)
+            mx = max(local_prices)
+            dispersion = {
+                "min": round(mn),
+                "q1": None,
+                "mediane": local_median,
+                "q3": None,
+                "max": round(mx),
+                "ratio_max_min": round(mx / mn, 2) if mn > 0 else None,
+            }
+            fiabilite = "faible"
+
         # Postal-code median (all sales of same type over 24 months in that PC)
         postal_code = comparables[0]["code_postal"] if comparables else None
         pc_median, pc_count = await _fetch_postal_code_median(
@@ -288,4 +340,8 @@ async def get_comparables(
         "postal_code": postal_code,
         "surface_range": [round(surface_min, 1), round(surface_max, 1)],
         "since": since_iso,
+        "dispersion": dispersion,
+        "fourchette_basse": fourchette_basse,
+        "fourchette_haute": fourchette_haute,
+        "fiabilite": fiabilite,
     }
