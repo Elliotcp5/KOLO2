@@ -7,7 +7,7 @@ import logging
 import secrets
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, validator
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
@@ -8482,6 +8482,48 @@ async def ingest_apify_endpoint(request: Request):
     """
     from v2_router import _ingest_apify_handler  # type: ignore
     return await _ingest_apify_handler(request)
+
+
+# ============================================================================
+# COMPARABLES  →  Supabase view `mutations_propres`  (GET /api/comparables)
+# Used by the iOS estimation flow. Reads the CURATED view, not the raw
+# `mutations` table.
+# ============================================================================
+@app.get("/api/comparables")
+async def comparables_endpoint(
+    request: Request,
+    lat: float,
+    lng: float,
+    type: str,
+    surface: float,
+    rayon: int = 1000,
+):
+    """
+    Returns the up-to-20 nearest sales within `rayon` metres of (lat, lng),
+    same `type` (Appartement | Maison), with surface in ±20% of `surface`,
+    over the last 24 months, sorted by distance.
+
+    Response also includes:
+      - median €/m² of those comparables + count
+      - median €/m² over 24 months in the same postal code + count
+      - the radius actually used (auto-expands to 2000 m, then 3000 m when
+        fewer than 5 comparables are found).
+
+    All aggregate figures are MEDIANS — never means.
+    """
+    # Auth — same JWT pattern used by every other iOS route.
+    user = await get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    from scripts.comparables import get_comparables  # type: ignore
+    result = await get_comparables(
+        lat=lat, lng=lng,
+        type_local=type,
+        surface=surface,
+        radius_m=int(rayon or 1000),
+    )
+    return result
 
 # CORS configuration - simplified since we don't use cookies anymore
 app.add_middleware(
