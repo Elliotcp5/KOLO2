@@ -247,20 +247,20 @@ async def _scrape_single_zip(client: httpx.AsyncClient, zip_code: str, sem: asyn
         logger.info(f"Kicking off Apify for ZIP {zip_code}")
         run_id, dataset_id = await _kickoff_apify(client, [zip_code])
         if not run_id or not dataset_id:
-            return {"zip": zip_code, "upserted": 0, "kept_after_dedupe": 0, "status": "kickoff_failed"}
+            return {"zip": zip_code, "run_id": None, "upserted": 0, "kept_after_dedupe": 0, "status": "kickoff_failed"}
 
         rows = await _poll_and_fetch(client, run_id, dataset_id)
         if rows is None:
-            return {"zip": zip_code, "upserted": 0, "kept_after_dedupe": 0, "status": "no_data"}
+            return {"zip": zip_code, "run_id": run_id, "upserted": 0, "kept_after_dedupe": 0, "status": "no_data"}
 
         unique = _dedupe_by_url(rows)
         logger.info(f"  {zip_code}: {len(rows)} raw → {len(unique)} unique URLs")
 
-        # Import lazily to avoid pulling server.py into the top of this file.
         from v2_router import _upsert_supabase_listings  # type: ignore
         upserted = await _upsert_supabase_listings(unique, portal_default="leboncoin")
         return {
             "zip": zip_code,
+            "run_id": run_id,
             "upserted": upserted,
             "kept_after_dedupe": len(unique),
             "status": "ok",
@@ -306,6 +306,7 @@ async def run_once(explicit_zips: list[str] | None = None) -> dict:
             "batches": len(results),   # kept name for backwards compat (= zip count now)
             "total_upserted": total_upserted,
             "total_unique": total_unique,
+            "run_ids": [r.get("run_id") for r in results if r.get("run_id")],
             "results": results,
         }
         try:

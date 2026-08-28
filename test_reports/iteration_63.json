@@ -1,0 +1,36 @@
+{
+  "summary": "Backend-only testing of the one-shot DVF import script (/app/backend/scripts/import_dvf_mutations.py) and the resulting Supabase `mutations` data. Created /app/backend/tests/test_iteration_63.py (32 pytest cases): CLI surface (--help/--years/--depts/--dry-run), BATCH_SIZE=1000, service-role key usage, env validation, exact per-(year,dept) row counts via PostgREST count=exact, filter compliance, prix_m2 generated column, adresse formatting and schema columns. Also executed a real dry-run (--years 2023 --depts 06) and a real partial re-run (--years 2023 --depts 75) to prove idempotency. ALL 32 tests PASSED. Table total in scope = 425,617 rows exactly matching /app/backend/logs/dvf_import.log; per-(year,dept) counts match all 15 expected values. Re-verified totals after the idempotency re-run — unchanged. No functional defects found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "scripts/import_dvf_mutations.py :: delete_year_scope()", "issue": "Uses Prefer: return=representation just to count deleted rows, so Supabase serialises and returns all ~34k deleted rows over the wire per department. Prefer: return=minimal + count=exact would be far cheaper and reduces statement-timeout risk on bigger scopes."},
+      {"endpoint": "scripts/import_dvf_mutations.py :: run()", "issue": "Delete-then-insert is not transactional: if the download or an insert batch fails AFTER delete_year_scope() succeeded, that year/department scope is left empty (silent data loss, only logged as 'FAILED ... 0'). Consider inserting into a staging scope or deleting per-department immediately before that department's successful insert."},
+      {"endpoint": "scripts/import_dvf_mutations.py :: _validate_env()", "issue": "Anon-key heuristic has confusing operator precedence: `a.startswith('sb_publishable_') or a.startswith('eyJ') and 'anon' in a.lower()` — `and` binds tighter than `or`. Works by accident; add parentheses for clarity."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_63.py",
+    "/app/test_reports/pytest/iteration_63.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "map_to_rows() uses df.iterrows() row-by-row (~30k rows/dept); a vectorised pandas/to_dict('records') mapping would cut CPU time substantially if this ever becomes a scheduled job.",
+    "insert_rows() has no retry/backoff on transient 5xx from Supabase; a single failed batch aborts the whole department after the delete already ran."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_63.py",
+    "/app/test_reports/iteration_63.json"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "No new seed data. Re-ran the importer only for scope 2023/dept 75 (deleted 34,305 rows and re-inserted the identical 34,305) — final table state identical to before (425,617 rows in scope).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "SUPABASE_URL + SUPABASE_SECRET_KEY read from /app/backend/.env (not logged). /app/memory/test_credentials.md exists but was not needed (no auth flow in scope).",
+  "context_for_next_testing_agent": "Regression suite for the DVF import lives at /app/backend/tests/test_iteration_63.py and is self-contained (reads Supabase creds from /app/backend/.env). It asserts hard-coded expected counts per (year,dept) totalling 425,617 — if the importer is legitimately re-run against refreshed data.gouv.fr files these numbers will drift and the EXPECTED dict must be updated. Verified facts: dry-run for 2023/06 yields exactly 30,636 rows and the emitted row dict contains no prix_m2 key; prix_m2 is populated by the DB generated column and matches valeur_fonciere/surface_reelle_bati; adresse rows are trimmed, single-spaced, no None/nan tokens; the table contains rows only for depts 75,92,13,69,06 and only for 2023-2025. Do NOT run a full import (5+ min, heavy bandwidth); the partial --years 2023 --depts 75 run takes ~20s and is enough to prove idempotency.",
+  "rca_of_the_issue": "No defect to root-cause. Script behaviour, filters, batching, idempotency, auth-key choice and DB-side prix_m2 computation all match the specification."
+}

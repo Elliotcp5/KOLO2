@@ -2440,8 +2440,9 @@ async def admin_scraper_status(request: Request):
 # the route from server.py at import time.
 
 async def _ingest_apify_handler(request: Request) -> dict:
-    """Shared handler used by both the top-level route and (potentially)
-    manual invocations from the scheduler.
+    """Shared handler used by both the top-level route and manual invocations.
+    Accepts optional `run_ids` (list) — when provided, ingests only those
+    specific runs. Otherwise falls back to "latest SUCCEEDED".
     """
     body = {}
     try:
@@ -2449,17 +2450,22 @@ async def _ingest_apify_handler(request: Request) -> dict:
     except Exception:
         pass
     admin_key = (body or {}).get("admin_key") or request.headers.get("x-admin-secret") or ""
-    expected = os.environ.get("ADMIN_SECRET", "kolo_admin_2026")
+    expected = os.environ["ADMIN_SECRET"]
     if admin_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     stale_hours = int((body or {}).get("stale_hours") or 48)
     stale_hours = max(1, min(720, stale_hours))
+    run_ids_raw = (body or {}).get("run_ids")
 
     # Import lazily so a broken module never blocks server startup.
-    from scripts.ingest_apify import ingest_latest_run  # type: ignore
+    from scripts.ingest_apify import ingest_latest_run, ingest_runs  # type: ignore
 
-    result = await ingest_latest_run(stale_hours=stale_hours)
+    if isinstance(run_ids_raw, list) and run_ids_raw:
+        run_ids = [str(x).strip() for x in run_ids_raw if str(x).strip()]
+        result = await ingest_runs(run_ids, stale_hours=stale_hours)
+    else:
+        result = await ingest_latest_run(stale_hours=stale_hours)
 
     # Persist a summary so the dashboard / /status endpoint can surface it.
     try:
@@ -2467,12 +2473,15 @@ async def _ingest_apify_handler(request: Request) -> dict:
         summary_doc = {
             "kind": "ingest_apify",
             "ran_at": datetime.now(timezone.utc).isoformat(),
-            **{k: v for k, v in result.items() if k != "raw_data"},
+            **{k: v for k, v in result.items() if k not in ("raw_data", "runs")},
+            "run_count": len((result.get("runs") or [])),
         }
-        await db.v2_ingest_runs.insert_one(summary_doc)
+        # insert_one mutates the dict by adding `_id`, so persist a copy first
+        # and strip `_id` before the upsert (it is an immutable field).
+        await db.v2_ingest_runs.insert_one(dict(summary_doc))
         await db.v2_ingest_last_run.update_one(
             {"_id": "singleton"},
-            {"$set": summary_doc},
+            {"$set": {k: v for k, v in summary_doc.items() if k != "_id"}},
             upsert=True,
         )
     except Exception as e:

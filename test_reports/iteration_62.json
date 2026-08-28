@@ -1,0 +1,62 @@
+{
+  "summary": "Backend-only testing of the ADMIN_SECRET rotation + /api/ingest/apify run_ids behaviour (26 pytest cases in /app/backend/tests/test_iteration_62.py, 25 passed / 1 failed). Secret rotation is fully verified: old leaked secret 'kolo_admin_2026' no longer exists anywhere in /app/backend/*.py, all admin endpoints (/api/ingest/apify, /api/admin/sync-subscription, /api/admin/enterprise-leads, /api/admin/grant-plan-by-email) return 401 for old/wrong/missing secret and accept only the env value; ADMIN_SECRET is 43 chars, no default. /api/ingest/apify accepts the secret both via X-Admin-Secret header AND body admin_key. run_ids path works: fake run_id -> runs[0] = {error: run_not_found, skipped: true} with all totals 0 and runs_clean 0; stale_hours clamped to 720; empty run_ids falls back to latest-SUCCEEDED. Latest-run fallback ingest returned 200 with items_fetched=1608, inserted=0, updated=1607, deactivated=0, runs_clean=1, stale_hours=48 (all 7 counters present and int, no _id leak). Dashboard JWT endpoints unaffected (login/summary/users?limit=5 all 200, unauthenticated summary 401). FOUND 1 REAL BUG in the bug-#2 fix: the cost-cap gate never fires because it reads run['usage']['totalUsd'] while Apify exposes run['usageTotalUsd'] (usage is null). I also fixed a Mongo '_id' immutable-field error that prevented the ingest summary from ever being persisted.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "scripts/ingest_apify.py::_run_is_clean (cost-cap gate)",
+        "issue": "Requirement #2 is NOT actually enforced for cost-capped runs. _run_is_clean reads usage_usd from run['usage']['totalUsd'] / run['chargedEventCounts']['totalUsd'], but Apify returns the spend as the TOP-LEVEL numeric field run['usageTotalUsd'] and leaves run['usage'] = null. Verified against the real production run ii2w67N4BPGlfIgMQ: options.maxTotalChargeUsd=10, usageTotalUsd=10 (cap fully burnt, isMaxTotalChargeUsdSetByUser=true), statusMessage=null, maxItems=null -> _run_is_clean() returns (True, 'clean'), so deactivation IS allowed on this truncated run. Deactivated=0 in my smoke test only because nothing in the 4 input postal codes was older than the 48h cutoff, NOT because the gate worked. Fix: read usage = run.get('usageTotalUsd') or (run.get('usage') or {}).get('totalUsd'), and also treat exitCode!=0 / timeoutSecs-reached (stats.runTimeSecs >= options.timeoutSecs) as not-clean.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/ingest/apify (v2_router._ingest_apify_handler)",
+        "issue": "FIXED BY ME: every call logged 'Could not persist ingest summary: Performing an update on the path _id would modify the immutable field _id'. insert_one() mutated summary_doc by adding _id, then the same dict was used in $set for v2_ingest_last_run. Result: v2_ingest_last_run.singleton was NEVER written (verified: doc was None). Now inserts a copy and strips _id before $set; verified the singleton doc is now persisted."
+      },
+      {
+        "endpoint": "notification_scheduler.run_scraper_tick (marker persistence)",
+        "issue": "combined['ingest']['run_id'] is always None because ingest_runs()/ingest_latest_run() return run ids only inside the per-run 'runs' list, never a top-level 'run_id'. Store runs[*].run_id (or a run_ids list) instead so admins can trace what was ingested."
+      },
+      {
+        "endpoint": "scripts/ingest_apify.py::_run_is_clean (maxItems branch)",
+        "issue": "item_count falls back to stats.outputBodySize (a byte count) when datasetItemCount is missing, and is then compared against options.maxItems — a meaningless comparison that can produce a false 'not clean'. Drop the outputBodySize fallback."
+      },
+      {
+        "endpoint": "POST /api/ingest/apify with run_ids=[]",
+        "issue": "An explicitly empty run_ids array silently falls back to 'latest SUCCEEDED' (falsy check). Harmless today but a caller that computed zero fresh runs would ingest stale data; consider returning {'error': 'no_run_ids'} when the key is present but empty."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_62.py",
+    "/app/test_reports/pytest/iteration_62.xml"
+  ],
+  "action_items": [
+    "CRITICAL: fix the cost-cap detection in _run_is_clean — use run['usageTotalUsd'] (Apify's real field) instead of run['usage']['totalUsd']; run ii2w67N4BPGlfIgMQ (10/10 USD cap) is currently classified as clean and would be allowed to deactivate listings. Regression test already written: tests/test_iteration_62.py::TestRunIsCleanGating::test_cost_cap_reached_apify_shape_not_clean (currently failing).",
+    "Also treat exitCode != 0 and timeout-reached (stats.runTimeSecs >= options.timeoutSecs) as not-clean.",
+    "Persist ingest run ids in the v2_scraper_last_run marker (currently always null).",
+    "Remove the stats.outputBodySize fallback in the maxItems comparison."
+  ],
+  "critical_code_review_comments": [
+    "ingest_apify._run_is_clean cost-cap branch is dead code against real Apify payloads (wrong field path) — this is the core of bug #2 and must be fixed before the cron is enabled in production.",
+    "Race-condition fix (#3) is structurally correct: scrape_listings_cron.run_once returns run_ids (one run per ZIP, each with a single postalCode input), and run_scraper_tick passes them to ingest_runs; ingest_latest_run is only the manual fallback. Note that when run_ids is empty the tick correctly records error=no_run_ids_from_scrape instead of ingesting stale data.",
+    "Deactivation scoping (#2b) is correct: input postal codes come from run.input or the run's KV-store INPUT record and are filtered to 5-digit codes; the observed run had 4 input postal codes vs 22 seen in items, so the over-deactivation surface is closed as long as the clean-run gate is also fixed.",
+    "Secret rotation (#1) is complete: os.environ['ADMIN_SECRET'] with no default in server.py (5 sites) and v2_router.py; a missing env var will raise KeyError -> 500, which is the intended fail-fast, but consider validating ADMIN_SECRET presence at startup so the failure surfaces at boot rather than per-request."
+  ],
+  "updated_files": [
+    "/app/backend/v2_router.py",
+    "/app/backend/tests/test_iteration_62.py"
+  ],
+  "success_rate": {"backend": "96% (25/26 tests)", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "None. Two real latest-SUCCEEDED ingests were executed (idempotent updates of 1607 existing Supabase rows, 0 inserts, 0 deactivations). Mongo: v2_ingest_runs got summary docs, v2_ingest_last_run.singleton now populated.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Dashboard login works with elliot.cohenpressard@trykolo.io / Psychologue94340! (note: /app/memory/test_credentials.md lists the stale password Psychologue75007%! — the test tries both; please update the memory file). ADMIN_SECRET read from /app/backend/.env, value intentionally not logged.",
+  "context_for_next_testing_agent": "Run `pytest /app/backend/tests/test_iteration_62.py -v` (26 cases). The only expected failure is TestRunIsCleanGating::test_cost_cap_reached_apify_shape_not_clean, which encodes the cost-cap gating bug — it must pass once the main agent fixes _run_is_clean to read run['usageTotalUsd']. Do NOT trigger a full Apify scrape (5+ min, burns credits); the latest-SUCCEEDED ingest fallback is safe and idempotent (items_fetched=1608, updated=1607). Backend logs are clean of tracebacks after the _id persistence fix.",
+  "rca_of_the_issue": "Bug #2 (over-aggressive deactivation) is only half fixed. _run_is_clean() looks up the run's spend at run['usage']['totalUsd'], but the Apify Runs API returns `usage: null` plus a top-level `usageTotalUsd` number; consequently `usage_usd` is always 0/falsy and the `if max_usd and usage_usd` guard is never entered. Reproduction: GET https://api.apify.com/v2/actor-runs/ii2w67N4BPGlfIgMQ -> options.maxTotalChargeUsd=10, usageTotalUsd=10; _run_is_clean(run) returns (True,'clean'), so _ingest_one_run proceeds to _deactivate_stale for all input postal codes. Mitigation: read the top-level field (with the nested one as a fallback) and add exitCode/timeout checks. Separately, the v2_ingest_last_run upsert failed on every call because insert_one had already injected `_id` into the dict later used in $set; fixed by inserting a copy and stripping _id from the $set payload."
+}

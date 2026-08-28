@@ -421,12 +421,17 @@ async def run_scraper_tick():
         logger.error(f"[scraper-cron] STEP 1 failed: {e}")
         scrape_summary = {"error": str(e)}
 
-    # Step 2 — ingest the latest SUCCEEDED run into Supabase with counters.
-    logger.info("[scraper-cron] STEP 2 — ingesting latest run into Supabase")
+    # Step 2 — ingest ONLY the runs we just kicked off (fixes the race
+    # condition where "latest SUCCEEDED" could return yesterday's run).
+    logger.info("[scraper-cron] STEP 2 — ingesting fresh run_ids into Supabase")
     ingest_summary: dict = {}
+    fresh_run_ids = list(scrape_summary.get("run_ids") or [])
     try:
-        from scripts.ingest_apify import ingest_latest_run  # type: ignore
-        ingest_summary = await ingest_latest_run(stale_hours=48)
+        from scripts.ingest_apify import ingest_runs  # type: ignore
+        if fresh_run_ids:
+            ingest_summary = await ingest_runs(fresh_run_ids, stale_hours=48)
+        else:
+            ingest_summary = {"error": "no_run_ids_from_scrape"}
     except Exception as e:
         logger.error(f"[scraper-cron] STEP 2 failed: {e}")
         ingest_summary = {"error": str(e)}

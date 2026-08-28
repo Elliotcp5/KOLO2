@@ -1,39 +1,28 @@
 """
-KOLO — Apify → Supabase ingestion (daily cron)
-==============================================
+KOLO — Apify → Supabase ingestion
+=================================
 
-Purpose
--------
-Read the items from the **latest successful run** of the Apify actor
-`dltik/pige-immo-fr-scraper` and upsert them into Supabase `listings`.
+Reads items from Apify runs and upserts them into Supabase `listings`.
 
-Split from `scrape_listings_cron.py`:
-  - `scrape_listings_cron.py` KICKS OFF new runs (fresh scraping).
-  - `ingest_apify.py`         reads the LATEST SUCCEEDED run only, no scraping.
+Two calling modes
+-----------------
+1. **ingest_runs(run_ids)** — ingest a specific list of runs (the daily cron
+   uses this: it captures the run_ids it kicked off and passes them here).
+2. **ingest_latest_run()** — fallback for manual/adhoc invocations: reads
+   the single most recent SUCCEEDED run of the configured actor.
 
-The daily cron ties both together:
-  1. Kick off a new Apify run  (scrape_listings_cron.run_once)
-  2. Wait for it to succeed    (built into scrape_listings_cron)
-  3. Ingest from the latest    (this module)
+Both go through the same `_ingest_one_run()` per-run pipeline:
+  a. Fetch the run metadata (status, input, stats, dataset_id).
+  b. Skip the run if it isn't SUCCEEDED, or if it clearly hit a cost / max-
+     items limit (Apify usually surfaces this on `stats.datasetItemCount ==
+     options.maxItems`, or on `statusMessage` containing "limit"/"cost").
+     Upsert still happens, but deactivation does NOT — the run didn't
+     cover the full market so we can't trust the "not seen" signal.
+  c. Upsert items into Supabase (portal, external_id) with counts.
+  d. Deactivate stale listings — ONLY for postal codes that were explicitly
+     in the run's `input.postalCodes` AND only when the run was clean.
 
-But the endpoint `POST /api/ingest/apify` calls (2)+(3) only — it will happily
-re-import the last successful run's items if you call it standalone.
-
-Behaviour required by product
------------------------------
-- Upsert on (portal, external_id)
-- Update `last_seen_at` = run started_at for every item revisited
-- Store the raw item in `raw_data`
-- Deactivate (`is_active=false`) any listing whose postal_code was in this
-  run's coverage BUT whose `last_seen_at` is older than 48 h (stale).
-- Return {inserted, updated, deactivated}.
-
-Env
----
-- APIFY_API_TOKEN           (required)
-- APIFY_ACTOR_PIGE_IMMO     (default: dltik/pige-immo-fr-scraper)
-- SUPABASE_URL              (required)
-- SUPABASE_SECRET_KEY       (required — service_role)
+Env required: APIFY_API_TOKEN, SUPABASE_URL, SUPABASE_SECRET_KEY.
 """
 from __future__ import annotations
 
@@ -55,47 +44,132 @@ SUPABASE_KEY = (os.environ.get("SUPABASE_SECRET_KEY") or "").strip()
 STALE_HOURS = 48
 CHUNK_SIZE = 500  # Supabase REST upsert batch size
 
+# Signals that a SUCCEEDED run was probably truncated (cost/item/time limit).
+# We keep the ingest but skip the deactivation step for those runs.
+_LIMIT_HINTS = ("cost", "limit", "budget", "max", "truncat", "abort")
 
-# --------------------------------------------------------------------------
-# Apify
-# --------------------------------------------------------------------------
-async def fetch_latest_run_items(client: httpx.AsyncClient) -> tuple[Optional[dict], list[dict]]:
-    """Fetch items from the *latest SUCCEEDED* run of the configured actor.
 
-    Returns (run_meta, items). `run_meta` contains {id, started_at, finished_at,
-    dataset_id, status}. `items` is the dataset list. On any error, returns
-    (None, []).
-    """
-    if not APIFY_TOKEN:
-        logger.error("APIFY_API_TOKEN missing")
-        return None, []
+# ==========================================================================
+# Utils
+# ==========================================================================
+def _stable_external_id(raw_id: Any) -> str:
+    s = str(raw_id or "").strip()
+    if not s:
+        return ""
+    if s.isdigit():
+        return s
+    return hashlib.sha1(s.encode()).hexdigest()[:24]
 
-    # Apify exposes /acts/{actor}/runs/last with a `?status=SUCCEEDED` filter.
-    run_url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/runs/last"
+
+def _dedupe(rows: list[dict]) -> list[dict]:
+    seen: set[tuple[str, str]] = set()
+    out: list[dict] = []
+    for r in rows:
+        k = (r["portal"], r["external_id"])
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(r)
+    return out
+
+
+def _chunks(seq: list, n: int) -> Iterable[list]:
+    for i in range(0, len(seq), n):
+        yield seq[i:i + n]
+
+
+def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str = "leboncoin") -> Optional[dict]:
+    external_id = _stable_external_id(row.get("external_id") or row.get("id") or row.get("url") or "")
+    if not external_id:
+        return None
+    url = (row.get("url") or row.get("link") or "").strip()
+    if not url:
+        return None
+    portal = (row.get("source") or row.get("portal") or portal_default or "").lower() or portal_default
+    postal_code = str(row.get("postalCode") or row.get("postal_code") or "").strip() or None
+    thumbnail_url = (
+        row.get("main_photo_url")
+        or row.get("thumbnail_url")
+        or ((row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else None)
+        or row.get("photo")
+        or row.get("image")
+        or ""
+    )
+    kind = "pro" if (
+        row.get("ownerType") == "agency"
+        or row.get("isPro")
+        or (row.get("is_owner_listing") is False)
+    ) else "private"
+
+    def _si(v):
+        try:
+            iv = int(float(v))
+            return iv if iv > 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "external_id": external_id,
+        "portal": portal,
+        "postal_code": postal_code,
+        "city": row.get("city") or row.get("commune") or None,
+        "price": _si(row.get("price")),
+        "surface": _si(row.get("surface") or row.get("area")),
+        "rooms": _si(row.get("rooms") or row.get("nbRooms")),
+        "title": (row.get("title") or (row.get("description") or "")[:120] or "Annonce"),
+        "url": url,
+        "thumbnail_url": thumbnail_url,
+        "energy_class": row.get("dpe") or row.get("energy") or row.get("energy_class") or None,
+        "kind": kind,
+        "raw_data": row,
+        "last_seen_at": last_seen_at_iso,
+        "is_active": True,
+        "updated_at": last_seen_at_iso,
+    }
+
+
+# ==========================================================================
+# Apify calls
+# ==========================================================================
+async def _fetch_run(client: httpx.AsyncClient, run_id: str) -> Optional[dict]:
+    """Full run object (status, input, stats, defaultDatasetId)."""
     try:
         r = await client.get(
-            run_url,
-            params={"token": APIFY_TOKEN, "status": "SUCCEEDED"},
-            timeout=20,
+            f"https://api.apify.com/v2/actor-runs/{run_id}",
+            params={"token": APIFY_TOKEN},
+            timeout=15,
         )
         if r.status_code != 200:
-            logger.warning(f"Apify last-run HTTP {r.status_code}: {r.text[:200]}")
-            return None, []
-        run = (r.json() or {}).get("data") or {}
+            logger.warning(f"Apify run fetch HTTP {r.status_code} for {run_id}: {r.text[:200]}")
+            return None
+        return (r.json() or {}).get("data") or {}
+    except Exception as e:
+        logger.warning(f"Apify run fetch failed for {run_id}: {e}")
+        return None
+
+
+async def _fetch_last_succeeded_run(client: httpx.AsyncClient) -> Optional[dict]:
+    """Fallback used when the caller doesn't pass explicit run_ids."""
+    try:
+        r = await client.get(
+            f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/runs/last",
+            params={"token": APIFY_TOKEN, "status": "SUCCEEDED"},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return None
+        return (r.json() or {}).get("data") or {}
     except Exception as e:
         logger.warning(f"Apify last-run fetch failed: {e}")
-        return None, []
+        return None
 
-    dataset_id = run.get("defaultDatasetId")
-    if not dataset_id:
-        logger.warning("No dataset id on latest run")
-        return None, []
 
+async def _fetch_dataset_items(client: httpx.AsyncClient, dataset_id: str) -> list[dict]:
     items: list[dict] = []
     offset = 0
     page = 1000
-    try:
-        while True:
+    while True:
+        try:
             dr = await client.get(
                 f"https://api.apify.com/v2/datasets/{dataset_id}/items",
                 params={"token": APIFY_TOKEN, "clean": "true", "limit": page, "offset": offset},
@@ -111,113 +185,79 @@ async def fetch_latest_run_items(client: httpx.AsyncClient) -> tuple[Optional[di
             if len(chunk) < page:
                 break
             offset += page
-    except Exception as e:
-        logger.warning(f"Dataset paging failed at offset={offset}: {e}")
-
-    meta = {
-        "id": run.get("id"),
-        "started_at": run.get("startedAt"),
-        "finished_at": run.get("finishedAt"),
-        "dataset_id": dataset_id,
-        "status": run.get("status"),
-        "item_count": len(items),
-    }
-    logger.info(f"Apify latest run {meta['id']} → {len(items)} items")
-    return meta, items
+        except Exception as e:
+            logger.warning(f"Dataset paging failed at offset={offset}: {e}")
+            break
+    return items
 
 
-# --------------------------------------------------------------------------
-# Supabase mapping
-# --------------------------------------------------------------------------
-def _stable_external_id(raw_id: Any) -> str:
-    """Normalize the external_id: keep digit-only ids as-is, hash everything
-    else to a compact 24-char hex so the composite key (portal, external_id)
-    stays deterministic even when the portal doesn't expose a numeric id.
+def _run_is_clean(run: dict) -> tuple[bool, str]:
+    """Decide whether the run completed normally without hitting a
+    cost / item / time limit. Return (is_clean, reason).
+    Only clean runs are allowed to deactivate listings.
     """
-    s = str(raw_id or "").strip()
-    if not s:
-        return ""
-    if s.isdigit():
-        return s
-    return hashlib.sha1(s.encode()).hexdigest()[:24]
+    if (run.get("status") or "").upper() != "SUCCEEDED":
+        return False, f"status={run.get('status')}"
+    # statusMessage sometimes contains an explicit reason
+    msg = (run.get("statusMessage") or "").lower()
+    if any(h in msg for h in _LIMIT_HINTS):
+        return False, f"statusMessage={run.get('statusMessage')}"
+    # Item cap hit exactly
+    stats = run.get("stats") or {}
+    opts = run.get("options") or {}
+    max_items = opts.get("maxItems")
+    item_count = stats.get("datasetItemCount") or stats.get("outputBodySize") or 0
+    if max_items and item_count and item_count >= max_items:
+        return False, f"maxItems reached ({item_count}/{max_items})"
+    # Cost limits observed via `usage.ACTOR_COMPUTE_UNITS` vs `options.maxTotalChargeUsd`
+    usage_usd = ((run.get("usage") or {}).get("totalUsd")
+                 or (run.get("chargedEventCounts") or {}).get("totalUsd")
+                 or 0)
+    max_usd = opts.get("maxTotalChargeUsd") or opts.get("maxCostUsd")
+    if max_usd and usage_usd and float(usage_usd) >= float(max_usd) * 0.99:
+        return False, f"cost cap reached ({usage_usd}/{max_usd} USD)"
+    return True, "clean"
 
 
-def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str = "leboncoin") -> Optional[dict]:
-    """Map one raw Apify item to a `listings` row. Returns None if unusable."""
-    external_id_raw = row.get("external_id") or row.get("id") or row.get("url") or ""
-    external_id = _stable_external_id(external_id_raw)
-    if not external_id:
-        return None
-
-    portal = (row.get("source") or row.get("portal") or portal_default or "").lower() or portal_default
-    postal_code = str(row.get("postalCode") or row.get("postal_code") or "").strip() or None
-    url = (row.get("url") or row.get("link") or "").strip()
-    if not url:
-        return None
-
-    thumbnail_url = (
-        row.get("main_photo_url")
-        or row.get("thumbnail_url")
-        or ((row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else None)
-        or row.get("photo")
-        or row.get("image")
-        or ""
-    )
-
-    kind = "pro" if (
-        row.get("ownerType") == "agency"
-        or row.get("isPro")
-        or (row.get("is_owner_listing") is False)
-    ) else "private"
-
-    def _safe_int(v):
-        try:
-            iv = int(float(v))
-            return iv if iv > 0 else None
-        except (TypeError, ValueError):
-            return None
-
-    return {
-        "external_id": external_id,
-        "portal": portal,
-        "postal_code": postal_code,
-        "city": row.get("city") or row.get("commune") or None,
-        "price": _safe_int(row.get("price")),
-        "surface": _safe_int(row.get("surface") or row.get("area")),
-        "rooms": _safe_int(row.get("rooms") or row.get("nbRooms")),
-        "title": (row.get("title") or (row.get("description") or "")[:120] or "Annonce"),
-        "url": url,
-        "thumbnail_url": thumbnail_url,
-        "energy_class": row.get("dpe") or row.get("energy") or row.get("energy_class") or None,
-        "kind": kind,
-        "raw_data": row,
-        "last_seen_at": last_seen_at_iso,
-        "is_active": True,
-        "updated_at": last_seen_at_iso,
-    }
+def _extract_input_postal_codes(run: dict) -> list[str]:
+    """Return the postalCodes actually requested in the run's input."""
+    inp = run.get("input") if isinstance(run, dict) else None
+    if not isinstance(inp, dict):
+        return []
+    raw = inp.get("postalCodes") or inp.get("postal_codes") or []
+    out = []
+    for x in raw:
+        s = str(x).strip()
+        if s.isdigit() and len(s) == 5:
+            out.append(s)
+    return sorted(set(out))
 
 
-def _dedupe(rows: list[dict]) -> list[dict]:
-    """Drop dup (portal, external_id) — keeps the first occurrence."""
-    seen: set[tuple[str, str]] = set()
-    out: list[dict] = []
-    for r in rows:
-        k = (r["portal"], r["external_id"])
-        if k in seen:
-            continue
-        seen.add(k)
-        out.append(r)
-    return out
+async def _fetch_run_input(client: httpx.AsyncClient, run: dict) -> dict:
+    """When the /runs response omits `input`, fetch it from the run's
+    input key-value store entry.
+    """
+    if isinstance(run.get("input"), dict):
+        return run["input"]
+    kv_id = run.get("defaultKeyValueStoreId")
+    if not kv_id:
+        return {}
+    try:
+        r = await client.get(
+            f"https://api.apify.com/v2/key-value-stores/{kv_id}/records/INPUT",
+            params={"token": APIFY_TOKEN},
+            timeout=15,
+        )
+        if r.status_code == 200:
+            return r.json() or {}
+    except Exception as e:
+        logger.warning(f"Could not fetch run input from KV: {e}")
+    return {}
 
 
-def _chunks(seq: list[dict], n: int) -> Iterable[list[dict]]:
-    for i in range(0, len(seq), n):
-        yield seq[i:i + n]
-
-
-# --------------------------------------------------------------------------
+# ==========================================================================
 # Supabase I/O
-# --------------------------------------------------------------------------
+# ==========================================================================
 def _sb_headers(prefer: str = "") -> dict:
     h = {
         "apikey": SUPABASE_KEY,
@@ -229,36 +269,26 @@ def _sb_headers(prefer: str = "") -> dict:
     return h
 
 
-async def _select_existing_keys(
-    client: httpx.AsyncClient, rows: list[dict]
-) -> set[tuple[str, str]]:
-    """Return the set of (portal, external_id) that ALREADY exist in Supabase.
-    Uses a batched IN() query. Empty set on any error (treat everything as
-    insert, best-effort counting).
-    """
+async def _select_existing_keys(client: httpx.AsyncClient, rows: list[dict]) -> set[tuple[str, str]]:
     if not rows:
         return set()
     existing: set[tuple[str, str]] = set()
-    # Batch by portal to keep the OR filter simple. Realistically we only have
-    # 5 portals — one call per portal.
     by_portal: dict[str, list[str]] = {}
     for r in rows:
         by_portal.setdefault(r["portal"], []).append(r["external_id"])
 
     for portal, ext_ids in by_portal.items():
-        # Chunk the IN() list into groups of 200 to keep URL length sane.
-        for group in _chunks([{"external_id": e} for e in ext_ids], 200):
-            ids_csv = ",".join(f'"{r["external_id"]}"' for r in group)
-            params = {
-                "select": "external_id",
-                "portal": f"eq.{portal}",
-                "external_id": f"in.({ids_csv})",
-                "limit": "1000",
-            }
+        for group in _chunks(ext_ids, 200):
+            ids_csv = ",".join(f'"{e}"' for e in group)
             try:
                 r = await client.get(
                     f"{SUPABASE_URL}/rest/v1/listings",
-                    params=params,
+                    params={
+                        "select": "external_id",
+                        "portal": f"eq.{portal}",
+                        "external_id": f"in.({ids_csv})",
+                        "limit": "1000",
+                    },
                     headers=_sb_headers(),
                     timeout=15,
                 )
@@ -273,9 +303,6 @@ async def _select_existing_keys(
 
 
 async def _upsert_batch(client: httpx.AsyncClient, rows: list[dict]) -> int:
-    """Upsert a batch. Returns number of rows successfully sent (may be > inserts+updates
-    if Supabase silently dropped a row — used only for logging).
-    """
     if not rows:
         return 0
     total = 0
@@ -302,30 +329,24 @@ async def _deactivate_stale(
     postal_codes: list[str],
     cutoff_dt: datetime,
 ) -> int:
-    """Mark as inactive any listing in the given postal_codes whose
-    last_seen_at is older than cutoff_dt. Returns the number of rows
-    affected (best-effort — Supabase returns representation).
-    """
     if not postal_codes:
         return 0
     postal_codes = sorted({p for p in postal_codes if p})
     if not postal_codes:
         return 0
-
     cutoff_iso = cutoff_dt.isoformat()
-    affected = 0
     now_iso = datetime.now(timezone.utc).isoformat()
-    for group in _chunks([{"pc": p} for p in postal_codes], 200):
-        pc_csv = ",".join(f'"{r["pc"]}"' for r in group)
-        params = {
-            "postal_code": f"in.({pc_csv})",
-            "last_seen_at": f"lt.{cutoff_iso}",
-            "is_active": "eq.true",
-        }
+    affected = 0
+    for group in _chunks(postal_codes, 200):
+        pc_csv = ",".join(f'"{p}"' for p in group)
         try:
             r = await client.patch(
                 f"{SUPABASE_URL}/rest/v1/listings",
-                params=params,
+                params={
+                    "postal_code": f"in.({pc_csv})",
+                    "last_seen_at": f"lt.{cutoff_iso}",
+                    "is_active": "eq.true",
+                },
                 headers=_sb_headers(prefer="return=representation"),
                 json={"is_active": False, "updated_at": now_iso},
                 timeout=25,
@@ -342,76 +363,144 @@ async def _deactivate_stale(
     return affected
 
 
-# --------------------------------------------------------------------------
-# Public entry point
-# --------------------------------------------------------------------------
-async def ingest_latest_run(stale_hours: int = STALE_HOURS) -> dict:
-    """
-    End-to-end ingestion:
-      1. Fetch items from the latest SUCCEEDED Apify run
-      2. Map + dedupe on (portal, external_id)
-      3. Look up which keys already exist → count inserts vs updates
-      4. Upsert everything
-      5. Deactivate stale listings in same postal codes
+# ==========================================================================
+# Per-run ingestion
+# ==========================================================================
+async def _ingest_one_run(client: httpx.AsyncClient, run: dict, stale_hours: int) -> dict:
+    run_id = run.get("id") or "?"
+    dataset_id = run.get("defaultDatasetId")
+    started_at = run.get("startedAt") or datetime.now(timezone.utc).isoformat()
+    status = (run.get("status") or "").upper()
 
-    Returns {run_id, run_started_at, inserted, updated, deactivated,
-             postal_codes, items_fetched, error?}
-    """
+    # Ensure we have the input (needed later for deactivation scoping)
+    if "input" not in run or not isinstance(run.get("input"), dict):
+        run["input"] = await _fetch_run_input(client, run)
+
+    input_pcs = _extract_input_postal_codes(run)
+    clean, reason = _run_is_clean(run)
+
+    # Skip entirely if the run itself did not succeed — no upsert, no deactivate.
+    if status != "SUCCEEDED":
+        logger.info(f"[run {run_id}] status={status} → skipped (no upsert, no deactivate)")
+        return {
+            "run_id": run_id,
+            "status": status,
+            "input_postal_codes_count": len(input_pcs),
+            "items_fetched": 0,
+            "inserted": 0,
+            "updated": 0,
+            "deactivated": 0,
+            "clean": False,
+            "reason": reason,
+            "skipped": True,
+        }
+
+    # Upsert phase (always run for SUCCEEDED, even if truncated by a limit —
+    # every item we did get is real).
+    items = await _fetch_dataset_items(client, dataset_id) if dataset_id else []
+    mapped = [_map_item_to_listing(it, started_at) for it in items]
+    rows = _dedupe([r for r in mapped if r])
+    existing = await _select_existing_keys(client, rows)
+    inserted = sum(1 for r in rows if (r["portal"], r["external_id"]) not in existing)
+    updated = len(rows) - inserted
+    sent = await _upsert_batch(client, rows)
+
+    # Deactivation phase — GATED by the "clean run" heuristic.
+    # And restricted to postal codes that were EXPLICITLY in the run input.
+    deactivated = 0
+    if clean and input_pcs:
+        try:
+            started_dt = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+        except Exception:
+            started_dt = datetime.now(timezone.utc)
+        cutoff = started_dt - timedelta(hours=stale_hours)
+        deactivated = await _deactivate_stale(client, input_pcs, cutoff)
+    else:
+        logger.info(
+            f"[run {run_id}] deactivation skipped — clean={clean}, reason={reason}, "
+            f"input_pcs={len(input_pcs)}"
+        )
+
+    return {
+        "run_id": run_id,
+        "status": status,
+        "run_started_at": started_at,
+        "run_finished_at": run.get("finishedAt"),
+        "input_postal_codes_count": len(input_pcs),
+        "items_fetched": len(items),
+        "rows_kept_after_dedupe": len(rows),
+        "rows_sent_to_supabase": sent,
+        "inserted": inserted,
+        "updated": updated,
+        "deactivated": deactivated,
+        "clean": clean,
+        "reason": reason,
+        "skipped": False,
+    }
+
+
+# ==========================================================================
+# Public entry points
+# ==========================================================================
+def _validate_env() -> Optional[dict]:
     if not APIFY_TOKEN:
         return {"error": "APIFY_API_TOKEN missing"}
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"error": "SUPABASE_URL / SUPABASE_SECRET_KEY missing"}
+    return None
 
+
+async def ingest_runs(run_ids: list[str], stale_hours: int = STALE_HOURS) -> dict:
+    """Ingest the specific runs the daily cron just kicked off. Preferred entry."""
+    err = _validate_env()
+    if err:
+        return err
+    run_ids = [r for r in (run_ids or []) if r]
+    if not run_ids:
+        return {"error": "no_run_ids", "runs": [], "inserted": 0, "updated": 0, "deactivated": 0}
+
+    per_run_results: list[dict] = []
+    totals = {"inserted": 0, "updated": 0, "deactivated": 0, "items_fetched": 0, "runs_clean": 0}
     async with httpx.AsyncClient() as client:
-        meta, items = await fetch_latest_run_items(client)
-        if not meta or not items:
-            return {
-                "run_id": (meta or {}).get("id"),
-                "run_started_at": (meta or {}).get("started_at"),
-                "inserted": 0,
-                "updated": 0,
-                "deactivated": 0,
-                "items_fetched": 0,
-                "postal_codes": [],
-                "error": "no_items" if meta else "no_run_or_fetch_error",
-            }
+        for rid in run_ids:
+            run = await _fetch_run(client, rid)
+            if not run:
+                per_run_results.append({"run_id": rid, "error": "run_not_found", "skipped": True})
+                continue
+            res = await _ingest_one_run(client, run, stale_hours)
+            per_run_results.append(res)
+            totals["inserted"] += res.get("inserted", 0) or 0
+            totals["updated"] += res.get("updated", 0) or 0
+            totals["deactivated"] += res.get("deactivated", 0) or 0
+            totals["items_fetched"] += res.get("items_fetched", 0) or 0
+            if res.get("clean"):
+                totals["runs_clean"] += 1
 
-        run_started_at = meta.get("started_at") or datetime.now(timezone.utc).isoformat()
+    return {
+        "runs": per_run_results,
+        "runs_total": len(run_ids),
+        **totals,
+        "stale_hours": stale_hours,
+    }
 
-        mapped = [_map_item_to_listing(it, run_started_at) for it in items]
-        rows = [r for r in mapped if r]
-        rows = _dedupe(rows)
-        postal_codes = sorted({r["postal_code"] for r in rows if r.get("postal_code")})
 
-        existing = await _select_existing_keys(client, rows)
-        inserted = sum(1 for r in rows if (r["portal"], r["external_id"]) not in existing)
-        updated = len(rows) - inserted
-
-        sent = await _upsert_batch(client, rows)
-
-        # Deactivate stale
-        try:
-            run_started_dt = datetime.fromisoformat(str(run_started_at).replace("Z", "+00:00"))
-        except Exception:
-            run_started_dt = datetime.now(timezone.utc)
-        cutoff = run_started_dt - timedelta(hours=stale_hours)
-        deactivated = await _deactivate_stale(client, postal_codes, cutoff)
-
-        result = {
-            "run_id": meta.get("id"),
-            "run_started_at": run_started_at,
-            "run_finished_at": meta.get("finished_at"),
-            "items_fetched": len(items),
-            "rows_kept_after_map_dedupe": len(rows),
-            "rows_sent_to_supabase": sent,
-            "inserted": inserted,
-            "updated": updated,
-            "deactivated": deactivated,
-            "postal_codes_count": len(postal_codes),
+async def ingest_latest_run(stale_hours: int = STALE_HOURS) -> dict:
+    """Fallback for manual invocations: ingest the LAST SUCCEEDED run."""
+    err = _validate_env()
+    if err:
+        return err
+    async with httpx.AsyncClient() as client:
+        run = await _fetch_last_succeeded_run(client)
+        if not run:
+            return {"error": "no_last_succeeded_run", "inserted": 0, "updated": 0, "deactivated": 0}
+        res = await _ingest_one_run(client, run, stale_hours)
+        return {
+            "runs": [res],
+            "runs_total": 1,
+            "inserted": res.get("inserted", 0),
+            "updated": res.get("updated", 0),
+            "deactivated": res.get("deactivated", 0),
+            "items_fetched": res.get("items_fetched", 0),
+            "runs_clean": 1 if res.get("clean") else 0,
             "stale_hours": stale_hours,
         }
-        logger.info(
-            f"Ingest done — inserted={inserted}, updated={updated}, "
-            f"deactivated={deactivated}, postal_codes={len(postal_codes)}"
-        )
-        return result

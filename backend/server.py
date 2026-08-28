@@ -1852,7 +1852,7 @@ async def admin_sync_subscription(request: Request):
     admin_key = body.get("admin_key")
     
     # Simple admin protection
-    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+    if admin_key != os.environ["ADMIN_SECRET"]:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
     if not email:
@@ -1937,7 +1937,7 @@ async def debug_sync_status(email: str, admin_key: str):
       - What sync_subscription_from_stripe would return right now
     Protected by ADMIN_SECRET. Use it to debug stuck-on-pricing bugs.
     """
-    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+    if admin_key != os.environ["ADMIN_SECRET"]:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     import stripe
@@ -2224,7 +2224,7 @@ async def list_enterprise_leads(admin_key: str, status: Optional[str] = None, li
     Admin-only: list all enterprise demo requests, newest first. Filter by
     status (new / contacted / converted / rejected) via the optional query param.
     """
-    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+    if admin_key != os.environ["ADMIN_SECRET"]:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     query = {}
@@ -2246,7 +2246,7 @@ async def admin_grant_plan_by_email(request: Request):
     """
     body = await request.json()
     admin_key = body.get("admin_key") or request.headers.get("X-Admin-Secret")
-    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+    if admin_key != os.environ["ADMIN_SECRET"]:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     email = (body.get("email") or "").strip().lower()
@@ -2295,7 +2295,7 @@ async def admin_list_users_by_secret(admin_key: str, limit: int = 500):
     List all KOLO users (email + created_at + subscription plan + last login),
     newest first. Protected by ADMIN_SECRET query param.
     """
-    if admin_key != os.environ.get("ADMIN_SECRET", "kolo_admin_2026"):
+    if admin_key != os.environ["ADMIN_SECRET"]:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     limit = max(1, min(2000, int(limit)))
