@@ -44,3 +44,13 @@
 3. Invité passe Pro (via IAP Apple OU manuel via `/api/v2/referral/convert/{user_id}`)
 4. **Parrain reçoit automatiquement +30 jours de Pro bonus** (champ `pro_bonus_until` étendu)
 5. `dashboard.has_pro = True` pour le parrain pendant 30j (cumulable si plusieurs filleuls)
+
+## Admin Dashboard V3 (privé, /dashboard)
+- URL: https://responsive-kolo.preview.emergentagent.com/dashboard
+- Email: elliot.cohenpressard@trykolo.io
+- Password: **Psychologue94340!**
+
+## Secrets serveur
+- **ADMIN_SECRET** (bypass admin, header `X-Admin-Secret`) : `EjQ1iRaMUZ9iLmAl9amx1qt6MME1NhbPjRJOD6YEO3s`
+- **APIFY_WEBHOOK_SECRET** (header `X-Apify-Secret` pour `POST /api/webhooks/apify`) : voir `backend/.env` (auto-généré 29 Août 2026)
+

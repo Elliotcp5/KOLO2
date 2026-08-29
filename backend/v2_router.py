@@ -1632,6 +1632,13 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
     if not url or not key or not rows:
         return 0
     import httpx, hashlib as _hh
+    # A1 — normalisation partagée. Garantit qu'AUCUNE ligne n'entre dans
+    # `listings` sans transaction / type_normalise / est_logement, même via
+    # le cron legacy.
+    try:
+        from normalization import apply_normalization  # type: ignore
+    except Exception:  # pragma: no cover
+        from backend.normalization import apply_normalization  # type: ignore
     payload = []
     now_iso = datetime.now(timezone.utc).isoformat()
     for row in rows:
@@ -1642,7 +1649,7 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
         if not str(ext_id).isdigit():
             ext_id = _hh.sha1(str(ext_id).encode()).hexdigest()[:24]
         portal = (row.get("source") or row.get("portal") or portal_default or "").lower() or portal_default
-        payload.append({
+        listing = {
             "external_id": str(ext_id),
             "portal": portal,
             "postal_code": str(row.get("postalCode") or row.get("postal_code") or "") or None,
@@ -1670,11 +1677,20 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
                 or row.get("isPro")
                 or (row.get("is_owner_listing") is False)
             ) else "private",
+            # A1 — champs bruts consommés par apply_normalization()
+            "property_type": row.get("propertyType") or row.get("type") or row.get("type_bien"),
             "raw_data": row,
             "last_seen_at": now_iso,
             "is_active": True,
             "updated_at": now_iso,
-        })
+        }
+        # A1 — remplit transaction / type_normalise / est_logement et corrige
+        # postal_code sur Paris/Lyon/Marseille si l'arrondissement est dans city.
+        apply_normalization(listing)
+        # `property_type` est purement transitoire (colonne non présente
+        # côté Supabase). Retiré avant l'upsert.
+        listing.pop("property_type", None)
+        payload.append(listing)
     if not payload:
         return 0
     try:

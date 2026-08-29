@@ -622,14 +622,32 @@ Trois fixes P0/P1 appliqués sur cette itération :
 - **FRONTEND_URL** (prod) = `https://trykolo.io`
 - Le scheduler tourne dans un thread async daemon initialisé au startup FastAPI.
 - L'org de test `iad-demo` (custom_subdomain=`iad`) ne doit pas être supprimée — fixture de branding pour les tests UI.
-er + super-admin pro+ + permissions step
-- iter 31: weekly URL + dual commission + offre_acceptee + scheduler refactor
-- iter 32: 4 lots marque blanche (branding partout + funnel brandé + billing B2B + sous-domaine)
-- iter 36: Mode "Dieu" Super Admin (validé visuellement — bouton Voir l'espace + banner + permissions admin OK)
 
-## Critical info
-- **Réponse FR exclusive** dans toutes les interactions agent.
-- **REACT_APP_BACKEND_URL** (preview) = `https://responsive-kolo.preview.emergentagent.com`
-- **FRONTEND_URL** (prod) = `https://trykolo.io`
-- Le scheduler tourne dans un thread async daemon initialisé au startup FastAPI.
-- L'org de test `iad-demo` (custom_subdomain=`iad`) ne doit pas être supprimée — fixture de branding pour les tests UI.
+## Roadmap BLOC A — Refonte socle de données (Fev 2026)
+
+### Session A1 — Ingestion  ✅ (29 Août 2026)
+- Extension `listings` : `transaction`, `type_normalise`, `est_logement` + 4 indexes filtrés
+- Webhook `POST /api/webhooks/apify` : modes `complet` / `incremental`
+- Normalisation partagée dans `backend/normalization.py` (utilisée par webhook ET cron legacy — aucune ligne non normalisée possible)
+- Collection Mongo `zones_scraping` (source × code postal)
+- Auto-postal code pour Paris/Lyon/Marseille via `city`
+- 68 tests unitaires pytest
+- **À FAIRE côté user** : backup + `A1_listings_extensions.sql` dans SQL Editor Supabase + `python -m scripts.backfill_normalization`
+
+### Session A2 — Data Model  (P1, prochaine session)
+- Migration `users` : ajout `role` (super_admin | admin | user | agent), `organisation_id`, `plan`, `plan_effective_at`
+- Nouvelles collections Mongo :
+  - `organisations` — infos entreprise (nom, tva, siège, plan, quotas)
+  - `opportunites` — matches (listing_id, dpe_id, score, breakdown, statut)
+  - `invitations` — tokens d'invitation user → orga
+  - `quotas` — limites mensuelles par plan / organisation
+  - `events` — timeline d'événements (audit trail)
+- Document `config` unique (feature flags, seuils, thresholds)
+
+### Session A3 — Opportunities Engine  (P2)
+- Extraction rue + étage depuis les listings (regex + parsing description)
+- Intégration APIs : BAN (géocodage), Cadastre, Georisques, ADEME (DPE)
+- Scoring 5 axes : rue (30%), surface (25%), classe énergie (20%), type (15%), étage (10%)
+- Cron quotidien 03h00 UTC — match tous les DPE actifs vs listings actives
+- Endpoint `GET /api/opportunites` + persistance dans `opportunites` collection
+

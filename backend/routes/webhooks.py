@@ -19,7 +19,7 @@ async def brevo_sms_webhook(request: Request):
     
     try:
         body = await request.json()
-    except:
+    except Exception:
         body = {}
     
     logger.info(f"Brevo SMS webhook received: {body}")

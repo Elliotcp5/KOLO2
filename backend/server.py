@@ -8485,6 +8485,53 @@ async def ingest_apify_endpoint(request: Request):
 
 
 # ============================================================================
+# WEBHOOK APIFY  →  Supabase + zones_scraping  (POST /api/webhooks/apify)
+# Session A1. Point d'entrée officiel pour Apify (mode complet / incremental).
+# Auth : header X-Apify-Secret.
+# ============================================================================
+@app.post("/api/webhooks/apify")
+async def apify_webhook_endpoint(request: Request):
+    """Webhook A1 pour Apify.
+
+    Body :
+        {
+          "mode": "complet" | "incremental",   # obligatoire
+          "run_ids": ["run_..."],              # optionnel
+          "stale_hours": 48                    # optionnel
+        }
+
+    Auth :
+        Header `X-Apify-Secret: <APIFY_WEBHOOK_SECRET>`.
+    """
+    from scripts.webhooks_apify import handle_apify_webhook  # type: ignore
+    return await handle_apify_webhook(request, db)
+
+
+@app.get("/api/webhooks/apify/zones")
+async def apify_webhook_zones_endpoint(
+    request: Request,
+    source: Optional[str] = None,
+    limit: int = 200,
+):
+    """Liste les zones scrapées (source, code postal, dernière ingestion, …).
+
+    Auth : header `X-Apify-Secret` OU `X-Admin-Secret`.
+    """
+    provided_apify = (request.headers.get("x-apify-secret") or "").strip()
+    provided_admin = (request.headers.get("x-admin-secret") or "").strip()
+    expected_apify = (os.environ.get("APIFY_WEBHOOK_SECRET") or "").strip()
+    expected_admin = (os.environ.get("ADMIN_SECRET") or "").strip()
+    if not (
+        (expected_apify and provided_apify == expected_apify)
+        or (expected_admin and provided_admin == expected_admin)
+    ):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from scripts.webhooks_apify import get_zones_status  # type: ignore
+    return await get_zones_status(db, source=source, limit=max(1, min(limit, 2000)))
+
+
+# ============================================================================
 # COMPARABLES  →  Supabase view `mutations_propres`  (GET /api/comparables)
 # Used by the iOS estimation flow. Reads the CURATED view, not the raw
 # `mutations` table.

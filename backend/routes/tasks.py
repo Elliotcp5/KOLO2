@@ -275,7 +275,7 @@ Max 2 suggestions. Pas de prospect avec des tâches en cours."""
                             s["suggested_date"] = now.strftime("%Y-%m-%d")
                             if s not in suggestions:
                                 suggestions.append(s)
-                except:
+                except Exception:
                     pass
         except Exception as e:
             logger.error(f"AI suggestions error: {e}")
@@ -309,7 +309,7 @@ async def accept_ai_suggestion(request: Request):
     if suggested_date:
         try:
             due_date = datetime.fromisoformat(suggested_date).replace(tzinfo=timezone.utc)
-        except:
+        except Exception:
             pass
     
     task = Task(

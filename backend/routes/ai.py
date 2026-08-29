@@ -160,7 +160,7 @@ async def suggest_tasks(request: Request, user=Depends(get_current_user)):
             try:
                 last_dt = datetime.fromisoformat(last_contact.replace('Z', '+00:00'))
                 days_since_contact = (datetime.now(timezone.utc) - last_dt).days
-            except:
+            except Exception:
                 pass
         
         # Suggest follow-up if no contact in 7+ days

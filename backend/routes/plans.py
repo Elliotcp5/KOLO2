@@ -3,11 +3,16 @@ Plans and Subscription Routes
 Handles plan management, trials, pricing, and feature checks
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import os
 import logging
+
+# Late-imported symbols from server.py to avoid a hard import cycle at module load.
+def _lazy_server():
+    from server import get_current_user, db, get_user_effective_plan, PLAN_FEATURES  # noqa: F401
+    return get_current_user, db, get_user_effective_plan, PLAN_FEATURES
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +99,7 @@ def get_user_effective_plan(user_doc: dict) -> str:
                 if trial_ends > datetime.now(timezone.utc):
                     trial_plan = user_doc.get("trial_plan", "pro")
                     return trial_plan if trial_plan else "pro"
-            except:
+            except Exception:
                 pass
     
     return "free"
@@ -183,14 +188,20 @@ async def get_pricing(currency: str = "EUR"):
 
 
 @router.get("/check-feature/{feature}")
-async def check_feature(feature: str, user=Depends(get_current_user)):
+async def check_feature(feature: str, request: Request):
     """Check if user has access to a specific feature"""
+    from database import get_db
+    from utils import get_current_user
+
+    user = await get_current_user(request)
+    db = get_db()
+
     user_doc = await db.users.find_one({"user_id": user["user_id"]})
     effective_plan = get_user_effective_plan(user_doc)
     features = PLAN_FEATURES.get(effective_plan, PLAN_FEATURES["free"])
-    
+
     has_feature = features.get(feature, False)
-    
+
     return {
         "feature": feature,
         "has_access": has_feature,
@@ -200,17 +211,23 @@ async def check_feature(feature: str, user=Depends(get_current_user)):
 
 
 @router.post("/set-currency")
-async def set_currency(request: Request, user=Depends(get_current_user)):
+async def set_currency(request: Request):
     """Set user's preferred currency"""
+    from database import get_db
+    from utils import get_current_user
+
+    user = await get_current_user(request)
+    db = get_db()
+
     data = await request.json()
     currency = data.get("currency", "EUR").upper()
-    
+
     if currency not in ["EUR", "USD", "GBP"]:
         raise HTTPException(status_code=400, detail="Invalid currency")
-    
+
     await db.users.update_one(
         {"user_id": user["user_id"]},
         {"$set": {"currency": currency, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
+
     return {"success": True, "currency": currency}

@@ -102,3 +102,44 @@
 
 ## Version 1.x - Avant le 11 Mars 2026
 - Voir PRD.md pour l'historique complet
+
+---
+
+## 29 Août 2026 — BLOC A / Session A1 : Ingestion des annonces
+
+### Ajouts
+- **`backend/normalization.py`** : module partagé de normalisation.
+  - `normalize_property_type()` → appartement | maison | studio | loft | terrain | parking | local_commercial | bureau | immeuble | autre
+  - `is_logement()` → True uniquement pour appartement/maison/studio/loft
+  - `normalize_transaction()` → vente | location (via hint + fallback prix > 40k = vente)
+  - `deduce_postal_code()` → auto-détecte le code postal pour Paris (75001-75020), Lyon (69001-69009), Marseille (13001-13016) quand la ville contient l'arrondissement
+  - `apply_normalization()` → applique tout en un appel, muté in-place
+- **`backend/migrations/A1_listings_extensions.sql`** : migration idempotente Supabase (ADD COLUMN IF NOT EXISTS, CREATE INDEX IF NOT EXISTS) + 4 indexes filtrés sur `is_active = TRUE`. À APPLIQUER MANUELLEMENT après backup `CREATE TABLE listings_backup_a1 AS SELECT * FROM listings;`
+- **`backend/migrations/README.md`** : procédure complète (sauvegarde, application, backfill, rollback)
+- **`backend/scripts/zones_scraping.py`** : helpers Mongo pour la collection `zones_scraping`. Un document par (source, code postal) : `last_ingest_at`, `last_mode`, `last_run_ids`, `last_items_seen`, `total_ingests`
+- **`backend/scripts/webhooks_apify.py`** : handler du webhook A1
+- **`backend/scripts/backfill_normalization.py`** : rattrapage one-shot des listings existants après migration
+- **`backend/tests/test_a1_normalization.py`** : 68 tests pytest (property_type, is_logement, transaction, postal_code, apply_normalization)
+
+### Nouveaux endpoints
+- `POST /api/webhooks/apify` — auth `X-Apify-Secret`. Body `{ mode: "complet" | "incremental", run_ids?: [...], stale_hours?: 48 }`. Le mode `complet` désactive les annonces non revues sur les codes postaux du run ; `incremental` fait uniquement de l'upsert.
+- `GET /api/webhooks/apify/zones` — auth `X-Apify-Secret` OU `X-Admin-Secret`. Liste des zones scrapées (dashboard admin).
+
+### Modifications
+- **`backend/scripts/ingest_apify.py`** : appelle `apply_normalization()` sur chaque item avant upsert. Nouvelle signature `_ingest_one_run(allow_deactivate=True)`. Compteurs `inserted`/`updated` désormais proratés sur `rows_sent_to_supabase` (plus de surestimation en cas d'échec Supabase).
+- **`backend/v2_router.py`** : `_upsert_supabase_listings()` (utilisé par le cron legacy) passe désormais par `apply_normalization()`. **Le cron legacy et le webhook produisent maintenant des lignes identiquement normalisées** — aucun risque de lignes incomplètes pour le futur moteur d'opportunités.
+- **`backend/.env`** : ajout de `APIFY_WEBHOOK_SECRET` (secret aléatoire 48 bytes).
+
+### Corrections annexes
+- **`backend/routes/plans.py`** : lint F821 corrigés (`get_current_user` et `db` non définis dans 2 endpoints morts). Import lazy remplacé par des imports scope-local.
+
+### Testé
+- `pytest tests/test_a1_normalization.py` → 68/68 passed
+- `POST /api/webhooks/apify` : auth (401), validation body (400), succès (200), items_fetched, sources détectées, zones_scraping alimenté (60 zones × sources après un run test)
+- `GET /api/webhooks/apify/zones` : 200 avec liste triée par `last_ingest_at DESC`
+
+### Reste à faire côté utilisateur
+1. Backup `listings` : `CREATE TABLE listings_backup_a1 AS SELECT * FROM listings;`
+2. Appliquer `backend/migrations/A1_listings_extensions.sql` dans le SQL Editor Supabase
+3. Lancer `python -m scripts.backfill_normalization --dry-run` puis sans `--dry-run`
+4. Configurer Apify pour appeler `POST /api/webhooks/apify` en fin de run (headers : `X-Apify-Secret: <APIFY_WEBHOOK_SECRET>`, body `{"mode": "complet", "run_ids": ["{{runId}}"]}`)

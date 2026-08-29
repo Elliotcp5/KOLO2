@@ -71,7 +71,7 @@ async def get_current_user(
             exp_dt = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
             if exp_dt < datetime.now(timezone.utc):
                 raise HTTPException(status_code=401, detail="Session expired")
-        except:
+        except Exception:
             pass
     
     return {"user_id": session["user_id"], "session_token": token}

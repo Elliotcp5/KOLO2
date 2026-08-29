@@ -34,6 +34,13 @@ from typing import Any, Iterable, Optional
 
 import httpx
 
+# A1 — normalisation partagée : garantit que chaque ligne écrite dans
+# `listings` porte transaction / type_normalise / est_logement.
+try:
+    from normalization import apply_normalization  # type: ignore
+except Exception:  # pragma: no cover — script peut être exécuté hors backend/
+    from backend.normalization import apply_normalization  # type: ignore
+
 logger = logging.getLogger("ingest_apify")
 
 APIFY_TOKEN = (os.environ.get("APIFY_API_TOKEN") or "").strip()
@@ -108,7 +115,7 @@ def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str =
         except (TypeError, ValueError):
             return None
 
-    return {
+    listing = {
         "external_id": external_id,
         "portal": portal,
         "postal_code": postal_code,
@@ -121,11 +128,20 @@ def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str =
         "thumbnail_url": thumbnail_url,
         "energy_class": row.get("dpe") or row.get("energy") or row.get("energy_class") or None,
         "kind": kind,
+        # A1 — champs bruts consommés par apply_normalization()
+        "property_type": row.get("propertyType") or row.get("type") or row.get("type_bien"),
         "raw_data": row,
         "last_seen_at": last_seen_at_iso,
         "is_active": True,
         "updated_at": last_seen_at_iso,
     }
+    # A1 — remplit transaction / type_normalise / est_logement et corrige
+    # postal_code sur Paris/Lyon/Marseille si l'arrondissement est dans city.
+    apply_normalization(listing)
+    # `property_type` est un champ purement transitoire (non présent dans le
+    # schéma Supabase). On le retire avant l'upsert.
+    listing.pop("property_type", None)
+    return listing
 
 
 # ==========================================================================
@@ -366,7 +382,17 @@ async def _deactivate_stale(
 # ==========================================================================
 # Per-run ingestion
 # ==========================================================================
-async def _ingest_one_run(client: httpx.AsyncClient, run: dict, stale_hours: int) -> dict:
+async def _ingest_one_run(
+    client: httpx.AsyncClient,
+    run: dict,
+    stale_hours: int,
+    allow_deactivate: bool = True,
+) -> dict:
+    """Ingest a single Apify run.
+
+    allow_deactivate=False force le mode incremental : upsert uniquement,
+    aucune désactivation même si le run est propre.
+    """
     run_id = run.get("id") or "?"
     dataset_id = run.get("defaultDatasetId")
     started_at = run.get("startedAt") or datetime.now(timezone.utc).isoformat()
@@ -401,14 +427,26 @@ async def _ingest_one_run(client: httpx.AsyncClient, run: dict, stale_hours: int
     mapped = [_map_item_to_listing(it, started_at) for it in items]
     rows = _dedupe([r for r in mapped if r])
     existing = await _select_existing_keys(client, rows)
-    inserted = sum(1 for r in rows if (r["portal"], r["external_id"]) not in existing)
-    updated = len(rows) - inserted
+    would_insert = sum(1 for r in rows if (r["portal"], r["external_id"]) not in existing)
+    would_update = len(rows) - would_insert
     sent = await _upsert_batch(client, rows)
+    # Reflète le résultat RÉEL (Supabase peut avoir rejeté des batchs — schéma
+    # manquant, contrainte violée, etc.). On préserve la répartition
+    # insertion/update en la proratant.
+    if sent >= len(rows):
+        inserted, updated = would_insert, would_update
+    elif sent <= 0:
+        inserted, updated = 0, 0
+    else:
+        ratio = sent / max(len(rows), 1)
+        inserted = int(round(would_insert * ratio))
+        updated = max(0, sent - inserted)
 
     # Deactivation phase — GATED by the "clean run" heuristic.
     # And restricted to postal codes that were EXPLICITLY in the run input.
+    # allow_deactivate=False (mode incremental du webhook) court-circuite tout.
     deactivated = 0
-    if clean and input_pcs:
+    if allow_deactivate and clean and input_pcs:
         try:
             started_dt = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
         except Exception:
@@ -417,15 +455,27 @@ async def _ingest_one_run(client: httpx.AsyncClient, run: dict, stale_hours: int
         deactivated = await _deactivate_stale(client, input_pcs, cutoff)
     else:
         logger.info(
-            f"[run {run_id}] deactivation skipped — clean={clean}, reason={reason}, "
-            f"input_pcs={len(input_pcs)}"
+            f"[run {run_id}] deactivation skipped — allow_deactivate={allow_deactivate}, "
+            f"clean={clean}, reason={reason}, input_pcs={len(input_pcs)}"
         )
+
+    # A1 — comptage par code postal pour alimenter zones_scraping (Mongo).
+    items_by_pc: dict[str, int] = {}
+    for r in rows:
+        pc = r.get("postal_code")
+        if not pc:
+            continue
+        items_by_pc[pc] = items_by_pc.get(pc, 0) + 1
+
+    # A1 — portails distincts vus dans ce run (utile pour zones_scraping).
+    sources = sorted({r["portal"] for r in rows if r.get("portal")})
 
     return {
         "run_id": run_id,
         "status": status,
         "run_started_at": started_at,
         "run_finished_at": run.get("finishedAt"),
+        "input_postal_codes": input_pcs,
         "input_postal_codes_count": len(input_pcs),
         "items_fetched": len(items),
         "rows_kept_after_dedupe": len(rows),
@@ -436,6 +486,9 @@ async def _ingest_one_run(client: httpx.AsyncClient, run: dict, stale_hours: int
         "clean": clean,
         "reason": reason,
         "skipped": False,
+        "items_by_postal_code": items_by_pc,
+        "sources": sources,
+        "allow_deactivate": allow_deactivate,
     }
 
 
@@ -450,8 +503,16 @@ def _validate_env() -> Optional[dict]:
     return None
 
 
-async def ingest_runs(run_ids: list[str], stale_hours: int = STALE_HOURS) -> dict:
-    """Ingest the specific runs the daily cron just kicked off. Preferred entry."""
+async def ingest_runs(
+    run_ids: list[str],
+    stale_hours: int = STALE_HOURS,
+    allow_deactivate: bool = True,
+) -> dict:
+    """Ingest the specific runs the daily cron just kicked off. Preferred entry.
+
+    allow_deactivate=False → mode incremental (upsert only, jamais de
+    désactivation), utilisé par le webhook A1.
+    """
     err = _validate_env()
     if err:
         return err
@@ -461,13 +522,18 @@ async def ingest_runs(run_ids: list[str], stale_hours: int = STALE_HOURS) -> dic
 
     per_run_results: list[dict] = []
     totals = {"inserted": 0, "updated": 0, "deactivated": 0, "items_fetched": 0, "runs_clean": 0}
+    all_items_by_pc: dict[str, int] = {}
+    all_input_pcs: set[str] = set()
+    all_sources: set[str] = set()
     async with httpx.AsyncClient() as client:
         for rid in run_ids:
             run = await _fetch_run(client, rid)
             if not run:
                 per_run_results.append({"run_id": rid, "error": "run_not_found", "skipped": True})
                 continue
-            res = await _ingest_one_run(client, run, stale_hours)
+            res = await _ingest_one_run(
+                client, run, stale_hours, allow_deactivate=allow_deactivate
+            )
             per_run_results.append(res)
             totals["inserted"] += res.get("inserted", 0) or 0
             totals["updated"] += res.get("updated", 0) or 0
@@ -475,16 +541,29 @@ async def ingest_runs(run_ids: list[str], stale_hours: int = STALE_HOURS) -> dic
             totals["items_fetched"] += res.get("items_fetched", 0) or 0
             if res.get("clean"):
                 totals["runs_clean"] += 1
+            for pc, n in (res.get("items_by_postal_code") or {}).items():
+                all_items_by_pc[pc] = all_items_by_pc.get(pc, 0) + n
+            for pc in res.get("input_postal_codes") or []:
+                all_input_pcs.add(pc)
+            for s in res.get("sources") or []:
+                all_sources.add(s)
 
     return {
         "runs": per_run_results,
         "runs_total": len(run_ids),
         **totals,
         "stale_hours": stale_hours,
+        "allow_deactivate": allow_deactivate,
+        "items_by_postal_code": all_items_by_pc,
+        "input_postal_codes": sorted(all_input_pcs),
+        "sources": sorted(all_sources),
     }
 
 
-async def ingest_latest_run(stale_hours: int = STALE_HOURS) -> dict:
+async def ingest_latest_run(
+    stale_hours: int = STALE_HOURS,
+    allow_deactivate: bool = True,
+) -> dict:
     """Fallback for manual invocations: ingest the LAST SUCCEEDED run."""
     err = _validate_env()
     if err:
@@ -493,7 +572,7 @@ async def ingest_latest_run(stale_hours: int = STALE_HOURS) -> dict:
         run = await _fetch_last_succeeded_run(client)
         if not run:
             return {"error": "no_last_succeeded_run", "inserted": 0, "updated": 0, "deactivated": 0}
-        res = await _ingest_one_run(client, run, stale_hours)
+        res = await _ingest_one_run(client, run, stale_hours, allow_deactivate=allow_deactivate)
         return {
             "runs": [res],
             "runs_total": 1,
@@ -503,4 +582,8 @@ async def ingest_latest_run(stale_hours: int = STALE_HOURS) -> dict:
             "items_fetched": res.get("items_fetched", 0),
             "runs_clean": 1 if res.get("clean") else 0,
             "stale_hours": stale_hours,
+            "allow_deactivate": allow_deactivate,
+            "items_by_postal_code": res.get("items_by_postal_code") or {},
+            "input_postal_codes": res.get("input_postal_codes") or [],
+            "sources": res.get("sources") or [],
         }
