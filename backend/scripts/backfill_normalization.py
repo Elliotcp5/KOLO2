@@ -29,6 +29,13 @@ import httpx
 # `python scripts/backfill_normalization.py` depuis /app/backend.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Charge le fichier `.env` (SUPABASE_URL / SUPABASE_SECRET_KEY).
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+except Exception:
+    pass
+
 from normalization import apply_normalization  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -88,19 +95,22 @@ async def backfill(limit: int | None = None, dry_run: bool = False) -> dict:
     scanned = 0
     updated = 0
     async with httpx.AsyncClient() as client:
-        offset = 0
+        # NB. Pas besoin de gérer un `offset` : les lignes traitées disparaissent
+        # du filtre `type_normalise=is.null` après update, donc chaque itération
+        # récupère bien 500 NOUVELLES lignes non normalisées.
         while True:
             page_size = PAGE if not limit else min(PAGE, limit - scanned)
             if page_size <= 0:
                 break
-            batch = await _fetch_batch(client, offset=offset, limit=page_size)
+            batch = await _fetch_batch(client, offset=0, limit=page_size)
             if not batch:
                 break
             for row in batch:
                 scanned += 1
                 # Reconstitue un "listing" pour apply_normalization
                 listing = {
-                    "property_type": (row.get("raw_data") or {}).get("propertyType"),
+                    "property_type": (row.get("raw_data") or {}).get("propertyType")
+                        or (row.get("raw_data") or {}).get("property_type"),
                     "transaction": (row.get("raw_data") or {}).get("transaction"),
                     "postal_code": row.get("postal_code"),
                     "city": row.get("city"),
@@ -121,8 +131,7 @@ async def backfill(limit: int | None = None, dry_run: bool = False) -> dict:
                     ok = await _update_one(client, row["id"], patch)
                     if ok:
                         updated += 1
-            offset += len(batch)
-            logger.info(f"scanned={scanned} updated={updated} (offset now {offset})")
+            logger.info(f"scanned={scanned} updated={updated}")
             if limit and scanned >= limit:
                 break
             if len(batch) < page_size:

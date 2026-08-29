@@ -72,10 +72,13 @@ ALTER TABLE public.listings
 COMMENT ON COLUMN public.listings.property_type IS
     'A1 — libellé brut du type émis par le portail (avant normalisation). Ex: "Appartement 3 pièces", "T4 duplex", "Villa 5p"';
 COMMENT ON COLUMN public.listings.description IS
-    'A1 — description longue de l''annonce. CRITIQUE pour A3 : source du parsing de rue et d''étage (poids 40% du score).';
+    'A1 — description longue de l''annonce. CRITIQUE pour A3 : source du parsing de rue et d''étage (rue = poids 0.35, plus élevé du moteur).';
 
 -- ---------------------------------------------------------------------------
 -- 2. Extractions A3 (moteur d'opportunités)
+--    Poids officiels (config_matching, jamais en dur) :
+--      rue 0.35  |  surface 0.30  |  classe énergie 0.20  |
+--      type de bien 0.10  |  étage 0.05
 -- ---------------------------------------------------------------------------
 ALTER TABLE public.listings
     ADD COLUMN IF NOT EXISTS rue_extraite TEXT;
@@ -84,9 +87,9 @@ ALTER TABLE public.listings
     ADD COLUMN IF NOT EXISTS etage_extrait INTEGER;
 
 COMMENT ON COLUMN public.listings.rue_extraite IS
-    'A3 — nom de rue extrait de description/title/address. Utilisé par le sous-score "rue" (30% du score total).';
+    'A3 — nom de rue extrait de description/title/address. Sous-score rue (poids 0.35, le plus élevé). Poids vivant dans config_matching.';
 COMMENT ON COLUMN public.listings.etage_extrait IS
-    'A3 — numéro d''étage extrait du texte (0 = RDC). Utilisé par le sous-score "étage" (10% du score total).';
+    'A3 — numéro d''étage extrait du texte (0 = RDC). Sous-score étage (poids 0.05). Poids vivant dans config_matching.';
 
 -- ---------------------------------------------------------------------------
 -- 3. Géocodage + adresse résolue (BAN)

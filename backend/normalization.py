@@ -273,3 +273,255 @@ def apply_normalization(listing: dict) -> dict:
         listing["postal_code"] = deduced
 
     return listing
+
+
+# ==========================================================================
+# 5. Enrichissement A1 bis — mapping des ~30 nouvelles colonnes
+# ==========================================================================
+# Utilisé par :
+#   - `scripts/ingest_apify.py::_map_item_to_listing`  (webhook)
+#   - `v2_router.py::_upsert_supabase_listings`         (cron legacy)
+#
+# Chaque colonne cible essaie plusieurs alias Apify (le format varie selon
+# l'acteur et le portail). Les valeurs manquantes restent NULL.
+#
+# NON mappés (calculés par la Session A3, laissés à NULL) :
+#   - rue_extraite, etage_extrait
+# ==========================================================================
+def _first(*vals):
+    """Retourne la première valeur non-None et non-vide."""
+    for v in vals:
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        return v
+    return None
+
+
+def _as_int(v):
+    if v is None or v is False:
+        return None
+    if v is True:
+        return 1
+    try:
+        iv = int(float(str(v).replace(",", ".").replace(" ", "").replace(" ", "")))
+        return iv
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_pos_int(v):
+    """Comme _as_int mais retourne None si <= 0 (utile pour surface, prix)."""
+    iv = _as_int(v)
+    return iv if iv is not None and iv > 0 else None
+
+
+def _as_float(v):
+    if v is None or v is False:
+        return None
+    if v is True:
+        return 1.0
+    try:
+        return float(str(v).replace(",", ".").replace(" ", "").replace(" ", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_bool(v):
+    """None → None (nullable). Sinon coerce robuste."""
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in ("true", "yes", "y", "oui", "1"):
+            return True
+        if s in ("false", "no", "n", "non", "0", ""):
+            return False
+    return None
+
+
+def _as_iso_datetime(v):
+    """ISO string tel quel (Supabase TIMESTAMPTZ accepte ISO8601 nativement)."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        s = v.strip()
+        return s or None
+    # Cas objet datetime
+    try:
+        return v.isoformat()
+    except Exception:
+        return None
+
+
+def _ghg_class(v):
+    """Retourne A..G (uppercase) ou None."""
+    if v is None:
+        return None
+    s = str(v).strip().upper()
+    if len(s) >= 1 and s[0] in "ABCDEFG":
+        return s[0]
+    return None
+
+
+def _status(v):
+    """Normalise le statut (active | pending | sold | withdrawn) ou None."""
+    if v is None:
+        return None
+    s = str(v).strip().lower()
+    if s in ("active", "online", "published", "live"):
+        return "active"
+    if s in ("pending", "under_offer", "compromis", "sous_compromis"):
+        return "pending"
+    if s in ("sold", "vendu", "closed"):
+        return "sold"
+    if s in ("withdrawn", "retiré", "retire", "removed", "expired"):
+        return "withdrawn"
+    return s or None
+
+
+def enrich_from_apify_row(listing: dict, row: dict) -> dict:
+    """Ajoute les colonnes A1 bis au dict `listing`.
+
+    À appeler APRÈS avoir rempli les champs de base (price, surface, city, …)
+    et de préférence APRÈS `apply_normalization()` (pour disposer de
+    `transaction` / `type_normalise` / `est_logement` corrects).
+
+    Champs mappés (voir A1_bis_listings_columns.sql) :
+      description, property_type, latitude, longitude, floor, bedrooms,
+      has_elevator, has_balcony, has_terrace, has_garden, has_parking,
+      is_new_build, land_surface, ghg_class, price_per_m2, previous_price,
+      price_changed, price_drop_count, price_drop_pct, days_on_market,
+      days_since_last_change, posted_at, scraped_at, status, district,
+      department, photo_count, listing_key, resolved_address,
+      resolved_street, address_confidence
+
+    Non mappés (extraction A3) : rue_extraite, etage_extrait.
+    """
+    row = row or {}
+
+    # --- Contenu brut ---
+    listing["description"] = _first(row.get("description"), row.get("desc"), row.get("descriptionText"))
+    listing["property_type"] = _first(
+        row.get("propertyType"), row.get("property_type"),
+        row.get("type"), row.get("type_bien"), row.get("bien"),
+    )
+
+    # --- Géocodage (rempli en A3 via BAN si absent) ---
+    listing["latitude"] = _as_float(_first(
+        row.get("latitude"), row.get("lat"),
+        (row.get("location") or {}).get("lat") if isinstance(row.get("location"), dict) else None,
+        (row.get("coordinates") or {}).get("lat") if isinstance(row.get("coordinates"), dict) else None,
+    ))
+    listing["longitude"] = _as_float(_first(
+        row.get("longitude"), row.get("lng"), row.get("lon"),
+        (row.get("location") or {}).get("lng") if isinstance(row.get("location"), dict) else None,
+        (row.get("coordinates") or {}).get("lng") if isinstance(row.get("coordinates"), dict) else None,
+    ))
+
+    # --- Adresse résolue (probabiliste — à ne PAS utiliser pour A3) ---
+    listing["resolved_address"] = _first(
+        row.get("resolvedAddress"), row.get("resolved_address"), row.get("address"),
+    )
+    listing["resolved_street"] = _first(
+        row.get("resolvedStreet"), row.get("resolved_street"), row.get("street"),
+    )
+    listing["address_confidence"] = _as_float(_first(
+        row.get("addressConfidence"), row.get("address_confidence"), row.get("confidence"),
+    ))
+
+    # --- Caractéristiques logement ---
+    listing["floor"] = _as_int(_first(row.get("floor"), row.get("etage"), row.get("floorNumber")))
+    listing["bedrooms"] = _as_int(_first(row.get("bedrooms"), row.get("nbBedrooms"), row.get("chambres")))
+    listing["has_elevator"] = _as_bool(_first(row.get("hasElevator"), row.get("elevator"), row.get("ascenseur")))
+    listing["has_balcony"] = _as_bool(_first(row.get("hasBalcony"), row.get("balcony"), row.get("balcon")))
+    listing["has_terrace"] = _as_bool(_first(row.get("hasTerrace"), row.get("terrace"), row.get("terrasse")))
+    listing["has_garden"] = _as_bool(_first(row.get("hasGarden"), row.get("garden"), row.get("jardin")))
+    listing["has_parking"] = _as_bool(_first(row.get("hasParking"), row.get("parking")))
+    listing["is_new_build"] = _as_bool(_first(
+        row.get("isNewBuild"), row.get("newBuild"), row.get("neuf"), row.get("is_new"),
+    ))
+    listing["land_surface"] = _as_pos_int(_first(
+        row.get("landSurface"), row.get("land_surface"),
+        row.get("terrainSurface"), row.get("surfaceTerrain"),
+    ))
+
+    # --- Énergie complémentaire (energy_class déjà rempli plus haut) ---
+    listing["ghg_class"] = _ghg_class(_first(
+        row.get("ghgClass"), row.get("ghg_class"), row.get("ghg"),
+        row.get("ges"), row.get("gesClass"),
+    ))
+
+    # --- Prix historique + m² ---
+    ppm2 = _as_float(_first(
+        row.get("pricePerSquareMeter"), row.get("pricePerM2"),
+        row.get("price_per_m2"), row.get("prix_m2"),
+    ))
+    if ppm2 is None:
+        p = listing.get("price")
+        s = listing.get("surface")
+        if p and s and s > 0:
+            ppm2 = round(float(p) / float(s), 2)
+    listing["price_per_m2"] = ppm2
+
+    listing["previous_price"] = _as_pos_int(_first(
+        row.get("previousPrice"), row.get("previous_price"), row.get("oldPrice"),
+    ))
+    listing["price_changed"] = _as_bool(_first(row.get("priceChanged"), row.get("price_changed")))
+    listing["price_drop_count"] = _as_int(_first(
+        row.get("priceDropCount"), row.get("price_drop_count"),
+    ))
+    listing["price_drop_pct"] = _as_float(_first(
+        row.get("priceDropPct"), row.get("price_drop_pct"),
+        row.get("priceDropPercent"), row.get("priceChangePct"),
+    ))
+
+    # --- Timing & état ---
+    listing["days_on_market"] = _as_int(_first(
+        row.get("daysOnMarket"), row.get("days_on_market"), row.get("dom"),
+    ))
+    listing["days_since_last_change"] = _as_int(_first(
+        row.get("daysSinceLastChange"), row.get("days_since_last_change"),
+    ))
+    listing["posted_at"] = _as_iso_datetime(_first(
+        row.get("postedAt"), row.get("posted_at"),
+        row.get("publishedAt"), row.get("published_at"),
+        row.get("date"), row.get("firstSeenAt"),
+    ))
+    listing["scraped_at"] = _as_iso_datetime(_first(
+        row.get("scrapedAt"), row.get("scraped_at"), row.get("crawledAt"),
+    ))
+    listing["status"] = _status(_first(row.get("status"), row.get("state")))
+
+    # --- Découpage administratif ---
+    listing["district"] = _first(
+        row.get("district"), row.get("neighborhood"), row.get("quartier"),
+        row.get("arrondissement"),
+    )
+    pc = listing.get("postal_code")
+    dept_auto = None
+    if pc and len(str(pc)) >= 2:
+        s = str(pc)
+        dept_auto = s[:3] if s.startswith("97") else s[:2]
+    listing["department"] = _first(
+        row.get("department"), row.get("departement"), row.get("dept"),
+        dept_auto,
+    )
+
+    # --- Meta ---
+    listing["photo_count"] = _as_int(_first(
+        row.get("photoCount"), row.get("photo_count"), row.get("nb_photos"),
+        (len(row.get("photos")) if isinstance(row.get("photos"), list) else None),
+    ))
+    listing["listing_key"] = _first(
+        row.get("listingKey"), row.get("listing_key"), row.get("uniqueKey"),
+    )
+
+    # rue_extraite / etage_extrait : NON mappés (extraction A3).
+
+    return listing

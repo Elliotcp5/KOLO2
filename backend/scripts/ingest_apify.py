@@ -37,9 +37,9 @@ import httpx
 # A1 — normalisation partagée : garantit que chaque ligne écrite dans
 # `listings` porte transaction / type_normalise / est_logement.
 try:
-    from normalization import apply_normalization  # type: ignore
+    from normalization import apply_normalization, enrich_from_apify_row  # type: ignore
 except Exception:  # pragma: no cover — script peut être exécuté hors backend/
-    from backend.normalization import apply_normalization  # type: ignore
+    from backend.normalization import apply_normalization, enrich_from_apify_row  # type: ignore
 
 logger = logging.getLogger("ingest_apify")
 
@@ -128,19 +128,18 @@ def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str =
         "thumbnail_url": thumbnail_url,
         "energy_class": row.get("dpe") or row.get("energy") or row.get("energy_class") or None,
         "kind": kind,
-        # A1 — champs bruts consommés par apply_normalization()
-        "property_type": row.get("propertyType") or row.get("type") or row.get("type_bien"),
         "raw_data": row,
         "last_seen_at": last_seen_at_iso,
         "is_active": True,
         "updated_at": last_seen_at_iso,
     }
+    # A1 bis — mappe d'abord les ~30 colonnes complémentaires (dont
+    # `property_type` en snake_case, requis par apply_normalization ci-dessous).
+    # rue_extraite / etage_extrait restent NULL (extraction A3).
+    enrich_from_apify_row(listing, row)
     # A1 — remplit transaction / type_normalise / est_logement et corrige
     # postal_code sur Paris/Lyon/Marseille si l'arrondissement est dans city.
     apply_normalization(listing)
-    # `property_type` est un champ purement transitoire (non présent dans le
-    # schéma Supabase). On le retire avant l'upsert.
-    listing.pop("property_type", None)
     return listing
 
 

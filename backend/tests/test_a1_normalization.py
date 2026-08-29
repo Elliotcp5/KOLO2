@@ -216,3 +216,193 @@ class TestApplyNormalization:
     def test_return_value_is_same_dict(self):
         listing = {"property_type": "Studio"}
         assert apply_normalization(listing) is listing
+
+
+class TestEnrichFromApifyRow:
+    """A1 bis — mapping des ~30 colonnes complémentaires."""
+
+    def _base_row(self):
+        return {
+            "id": "abc",
+            "propertyType": "Appartement",
+            "description": "Rue de Rome, 4ème étage",
+            "latitude": None,
+            "longitude": None,
+            "floor": 4,
+            "bedrooms": 2,
+            "hasElevator": True,
+            "hasBalcony": True,
+            "hasTerrace": False,
+            "hasGarden": False,
+            "hasParking": False,
+            "isNewBuild": False,
+            "ghgClass": "B",
+            "photos": ["a.jpg", "b.jpg", "c.jpg"],
+            "status": "active",
+            "postedAt": "2026-01-15T10:00:00Z",
+            "scrapedAt": "2026-02-28T09:00:00Z",
+            "daysOnMarket": 44,
+            "previousPrice": 985000,
+            "priceChanged": True,
+            "priceDropCount": 1,
+            "priceDropPct": 3.55,
+            "resolvedAddress": "Rue de Rome, 75008 Paris",
+            "resolvedStreet": "Rue de Rome",
+            "addressConfidence": 0.3,
+            "listingKey": "abc-key",
+            "district": "17e",
+        }
+
+    def _base_listing(self):
+        return {"price": 950000, "surface": 78, "postal_code": "75017"}
+
+    def test_description_and_property_type(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["description"].startswith("Rue de Rome")
+        assert listing["property_type"] == "Appartement"
+
+    def test_geo_left_null_when_missing(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        # Latitude/longitude vides côté Apify → NULL (remplis par BAN en A3)
+        assert listing["latitude"] is None
+        assert listing["longitude"] is None
+
+    def test_geo_picked_up_when_present(self):
+        from normalization import enrich_from_apify_row
+        row = self._base_row()
+        row["latitude"] = 48.8566
+        row["longitude"] = 2.3522
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, row)
+        assert abs(listing["latitude"] - 48.8566) < 1e-6
+        assert abs(listing["longitude"] - 2.3522) < 1e-6
+
+    def test_resolved_address_mapped_without_trust(self):
+        """Mappé mais confidence 0.3 = à ignorer côté A3."""
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["resolved_address"] == "Rue de Rome, 75008 Paris"
+        assert listing["resolved_street"] == "Rue de Rome"
+        assert abs(listing["address_confidence"] - 0.3) < 1e-6
+
+    def test_booleans_nullable(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        # row sans has_* → tous NULL (pas False !)
+        enrich_from_apify_row(listing, {"id": "x"})
+        assert listing["has_elevator"] is None
+        assert listing["has_balcony"] is None
+        assert listing["has_terrace"] is None
+        assert listing["has_garden"] is None
+        assert listing["has_parking"] is None
+        assert listing["is_new_build"] is None
+
+    def test_booleans_present(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["has_elevator"] is True
+        assert listing["has_balcony"] is True
+        assert listing["has_terrace"] is False
+        assert listing["has_garden"] is False
+        assert listing["has_parking"] is False
+        assert listing["is_new_build"] is False
+
+    def test_price_per_m2_auto_calc(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        # 950000 / 78 = 12179.49
+        assert abs(listing["price_per_m2"] - 12179.49) < 0.01
+
+    def test_price_per_m2_from_apify_wins(self):
+        from normalization import enrich_from_apify_row
+        row = self._base_row()
+        row["pricePerSquareMeter"] = 15000
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, row)
+        assert listing["price_per_m2"] == 15000
+
+    def test_price_per_m2_none_when_no_surface(self):
+        from normalization import enrich_from_apify_row
+        listing = {"price": 500000, "surface": None, "postal_code": "75017"}
+        enrich_from_apify_row(listing, {"id": "x"})
+        assert listing["price_per_m2"] is None
+
+    def test_price_history(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["previous_price"] == 985000
+        assert listing["price_changed"] is True
+        assert listing["price_drop_count"] == 1
+        assert abs(listing["price_drop_pct"] - 3.55) < 1e-6
+
+    def test_timing(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["posted_at"] == "2026-01-15T10:00:00Z"
+        assert listing["scraped_at"] == "2026-02-28T09:00:00Z"
+        assert listing["days_on_market"] == 44
+        assert listing["status"] == "active"
+
+    def test_department_auto_from_postal_code(self):
+        from normalization import enrich_from_apify_row
+        listing = {"price": 100, "surface": 20, "postal_code": "75017"}
+        enrich_from_apify_row(listing, {"id": "x"})
+        assert listing["department"] == "75"
+
+    def test_department_dom_tom(self):
+        from normalization import enrich_from_apify_row
+        listing = {"price": 100, "surface": 20, "postal_code": "97110"}
+        enrich_from_apify_row(listing, {"id": "x"})
+        assert listing["department"] == "971"
+
+    def test_department_from_apify_wins(self):
+        from normalization import enrich_from_apify_row
+        listing = {"price": 100, "surface": 20, "postal_code": "75017"}
+        enrich_from_apify_row(listing, {"department": "92"})
+        assert listing["department"] == "92"
+
+    def test_photo_count_from_photos_array(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert listing["photo_count"] == 3
+
+    def test_ghg_class_normalized(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, {"ghgClass": "b"})
+        assert listing["ghg_class"] == "B"
+        enrich_from_apify_row(listing, {"ghgClass": "invalid"})
+        assert listing["ghg_class"] is None
+
+    def test_status_normalized(self):
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        for raw, expected in [
+            ("published", "active"),
+            ("live", "active"),
+            ("sold", "sold"),
+            ("vendu", "sold"),
+            ("withdrawn", "withdrawn"),
+            ("retiré", "withdrawn"),
+            ("compromis", "pending"),
+        ]:
+            enrich_from_apify_row(listing, {"status": raw})
+            assert listing["status"] == expected, f"{raw} → {listing['status']}"
+
+    def test_rue_extraite_and_etage_extrait_not_set(self):
+        """Ces 2 colonnes sont extraites par A3, jamais par le mapping Apify."""
+        from normalization import enrich_from_apify_row
+        listing = self._base_listing()
+        enrich_from_apify_row(listing, self._base_row())
+        assert "rue_extraite" not in listing
+        assert "etage_extrait" not in listing

@@ -1636,9 +1636,9 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
     # `listings` sans transaction / type_normalise / est_logement, même via
     # le cron legacy.
     try:
-        from normalization import apply_normalization  # type: ignore
+        from normalization import apply_normalization, enrich_from_apify_row  # type: ignore
     except Exception:  # pragma: no cover
-        from backend.normalization import apply_normalization  # type: ignore
+        from backend.normalization import apply_normalization, enrich_from_apify_row  # type: ignore
     payload = []
     now_iso = datetime.now(timezone.utc).isoformat()
     for row in rows:
@@ -1677,19 +1677,16 @@ async def _upsert_supabase_listings(rows: list, portal_default: str = "leboncoin
                 or row.get("isPro")
                 or (row.get("is_owner_listing") is False)
             ) else "private",
-            # A1 — champs bruts consommés par apply_normalization()
-            "property_type": row.get("propertyType") or row.get("type") or row.get("type_bien"),
             "raw_data": row,
             "last_seen_at": now_iso,
             "is_active": True,
             "updated_at": now_iso,
         }
-        # A1 — remplit transaction / type_normalise / est_logement et corrige
-        # postal_code sur Paris/Lyon/Marseille si l'arrondissement est dans city.
+        # A1 bis — mappe d'abord les ~30 colonnes complémentaires
+        # (property_type utilisé ensuite par apply_normalization).
+        enrich_from_apify_row(listing, row)
+        # A1 — transaction / type_normalise / est_logement + postal_code auto
         apply_normalization(listing)
-        # `property_type` est purement transitoire (colonne non présente
-        # côté Supabase). Retiré avant l'upsert.
-        listing.pop("property_type", None)
         payload.append(listing)
     if not payload:
         return 0
