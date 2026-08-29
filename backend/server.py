@@ -8457,6 +8457,17 @@ except Exception as _v2_err:
 
 
 # ============================================================================
+# A2 router — /api/events, /api/admin/config-matching, /api/admin/a2/*
+# ============================================================================
+try:
+    from a2.routes import router as a2_router
+    app.include_router(a2_router)
+    logger.info("KOLO A2 router mounted (events + config-matching + migrations)")
+except Exception as _a2_err:
+    logger.error(f"Failed to mount A2 router: {_a2_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.
@@ -8707,6 +8718,16 @@ async def startup_event():
     scheduler_thread = threading.Thread(target=start_background_scheduler, daemon=True)
     scheduler_thread.start()
     logger.info("Background notification scheduler started")
+
+    # === Session A2 — ensure indexes + config seed ===
+    try:
+        from a2.indexes import ensure_a2_indexes
+        from a2.config import ensure_config_seeded
+        await ensure_a2_indexes(db)
+        await ensure_config_seeded(db)
+        logger.info("A2 indexes + config_matching seeded")
+    except Exception as e:
+        logger.error(f"A2 startup init failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

@@ -143,3 +143,71 @@
 2. Appliquer `backend/migrations/A1_listings_extensions.sql` dans le SQL Editor Supabase
 3. Lancer `python -m scripts.backfill_normalization --dry-run` puis sans `--dry-run`
 4. Configurer Apify pour appeler `POST /api/webhooks/apify` en fin de run (headers : `X-Apify-Secret: <APIFY_WEBHOOK_SECRET>`, body `{"mode": "complet", "run_ids": ["{{runId}}"]}`)
+
+---
+
+## 29 Août 2026 — BLOC A / Session A2 : modèle de données
+
+### Backup
+- `backend/backups/users_pre_a2_20260829_132439.json` — 186 users (structure legacy complète)
+
+### Migration users (idempotente, relançable sans effet de bord)
+- **186 users migrés**, 0 role invalide restant
+- Champs posés : `role`, `role_v1_legacy` (préservé), `organisation_id`, `siege_statut`, `zones_perso`, `zones_deja_modifiees`, `plan` (déduit), `plan_depuis`, `onboarding_infos_ok`, `tour_guide_vu`, `grille_ponderation`, `infos_pro`, `prenom`, `nom`, `statut_declare`, `a2_migrated_at`
+- Répartition post-migration : role=independant×186, plan=pro×18 + decouverte×168
+- Idempotence vérifiée : 2e run → patched=0, already_ok=186
+
+### Nouvelles collections MongoDB (14, toutes avec indexes)
+- `organisations` — siren, directeur_user_id, statut
+- `invitations` — email+orga, code unique, statut, date_expiration
+- `opportunites` — **index unique partiel `(organisation_id, dpe_id)`** implémentant la règle « 2 conseillers d'une même agence ne reçoivent jamais la même opportunité »
+- `zones_couvertes` — code_postal unique, actif (zones commerciales servies)
+- `zones_demandees` — unique (user_id, code_postal), notifie
+- `quotas` — unique (user_id, type, periode)
+- `rapprochements` — dpe_id, code_postal, date_traitement, decision
+- `enrichissements` — id_parcelle unique (cache 6 mois BAN/Cadastre/Georisques)
+- `estimations`, `conversations`, `signalements` — schémas seuls (remplis en sessions ultérieures)
+- `device_tokens` — unique (user_id, token)
+- `events` — user_id, nom, date (traçage produit)
+- `config_matching` — document unique `_id="singleton"` (aucun seuil en dur dans le code)
+
+### Nouveaux modules `backend/a2/`
+- `tz.py` — fuseau Europe/Paris (bascule à minuit Paris pour tous les fuseaux)
+- `config.py` — accessor `config_matching` avec cache mémoire 30s
+- `quotas.py` — **`verifier_quota()`** + **`incrementer_quota()`** (fonctions uniques que toutes les features doivent appeler)
+- `indexes.py` — `ensure_a2_indexes()` idempotent au startup
+- `migration_users.py` — script CLI idempotent
+- `routes.py` — endpoints publics + admin
+
+### Nouveaux endpoints
+- `POST /api/events` — traçage produit (auth soft — user_id posé si loggué)
+- `GET /api/admin/config-matching` — lecture (auth admin)
+- `PATCH /api/admin/config-matching` — patch profond (préserve les sous-clés non touchées)
+- `POST /api/admin/a2/migrate-users?dry_run=true` — relance la migration
+- `POST /api/admin/a2/ensure-indexes` — force le passage indexes + seed config
+- `GET /api/admin/a2/status` — diagnostic (counts + users_valid_role)
+
+### Réponse `/api/v2/auth/verify-email-code` étendue
+Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onboarding_infos_ok`, `tour_guide_vu`, `zones` — le front peut aiguiller à chaque lancement sans cache local. Auto-migration paresseuse si le user rate le script (filet de sécurité).
+
+### Tests pytest (24 nouveaux, tous verts sur 8 runs consécutifs)
+- `test_a2_tz.py` — 9 tests, dont bascule 00h Paris pour un user à Dubaï
+- `test_a2_quotas.py` — 6 tests, dont **« Découverte refuse 2e estimation, Pro l'autorise »**
+- `test_a2_opportunites_unicite.py` — 4 tests, dont **« 2 conseillers d'une agence ne reçoivent jamais la même opportunité »** avec `pymongo.DuplicateKeyError`
+- `test_a2_config_events.py` — 5 tests live sur le backend en cours
+
+### Critères de recette validés (9/9)
+1. Aucun user sans role : 0/186 invalides
+2. Migration idempotente (2e run patched=0)
+3. Backup collection users pré-migration présent
+4. Login retourne role/organisation_id/plan
+5. Découverte refuse 2e estimation, Pro l'autorise (pytest)
+6. Bascule 00h Paris pour user à Dubaï (pytest)
+7. POST /api/events écrit un event
+8. GET/PATCH /api/admin/config-matching + aucun seuil en dur hors `a2/`
+9. 14 collections + indexes tous présents
+
+### Reste à faire côté produit
+- Rien pour A2. Les collections `estimations`/`conversations`/`signalements` seront remplies quand leurs features seront construites.
+
+---

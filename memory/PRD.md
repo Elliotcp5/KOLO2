@@ -634,17 +634,17 @@ Trois fixes P0/P1 appliqués sur cette itération :
 - 68 tests unitaires pytest
 - **À FAIRE côté user** : backup + `A1_listings_extensions.sql` dans SQL Editor Supabase + `python -m scripts.backfill_normalization`
 
-### Session A2 — Data Model  (P1, prochaine session)
-- Migration `users` : ajout `role` (super_admin | admin | user | agent), `organisation_id`, `plan`, `plan_effective_at`
-- Nouvelles collections Mongo :
-  - `organisations` — infos entreprise (nom, tva, siège, plan, quotas)
-  - `opportunites` — matches (listing_id, dpe_id, score, breakdown, statut)
-  - `invitations` — tokens d'invitation user → orga
-  - `quotas` — limites mensuelles par plan / organisation
-  - `events` — timeline d'événements (audit trail)
-- Document `config` unique (feature flags, seuils, thresholds)
+### Session A2 — Data Model  ✅ (29 Août 2026)
+- Migration users idempotente : 186 users, 0 role invalide
+- 14 nouvelles collections MongoDB avec indexes
+- Règle « 1 opportunité = 1 conseiller par agence » : index unique partiel `(organisation_id, dpe_id)` + test pytest avec `DuplicateKeyError`
+- Fonctions uniques `verifier_quota` / `incrementer_quota` + fuseau Europe/Paris
+- `config_matching` singleton : aucun seuil en dur dans le code
+- Endpoints `POST /api/events`, `GET/PATCH /api/admin/config-matching`
+- Réponse auth étendue (role, organisation_id, organisation_nom, plan, onboarding_infos_ok, tour_guide_vu, zones)
+- 24 tests pytest verts sur 8 runs consécutifs
 
-### Session A3 — Opportunities Engine  (P2)
+### Session A3 — Opportunities Engine  (P1, prochaine session)
 - Extraction rue + étage depuis les listings (regex + parsing description)
 - Intégration APIs : BAN (géocodage), Cadastre, Georisques, ADEME (DPE)
 - Scoring 5 axes : rue (30%), surface (25%), classe énergie (20%), type (15%), étage (10%)

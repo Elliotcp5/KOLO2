@@ -1089,6 +1089,56 @@ def _gen_code() -> str:
     return "".join(random.choices(string.digits, k=6))
 
 
+# A2 — Réponse d'auth : champs d'aiguillage renvoyés à chaque login.
+# Le front relit ces champs à CHAQUE lancement (pas de cache local).
+async def _build_a2_auth_response(db, session_token: str, user_doc: dict, new_user: bool) -> dict:
+    """Construit la réponse `/auth/verify-email-code` avec les champs A2."""
+    from a2.migration_users import _build_patch, VALID_ROLES  # type: ignore
+
+    # Auto-migration paresseuse : si le user n'a pas encore les champs A2, on
+    # les pose ici en ligne. Filet de sécurité en cas d'oubli du script.
+    set_fields, unset_fields = _build_patch(user_doc)
+    if set_fields or unset_fields:
+        update = {}
+        if set_fields:
+            update["$set"] = set_fields
+        if unset_fields:
+            update["$unset"] = unset_fields
+        await db.users.update_one({"_id": user_doc["_id"]}, update)
+        user_doc = await db.users.find_one({"_id": user_doc["_id"]}) or user_doc
+
+    organisation_id = user_doc.get("organisation_id")
+    organisation_nom = None
+    if organisation_id:
+        try:
+            from bson import ObjectId
+            oid = organisation_id if isinstance(organisation_id, ObjectId) else ObjectId(organisation_id)
+            orga = await db.organisations.find_one({"_id": oid}, {"nom": 1})
+            if orga:
+                organisation_nom = orga.get("nom")
+        except Exception:
+            pass
+
+    role = user_doc.get("role")
+    if role not in VALID_ROLES:
+        role = "independant"
+
+    return {
+        "verified": True,
+        "session_token": session_token,
+        "token": session_token,  # alias front
+        "user_id": user_doc["user_id"],
+        "new_user": new_user,
+        "role": role,
+        "organisation_id": str(organisation_id) if organisation_id else None,
+        "organisation_nom": organisation_nom,
+        "plan": user_doc.get("plan") or "decouverte",
+        "onboarding_infos_ok": bool(user_doc.get("onboarding_infos_ok", False)),
+        "tour_guide_vu": bool(user_doc.get("tour_guide_vu", False)),
+        "zones": list(user_doc.get("zones_perso") or []),
+    }
+
+
 @router.post("/auth/send-email-code")
 async def send_email_code(payload: EmailCodeRequest):
     db = _get_db()
@@ -1243,7 +1293,7 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         })
-        return {"verified": True, "session_token": session_token, "user_id": existing["user_id"], "new_user": False}
+        return await _build_a2_auth_response(db, session_token, existing, new_user=False)
 
     record = await db.v2_email_codes.find_one({"email": email})
     if not record or record.get("code") != payload.code.strip():
@@ -1269,7 +1319,7 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         })
-        return {"verified": True, "session_token": session_token, "user_id": existing["user_id"], "new_user": False}
+        return await _build_a2_auth_response(db, session_token, existing, new_user=False)
 
     # Create new user (minimal)
     user_id = f"u_{uuid.uuid4().hex[:16]}"
@@ -1308,7 +1358,8 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
     })
-    return {"verified": True, "session_token": session_token, "user_id": user_id, "new_user": True}
+    new_user_doc = await db.users.find_one({"user_id": user_id}) or user_doc
+    return await _build_a2_auth_response(db, session_token, new_user_doc, new_user=True)
 
 
 # ============================================================================
