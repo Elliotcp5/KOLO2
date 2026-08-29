@@ -84,7 +84,8 @@ CREATE INDEX IF NOT EXISTS idx_listings_active_last_seen
     WHERE is_active = TRUE;
 
 -- ---------------------------------------------------------------------------
--- 3. Backfill (optionnel — à lancer manuellement APRÈS déploiement du code)
+-- 3. Backfill (OBLIGATOIRE après application — sans lui, les lignes existantes
+--    restent avec type_normalise = NULL et sont invisibles pour le moteur A3)
 -- ---------------------------------------------------------------------------
 -- NB. La fonction de normalisation applicative se trouve dans
 --     `backend/normalization.py`. Elle est appelée à chaque ingestion.
@@ -92,8 +93,6 @@ CREATE INDEX IF NOT EXISTS idx_listings_active_last_seen
 -- Pour rattraper les lignes déjà présentes, exécuter le script :
 --     python -m backend.scripts.backfill_normalization
 --
--- Ce script est lancé UNE seule fois. Il :
---   1. lit toutes les listings où type_normalise IS NULL
---   2. leur applique apply_normalization()
---   3. les met à jour par batchs de 500
+-- À lancer UNE seule fois, APRÈS que les deux migrations A1 (celle-ci +
+-- A1_bis_listings_columns.sql) aient été appliquées.
 -- ============================================================================

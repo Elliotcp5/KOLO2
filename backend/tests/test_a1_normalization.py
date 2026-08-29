@@ -85,11 +85,19 @@ class TestNormalizeTransaction:
         assert normalize_transaction("vente") == "vente"
         assert normalize_transaction("for_sale") == "vente"
         assert normalize_transaction("Sale") == "vente"
+        # Cas Apify réels — l'acteur pige-immo-fr-scraper émet buy/rent
+        assert normalize_transaction("buy") == "vente"
+        assert normalize_transaction("BUY") == "vente"
+        assert normalize_transaction("Buy") == "vente"
 
     def test_from_hint_location(self):
         assert normalize_transaction("location") == "location"
         assert normalize_transaction("rent") == "location"
         assert normalize_transaction("à louer") == "location"
+        # Cas Apify réels
+        assert normalize_transaction("RENT") == "location"
+        assert normalize_transaction("Rent") == "location"
+        assert normalize_transaction("rental") == "location"
 
     def test_fallback_price(self):
         assert normalize_transaction(None, price=350000) == "vente"
