@@ -4,8 +4,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, Home, MapPin, CreditCard, Compass, HeadphonesIcon, Trash2, User, LogOut, Crown, ArrowLeft, X } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
+import { track, EVENTS } from './b3tracking';
 import { IconSwipe, IconCalc, IconReport, IconRobot, IconStats, IconUser } from './B1Icons';
 import { DEMO_OPPORTUNITES } from './demoOpportunites';
+import { NetworkBanner } from './B3Perf';
 import './b1.css';
 
 // ============================================================================
@@ -108,6 +110,10 @@ export function GuidedTour({ onDone }) {
   ], []);
   const cur = bubbles[step - 1];
   const isLast = step === bubbles.length;
+  const done = (termine) => {
+    track(termine ? EVENTS.TOUR_GUIDE_TERMINE : EVENTS.TOUR_GUIDE_PASSE, termine ? { bulles_vues: step } : { bulle_arret: step });
+    onDone();
+  };
   return (
     <div className="b1-tour-backdrop" data-testid="b1-tour-overlay">
       <div className="b1-tour-bubble" data-testid={`b1-tour-bubble-${step}`}>
@@ -122,14 +128,14 @@ export function GuidedTour({ onDone }) {
         )}
         <p className="b1-tour-text">{b1t(`tour.${cur.key}.texte`)}</p>
         <div className="b1-tour-actions">
-          <button className="b1-tour-skip" data-testid="b1-tour-skip" onClick={onDone}>
+          <button className="b1-tour-skip" data-testid="b1-tour-skip" onClick={() => done(false)}>
             {b1t('tour.passer')}
           </button>
           <button
             className="b1-pill b1-pill--primary"
             data-testid="b1-tour-next"
             style={{ minHeight: 44, padding: '10px 24px', fontSize: 15 }}
-            onClick={() => (isLast ? onDone() : setStep(step + 1))}
+            onClick={() => (isLast ? done(true) : setStep(step + 1))}
           >
             {isLast ? b1t('tour.terminer') : b1t('tour.suivant')}
           </button>
@@ -153,8 +159,26 @@ export function OpportunitesPage() {
     localStorage.removeItem('kolo_b1_show_tour');
     localStorage.setItem('kolo_b1_tour_seen', '1');
     setShowTour(false);
-  }, []);
+    // Après tour guidé, on demande l'autorisation notifications (une fois par compte).
+    try {
+      if (!localStorage.getItem('kolo_b1_notif_perm_asked')) {
+        localStorage.setItem('kolo_b1_notif_perm_asked', '1');
+        setTimeout(() => navigate('/app-b1/notifications/permission'), 350);
+      }
+    } catch { /* localStorage indisponible */ }
+  }, [navigate]);
   const next = () => setIdx((i) => Math.min(i + 1, items.length));
+  const swipe = (sens) => {
+    // premier_swipe distinct de swipe — clé métrique d'activation
+    try {
+      if (!localStorage.getItem('kolo_b1_first_swipe_done')) {
+        localStorage.setItem('kolo_b1_first_swipe_done', '1');
+        track(EVENTS.PREMIER_SWIPE, { sens });
+      }
+    } catch {}
+    track(EVENTS.SWIPE, { sens, type_carte: 'opportunite' });
+    next();
+  };
 
   // Fin de pile atteinte → vérifie si une pile de veille est disponible pour cet
   // utilisateur (Pro + quota_du_jour < seuil + zones couvertes ayant des cartes).
@@ -175,11 +199,12 @@ export function OpportunitesPage() {
 
   return (
     <div className="b1-root">
+      <NetworkBanner />
       <div className="b1-shell">
         <div className="b1-screen">
           <ShellHeader
             onProfile={() => navigate('/app-b1/profil')}
-            onStats={() => navigate('/app-b1/rapport')}
+            onStats={() => navigate('/app-b1/performances')}
           />
           <div className="b1-opp-header">
             <div className="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length}</div>
@@ -207,10 +232,10 @@ export function OpportunitesPage() {
                 <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
               </div>
               <div className="b1-opp-actions">
-                <button className="b1-opp-action-btn b1-opp-action-btn--reject" onClick={next} data-testid="b1-opp-reject">
+                <button className="b1-opp-action-btn b1-opp-action-btn--reject" onClick={() => swipe('gauche')} data-testid="b1-opp-reject">
                   <X size={24} />
                 </button>
-                <button className="b1-opp-action-btn b1-opp-action-btn--accept" onClick={next} data-testid="b1-opp-accept">
+                <button className="b1-opp-action-btn b1-opp-action-btn--accept" onClick={() => swipe('droite')} data-testid="b1-opp-accept">
                   <ChevronRight size={26} />
                 </button>
               </div>
@@ -253,7 +278,7 @@ function PlaceholderPage({ tab }) {
         <div className="b1-screen">
           <ShellHeader
             onProfile={() => navigate('/app-b1/profil')}
-            onStats={() => navigate('/app-b1/rapport')}
+            onStats={() => navigate('/app-b1/performances')}
           />
           <div style={{ textAlign: 'center', paddingTop: 80 }}>
             <div style={{

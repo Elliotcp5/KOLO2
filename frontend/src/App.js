@@ -78,6 +78,7 @@ import {
   MesVeilleSuivisPage as B1MesVeilleSuivisPage,
   VeillePaywall as B1VeillePaywall,
 } from "./b1/B1Veille";
+import { PerformancesPage as B3PerformancesPage, NotifPermissionScreen as B3NotifPerm } from "./b1/B3Perf";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -238,6 +239,9 @@ const AppRouter = () => {
       <Route path="/app-b1/veille" element={<B1VeillePileDuJourPage />} />
       <Route path="/app-b1/veille/paywall" element={<B1VeillePaywall />} />
       <Route path="/app-b1/veille/suivis" element={<B1MesVeilleSuivisPage />} />
+      {/* B3 — Performances + demande d'autorisation notifications */}
+      <Route path="/app-b1/performances" element={<B3PerformancesPage />} />
+      <Route path="/app-b1/notifications/permission" element={<B3NotifPerm />} />
 
       {/* Protected routes */}
       <Route 

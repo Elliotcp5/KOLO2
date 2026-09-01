@@ -658,6 +658,45 @@ try {
   }
 } catch (_e) { /* optional */ }
 
+// Merge B3 namespace (perf, notif, email, net, funnel)
+try {
+  // eslint-disable-next-line global-require
+  const b3 = require('./b1i18nB3').default || {};
+  for (const l of SUPPORTED) {
+    if (b3[l]) Object.assign(STRINGS[l], b3[l]);
+  }
+} catch (_e) { /* optional */ }
+
+/**
+ * Plural helper — chooses `{key}_one` / `{key}_other` / `{key}_zero` based on `count`.
+ * Follows CLDR-lite: 0 → _zero if defined, 1 → _one, else _other.
+ * Works across FR/EN/IT/DE (all with two forms plus zero-special).
+ */
+export function b1tPlural(baseKey, count, params = {}) {
+  const n = Number(count) || 0;
+  let variant = n === 1 ? 'one' : 'other';
+  if (n === 0) variant = 'zero';
+  // Fallback : si _zero absent, retomber sur _other
+  const locale = getB1Locale();
+  const dict = STRINGS[locale] || STRINGS.fr;
+  const key = `${baseKey}_${variant}`;
+  const hasKey = key in dict || key in STRINGS.fr;
+  const finalKey = hasKey ? key : `${baseKey}_other`;
+  return _translate(finalKey, { ...params, n });
+}
+
+function _translate(key, params = {}) {
+  const locale = getB1Locale();
+  const dict = STRINGS[locale] || STRINGS.fr;
+  let s = dict[key] ?? STRINGS.fr[key] ?? key;
+  if (params && typeof s === 'string') {
+    for (const [k, v] of Object.entries(params)) {
+      s = s.replaceAll(`{${k}}`, String(v ?? ''));
+    }
+  }
+  return s;
+}
+
 export const getB1Locale = () => {
   try {
     const l = (localStorage.getItem('kolo_locale') || '').toLowerCase();

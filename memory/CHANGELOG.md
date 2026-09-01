@@ -305,3 +305,53 @@ Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onbo
 - Docs : `memory/B1_VEILLE_COPY_FR.md`, ajout PRD
 
 
+
+
+## 1er septembre 2026 — BLOC B / Session B3 : Performances, Notifications, Réseau dégradé, Traçage
+
+### Backend `backend/b3/`
+- `routes.py` — 5 endpoints, tous préfixés `/api` :
+  - `GET /api/me/performances?periode=mois|trimestre|annee` — 3 jauges + entonnoir + courbe cumulée. Basé sur `date_dernier_statut`, **jamais** sur date de création. Statuts positifs = `demarche` + `mandat_signe`. Statuts strictement exclus des 3 compteurs : `veille_a_surveiller`, `veille_ignoree`, `veille_demarchee`, `deja_en_vente_signale`.
+  - `GET /api/admin/funnel?debut=&fin=` — 5 étapes en absolu + % étape précédente : Comptes créés → Paywall affiché → Plan choisi (détail Pro/Découverte) → Premier swipe J+1 → Quota atteint (détail upgrade Pro). Admin uniquement.
+  - `POST /api/me/notifications/permission` — mémorise la décision (autorise / plus_tard / refuse) pour ne pas re-proposer.
+  - `POST /api/me/device-token` — enregistre un token APNs (multi-appareils par utilisateur).
+  - `POST /api/admin/zones/{cp}/ouvrir` — bascule `zones_couvertes.actif=true` + envoi email + push aux utilisateurs de `zones_demandees` + set `notifie=true`.
+- `services.py` — envois email (Resend) + push APNs (JWT ES256 sans SDK, HTTP/2). Si `.p8` absent, journalisation en `push_logs` sans crash. `render_notif()` avec pluralisation `_one`/`_other` serveur.
+- `a2/config.py` — ajout blocs `streak` (`objectif=7`, `seuil_notif=3`) et `notif` (`plafond_journalier=5`, `horaires_rappels=[9,11,14,17]`, `heure_streak=20`, `heure_decouverte_relance=18`). Aucun seuil en dur dans le code.
+- Variables `.env` prévues (à fournir quand `.p8` disponible) : `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_ENV`, `RESEND_FROM_TRANSACTIONAL`.
+
+### Frontend `frontend/src/b1/`
+- `b1i18nB3.js` — namespace `perf.*`, `notif.*`, `email.*`, `net.*`, `funnel.*` FR/EN/IT/DE, ~100 clés dont **8 textes de notifications strictement différents**.
+- `b1i18n.js` — helper `b1tPlural(baseKey, count, params)` avec CLDR-lite `_one`/`_other`/`_zero`. Aucune concaténation.
+- `b3tracking.js` — helper `track(nom, params)` + `EVENTS` (18 événements). File offline persistée, replay au retour du réseau.
+- `b3offline.js` — file locale d'actions génériques + brouillons de formulaires (`saveDraft` / `loadDraft` / `clearDraft`) + `onNetworkChange`. Réutilisable pour swipes et pour le dossier d'estimation à venir.
+- `B3Perf.jsx` — `PerformancesPage` (3 jauges SVG entonnoir, courbe aire, sélecteur période), `NetworkBanner` (bandeau flottant hors ligne + retour vert 2s), `NotifPermissionScreen` (après tour guidé).
+- `b3.css` — styles Performances + bandeau réseau, tokens `--b1-danger` `--b1-success` ajoutés à `b1.css`.
+- Instrumentation traçage : `onboarding_debut`, `zones_validees` + `zone_non_couverte` (par CP rouge), `paywall_affiche`, `plan_choisi`, `tour_guide_termine` / `tour_guide_passe`, `premier_swipe` (une seule fois par compte), `swipe` (chaque interaction).
+
+### Textes-clés imposés
+- 4 rappels quotidiens à **4 textes distincts** (matin, milieu de matinée, début aprem, fin de journée).
+- Streak à 20h : texte différent au dernier jour (« Un swipe aujourd'hui et votre opportunité bonus est débloquée. »).
+- Relance Découverte : « Vous avez utilisé votre opportunité de la semaine. Le plan Pro vous donne toutes les opportunités de vos zones, chaque jour. » — reprend la formulation du paywall Pro, aucun volume chiffré.
+- Ouverture zone : « Bonne nouvelle. Le {cp} est maintenant couvert par KOLO. »
+- Écran permission : titre « Soyez prévenu des nouvelles opportunités ».
+
+### Corrections de dette couleur (audit B3)
+- Ajout tokens `--b1-danger: #DC2626`, `--b1-danger-pressed: #B91C1C`, `--b1-danger-tint`, `--b1-success: #16A34A`, `--b1-success-tint` dans `b1.css`.
+- Suppression de **toutes les occurrences hex en dur** dans les composants React B1/B3.
+- Icônes `lucide-react` : `color` prop retiré, héritage par `currentColor` via span parent avec `color: var(...)` (méthode propre, jamais `getComputedStyle`).
+- Tokens danger/succès disponibles dans le sous-arbre veille (héritage `.b1-root`) — seul le rose y reste interdit.
+
+### Tests
+- 9 tests pytest `test_b3.py` : config B3 defaults, bornes mensuel/trimestre/année (avec conversion Paris), pluralisation FR (`1 opportunité` ≠ `5 opportunités`), rendu zone ouverte, relance Découverte reprend le texte paywall sans volume chiffré, APNs non configuré ne crashe pas, filtre exclusions veille + `deja_en_vente_signale`.
+- Régression : **120/120 tests** verts (9 B3 + 7 veille + 7 onboarding + 5 config + 24 quotas + 68 A1). Aucune régression.
+- Smoke visuel : écran permission notifications rendu, page Performances rendue avec 6/6/2 (démarchées 100 % / mandats 33 %), courbe cumul mois-en-cours, 2 statuts `abandon` bien exclus.
+
+### Ce qui n'est PAS livré (session dédiée à prévoir)
+- Envoi APNs réel : nécessite `.p8` + Key ID + Team ID + Bundle ID côté Apple Developer. Code prêt, journalise pour l'instant en `push_logs`.
+- Scheduler des rappels : le squelette est en place (config + endpoints + services). Le tick minute côté serveur reste à câbler quand les envois seront testables.
+- Import Push Notifications Capacitor dans le natif iOS (build Codemagic à ré-exécuter avec le plugin ajouté).
+
+### Fichiers créés
+- Backend : `b3/__init__.py`, `b3/routes.py`, `b3/services.py`, `tests/test_b3.py` + patchs `a2/config.py`, `server.py`
+- Frontend : `b1/b1i18nB3.js`, `b1/b3tracking.js`, `b1/b3offline.js`, `b1/B3Perf.jsx`, `b1/b3.css` + patchs `b1/b1i18n.js`, `b1/B1Onboarding.jsx`, `b1/B1Shell.jsx`, `App.js`, `b1/b1.css`

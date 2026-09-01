@@ -91,6 +91,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "dossier": {"kind": "mensuel", "limite": "illimite"},
         },
     },
+    # -----------------------------------------------------------------
+    # B3 — Streak d'activité + plafond de notifications
+    # -----------------------------------------------------------------
+    "streak": {
+        "objectif": 7,       # jours consécutifs pour débloquer une opportunité bonus
+        "seuil_notif": 3,    # streak minimum avant d'envoyer une notif de 20h00
+    },
+    "notif": {
+        "plafond_journalier": 5,       # max notifs / utilisateur / jour
+        "horaires_rappels": [9, 11, 14, 17],   # heures locales Paris
+        "heure_streak": 20,
+        "heure_decouverte_relance": 18,
+    },
 }
 
 

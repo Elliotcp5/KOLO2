@@ -8498,6 +8498,17 @@ except Exception as _b1_err:
 
 
 # ============================================================================
+# B3 router — performances + funnel + notifications + emails
+# ============================================================================
+try:
+    from b3.routes import router as b3_router
+    app.include_router(b3_router)
+    logger.info("KOLO B3 router mounted (perf + funnel + notif + email)")
+except Exception as _b3_err:
+    logger.error(f"Failed to mount B3 router: {_b3_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.

@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { X, Check, Crown } from 'lucide-react';
 import b1t, { getB1Locale } from './b1i18n';
 import b1api from './b1api';
+import { track, EVENTS } from './b3tracking';
 import { IconStats, IconUser } from './B1Icons';
 import './b1.css';
 
@@ -490,6 +491,9 @@ export default function B1Onboarding() {
   const [zoneResult, setZoneResult] = useState({ resultats: [], au_moins_une_couverte: false });
   const startedAt = useRef(Date.now());
 
+  // Événement d'entrée dans l'onboarding (une fois par montage).
+  useEffect(() => { track(EVENTS.ONBOARDING_DEBUT); }, []);
+
   const submitProfil = useCallback(async (prenom, nom, statut) => {
     try { await b1api.postProfil(prenom, nom, statut); } catch (e) { console.warn('postProfil', e); }
   }, []);
@@ -528,26 +532,36 @@ export default function B1Onboarding() {
         {step === 3 && (
           <ScreenZones
             initial={data}
-            onNext={(v) => { setData({ ...data, ...v }); setStep(4); }}
+            onNext={(v) => {
+              const cps = (v.zones || []).map((z) => z.cp);
+              track(EVENTS.ZONES_VALIDEES, { cp_liste: cps, au_moins_une_couverte: null });
+              setData({ ...data, ...v }); setStep(4);
+            }}
           />
         )}
         {step === 4 && (
           <ScreenTraitement
             zones={data.zones || []}
-            onDone={(res) => { setZoneResult(res); setStep(5); }}
+            onDone={(res) => {
+              setZoneResult(res);
+              (res.resultats || []).filter(r => !r.couverte).forEach((r) => {
+                track(EVENTS.ZONE_NON_COUVERTE, { cp: r.code_postal });
+              });
+              setStep(5);
+            }}
           />
         )}
         {step === 5 && (
           <ScreenResultat
             resultats={zoneResult.resultats || []}
             au_moins_une_couverte={zoneResult.au_moins_une_couverte}
-            onOk={() => setStep(6)}
+            onOk={() => { track(EVENTS.PAYWALL_AFFICHE, { contexte: 'onboarding' }); setStep(6); }}
             onModifier={() => setStep(3)}
           />
         )}
         {step === 6 && (
           <ScreenPlan
-            onCommit={() => setStep(7)}
+            onCommit={(plan) => { track(EVENTS.PLAN_CHOISI, { plan }); setStep(7); }}
           />
         )}
         {step === 7 && (
