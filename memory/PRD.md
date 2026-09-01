@@ -16,7 +16,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 Webhook Apify opérationnel + comparaison 3 zones (Sep 1, 2026) 🔥 LATEST
+### A3 Point-in-polygon Lyon + Marseille — fin bloc A (Sep 1, 2026) 🔥 LATEST
+- **GeoJSON quartiers Lyon** (data.grandlyon.com, 201 polygones Grand Lyon) et **Marseille** (data.gouv.fr, 111 polygones avec code d'arrondissement DEPCO) téléchargés et intégrés.
+- `_load_features` : loader unifié 3 sources ; supporte MultiPolygon. Slug Paris = legacy (`ternes`), Lyon/Marseille = préfixés (`lyon-voltaire-part-dieu`, `marseille-perier`). 460 features au total.
+- `_normalize_label` : strip aussi les préfixes « Lyon 3e Arrondissement - », « Marseille 8e Arrondissement - », « Lyon 69003 », « Marseille 13008 ».
+- `LABEL_TO_QUARTIER` enrichi : Prado, Périer, Bonneveine, Sainte-Anne, Le Rouet, Saint-Giniez, Montredon, La Pointe Rouge, Les Goudes, Vieille-Chapelle (Marseille) ; Voltaire-Part-Dieu, Sans-Souci-Dauphiné, Villette-Paul-Bert, Grange Blanche, Ferrandière, Saxe-Gambetta, Montchat, Monplaisir, Bachut, Laennec-Mermoz, Guillotière (Lyon).
+- **Court-circuit `quartier_non_limitrophe` activé partout** : 36 789 Paris · 8 288 Marseille · 13 722 Lyon (vs 0 avant fix).
+- **Delta opportunités** :
+  | Zone | Avant | Après | Écart |
+  |------|:---:|:---:|:---:|
+  | 75017 | 4 | 4 | +0 |
+  | 13008 | 47 | 65 | **+18** |
+  | 69003 | 28 | 35 | **+7** |
+- **Marseille 8e** — 31 opportunités à score parfait (1.00) sur type maison isolée dans un secteur pavillonnaire (Roy d'Espagne, Marseilleveyre, Goudes) : le multiplicateur géo et le prix médian ne parlent pas car maisons peu comparables sur DVF. Bloc `type_immeuble` OK, mais les correspondances DPE↔annonce parfaites viennent de rues nommées explicitement dans l'annonce. À auditer manuellement.
+- Libellés inconnus persistants (à mapper au prochain lot) : « Madrague de Montredon », « Roy d'Espagne », « Vielle Chapelle » (typo portail Marseille) ; « Garibaldi », « Lacassagne », « Préfecture », « Moncey » (Lyon 3e).
+- Tests : 65 unitaires A3 + 6 vérité terrain (BLOQUANTS 2/2) = OK.
+
+### A3 Webhook Apify opérationnel + comparaison 3 zones (Sep 1, 2026)
 - **Bug critique corrigé** : la valeur `APIFY_WEBHOOK_SECRET` en `.env` ne correspondait pas à celle configurée côté Apify (handoff antérieur contenait une valeur obsolète). Alignée. Les 5 dispatches natifs Apify sont désormais acceptés (rejeu OK via le webhook lui-même).
 - **Webhook natif Apify validé** : URL `/api/webhooks/apify?mode=complet`, header `X-Apify-Secret`. Payload natif (`resource.id`+`resource.status`) supporté ; `ABORTED` accepté (upsert sans jamais désactiver).
 - **Ingestion via webhook** : run `viU72M8KCbuS9MXm0` (SUCCEEDED, 1176 items 13008/69003) → 1146 inserts + 29 updates + 89 désactivations (mode complet). Run `y3eHCY8A35snu2i4W` (ABORTED, dataset `bq7kaEpcfhDUo5xTi`, 1280 items) → 139 inserts + 1140 updates, 0 désactivation.

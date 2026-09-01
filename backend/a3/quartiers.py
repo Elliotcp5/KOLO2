@@ -28,6 +28,8 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 _DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "quartiers_paris.geojson")
+_DATA_PATH_LYON = os.path.join(os.path.dirname(__file__), "data", "quartiers_lyon.geojson")
+_DATA_PATH_MARSEILLE = os.path.join(os.path.dirname(__file__), "data", "quartiers_marseille.geojson")
 
 _LOAD_LOCK = Lock()
 _FEATURES: Optional[list[dict]] = None       # [{slug, l_qu, c_ar, bbox, coords}]
@@ -127,21 +129,42 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "lyon 7eme": "lyon-7",
     "lyon 7e": "lyon-7",
     "lyon 7": "lyon-7",
-    "guillotiere": "lyon-7",
-    "la guillotiere": "lyon-7",
-    "la-guillotiere": "lyon-7",
-    "la guillotiere nord": "lyon-3",
-    "la-guillotiere-nord": "lyon-3",
-    "guillotiere nord": "lyon-3",
-    "part-dieu": "lyon-3",
-    "part dieu": "lyon-3",
+    "guillotiere": "lyon-guillotiere",
+    "la guillotiere": "lyon-guillotiere",
+    "la-guillotiere": "lyon-guillotiere",
+    "la guillotiere nord": "lyon-guillotiere",
+    "la-guillotiere-nord": "lyon-guillotiere",
+    "guillotiere nord": "lyon-guillotiere",
+    "part-dieu": "lyon-voltaire-part-dieu",
+    "part dieu": "lyon-voltaire-part-dieu",
+    "voltaire part-dieu": "lyon-voltaire-part-dieu",
+    "voltaire part dieu": "lyon-voltaire-part-dieu",
+    "voltaire - part dieu": "lyon-voltaire-part-dieu",
+    "voltaire - part-dieu": "lyon-voltaire-part-dieu",
     "jean mace": "lyon-7",
+    "sans souci dauphine": "lyon-sans-souci-dauphine",
+    "sans-souci dauphine": "lyon-sans-souci-dauphine",
+    "sans souci - dauphine": "lyon-sans-souci-dauphine",
+    "villette paul bert": "lyon-villette-paul-bert",
+    "villette - paul bert": "lyon-villette-paul-bert",
+    "grange blanche": "lyon-grange-blanche",
+    "ferrandiere": "lyon-ferrandiere-maisons-neuves",
+    "ferrandiere maisons neuves": "lyon-ferrandiere-maisons-neuves",
+    "saxe-gambetta": "lyon-saxe-gambetta",
+    "saxe gambetta": "lyon-saxe-gambetta",
+    "montchat": "lyon-montchat",
+    "monchat": "lyon-montchat",
+    "monplaisir": "lyon-monplaisir",
+    "montplaisir": "lyon-monplaisir",
+    "bachut": "lyon-bachut-transvaal",
+    "bachut transvaal": "lyon-bachut-transvaal",
+    "genets": "lyon-genets",
+    "laennec": "lyon-laennec-mermoz",
+    "laennec mermoz": "lyon-laennec-mermoz",
+    "mermoz": "lyon-laennec-mermoz",
     "lyon 8eme": "lyon-8",
     "lyon 8e": "lyon-8",
     "lyon 8": "lyon-8",
-    "montplaisir": "lyon-8",
-    "monplaisir": "lyon-8",
-    "monchat": "lyon-8",
     "lyon 9eme": "lyon-9",
     "lyon 9e": "lyon-9",
     "lyon 9": "lyon-9",
@@ -163,14 +186,24 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "marseille 7": "marseille-7",
     "marseille 8eme": "marseille-8",
     "marseille 8": "marseille-8",
-    "prado": "marseille-8",
-    "perier": "marseille-8",
-    "bagatelle": "marseille-8",
-    "bonneveine": "marseille-8",
-    "sainte-anne": "marseille-8",
-    "sainte anne": "marseille-8",
-    "carre d or": "marseille-8",
-    "carre d'or": "marseille-8",
+    "prado": "marseille-perier",
+    "perier": "marseille-perier",
+    "bagatelle": "marseille-perier",
+    "bonneveine": "marseille-bonneveine",
+    "sainte-anne": "marseille-sainte-anne",
+    "sainte anne": "marseille-sainte-anne",
+    "carre d or": "marseille-perier",
+    "carre d'or": "marseille-perier",
+    "le rouet": "marseille-le-rouet",
+    "rouet": "marseille-le-rouet",
+    "saint giniez": "marseille-saint-giniez",
+    "saint-giniez": "marseille-saint-giniez",
+    "montredon": "marseille-montredon",
+    "la pointe rouge": "marseille-la-pointe-rouge",
+    "pointe rouge": "marseille-la-pointe-rouge",
+    "la plage": "marseille-la-plage",
+    "vieille chapelle": "marseille-vieille-chapelle",
+    "les goudes": "marseille-les-goudes",
     "marseille 9eme": "marseille-9",
     "marseille 9": "marseille-9",
     "marseille 10eme": "marseille-10",
@@ -215,19 +248,22 @@ def _normalize_label(label: str) -> str:
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = s.lower().strip()
     s = re.sub(r"\s+", " ", s)
-    # Retire les préfixes « paris [7501x|17e|17eme|17e arrondissement] [- ]* »
-    # itérativement pour absorber les combinaisons.
+    # Retire les préfixes portails pour Paris / Lyon / Marseille, itérativement :
+    # « paris 17e arrondissement - », « paris 75017 », « lyon 3e arrondissement - »,
+    # « lyon 69003 », « marseille 8e arrondissement - », « marseille 13008 »…
+    _PREFIX_RE = re.compile(
+        r"^(?:(paris|lyon|marseille)\s+)?"           # ville en tête (optionnel)
+        r"(?:\d{5}\s+)?"                             # CP (optionnel)
+        r"(?:\d{1,2}(?:e|eme|er|ere)?\s+arrondissement(?:\s+de\s+(?:paris|lyon|marseille))?)?"
+        r"\s*[-–—]?\s*",
+    )
     for _ in range(3):
-        new = re.sub(
-            r"^(?:paris\s+)?(?:\d{5}\s+)?(?:\d{1,2}(?:e|eme|er|ere)?\s+arrondissement)?\s*[-–—]?\s*",
-            "",
-            s,
-        )
+        new = _PREFIX_RE.sub("", s)
         if new == s:
             break
         s = new.strip()
-    # Retire un « paris » ou un CP orphelin restant en tête
-    s = re.sub(r"^(?:paris\s+)?(?:\d{5}\s+)?", "", s).strip()
+    # Retire un préfixe ville / CP orphelin restant en tête
+    s = re.sub(r"^(?:(?:paris|lyon|marseille)\s+)?(?:\d{5}\s+)?", "", s).strip()
     return s
 
 
@@ -254,8 +290,8 @@ def slug_to_libelle(slug: Optional[str]) -> Optional[str]:
     global _SLUG_TO_LIBELLE_CACHE
     if _SLUG_TO_LIBELLE_CACHE is None:
         feats = _load_features()
-        _SLUG_TO_LIBELLE_CACHE = {f["slug"]: (f.get("l_qu") or f["slug"]) for f in feats}
-        # Merge hors-Paris (Lyon, Marseille)
+        _SLUG_TO_LIBELLE_CACHE = {f["slug"]: (f.get("libelle") or f["slug"]) for f in feats}
+        # Merge hors-Paris arrondissement-level fallback (Lyon, Marseille)
         for k, v in _SLUG_TO_LIBELLE_HORS_PARIS.items():
             _SLUG_TO_LIBELLE_CACHE.setdefault(k, v)
     if not slug:
@@ -263,33 +299,98 @@ def slug_to_libelle(slug: Optional[str]) -> Optional[str]:
     return _SLUG_TO_LIBELLE_CACHE.get(slug)
 
 
+def _iter_polygons(geom: dict):
+    """Itère sur les anneaux extérieurs (polygones ou multipolygones)."""
+    t = (geom or {}).get("type")
+    coords = (geom or {}).get("coordinates") or []
+    if t == "Polygon":
+        if coords:
+            yield coords[0]
+    elif t == "MultiPolygon":
+        for poly in coords:
+            if poly:
+                yield poly[0]
+
+
 def _load_features() -> list[dict]:
-    """Charge le geojson une seule fois. Retourne une liste allégée avec bbox."""
+    """Charge les 3 GeoJSON quartiers (Paris + Lyon + Marseille), une seule fois.
+
+    Sortie unifiée : liste de dicts `{slug, libelle, ville, ring, bbox}`.
+    Les slugs Paris restent SANS préfixe (compat legacy) ; Lyon et Marseille
+    portent le préfixe `lyon-` / `marseille-` pour éviter toute collision.
+    """
     global _FEATURES
     if _FEATURES is not None:
         return _FEATURES
     with _LOAD_LOCK:
         if _FEATURES is not None:
             return _FEATURES
-        with open(_DATA_PATH, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
         feats: list[dict] = []
-        for f in data.get("features", []):
-            props = f.get("properties") or {}
-            geom = f.get("geometry") or {}
-            if geom.get("type") != "Polygon":
-                continue
-            ring = geom["coordinates"][0]  # anneau extérieur, [lng, lat]
-            xs = [c[0] for c in ring]
-            ys = [c[1] for c in ring]
-            feats.append({
-                "slug": _slugify(props.get("l_qu") or ""),
-                "l_qu": props.get("l_qu"),
-                "c_ar": props.get("c_ar"),
-                "ring": ring,
-                "bbox": (min(xs), min(ys), max(xs), max(ys)),
-            })
+
+        # 1. Paris — 80 quartiers admin, propriété `l_qu`
+        try:
+            with open(_DATA_PATH, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            for f in data.get("features", []):
+                props = f.get("properties") or {}
+                for ring in _iter_polygons(f.get("geometry")):
+                    xs = [c[0] for c in ring]; ys = [c[1] for c in ring]
+                    feats.append({
+                        "slug": _slugify(props.get("l_qu") or ""),
+                        "libelle": props.get("l_qu"),
+                        "ville": "paris",
+                        "ring": ring,
+                        "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                    })
+        except FileNotFoundError:
+            logger.warning("quartiers_paris.geojson missing")
+
+        # 2. Lyon — 201 quartiers Grand Lyon, propriété `nom` (préfixée « Quartier »)
+        try:
+            with open(_DATA_PATH_LYON, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            for f in data.get("features", []):
+                props = f.get("properties") or {}
+                raw = str(props.get("nom") or "").strip()
+                nom = re.sub(r"^Quartier\s+", "", raw, flags=re.IGNORECASE).strip()
+                if not nom:
+                    continue
+                slug = f"lyon-{_slugify(nom)}"
+                for ring in _iter_polygons(f.get("geometry")):
+                    xs = [c[0] for c in ring]; ys = [c[1] for c in ring]
+                    feats.append({
+                        "slug": slug, "libelle": nom, "ville": "lyon",
+                        "ring": ring,
+                        "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                    })
+        except FileNotFoundError:
+            logger.warning("quartiers_lyon.geojson missing")
+
+        # 3. Marseille — 111 quartiers, propriété `nom` + DEPCO
+        try:
+            with open(_DATA_PATH_MARSEILLE, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            for f in data.get("features", []):
+                props = f.get("properties") or {}
+                nom = str(props.get("nom") or "").strip()
+                if not nom:
+                    continue
+                slug = f"marseille-{_slugify(nom)}"
+                for ring in _iter_polygons(f.get("geometry")):
+                    xs = [c[0] for c in ring]; ys = [c[1] for c in ring]
+                    feats.append({
+                        "slug": slug, "libelle": nom, "ville": "marseille",
+                        "ring": ring,
+                        "bbox": (min(xs), min(ys), max(xs), max(ys)),
+                    })
+        except FileNotFoundError:
+            logger.warning("quartiers_marseille.geojson missing")
+
         _FEATURES = feats
+        logger.info(f"quartiers: loaded {len(feats)} features "
+                    f"(paris={sum(1 for f in feats if f['ville']=='paris')}, "
+                    f"lyon={sum(1 for f in feats if f['ville']=='lyon')}, "
+                    f"marseille={sum(1 for f in feats if f['ville']=='marseille')})")
         return _FEATURES
 
 
