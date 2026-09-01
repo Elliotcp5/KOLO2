@@ -1643,6 +1643,7 @@ async def iap_verify_apple_receipt(request: Request):
 
     update = {
         "plan": plan,
+        "plan_source": "apple_iap",   # ← webhook Apple V2 peut rétrograder ce compte
         "subscription_status": "active" if active.get('_is_active') else "expired",
         "platform": "ios",
         "apple_original_transaction_id": original_tx_id,
@@ -8506,6 +8507,17 @@ try:
     logger.info("KOLO B3 router mounted (perf + funnel + notif + email)")
 except Exception as _b3_err:
     logger.error(f"Failed to mount B3 router: {_b3_err}")
+
+
+# ============================================================================
+# Apple App Store Server Notifications V2 — /api/webhooks/apple
+# ============================================================================
+try:
+    from b3.apple_webhook import router as apple_wh_router
+    app.include_router(apple_wh_router)
+    logger.info("KOLO Apple V2 webhook mounted (/api/webhooks/apple)")
+except Exception as _aw_err:
+    logger.error(f"Failed to mount Apple webhook: {_aw_err}")
 
 
 # ============================================================================

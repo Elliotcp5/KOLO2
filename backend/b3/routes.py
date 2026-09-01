@@ -244,7 +244,44 @@ async def register_device_token(payload: DeviceTokenPayload, request: Request):
 
 
 # ---------------------------------------------------------------------------
-# POST /api/admin/zones/{cp}/ouvrir — bascule zone_couvertes.actif=true
+# POST /api/admin/push/test — envoie une notif de test sur le compte cible.
+# Admin uniquement. Utilise render_notif + send_push_to_user.
+# ---------------------------------------------------------------------------
+class TestPushPayload(BaseModel):
+    email: Optional[str] = None
+    user_id: Optional[str] = None
+    cle: str = "notif.zone_ouverte"
+    params: dict = {}
+
+
+@router.post("/api/admin/push/test")
+async def admin_push_test(payload: TestPushPayload, request: Request):
+    user = await _user(request)
+    if not (user.get("is_super_admin") or user.get("role") == "super_admin"):
+        raise HTTPException(status_code=403, detail="admin_only")
+
+    db = _db()
+    target = None
+    if payload.user_id:
+        target = await db.users.find_one({"user_id": payload.user_id})
+    elif payload.email:
+        target = await db.users.find_one({"email": payload.email})
+    if not target:
+        raise HTTPException(status_code=404, detail="user_not_found")
+
+    from .services import send_push_to_user, _apns_ready
+    params = payload.params or {"cp": "13008"}
+    sent = await send_push_to_user(db, target["user_id"], key=payload.cle, params=params)
+    return {
+        "ok": True,
+        "user_id": target["user_id"],
+        "apns_configured": _apns_ready(),
+        "envois": sent,
+        "message": (
+            "Notification test envoyée." if sent
+            else "APNs pas encore configuré ou aucun device_token — voir push_logs pour l'aperçu texte."
+        ),
+    }
 # + envoi email + notif push aux utilisateurs de zones_demandees.
 # ---------------------------------------------------------------------------
 @router.post("/api/admin/zones/{cp}/ouvrir")
@@ -297,3 +334,11 @@ async def admin_ouvrir_zone(cp: str, request: Request):
         envois += 1
 
     return {"ok": True, "cp": cp, "envois": envois}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/zones/{cp}/ouvrir — bascule zone_couvertes.actif=true
+
+# (Bloc de commentaire orphelin ci-dessus laissé volontairement — la route
+# ouvrir_zone est en réalité définie plus haut, lignes 288+, avant l'insert du
+# endpoint admin_push_test qui a produit ce commentaire résiduel.)

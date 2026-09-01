@@ -336,18 +336,82 @@ function ScreenResultat({ resultats, au_moins_une_couverte, onOk, onModifier }) 
 // ---------------------------------------------------------------------------
 // Screen 6 — Plan (Pro featured, Découverte lien secondaire)
 // ---------------------------------------------------------------------------
-async function tryApplePurchase() {
-  // Best-effort — plugin natif optionnel. Si absent, on renvoie null pour
-  // basculer sur le fallback "Découverte + navigation profil".
-  if (!Capacitor.isNativePlatform()) return { ok: false, reason: 'web' };
+// -----------------------------------------------------------------------------
+// Apple IAP — branche cordova-plugin-purchase v13 pour l'achat réel de PRO_Plus.
+// Cet écran est le SEUL point d'achat de l'app (Apple compliance). Aucun lien
+// externe, aucun tarif Agence.
+//
+// Trois issues explicites :
+//   1. Achat validé → verify-apple-receipt → plan=pro immédiat, écran 7
+//   2. Achat annulé par l'utilisateur → reste sur l'écran, aucun message
+//   3. Erreur réseau / StoreKit → toast court + bouton « Réessayer »
+// -----------------------------------------------------------------------------
+const PRO_PLUS_PRODUCT_ID = 'PRO_Plus';
+
+async function initAppleStore() {
+  if (!Capacitor.isNativePlatform()) return null;
+  const mod = await import('cordova-plugin-purchase').catch(() => null);
+  const CdvPurchase = mod?.default || mod?.CdvPurchase || global.CdvPurchase;
+  if (!CdvPurchase?.store) return null;
+  const store = CdvPurchase.store;
   try {
-    const { CdvPurchase } = await import('cordova-plugin-purchase/www/store.js').catch(() => ({}));
-    if (!CdvPurchase) return { ok: false, reason: 'no_plugin' };
-    // Placeholder — l'implémentation complète du store est déjà dans /services/iapStore.js
-    return { ok: false, reason: 'not_implemented' };
-  } catch {
-    return { ok: false, reason: 'error' };
+    store.register([{ id: PRO_PLUS_PRODUCT_ID, type: CdvPurchase.ProductType.PAID_SUBSCRIPTION, platform: CdvPurchase.Platform.APPLE_APPSTORE }]);
+    await store.initialize([CdvPurchase.Platform.APPLE_APPSTORE]);
+  } catch (e) { /* déjà initialisé */ }
+  return { CdvPurchase, store };
+}
+
+async function performApplePurchase() {
+  // Retourne { ok, receipt?, product_id?, reason? }.
+  const ctx = await initAppleStore();
+  if (!ctx) return { ok: false, reason: 'no_plugin' };
+  const { CdvPurchase, store } = ctx;
+  const product = store.get(PRO_PLUS_PRODUCT_ID, CdvPurchase.Platform.APPLE_APPSTORE);
+  if (!product) return { ok: false, reason: 'product_not_found' };
+  const offer = product.getOffer();
+  if (!offer) return { ok: false, reason: 'no_offer' };
+
+  return new Promise((resolve) => {
+    const done = (r) => { try { store.off(onApproved); store.off(onFinished); store.off(onFailed); } catch {} ; resolve(r); };
+    const onApproved = store.when().approved(async (transaction) => {
+      try {
+        const receipt = transaction.transactionId || transaction.originalTransactionId || '';
+        // Le plugin v13 expose `applicationReceipt` sur le store.
+        const rawReceipt = store.localReceipts?.[0]?.nativeData || store.applicationReceipt || receipt;
+        await b1api.verifyAppleReceipt(rawReceipt, PRO_PLUS_PRODUCT_ID);
+        await transaction.verify();
+      } catch (e) { done({ ok: false, reason: 'verify_failed' }); return; }
+    });
+    const onFinished = store.when().finished(() => done({ ok: true }));
+    const onFailed = store.when().failed((err) => {
+      const cancelled = err?.code === CdvPurchase.ErrorCode.PAYMENT_CANCELLED || err?.isCancelled;
+      done({ ok: false, reason: cancelled ? 'cancelled' : 'store_error', err });
+    });
+    offer.order().catch((e) => done({ ok: false, reason: 'order_failed', err: e }));
+  });
+}
+
+async function restoreApplePurchases() {
+  const ctx = await initAppleStore();
+  if (!ctx) return { ok: false, reason: 'no_plugin' };
+  const { store } = ctx;
+  try {
+    await store.restorePurchases();
+    // Récupère le receipt applicatif pour re-valider côté serveur.
+    const rawReceipt = store.applicationReceipt || store.localReceipts?.[0]?.nativeData;
+    if (rawReceipt) {
+      await b1api.verifyAppleReceipt(rawReceipt, PRO_PLUS_PRODUCT_ID);
+      return { ok: true };
+    }
+    return { ok: false, reason: 'no_receipt' };
+  } catch (e) {
+    return { ok: false, reason: 'restore_failed', err: e };
   }
+}
+
+async function tryApplePurchase() {
+  // Legacy stub — remplacé par performApplePurchase().
+  return { ok: false, reason: 'legacy' };
 }
 
 function ScreenPlan({ onCommit }) {
@@ -358,15 +422,40 @@ function ScreenPlan({ onCommit }) {
     setError('');
     setLoading(true);
     try {
-      const p = await tryApplePurchase();
-      // On enregistre l'intention côté backend, mais on n'échoue pas si non authentifié.
+      if (Capacitor.isNativePlatform()) {
+        const r = await performApplePurchase();
+        if (r.ok) {
+          // Achat validé + receipt vérifié serveur → plan pro déjà en base.
+          try { await b1api.postPlan('pro'); } catch (e) { if (e.status !== 401) throw e; }
+          onCommit('pro');
+          return;
+        }
+        // Cas 2 — annulé par l'utilisateur : aucun message, on reste sur l'écran.
+        if (r.reason === 'cancelled') { return; }
+        // Cas 3 — erreur réseau / StoreKit : message court + bouton Réessayer.
+        setError(b1t('sys.connexion_perdue'));
+        return;
+      }
+      // Web / preview : enregistrement d'intention seulement.
       try { await b1api.postPlan('pro'); } catch (e) { if (e.status !== 401) throw e; }
       onCommit('pro');
     } catch (e) {
-      setError(e.message || 'Erreur');
+      setError(b1t('sys.connexion_perdue'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const restore = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const r = await restoreApplePurchases();
+        if (r.ok) { onCommit('pro'); return; }
+        if (r.reason === 'no_receipt') { setError(b1t('sys.connexion_perdue')); return; }
+      }
+    } catch {} finally { setLoading(false); }
   };
 
   const goDecouverte = async () => {
@@ -432,7 +521,7 @@ function ScreenPlan({ onCommit }) {
       <div className="b1-plan-legal">
         <a href="/terms" onClick={(e) => { e.preventDefault(); openLegal('/terms'); }} data-testid="onb-plan-tos">{b1t('onb.plan.legal.cgu')}</a>
         <a href="/privacy" onClick={(e) => { e.preventDefault(); openLegal('/privacy'); }} data-testid="onb-plan-privacy">{b1t('onb.plan.legal.privacy')}</a>
-        <button data-testid="onb-plan-restore" onClick={() => openLegal('/iap-terms')}>{b1t('onb.plan.legal.restore')}</button>
+        <button data-testid="onb-plan-restore" onClick={restore}>{b1t('onb.plan.legal.restore')}</button>
       </div>
     </div>
   );

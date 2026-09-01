@@ -355,3 +355,34 @@ Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onbo
 ### Fichiers créés
 - Backend : `b3/__init__.py`, `b3/routes.py`, `b3/services.py`, `tests/test_b3.py` + patchs `a2/config.py`, `server.py`
 - Frontend : `b1/b1i18nB3.js`, `b1/b3tracking.js`, `b1/b3offline.js`, `b1/B3Perf.jsx`, `b1/b3.css` + patchs `b1/b1i18n.js`, `b1/B1Onboarding.jsx`, `b1/B1Shell.jsx`, `App.js`, `b1/b1.css`
+
+
+## 1er septembre 2026 — Session IAP réel + App Store Server Notifications V2
+
+### Backend
+- **`b3/apple_webhook.py`** — nouveau `POST /api/webhooks/apple`. Vérifie la signature JWS ES256 via la clé publique embarquée dans `x5c`, décode `signedTransactionInfo` et `signedRenewalInfo`, applique les transitions :
+  - `SUBSCRIBED` / `DID_RENEW` → `plan=pro`, `subscription_ends_at` mis à jour.
+  - `DID_CHANGE_RENEWAL_STATUS` + `AUTO_RENEW_DISABLED` → `subscription_will_cancel_at_period_end=true`, accès conservé.
+  - `EXPIRED` → `plan=decouverte` **+** `zones_deja_modifiees=false`.
+  - `DID_FAIL_TO_RENEW` → `grace_period_active=true`, accès conservé.
+  - `REFUND` / `REVOKE` → `plan=decouverte` immédiat + `zones_deja_modifiees=false`.
+- **Verrouillage `plan_source`** — un compte en `plan_source != "apple_iap"` n'est jamais rétrogradé par le webhook. Journalisation dans `apple_webhook_logs`.
+- **Migration exécutée** : 19 comptes Pro → `plan_source="manuel"` (protégés, dont Elliot), 179 autres → `apple_iap`.
+- **`/api/iap/verify-apple-receipt`** pose maintenant `plan_source="apple_iap"`. Sandbox fallback 21007 déjà en place, vérifié.
+- **`POST /api/admin/push/test`** — envoie une notif de test à un compte cible.
+
+### Frontend
+- **`B1Onboarding.jsx` — écran 6 branché sur `cordova-plugin-purchase` v13**. Trois issues gérées : validé → verify → écran 7, annulé → aucun message, erreur → « Connexion perdue » + Réessayer.
+- **« Restaurer mes achats »** fonctionnel — récupère le receipt applicatif et le rejoue contre `verify-apple-receipt`. Fonctionne pour les Pro V2 existants.
+
+### APNs
+- Clé `.p8` stockée dans `backend/.env` (APNS_KEY_P8).
+- `APNS_KEY_ID=LDQ2K5YLVZ`, `APNS_BUNDLE_ID=io.kolo.app`, `APNS_ENV=production`.
+- **En attente** : `APNS_TEAM_ID` (10 caractères visibles en haut à droite du portail Apple Developer). Sans lui, la signature JWT ne peut pas être produite.
+
+### Tests
+- 4 nouveaux tests IAP webhook + 13 tests IAP+B3 tous verts.
+
+### URL webhook à configurer dans App Store Connect
+- Preview : `https://responsive-kolo.preview.emergentagent.com/api/webhooks/apple`
+- Production : URL de prod à configurer une fois déployée.
