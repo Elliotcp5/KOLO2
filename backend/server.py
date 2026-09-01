@@ -8479,6 +8479,25 @@ except Exception as _a3_err:
 
 
 # ============================================================================
+# B1 router — onboarding + /api/me/* + /api/b1/ville/{cp}
+# ============================================================================
+try:
+    from b1.routes import router as b1_router, ensure_b1_bootstrap
+    app.include_router(b1_router)
+    logger.info("KOLO B1 router mounted (onboarding + me + ville)")
+
+    @app.on_event("startup")
+    async def _b1_bootstrap_zones():  # noqa
+        try:
+            await ensure_b1_bootstrap(db)
+            logger.info("KOLO B1 bootstrap zones OK (99999 démo + 13008/69003/75017)")
+        except Exception as _e:
+            logger.error(f"B1 bootstrap failed: {_e}")
+except Exception as _b1_err:
+    logger.error(f"Failed to mount B1 router: {_b1_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.

@@ -1,101 +1,205 @@
 {
-  "project_name": "KOLO Marketing Site",
-  "theme": "premium_dark",
+  "project_name": "KOLO App BLOC B1 — Onboarding, Paywall, Guided Tour & Profile",
+  "app_type": "mobile_web_app (iOS-first React + Capacitor SaaS)",
+  "scope_class": ".b1-root",
+  "theme": "Light Lavender & Coral Accent (#F0EEF8 / #EC8690)",
+  "language_rules": {
+    "tone": "Vouvoiement (formal French 'vous' everywhere)",
+    "i18n": "Zero hardcoded strings. Requires i18n support for FR, EN, IT, DE with FR as default."
+  },
+  "css_variables": {
+    "selector": ".b1-root",
+    "variables": {
+      "--b1-accent": "#EC8690",
+      "--b1-accent-hover": "#e4717c",
+      "--b1-accent-light": "#fde8ea",
+      "--b1-accent-pressed": "#d85c68",
+      "--b1-bg": "#F0EEF8",
+      "--b1-card": "#FFFFFF",
+      "--b1-text-primary": "#0A0A0A",
+      "--b1-text-secondary": "#6B7280",
+      "--b1-text-muted": "#9CA3AF",
+      "--b1-border": "rgba(0, 0, 0, 0.06)",
+      "--b1-border-active": "#EC8690",
+      "--b1-shadow-card": "0 8px 24px -4px rgba(236, 134, 144, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03)",
+      "--b1-shadow-cta": "0 10px 25px -5px rgba(236, 134, 144, 0.4), 0 4px 10px -2px rgba(236, 134, 144, 0.2)",
+      "--b1-shadow-pressed": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.08)",
+      "--b1-radius-card": "24px",
+      "--b1-radius-pill": "9999px",
+      "--b1-radius-input": "16px"
+    }
+  },
   "typography": {
-    "headings": {
-      "font": "Cabinet Grotesk",
-      "css_import": "@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,500,700,900&display=swap');",
-      "weights": ["500", "700", "800"],
-      "usage": "Use tight tracking (tracking-tight or tracking-tighter) for all H1 and H2. Never use Inter or standard fonts for headings to maintain a premium Qonto-like edge."
-    },
-    "body": {
-      "font": "Satoshi",
-      "css_import": "@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');",
-      "weights": ["400", "500"],
-      "usage": "Highly legible, clean geometric sans for paragraphs, UI elements, and data points."
+    "font_family": "SF Pro Display, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "type_scale": {
+      "h1_hero": "text-[32px] leading-[38px] font-bold text-[#0A0A0A] tracking-tight",
+      "h2_section": "text-[24px] leading-[30px] font-bold text-[#0A0A0A] tracking-tight",
+      "h3_card": "text-[18px] leading-[24px] font-semibold text-[#0A0A0A]",
+      "body_lg": "text-[16px] leading-[22px] font-medium text-[#0A0A0A]",
+      "body_base": "text-[15px] leading-[20px] font-normal text-[#6B7280]",
+      "small_caption": "text-[13px] leading-[18px] font-medium text-[#9CA3AF]",
+      "tiny_label": "text-[11px] leading-[14px] font-semibold uppercase tracking-wider text-[#9CA3AF]"
     }
   },
   "colors": {
-    "background": {
-      "base": "#050505",
-      "surface_1": "#0A0A0A",
-      "surface_2": "#121212"
+    "accent_primary": "#EC8690",
+    "background_main": "#F0EEF8",
+    "card_bg": "#FFFFFF",
+    "text_main": "#0A0A0A",
+    "text_muted": "#6B7280",
+    "text_subtle": "#9CA3AF",
+    "pink_badge_bg": "#FDF2F4",
+    "user_chat_bubble": "#EBF3FF",
+    "kolo_chat_bubble": "#FDF2F4"
+  },
+  "shadow_tokens": {
+    "card_ambient": "shadow-[0_8px_24px_-4px_rgba(236,134,144,0.08),0_4px_12px_-2px_rgba(0,0,0,0.03)]",
+    "cta_elevated": "shadow-[0_10px_25px_-5px_rgba(236,134,144,0.4),0_4px_10px_-2px_rgba(236,134,144,0.2)]",
+    "pressed_inset": "shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.08)]",
+    "tab_bar": "shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
+  },
+  "radius_tokens": {
+    "r_lg": "24px (rounded-[24px] for cards)",
+    "r_full": "9999px (rounded-full for pill buttons, chips, and bottom nav)",
+    "r_md": "16px (rounded-[16px] for inputs and small cards)"
+  },
+  "component_design_specs": {
+    "OnboardingProgressBar": {
+      "description": "Progress indicator at top of each onboarding screen (Étape X sur 7).",
+      "visuals": "Horizontal track with soft rounded edges, filled with gradient/solid #EC8690. Text displays 'Étape X sur 7' in 13px bold dark grey.",
+      "props": ["currentStep (1-7)", "totalSteps (7)"],
+      "data_testid": "onboarding-progress-bar"
     },
-    "text": {
-      "primary": "#FFFFFF",
-      "secondary": "#A1A1AA",
-      "muted": "#52525B"
+    "PostalCodeChip": {
+      "description": "Chip representing validated postal codes with associated city name in onboarding zone step.",
+      "visuals": "White pill card with 1px border #EC8690, soft drop shadow, displaying postal code and resolved city name (e.g. '13008 · Marseille 8ᵉ'). Includes a pink delete icon.",
+      "data_testid": "postal-code-chip"
     },
-    "border": {
-      "subtle": "rgba(255, 255, 255, 0.08)",
-      "active": "rgba(255, 255, 255, 0.2)"
+    "PlanCard": {
+      "description": "Card for subscription plan selection (Découverte free vs Pro €24.99/month).",
+      "visuals": "Pro card is visually featured with 24px rounded corners, solid #EC8690 background or heavy pink border, crown icon, €24.99/mois badge, feature checklist, and primary 'Commencer avec Pro' pill button. Découverte is presented cleanly with option to continue for free.",
+      "data_testid": "plan-card-pro"
     },
-    "accent": {
-      "primary": "#FFFFFF",
-      "primary_text": "#000000",
-      "glow": "rgba(255, 255, 255, 0.05)"
+    "PillButton": {
+      "description": "Universal primary action button throughout BLOC B1.",
+      "visuals": "Fully pill-shaped (rounded-full), filled #EC8690 background, white bold text, elevated soft pink glow shadow (`--b1-shadow-cta`), interactive press state scaling to 0.97.",
+      "data_testid": "pill-button-primary"
+    },
+    "BottomTabPill": {
+      "description": "Floating pill bottom navigation bar with pink border and 4 distinct tab icons.",
+      "visuals": "Floating pill container (`rounded-full bg-white border-2 border-[#EC8690] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.08)]`). Active tab receives a filled pink pill background (`bg-[#EC8690] text-white rounded-full px-4 py-2`). Inactive tabs display subtle pink/grey outline icons.",
+      "tabs": [
+        {
+          "id": "opportunities",
+          "label": "Opportunités",
+          "icon": "Custom SVG: Hand swipe icon matching mockup m5",
+          "status": "fully_functional"
+        },
+        {
+          "id": "estimation",
+          "label": "Estimation",
+          "icon": "Custom SVG: Calculator with dollar/euro symbol matching mockup m4",
+          "status": "placeholder_screen"
+        },
+        {
+          "id": "report",
+          "label": "Rapport",
+          "icon": "Custom SVG: Document page with download arrow matching mockup m3",
+          "status": "placeholder_screen"
+        },
+        {
+          "id": "assistant",
+          "label": "Assistant",
+          "icon": "Custom SVG: Friendly robot head icon matching mockup m2",
+          "status": "placeholder_screen"
+        }
+      ],
+      "data_testid": "bottom-tab-bar"
+    },
+    "GuideTooltip": {
+      "description": "Guided tour floating step tooltips (6-step onboarding overlay).",
+      "visuals": "White rounded card with pink accent border, step counter ('1/6'), title, body explanation, 'Suivant' pill button, dark backdrop overlay, pointing arrow to target UI element. Step 1 features an animated swipe hand icon.",
+      "data_testid": "guide-tooltip"
+    },
+    "ProfileMenuItem": {
+      "description": "Row item in Profile screen menu matching mockup m1.",
+      "visuals": "White row card or flat list item with left pink circular icon container (`w-10 h-10 rounded-full bg-[#FDF2F4] text-[#EC8690] flex items-center justify-center`), medium text title, right chevron icon (`lucide-react ChevronRight`).",
+      "data_testid": "profile-menu-item"
+    },
+    "InfoProCompletenessBar": {
+      "description": "Completeness progress card for user profile.",
+      "visuals": "Soft pink container with percentage indicator and action prompt to complete agent information.",
+      "data_testid": "info-pro-completeness-bar"
     }
   },
-  "visual_enhancers": {
-    "glassmorphism": "Use high-end glass for the sticky header and floating elements: `backdrop-blur-xl bg-[#050505]/60 border-b border-white/10`. NEVER use full transparency where text overlays content.",
-    "shadows": "Replace standard drop shadows with deep ambient light bleeds or sharp 1px inner glows (`shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]`).",
-    "borders": "Use 'Tracing Beam' or dynamic subtle borders on feature bento cards. Default border should be extremely faint (`border-white/5` to `border-white/10`)."
-  },
-  "layouts": {
-    "global_spacing": "Generous spacing. Use `py-24` to `py-32` between major sections to let the content breathe. This creates the 'premium' feel.",
-    "header": "Fixed top, ultra-minimal. Left: New Dark KOLO Logo. Right: CTA 'Télécharge l\\'app' (Pill-shaped, pure white bg, black text).",
-    "hero_section": "Massive impact. Left-aligned or perfectly centered text. H1: 'Le co-pilote intelligent qui booste le chiffre d\\'affaires des agents immobiliers.' (Cabinet Grotesk, text-5xl to text-7xl, tracking-tighter). A giant Apple App Store button CTA. Background: The requested 3D animated mockup.",
-    "mockup_3d_specs": "DO NOT use a static image. Build a 3D isometric composition using `framer-motion`. Arrange the 5 provided iOS screenshots inside `motion.div` wrappers with CSS 3D transforms (`rotateX`, `rotateY`, `rotateZ`). Stagger their vertical floating animation (y-axis translation with `repeatType: 'mirror'`) to create a 'living, breathing' tech environment. Add a subtle radial gradient behind them so they pop against the #050505 background.",
-    "trust_bar": "Marquee showing: Century21, Orpi, Laforêt, IAD, Safti, Guy Hoquet, ERA, Stéphane Plaza. Render these as sleek typographic text-logos in `#52525B` (Zinc-600) to keep it sober and premium.",
-    "features_bento": "Qonto-style dynamic bento grid. 3 major blocks:\n1. Prospection: Focus on Leboncoin, Bien Ici, SeLoger aggregation + DPE. Visual: A stacked card UI animation.\n2. Assistant Intelligent: 'Le meilleur agent dans votre téléphone' (DVF data, legal). Visual: A sleek chat/insight UI abstraction.\n3. Organisation: Agenda, contacts, dossiers. Visual: Clean, dense lists.",
-    "pricing_section": "Clean 2-column grid. Starter vs Pro. No complex tables. Just pure value proposition in a premium card with a subtle hover lift (`-translate-y-1`) and border highlight.",
-    "founder_section": "Human and sober. `flex-row` on desktop. Left: Elliot's photo (transparent png) over a subtle dark gradient blob. Right: His quote. 'Ex-agent immo...'. No over-dramatization, pure professional trust."
-  },
-  "motion": {
-    "page_load": "Fade up elements sequentially using Framer Motion. H1 first, then subtitle, then CTA, then 3D background.",
-    "scroll_reveal": "All bento cards and sections should have a subtle `whileInView={{ opacity: 1, y: 0 }}` from `y: 20` and `opacity: 0`.",
-    "hover_states": "Buttons should have a micro-scale (`scale: 0.98` on tap). Cards should subtly illuminate their borders on hover."
-  },
-  "image_urls": {
-    "logo": {
-      "url": "https://customer-assets.emergentagent.com/job_2eb24348-efe6-47cf-8c87-199c35e66909/artifacts/ah5kfmpv_META%20LOGO%20WEB%20APP.png",
-      "description": "Nouveau logo sombre KOLO. Use in Header and Meta OG image."
-    },
-    "founder_photo": {
-      "url": "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/g3cfqfz1_Photo%20Elliot%20png%20sans%20fond-2.png",
-      "description": "Founder Elliot (transparent background). Use in About/Founder section."
-    },
-    "ios_screenshots": [
-      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/mzeeky1t_IMG_5692.PNG",
-      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/ex6rdugb_IMG_5691.PNG",
-      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/74uzhn02_IMG_5690.PNG",
-      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/wcwcq6xp_IMG_5689.PNG",
-      "https://customer-assets.emergentagent.com/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/zibhtrf0_IMG_5688.PNG"
+  "key_flows": {
+    "onboarding_7_screens": [
+      "Screen 1 (Identity): First name + Last name inputs, keyboard auto-focus, 'Continuer' button enabled when both valid.",
+      "Screen 2 (Status): Tap cards choice ('Agent immobilier' vs 'Directeur d'agence'), single selection card with pink border highlight on active.",
+      "Screen 3 (Zones): Numeric keyboard input for 1-2 postal codes. Displays resolved city name underneath each code (e.g. '13008 · Marseille 8ᵉ').",
+      "Screen 4 (Spinner): Smooth animated scanning/processing state checking coverage.",
+      "Screen 5 (Zone Result): Displays result screen — either covered ('Continuer') or not covered ('Modifier ma zone').",
+      "Screen 6 (Paywall Plan): Apple IAP compliant paywall showcasing 'Pro €24.99/mois' card with primary CTA 'Commencer avec Pro'. 'Continuer en Découverte' text link for free plan. Terms of Service, Privacy Policy, and Restore Purchases links required at bottom.",
+      "Screen 7 (Ready): Final confirmation screen 'Vous êtes prêt' with CTA 'Voir mes opportunités'."
     ],
-    "ambient_texture": {
-      "url": "https://images.unsplash.com/photo-1710438399422-2fca27686bcd",
-      "description": "Abstract deep dark 3d glass. Use sparingly as an ambient background overlay with low opacity (e.g., 5-10%) in the pricing or features section to avoid 'flatness'."
+    "guided_tour_6_bubbles": [
+      "Bubble 1: Welcome & Swipe gestures intro with looping swipe hand animation overlaying Opportunity card.",
+      "Bubble 2: Property detail highlights (DPE, Superficie, Price/m²).",
+      "Bubble 3: Estimation tool shortcut on bottom nav.",
+      "Bubble 4: PDF Report generation feature.",
+      "Bubble 5: KOLO AI Assistant chatbot introduction.",
+      "Bubble 6: Profile & Settings access from top right header avatar."
+    ],
+    "profile_screen": [
+      "Top Header: Avatar icon + Performance chart icon in top right.",
+      "Active Plan Card: Big filled pink card ('Votre plan actuel Pro' with crown icon).",
+      "Menu List: Information personnelle, Informations professionnelles, Zones de prospection, Plan et mode de paiement, Revoir le tour guidé, Contacter le support KOLO, Supprimer mon compte (in-app deletion required by Apple).",
+      "Logout: 'Se déconnecter' text button at bottom in pink accent color."
+    ],
+    "apple_iap_compliance": [
+      "No external payment links anywhere on Paywall or App.",
+      "No agency pricing or enterprise references outside standard IAP tiers.",
+      "Must include 'Restore Purchases' (Raurer les achats) button on Screen 6.",
+      "Must include visible links to Terms of Service and Privacy Policy.",
+      "Must include functional in-app account deletion ('Supprimer mon compte') in Profile menu."
+    ]
+  },
+  "motion_specs": {
+    "screen_transition": "Onboarding step-to-step slide transition with 280ms cubic-bezier(0.16, 1, 0.3, 1).",
+    "button_tap": "Scale down to 0.97 on press state with spring physics (stiffness 400, damping 25).",
+    "tour_bubble_entry": "Fade in + scale from 0.92 to 1.0 with subtle spring entrance (300ms).",
+    "swipe_hand_loop": "Continuous subtle side-to-side drag animation keyframes for tour bubble 1 swipe indicator."
+  },
+  "iconography_rules": {
+    "library": "lucide-react for all general UI icons.",
+    "custom_svg_nav_icons": {
+      "opportunites": "Swipe hand icon with directional movement arrows.",
+      "estimation": "Calculator icon with embedded dollar/euro symbol.",
+      "rapport": "Document page icon with a centered download arrow.",
+      "assistant": "Cute small robot head icon matching mockup m2 mascot."
     }
+  },
+  "mockup_urls": {
+    "profile_menu": "https://customer-assets-39nsmqrw.emergentagent.net/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/pccsgvkz_Capture%20d%E2%80%99e%CC%81cran%202026-09-01%20a%CC%80%2018.08.46.webp",
+    "assistant_chat": "https://customer-assets-39nsmqrw.emergentagent.net/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/smszj12m_Capture%20d%E2%80%99e%CC%81cran%202026-08-31%20a%CC%80%2016.40.21.png",
+    "estimation_report": "https://customer-assets-39nsmqrw.emergentagent.net/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/rfe238ng_Capture%20d%E2%80%99e%CC%81cran%202026-08-31%20a%CC%80%2016.30.49.png",
+    "estimation_entry": "https://customer-assets-39nsmqrw.emergentagent.net/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/xwsu49lo_Capture%20d%E2%80%99e%CC%81cran%202026-08-31%20a%CC%80%2015.21.00.png",
+    "opportunity_swipe": "https://customer-assets-39nsmqrw.emergentagent.net/job_d14305e1-37e6-4a71-b89b-88f10626bbb5/artifacts/at3rmraa_Capture%20d%E2%80%99e%CC%81cran%202026-08-31%20a%CC%80%2014.37.24.png"
   },
   "instructions_to_main_agent": [
-    "ABANDON the existing 'aurora animated' theme completely. The user explicitly stated it feels like an AI template. Transition entirely to the 'Premium Deep Dark' aesthetic (like Qonto in dark mode).",
-    "Update `marketing.css` to import Cabinet Grotesk and Satoshi fonts. Remove Inter.",
-    "In `HomePage.js`, implement the 3D animated hero background using Framer Motion and the provided iOS screenshots. Array them in a visually stunning isometric or cascading layout that floats continuously. Do not use a static image.",
-    "Rewrite all placeholder text to sound like it was written by real estate agents for real estate agents. No generic AI SaaS jargon. Use terms like 'DPE', 'DVF', 'Prospection multi-portails'.",
-    "Ensure the primary CTA is ALWAYS 'Télécharge l\\'app' and points to the `APP_STORE_URL` constant. Make it a pill-shaped button, pure white with black text for maximum contrast against the dark theme.",
-    "Build the Trust Marquee with the specified network names using sleek, gray typography if logos aren't present. It is crucial social proof.",
-    "Ensure the entire app is fully responsive. The 3D screenshot hero should scale down gracefully on mobile (perhaps showing fewer screens or a tighter stack).",
-    "The files to modify are `.js` files, not TypeScript. Write clean React code using Tailwind classes.",
-    "Update Meta Tags and Open Graph images to use the new dark logo provided.",
-    "All interactive elements MUST include a `data-testid` attribute (e.g., `data-testid=\"app-store-cta\"`)."
+    "Wrap BLOC B1 components in the `.b1-root` top-level CSS class to scope styles safely without leaking to app-v2 or marketing.",
+    "Strictly adhere to the formal French 'Vouvoiement' ('vous') for all text across all 7 onboarding screens, paywall, tour, and profile.",
+    "Implement zero hardcoded text strings by connecting all copy to the i18n translation engine (supporting FR, EN, IT, DE with FR default).",
+    "Ensure Apple IAP compliance: absolute prohibition of external payment URLs/links, mandatory 'Restauration des achats' button, TOS & Privacy links on Screen 6, and functional in-app account deletion under Profile menu.",
+    "Maintain exact layout and structure from the reference mockups, enhancing depth with soft ambient shadows (`--b1-shadow-card`), active pressed scale transitions, and rounded 24px corners.",
+    "Render the floating bottom navigation bar as a pill container with pink border and 4 tabs (Opportunités, Estimation, Rapport, Assistant). Active tab must display as a filled pink pill background.",
+    "Add `data-testid` attributes to all buttons, inputs, tabs, cards, and interactive elements across all screens for automated E2E testing."
   ],
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "Do not use generic centered layouts or simplistic linear gradients.",
-    "Create depth through layered design elements with z-index hierarchy and glassmorphism (12-24px blur).",
-    "Never apply `transition: all`. Target specific properties like `transition-transform`, `transition-opacity`.",
-    "Do not center align the app container text globally.",
-    "Use modern button styles (pill-shaped) with interaction animations.",
-    "Never use AI assistant Emoji characters (🤖🧠💭💡🔮🎯) for icons. Use Phosphor or Lucide icons.",
-    "Include micro-animations for every interaction (hover states, parallax, entrance)."
+    "All interactive elements MUST include a `data-testid` attribute (e.g. data-testid=\"onboarding-next-btn\").",
+    "Never use generic centered layouts or unstyled inputs.",
+    "Use specific property transitions instead of transition: all.",
+    "Avoid using emoji characters as icons — use lucide-react or custom SVG vectors.",
+    "Ensure high contrast ratio and accessibility standards for text over pink/lavender backgrounds."
   ]
 }

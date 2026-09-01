@@ -59,6 +59,21 @@ import V2ReferralLandingPage from "./v2/pages/V2ReferralLandingPage";
 import V2NotificationsPage from "./v2/pages/V2NotificationsPage";
 import V2SubscriptionPage from "./v2/pages/V2SubscriptionPage";
 
+// KOLO BLOC B1 — Onboarding + Paywall + Guided Tour + Profile
+import B1Onboarding from "./b1/B1Onboarding";
+import {
+  OpportunitesPage as B1OpportunitesPage,
+  EstimationPage as B1EstimationPage,
+  RapportPage as B1RapportPage,
+  AssistantPage as B1AssistantPage,
+  ProfilPage as B1ProfilPage,
+  ProfilPersoPage as B1ProfilPersoPage,
+  ProfilProPage as B1ProfilProPage,
+  ProfilZonesPage as B1ProfilZonesPage,
+  ProfilDeletePage as B1ProfilDeletePage,
+  ProfilPaiementPage as B1ProfilPaiementPage,
+} from "./b1/B1Shell";
+
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
   const location = useLocation();
@@ -110,10 +125,15 @@ const AppRouter = () => {
 
   // V2 routes use a light premium theme — sync body bg to avoid flash-white between transitions.
   React.useEffect(() => {
-    const isV2 = location.pathname.startsWith('/app-v2') || location.pathname.startsWith('/r/');
+    const path = location.pathname;
+    const isV2 = path.startsWith('/app-v2') || path.startsWith('/r/');
+    const isB1 = path.startsWith('/app-b1') || path.startsWith('/onboarding-b1');
     if (isV2) {
       document.body.style.backgroundColor = '#F7F7F9';
       document.documentElement.style.backgroundColor = '#F7F7F9';
+    } else if (isB1) {
+      document.body.style.backgroundColor = '#F0EEF8';
+      document.documentElement.style.backgroundColor = '#F0EEF8';
     } else {
       document.body.style.backgroundColor = '';
       document.documentElement.style.backgroundColor = '';
@@ -193,6 +213,22 @@ const AppRouter = () => {
       <Route path="/app-v2/notifications" element={<V2NotificationsPage />} />
       {/* Public referral landing — /r/:code */}
       <Route path="/r/:code" element={<V2ReferralLandingPage />} />
+
+      {/* ============================================================== */}
+      {/* KOLO BLOC B1 — Onboarding + Shell (Opportunités / Estimation / */}
+      {/* Rapport / Assistant) + Profil complet + Tour guidé              */}
+      {/* ============================================================== */}
+      <Route path="/onboarding-b1" element={<B1Onboarding />} />
+      <Route path="/app-b1" element={<B1OpportunitesPage />} />
+      <Route path="/app-b1/estimation" element={<B1EstimationPage />} />
+      <Route path="/app-b1/rapport" element={<B1RapportPage />} />
+      <Route path="/app-b1/assistant" element={<B1AssistantPage />} />
+      <Route path="/app-b1/profil" element={<B1ProfilPage />} />
+      <Route path="/app-b1/profil/perso" element={<B1ProfilPersoPage />} />
+      <Route path="/app-b1/profil/pro" element={<B1ProfilProPage />} />
+      <Route path="/app-b1/profil/zones" element={<B1ProfilZonesPage />} />
+      <Route path="/app-b1/profil/paiement" element={<B1ProfilPaiementPage />} />
+      <Route path="/app-b1/profil/supprimer" element={<B1ProfilDeletePage />} />
 
       {/* Protected routes */}
       <Route 

@@ -16,7 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 Point-in-polygon Lyon + Marseille — fin bloc A (Sep 1, 2026) 🔥 LATEST
+
+### BLOC B1 — Onboarding + Paywall + Tour + Profil (Sep 1, 2026) 🔥 LATEST
+- **10 endpoints backend** sous `backend/b1/` : `/api/b1/ville/{cp}`, 4 endpoints `/api/onboarding/*`, 5 endpoints `/api/me/*` (dont `DELETE /api/me` Apple compliant avec variantes indep/conseiller/directeur).
+- **Frontend `/onboarding-b1`** — 7 écrans séquentiels bloquants (Identité → Statut → Zones → Traitement → Résultat → Plan → Bienvenue) avec progress bar, animations slide.
+- **Frontend `/app-b1/*`** — shell 4 onglets (Opportunités fonctionnelle + 3 placeholders Estimation/Rapport/Assistant), bottom nav pilule à bord rose, tour guidé 6 bulles (bulle 1 avec animation main swipe + définition opportunité).
+- **Frontend `/app-b1/profil/*`** — profil avec card rose « Votre plan actuel Pro/Découverte », menu 7 items (perso, pro, zones, paiement, revoir tour, support, suppression), infos_pro 17 champs (juridique + Carte T + CCI + RCP + garantie + honoraires + grille 7 coefficients) avec barre de complétude, zones avec règle 1 modif Découverte / illimité Pro, suppression 2-tap variante indep/conseiller/directeur.
+- **Zone de démonstration Apple Review `99999`** — toujours couverte, 4 opportunités fictives marquées `demo:true`, résolveur `Zone de démonstration`. Le CP réel à communiquer dans les notes Apple = `13008`.
+- **Conformité Apple** : pas de lien de paiement externe, pas de tarif Agence, `Restaurer mes achats` + CGU + Politique de confidentialité sur le paywall, suppression in-app 2-tap avec mention iOS abonnement, assistant passé au vouvoiement.
+- **i18n complète FR/EN/IT/DE** (`b1i18n.js`) — 110+ clés, zéro texte hardcodé.
+- **Design tokens** (`b1.css` scoped `.b1-root`) — accent `#EC8690`, fond `#F0EEF8`, cartes 24px, boutons pill, ombres douces, animations slide/spring.
+- Tests : **7 tests pytest B1 verts**, **97 tests Bloc A verts**, aucune régression.
+
+
+### A3 Point-in-polygon Lyon + Marseille — fin bloc A (Sep 1, 2026)
 - **GeoJSON quartiers Lyon** (data.grandlyon.com, 201 polygones Grand Lyon) et **Marseille** (data.gouv.fr, 111 polygones avec code d'arrondissement DEPCO) téléchargés et intégrés.
 - `_load_features` : loader unifié 3 sources ; supporte MultiPolygon. Slug Paris = legacy (`ternes`), Lyon/Marseille = préfixés (`lyon-voltaire-part-dieu`, `marseille-perier`). 460 features au total.
 - `_normalize_label` : strip aussi les préfixes « Lyon 3e Arrondissement - », « Marseille 8e Arrondissement - », « Lyon 69003 », « Marseille 13008 ».

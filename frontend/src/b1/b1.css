@@ -1,0 +1,814 @@
+/* =============================================================
+   KOLO — BLOC B1 (Onboarding, Paywall, Tour, Profil)
+   Scoped under `.b1-root` — no leak to marketing / /app-v2 / /app
+   ============================================================= */
+
+.b1-root {
+  /* Design tokens */
+  --b1-accent: #EC8690;
+  --b1-accent-hover: #e4717c;
+  --b1-accent-light: #FDF2F4;
+  --b1-accent-pressed: #d85c68;
+  --b1-bg: #F0EEF8;
+  --b1-card: #FFFFFF;
+  --b1-text-primary: #0A0A0A;
+  --b1-text-secondary: #6B7280;
+  --b1-text-muted: #9CA3AF;
+  --b1-border: rgba(0, 0, 0, 0.06);
+  --b1-shadow-card: 0 8px 24px -4px rgba(236, 134, 144, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+  --b1-shadow-cta: 0 10px 25px -5px rgba(236, 134, 144, 0.40), 0 4px 10px -2px rgba(236, 134, 144, 0.20);
+  --b1-shadow-pressed: inset 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+  --b1-radius-card: 24px;
+  --b1-radius-pill: 9999px;
+  --b1-radius-input: 16px;
+
+  min-height: 100vh;
+  background: var(--b1-bg);
+  color: var(--b1-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-x: hidden;
+}
+
+/* Reset button defaults inside B1 */
+.b1-root button {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.b1-root input,
+.b1-root select,
+.b1-root textarea {
+  font-family: inherit;
+  color: var(--b1-text-primary);
+}
+
+/* ===========================================================================
+   Layout — safe screen wrapper
+   =========================================================================== */
+.b1-screen {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px 32px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.b1-screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.b1-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--b1-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--b1-text-primary);
+  box-shadow: var(--b1-shadow-card);
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.b1-back-btn:active { transform: scale(0.94); }
+
+.b1-header-icons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.b1-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--b1-accent-light);
+  color: var(--b1-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.b1-header-icon:active { transform: scale(0.94); }
+
+/* ===========================================================================
+   Progress bar (onboarding)
+   =========================================================================== */
+.b1-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.b1-progress-track {
+  height: 8px;
+  background: rgba(236, 134, 144, 0.15);
+  border-radius: var(--b1-radius-pill);
+  overflow: hidden;
+}
+.b1-progress-fill {
+  height: 100%;
+  background: var(--b1-accent);
+  border-radius: var(--b1-radius-pill);
+  transition: width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.b1-progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--b1-text-secondary);
+  text-align: center;
+}
+
+/* ===========================================================================
+   Typography
+   =========================================================================== */
+.b1-h1 {
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--b1-text-primary);
+  margin: 0;
+}
+.b1-h2 {
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--b1-text-primary);
+  margin: 0;
+}
+.b1-lead {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--b1-text-secondary);
+  margin: 0;
+}
+.b1-small {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--b1-text-muted);
+}
+
+/* ===========================================================================
+   Cards
+   =========================================================================== */
+.b1-card {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 20px;
+  box-shadow: var(--b1-shadow-card);
+}
+
+.b1-card-tap {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 20px;
+  box-shadow: var(--b1-shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              border-color 160ms ease;
+  text-align: left;
+  width: 100%;
+}
+.b1-card-tap:active { transform: scale(0.98); }
+.b1-card-tap[data-active="true"] {
+  border-color: var(--b1-accent);
+  background: var(--b1-accent-light);
+}
+
+.b1-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--b1-text-primary);
+  margin: 0 0 4px;
+}
+.b1-card-sub {
+  font-size: 14px;
+  color: var(--b1-text-secondary);
+  margin: 0;
+}
+
+/* ===========================================================================
+   Pill button
+   =========================================================================== */
+.b1-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 16px 28px;
+  border-radius: var(--b1-radius-pill);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 160ms ease, background 160ms ease;
+  user-select: none;
+}
+.b1-pill--primary {
+  background: var(--b1-accent);
+  color: #fff;
+  box-shadow: var(--b1-shadow-cta);
+}
+.b1-pill--primary:active {
+  transform: scale(0.97);
+  background: var(--b1-accent-pressed);
+}
+.b1-pill--primary[disabled] {
+  opacity: 0.42;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.b1-pill--ghost {
+  background: transparent;
+  color: var(--b1-accent);
+  border: 2px solid var(--b1-accent);
+}
+.b1-pill--ghost:active { transform: scale(0.97); background: var(--b1-accent-light); }
+.b1-pill--danger {
+  background: #DC2626;
+  color: #fff;
+  box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4);
+}
+.b1-pill--danger:active { transform: scale(0.97); background: #B91C1C; }
+.b1-pill--fullwidth { width: 100%; }
+
+/* ===========================================================================
+   Inputs
+   =========================================================================== */
+.b1-input {
+  width: 100%;
+  height: 56px;
+  padding: 0 20px;
+  border-radius: var(--b1-radius-input);
+  background: var(--b1-card);
+  border: 1px solid var(--b1-border);
+  font-size: 16px;
+  color: var(--b1-text-primary);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.b1-input:focus {
+  border-color: var(--b1-accent);
+  box-shadow: 0 0 0 4px rgba(236, 134, 144, 0.12);
+}
+.b1-input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--b1-text-secondary);
+  margin: 0 0 6px 4px;
+}
+
+.b1-select {
+  width: 100%;
+  height: 56px;
+  padding: 0 20px;
+  border-radius: var(--b1-radius-input);
+  background: var(--b1-card);
+  border: 1px solid var(--b1-border);
+  font-size: 16px;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23EC8690' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+}
+
+/* ===========================================================================
+   Zone chip (Screen 3 postal codes)
+   =========================================================================== */
+.b1-zone-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--b1-card);
+  border: 1px solid var(--b1-border);
+  border-radius: var(--b1-radius-input);
+  box-shadow: var(--b1-shadow-card);
+}
+.b1-zone-chip-cp {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--b1-text-primary);
+  letter-spacing: 0.02em;
+}
+.b1-zone-chip-ville {
+  font-size: 13px;
+  color: var(--b1-text-secondary);
+  margin-top: 2px;
+}
+.b1-zone-chip-remove {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--b1-accent-light);
+  color: var(--b1-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===========================================================================
+   Screen 4 spinner
+   =========================================================================== */
+.b1-spinner {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 5px solid rgba(236, 134, 144, 0.15);
+  border-top-color: var(--b1-accent);
+  animation: b1-spin 900ms linear infinite;
+}
+@keyframes b1-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===========================================================================
+   Plan cards (Screen 6)
+   =========================================================================== */
+.b1-plan-pro {
+  background: linear-gradient(180deg, #EC8690 0%, #d85c68 100%);
+  color: #fff;
+  border-radius: var(--b1-radius-card);
+  padding: 24px 22px 20px;
+  box-shadow: var(--b1-shadow-cta);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.b1-plan-pro-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.b1-plan-pro-price {
+  font-size: 16px;
+  opacity: 0.92;
+  font-weight: 600;
+}
+.b1-plan-pro-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.b1-plan-pro-mention {
+  font-size: 12px;
+  opacity: 0.85;
+  text-align: center;
+  margin-top: 2px;
+}
+.b1-plan-pro-cta {
+  background: #fff;
+  color: var(--b1-accent);
+  min-height: 52px;
+  border-radius: var(--b1-radius-pill);
+  font-size: 17px;
+  font-weight: 800;
+  margin-top: 4px;
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  width: 100%;
+}
+.b1-plan-pro-cta:active { transform: scale(0.97); }
+
+.b1-plan-decouverte {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 20px;
+  box-shadow: var(--b1-shadow-card);
+}
+.b1-plan-dec-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--b1-text-primary);
+  margin: 0 0 8px;
+}
+.b1-plan-dec-feat {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--b1-text-secondary);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.b1-plan-dec-lien {
+  display: block;
+  text-align: center;
+  color: var(--b1-accent);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.b1-plan-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 0 0;
+  flex-wrap: wrap;
+}
+.b1-plan-legal a,
+.b1-plan-legal button {
+  font-size: 12px;
+  color: var(--b1-text-muted);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.b1-plan-legal a:hover,
+.b1-plan-legal button:hover { color: var(--b1-accent); }
+
+/* ===========================================================================
+   Bottom tab bar (pill floating)
+   =========================================================================== */
+.b1-shell {
+  min-height: 100vh;
+  padding-bottom: 120px;
+  position: relative;
+  background: var(--b1-bg);
+}
+.b1-tabbar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  max-width: 448px;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--b1-card);
+  border: 2px solid var(--b1-accent);
+  border-radius: var(--b1-radius-pill);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  box-shadow: 0 16px 40px -8px rgba(236, 134, 144, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.06);
+  z-index: 40;
+}
+.b1-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: var(--b1-radius-pill);
+  color: var(--b1-text-muted);
+  transition: background 200ms ease, color 200ms ease, transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.b1-tab[data-active="true"] {
+  background: var(--b1-accent);
+  color: #fff;
+}
+.b1-tab:active { transform: scale(0.94); }
+
+/* ===========================================================================
+   Guided tour overlay
+   =========================================================================== */
+.b1-tour-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.72);
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 24px;
+  animation: b1-fade-in 200ms ease;
+}
+@keyframes b1-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.b1-tour-bubble {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 22px 20px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  animation: b1-bubble-in 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  margin-bottom: 96px;
+}
+@keyframes b1-bubble-in {
+  from { opacity: 0; transform: scale(0.94) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.b1-tour-step {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--b1-accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
+}
+.b1-tour-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--b1-text-primary);
+  margin: 0 0 8px;
+}
+.b1-tour-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--b1-text-secondary);
+  margin: 0 0 16px;
+}
+.b1-tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.b1-tour-skip {
+  font-size: 13px;
+  color: var(--b1-text-muted);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.b1-tour-hand {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+.b1-tour-hand-icon {
+  display: inline-block;
+  animation: b1-swipe 1.8s ease-in-out infinite;
+}
+@keyframes b1-swipe {
+  0%, 100% { transform: translateX(-30px); opacity: 0.6; }
+  25%      { transform: translateX(0);     opacity: 1.0; }
+  50%      { transform: translateX(30px);  opacity: 0.6; }
+  75%      { transform: translateX(0);     opacity: 1.0; }
+}
+
+/* ===========================================================================
+   Profile screen
+   =========================================================================== */
+.b1-profil-plan {
+  background: var(--b1-accent);
+  color: #fff;
+  border-radius: var(--b1-radius-card);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--b1-shadow-cta);
+}
+.b1-profil-plan-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.92;
+}
+.b1-profil-plan-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+.b1-profil-plan-renouv {
+  font-size: 13px;
+  opacity: 0.88;
+  margin-top: 6px;
+}
+.b1-profil-plan-cta {
+  align-self: flex-start;
+  background: #fff;
+  color: var(--b1-accent);
+  border-radius: var(--b1-radius-pill);
+  padding: 10px 20px;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.b1-profil-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.b1-profil-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1), background 160ms ease;
+  border-radius: 16px;
+  text-align: left;
+  width: 100%;
+}
+.b1-profil-menu-item:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.6); }
+.b1-profil-menu-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--b1-accent-light);
+  color: var(--b1-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.b1-profil-menu-item-label {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--b1-text-primary);
+}
+.b1-profil-menu-item-chev {
+  color: var(--b1-text-muted);
+}
+.b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-icon,
+.b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-label { color: #DC2626; background: rgba(220, 38, 38, 0.08); }
+.b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-label { background: transparent; }
+
+.b1-logout {
+  color: var(--b1-accent);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  padding: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.b1-completude-bar {
+  height: 8px;
+  border-radius: var(--b1-radius-pill);
+  background: rgba(236, 134, 144, 0.15);
+  overflow: hidden;
+}
+.b1-completude-bar-fill {
+  height: 100%;
+  background: var(--b1-accent);
+  border-radius: var(--b1-radius-pill);
+  transition: width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ===========================================================================
+   Opportunity swipe card
+   =========================================================================== */
+.b1-opp-header {
+  text-align: center;
+  padding: 8px 0 20px;
+}
+.b1-opp-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--b1-text-primary);
+  margin-bottom: 8px;
+}
+.b1-opp-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--b1-text-primary);
+  line-height: 1.15;
+  padding: 0 8px;
+}
+.b1-opp-card {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 16px 16px 20px;
+  box-shadow: var(--b1-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  touch-action: pan-y;
+  user-select: none;
+}
+.b1-opp-illus {
+  aspect-ratio: 1 / 0.9;
+  background: var(--b1-accent);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+.b1-opp-address {
+  color: var(--b1-accent);
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+}
+.b1-opp-details {
+  font-size: 14px;
+  color: var(--b1-text-primary);
+  line-height: 1.6;
+}
+.b1-opp-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #F0F0F2;
+  border-radius: var(--b1-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--b1-text-secondary);
+}
+.b1-opp-actions {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding-top: 8px;
+}
+.b1-opp-action-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--b1-shadow-card);
+  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.b1-opp-action-btn:active { transform: scale(0.9); }
+.b1-opp-action-btn--reject { background: #fff; color: var(--b1-text-muted); }
+.b1-opp-action-btn--accept { background: var(--b1-accent); color: #fff; }
+
+.b1-opp-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--b1-text-secondary);
+}
+
+/* ===========================================================================
+   Sheet / Modal
+   =========================================================================== */
+.b1-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.55);
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: b1-fade-in 220ms ease;
+}
+.b1-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card) var(--b1-radius-card) 0 0;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  animation: b1-sheet-up 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+@keyframes b1-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.b1-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+/* ===========================================================================
+   Screen slide animation between onboarding steps
+   =========================================================================== */
+.b1-slide {
+  animation: b1-slide-in 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@keyframes b1-slide-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ===========================================================================
+   Reduced motion
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .b1-root *,
+  .b1-root *::before,
+  .b1-root *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

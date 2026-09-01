@@ -211,3 +211,53 @@ Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onbo
 - Rien pour A2. Les collections `estimations`/`conversations`/`signalements` seront remplies quand leurs features seront construites.
 
 ---
+
+## 1er septembre 2026 — BLOC B / Session B1 : Onboarding + Paywall + Tour + Profil
+
+### Backend `backend/b1/`
+- `ville_resolver.py` : table CP → ville (Paris/Lyon/Marseille arrondissements + ~200 CP FR) + whitelist démo `99999` + zones bootstrap `13008/69003/75017/99999`.
+- `routes.py` : 10 endpoints, tous préfixés `/api` :
+  - `GET /api/b1/ville/{cp}` — résolveur public
+  - `POST /api/onboarding/profil` — prénom + nom + statut (agent/directeur)
+  - `POST /api/onboarding/zones` — 1-2 CP, contrôle vs `zones_couvertes`, insert `zones_demandees` pour tout CP rouge
+  - `POST /api/onboarding/plan` — `decouverte` (bascule immédiate) ou `pro` (intention, activée par le verify Apple IAP)
+  - `POST /api/onboarding/termine` — set `onboarding_infos_ok=true` + `bonus_bienvenue_a_crediter=true`
+  - `GET /api/me/quotas` — via `a2.quotas.verifier_quota` (jamais dupliqué)
+  - `GET /api/me/profil` — user + `infos_pro` + `infos_pro_completude`
+  - `PATCH /api/me/profil` — payload `{perso, infos_pro}` (bloc distinct pour préparer l'export PDF du bloc C)
+  - `PATCH /api/me/zones` — 1 modif à vie pour Découverte (402 si épuisé), illimité pour Pro
+  - `DELETE /api/me` — Apple 5.1.1(v) — variantes indépendant / conseiller (notifie directeur) / directeur (conserve l'orga)
+- Bootstrap au startup : insert idempotent des 4 zones (`99999` marquée `demo:true`).
+- **Zone de démonstration `99999`** : toujours couverte, jamais désactivable. Le vrai CP à communiquer à Apple dans les notes de revue reste `13008`.
+- **Grille de pondération surfaces annexes** — valeurs par défaut : Terrasse 0,35 · Balcon et loggia 0,25 · Combles aménageables 0,30 · Cave et cellier 0,12 · Garage 0,40 · Place de parking 0,30 · Jardin 0,10.
+
+### Frontend `frontend/src/b1/`
+- `b1i18n.js` — 4 langues **FR / EN / IT / DE**, vouvoiement partout, **zéro texte hardcodé** (110+ clés).
+- `b1.css` — CSS scopé `.b1-root` : accent `#EC8690`, fond `#F0EEF8`, cartes blanches 24px, boutons pill, ombres douces, animation swipe hand, animation slide entre étapes.
+- `B1Icons.jsx` — 4 icônes SVG custom pour la bottom nav (main-swipe / calc / doc / robot) + Stats + User.
+- `demoOpportunites.js` — 4 cartes fictives pour la zone `99999` (garantit un swipe fonctionnel côté reviewer).
+- `B1Onboarding.jsx` — 7 écrans séquentiels : Identité, Statut, Zones (résolution ville en live), Traitement, Résultat, Plan, Bienvenue.
+- `B1Shell.jsx` — bottom nav pilule à bord rose, GuidedTour 6 bulles (bulle 1 avec animation main swipe + définition d'une opportunité + sens des balayages), page Opportunités (avec DEMO_OPPORTUNITES), 3 placeholders (Estimation/Rapport/Assistant), Profil complet (perso, pro avec 17 champs + complétude, zones avec règle 1 modif Découverte, suppression 2-tap variante indep/conseiller/directeur + lien réglages iOS abonnement).
+- Routes ajoutées à `App.js` : `/onboarding-b1`, `/app-b1`, `/app-b1/estimation`, `/app-b1/rapport`, `/app-b1/assistant`, `/app-b1/profil` + 5 sous-pages profil. Body BG synchronisé à `#F0EEF8` sur toutes les routes B1.
+
+### Conformité Apple validée
+- Écran 6 : pas de lien de paiement externe, pas de tarif Agence, `Restaurer mes achats` + `Conditions générales` + `Politique de confidentialité` en bas.
+- Suppression de compte in-app 2-tap (5.1.1(v)), avec mention « L'abonnement Pro n'est pas résilié automatiquement » + bouton `Gérer mon abonnement` vers les réglages iOS.
+- Assistant repassé au vouvoiement (« comment puis-je vous aider »).
+
+### Textes-clés imposés respectés partout
+- Paywall Pro : « Toutes les opportunités de vos zones, chaque jour ». Aucun volume chiffré d'opportunités nulle part.
+- Zone non couverte : « Vos zones ne sont pas encore couvertes par KOLO. Nous reviendrons vers vous dès que nous les ouvrons. » avec pour seule action « Modifier ».
+- Absence d'annonce : « Aucune annonce détectée » (jamais « ce bien n'est pas sur le marché »).
+- Découverte : 1 opportunité/semaine · 1 estimation/semaine · 1 dossier/mois · pas d'assistant KOLO.
+
+### Tests
+- `pytest tests/test_b1_onboarding.py` → 7/7 passed (ville resolver, bootstrap zones, complétude pro, whitelist démo, idempotence `zones_demandees`, règles plan, coefficients par défaut).
+- Régression Bloc A : `pytest tests/test_a1_normalization.py tests/test_a2_*.py` → **97/97 passed**. Aucune régression.
+- Smoke test frontend (Playwright, mobile 390×844) : 7 écrans onboarding + shell + tour bulle 1 + profil + infos pro : tous validés visuellement.
+
+### Fichiers créés
+- Backend : `b1/__init__.py`, `b1/ville_resolver.py`, `b1/routes.py`, `tests/test_b1_onboarding.py`
+- Frontend : `b1/b1i18n.js`, `b1/b1.css`, `b1/b1api.js`, `b1/B1Icons.jsx`, `b1/demoOpportunites.js`, `b1/B1Onboarding.jsx`, `b1/B1Shell.jsx`
+- Docs : `memory/B1_COPY_FR.md` (copie FR figée), `design_guidelines.json`
+
