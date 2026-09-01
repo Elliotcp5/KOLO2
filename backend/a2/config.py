@@ -29,12 +29,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "tolerance_surface_pct": 0.08,
     "tolerance_surface_plancher_m2": 4,
     "poids": {
-        "rue": 0.25,
-        "geographie": 0.20,
-        "surface": 0.25,
-        "classe_energie": 0.15,
+        "rue": 0.35,
+        "surface": 0.30,
+        "classe_energie": 0.20,
         "type_bien": 0.10,
         "etage": 0.05,
+    },
+    # Multiplicateur géographique — applique EN DEHORS de la somme pondérée
+    # (cf. a3/matching.compute_multiplicateur_geo). Ne bonifie jamais ;
+    # peut neutraliser (0.0 court-circuit) ou pénaliser partiellement.
+    "multiplicateur_geo": {
+        "mult_ecart_prix_25_40": 0.7,
+        "seuil_prix_penalite": 0.25,       # ratio |écart|/médiane
+        "seuil_prix_court_circuit": 0.40,
     },
     "seuil_correspondance": 0.75,
     "seuil_correspondance_location": 0.80,

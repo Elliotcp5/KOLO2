@@ -1,14 +1,24 @@
 """KOLO A3 — Score de correspondance annonce ↔ DPE.
 
-6 sous-scores entre 0 et 1, pondérés par `config_matching.poids`.
-Aucun poids en dur — tous lus depuis la config.
+5 sous-scores pondérés (rue, surface, classe, type, étage) + un
+**multiplicateur géographique** appliqué EN DEHORS de la somme pondérée.
 
-Court-circuits (l'annonce est écartée sans calcul de score global) :
-  - `s_geo == 0` (quartiers non-limitrophes OU écart prix m² > 40%)
-  - `s_rue == 0` ET `s_surface < 0.9` (rues connues des 2 côtés et différentes)
+    score = somme_pondérée × multiplicateur_geo
 
-`motif_court_circuit` retourné pour journalisation : `quartier_non_limitrophe`,
-`prix_m2_incoherent`, ou `rue_differente`.
+Rationale : la concordance de quartier ne prouve rien (toutes les annonces
+d'un CP sont dans les 4 quartiers admin de l'arrondissement, donc la prime
+serait quasi systématique). Seule la DIVERGENCE réfute. Le multiplicateur
+n'ajoute donc jamais rien : il neutralise (0.0 → court-circuit) ou pénalise
+partiellement (0.7 sur écart prix 25-40 %). Sinon 1.0 (neutre).
+
+Multiplicateur géo :
+  - quartiers non limitrophes         → 0.0  (court-circuit `quartier_non_limitrophe`)
+  - écart prix m² > 40 %              → 0.0  (court-circuit `prix_m2_incoherent`)
+  - écart prix m² entre 25 et 40 %    → `mult_ecart_prix_25_40` (défaut 0.7)
+  - reste (même/limitrophe/absent)    → 1.0
+
+Autre court-circuit inchangé : `s_rue == 0` ET `s_surface < 0.9`
+(motif `rue_differente`).
 """
 from __future__ import annotations
 
@@ -74,34 +84,31 @@ def _s_etage(etage_annonce: Optional[int], etage_dpe: Optional[int]) -> float:
         return 0.5
 
 
-def compute_s_geo(
+# ---------------------------------------------------------------------------
+# Multiplicateur géographique (adjacence quartier + écart prix m²)
+# ---------------------------------------------------------------------------
+def compute_multiplicateur_geo(
     quartier_dpe: Optional[str],
     quartier_annonce: Optional[str],
     prix_annonce_m2: Optional[float],
     prix_median_local_m2: Optional[float],
+    mult_ecart_prix_25_40: float = 0.7,
+    seuil_prix_penalite: float = 0.25,
+    seuil_prix_court_circuit: float = 0.40,
 ) -> tuple[float, Optional[str]]:
-    """Sous-score géographique combiné (adjacence quartier + cohérence prix m²).
+    """Retourne `(multiplicateur, motif_court_circuit_ou_None)`.
 
-    Retourne `(s_geo, motif_court_circuit_ou_None)`.
-
-    Adjacence :
-      - même quartier admin → 1.0
-      - quartiers limitrophes → 0.6
-      - quartiers non-limitrophes → 0.0 (court-circuit: `quartier_non_limitrophe`)
-      - un des deux absent → 0.5 (jamais de court-circuit)
-
-    Prix m² local (500 m, 24 mois, même type) :
-      - écart ≤ 25 %                 → pas de pénalité
-      - 25 % < écart ≤ 40 %          → s_geo plafonné à 0.5
-      - écart > 40 %                 → s_geo forcé à 0.0 (court-circuit: `prix_m2_incoherent`)
-      - médiane locale ou prix annonce manquants → pas de pénalité prix
+    Le multiplicateur ne bonifie jamais : il vaut 1.0 par défaut et diminue
+    (0.7 sur écart prix 25-40 %) ou s'annule (0.0 court-circuit) sur signal
+    négatif clair.
     """
-    s = adjacency_score(quartier_dpe, quartier_annonce)
-    # Court-circuit sur quartier non-limitrophe (seul un vrai 0.0 non-absent le déclenche)
-    if s == 0.0:
+    # Adjacence quartier — seul un 0.0 franc (non-limitrophe) court-circuite.
+    # 1.0/0.6/0.5 ne discriminent rien : le multiplicateur reste à 1.0 pour eux.
+    s_adj = adjacency_score(quartier_dpe, quartier_annonce)
+    if s_adj == 0.0:
         return 0.0, "quartier_non_limitrophe"
 
-    # Signal prix — sans effet si l'un des deux est absent/nul
+    # Signal prix m² local
     try:
         p_ann = float(prix_annonce_m2) if prix_annonce_m2 not in (None, "", 0) else None
     except (TypeError, ValueError):
@@ -112,14 +119,14 @@ def compute_s_geo(
         p_med = None
 
     if p_ann is None or p_med is None or p_med <= 0:
-        return s, None
+        return 1.0, None
 
     ecart = abs(p_ann - p_med) / p_med
-    if ecart > 0.40:
+    if ecart > float(seuil_prix_court_circuit):
         return 0.0, "prix_m2_incoherent"
-    if ecart > 0.25:
-        return min(s, 0.5), None
-    return s, None
+    if ecart > float(seuil_prix_penalite):
+        return float(mult_ecart_prix_25_40), None
+    return 1.0, None
 
 
 # ---------------------------------------------------------------------------
@@ -136,37 +143,38 @@ def score_annonce_vs_dpe(
     quartier_dpe: Optional[str] = None,
     quartier_annonce: Optional[str] = None,
     prix_median_local_m2: Optional[float] = None,
+    mult_ecart_prix_25_40: float = 0.7,
+    seuil_prix_penalite: float = 0.25,
+    seuil_prix_court_circuit: float = 0.40,
 ) -> dict[str, Any]:
-    """Score pondéré + breakdown des 6 sous-scores + `motif_court_circuit`.
+    """Retourne `{score, breakdown, court_circuit, motif_court_circuit, multiplicateur_geo}`.
 
     Ordre :
-      1) `s_geo` calculé en 1er (peut court-circuiter tout le reste)
-      2) `s_rue` + `s_surface` (court-circuit rue différente + surface < 0.9)
-      3) `s_classe`, `s_type`, `s_etage`
-      4) somme pondérée
-
-    `motif_court_circuit` prend l'une des valeurs :
-      `quartier_non_limitrophe`, `prix_m2_incoherent`, `rue_differente`, ou None.
+      1) multiplicateur géo — si 0.0 → court-circuit avant tout autre calcul.
+      2) s_rue + s_surface — si `s_rue == 0` ET `s_surface < 0.9` → court-circuit.
+      3) sous-scores restants → somme pondérée × multiplicateur.
     """
-    # 1. s_geo en premier — peut couper court
-    s_geo, motif_geo = compute_s_geo(
-        quartier_dpe,
-        quartier_annonce,
-        annonce.get("price_per_m2"),
-        prix_median_local_m2,
+    # 1. Multiplicateur géo en premier — peut couper court
+    mult, motif_geo = compute_multiplicateur_geo(
+        quartier_dpe, quartier_annonce,
+        annonce.get("price_per_m2"), prix_median_local_m2,
+        mult_ecart_prix_25_40=mult_ecart_prix_25_40,
+        seuil_prix_penalite=seuil_prix_penalite,
+        seuil_prix_court_circuit=seuil_prix_court_circuit,
     )
-    if s_geo == 0.0:
+    if mult == 0.0:
         return {
             "score": 0.0,
             "breakdown": {
-                "rue": 0.0, "geographie": 0.0, "surface": 0.0,
+                "rue": 0.0, "surface": 0.0,
                 "classe_energie": 0.0, "type_bien": 0.0, "etage": 0.0,
             },
+            "multiplicateur_geo": 0.0,
             "court_circuit": True,
             "motif_court_circuit": motif_geo,
         }
 
-    # 2. rue + surface (court-circuit rue vs surface faible)
+    # 2. rue + surface (court-circuit rue différente + surface faible)
     s_rue = _s_rue(annonce.get("rue_extraite"), dpe.get("nom_voie"), s_rue_defaut_null)
     s_surface = _s_surface(
         annonce.get("surface"),
@@ -178,9 +186,10 @@ def score_annonce_vs_dpe(
         return {
             "score": 0.0,
             "breakdown": {
-                "rue": s_rue, "geographie": s_geo, "surface": s_surface,
+                "rue": s_rue, "surface": s_surface,
                 "classe_energie": 0.0, "type_bien": 0.0, "etage": 0.0,
             },
+            "multiplicateur_geo": mult,
             "court_circuit": True,
             "motif_court_circuit": "rue_differente",
         }
@@ -193,21 +202,21 @@ def score_annonce_vs_dpe(
         etage_annonce = annonce.get("floor")
     s_etage = _s_etage(etage_annonce, dpe.get("etage_dpe"))
 
-    # 4. somme pondérée
-    score = (
+    somme = (
         float(poids.get("rue", 0.0)) * s_rue
-        + float(poids.get("geographie", 0.0)) * s_geo
         + float(poids.get("surface", 0.0)) * s_surface
         + float(poids.get("classe_energie", 0.0)) * s_classe
         + float(poids.get("type_bien", 0.0)) * s_type
         + float(poids.get("etage", 0.0)) * s_etage
     )
+    score = somme * mult
     return {
         "score": round(score, 4),
         "breakdown": {
-            "rue": s_rue, "geographie": s_geo, "surface": s_surface,
+            "rue": s_rue, "surface": s_surface,
             "classe_energie": s_classe, "type_bien": s_type, "etage": s_etage,
         },
+        "multiplicateur_geo": mult,
         "court_circuit": False,
         "motif_court_circuit": None,
     }

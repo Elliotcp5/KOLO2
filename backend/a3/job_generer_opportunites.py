@@ -414,51 +414,79 @@ async def _create_opportunite(
 async def _fetch_zone_district_stats(
     client: httpx.AsyncClient, cp: str,
 ) -> dict:
-    """Récupère les listings actifs de la zone et calcule :
+    """Récupère TOUS les listings actifs de la zone (pagination stricte) et
+    calcule :
+      - `active_listings` : count total (Prefer count=exact).
       - `district_fill_rate` : ratio annonces avec district non-vide.
       - `quartier_repartition` : compteur par slug de quartier admin, avec
         une clé spéciale `_inconnu` pour les libellés non mappés et
         `_absent` pour les districts vides.
+
+    PostgREST plafonne à 1000 lignes par requête → on pagine avec `offset`
+    tant qu'on reçoit une page pleine.
     """
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {}
-    try:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/listings",
-            params={
-                "select": "district",
-                "postal_code": f"eq.{cp}",
-                "is_active": "eq.true",
-                "est_logement": "eq.true",
-                "limit": "5000",
-            },
-            headers=_sb_headers(), timeout=20,
-        )
-    except Exception as e:
-        logger.warning(f"a3._fetch_zone_district_stats: {e}")
-        return {}
-    if r.status_code != 200:
-        return {}
-    rows = r.json() or []
-    total = len(rows)
-    if total == 0:
-        return {"district_fill_rate": 0.0, "active_listings": 0, "quartier_repartition": {}}
+    page_size = 1000
+    max_pages = 20  # 20k lignes de sécurité
     filled = 0
     rep: dict[str, int] = {}
-    for row in rows:
-        d = (row.get("district") or "").strip()
-        if not d:
-            rep["_absent"] = rep.get("_absent", 0) + 1
-            continue
-        filled += 1
-        slug, unknown = label_to_quartier(d)
-        if slug:
-            rep[slug] = rep.get(slug, 0) + 1
-        elif unknown:
-            rep["_inconnu"] = rep.get("_inconnu", 0) + 1
+    total_scanned = 0
+    total_exact: Optional[int] = None
+    for page in range(max_pages):
+        params = {
+            "select": "district",
+            "postal_code": f"eq.{cp}",
+            "is_active": "eq.true",
+            "est_logement": "eq.true",
+            "order": "id.asc",   # pagination stable
+            "limit": str(page_size),
+            "offset": str(page * page_size),
+        }
+        headers = {**_sb_headers()}
+        # 1re page : demande le count exact via Range
+        if page == 0:
+            headers["Prefer"] = "count=exact"
+        try:
+            r = await client.get(
+                f"{SUPABASE_URL}/rest/v1/listings",
+                params=params, headers=headers, timeout=20,
+            )
+        except Exception as e:
+            logger.warning(f"a3._fetch_zone_district_stats: {e}")
+            break
+        if r.status_code not in (200, 206):
+            logger.warning(f"a3._fetch_zone_district_stats HTTP {r.status_code}: {r.text[:200]}")
+            break
+        if page == 0:
+            cr = r.headers.get("content-range", "")
+            if "/" in cr:
+                try:
+                    total_exact = int(cr.split("/")[-1])
+                except (ValueError, IndexError):
+                    total_exact = None
+        rows = r.json() or []
+        total_scanned += len(rows)
+        for row in rows:
+            d = (row.get("district") or "").strip()
+            if not d:
+                rep["_absent"] = rep.get("_absent", 0) + 1
+                continue
+            filled += 1
+            slug, unknown = label_to_quartier(d)
+            if slug:
+                rep[slug] = rep.get(slug, 0) + 1
+            elif unknown:
+                rep["_inconnu"] = rep.get("_inconnu", 0) + 1
+        if len(rows) < page_size:
+            break
+    total = total_exact if total_exact is not None else total_scanned
+    if total == 0:
+        return {"district_fill_rate": 0.0, "active_listings": 0, "quartier_repartition": {}}
     return {
         "active_listings": total,
-        "district_fill_rate": round(filled / total, 4),
+        "active_listings_scanned": total_scanned,
+        "district_fill_rate": round(filled / total_scanned, 4) if total_scanned else 0.0,
         "quartier_repartition": rep,
     }
 
@@ -490,6 +518,10 @@ async def _process_zone(
     seuil_pub = float(cfg.get("seuil_publication", 0.70))
     s_rue_null = float(cfg.get("s_rue_defaut_null", 0.5))
     poids = cfg.get("poids") or {}
+    mg = cfg.get("multiplicateur_geo") or {}
+    mult_25_40 = float(mg.get("mult_ecart_prix_25_40", 0.7))
+    seuil_prix_pen = float(mg.get("seuil_prix_penalite", 0.25))
+    seuil_prix_cc = float(mg.get("seuil_prix_court_circuit", 0.40))
 
     stats = {
         "cp": cp, "dpes": len(dpes),
@@ -609,6 +641,9 @@ async def _process_zone(
                 quartier_dpe=quartier_dpe,
                 quartier_annonce=q_ann,
                 prix_median_local_m2=median_m2,
+                mult_ecart_prix_25_40=mult_25_40,
+                seuil_prix_penalite=seuil_prix_pen,
+                seuil_prix_court_circuit=seuil_prix_cc,
             )
             motif_cc = res.get("motif_court_circuit")
             if motif_cc in stats["court_circuits"]:
