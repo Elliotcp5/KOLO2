@@ -31,6 +31,63 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 ---
 
+## 🔭 Feature à construire — Cartes « Biens en vente à surveiller »
+
+**Statut** : décidée, non implémentée. Copie FR à figer avant toute ligne de code.
+
+### Constat qui la motive
+Certaines zones produisent peu d'opportunités de mandat : le 75017 en donne 4 sur 1124 DPE, quand il en classe 478 en « déjà en vente ». Ce stock a une valeur : les portails masquent l'adresse exacte, KOLO l'a.
+
+Un bien simplement mis en vente n'intéresse personne — son propriétaire vient de signer ailleurs. Ce qui intéresse un conseiller, c'est **un bien qui ne se vend pas** : le mandat va se libérer et le vendeur est réceptif.
+
+### Sélection (données)
+Parmi les DPE classés `deja_en_vente` dans `rapprochements`, retenir ceux dont l'annonce rapprochée présente **au moins un** signal de difficulté :
+- `days_on_market` supérieur à **90 jours**, OU
+- `price_drop_count` supérieur ou égal à **1**
+
+**Score de tri décroissant** : `days_on_market / 30 + price_drop_count * 2`.
+
+Exclure les biens déjà signalés ou déjà vus par cet utilisateur (mêmes règles que pour les opportunités).
+
+### Affichage — type de carte distinct
+Jamais mélangé aux opportunités de mandat. Chaque carte affiche :
+- Bandeau **ambre** en haut : « Bien en vente à surveiller »
+- Adresse exacte du DPE + complément ADEME
+- **Deux faits qui justifient la carte**, chiffres bruts, aucune interprétation :
+  - « En ligne depuis 143 jours »
+  - « Prix baissé 2 fois, −8 % »
+- Prix, prix au m², surface, classe DPE
+- Lien vers l'annonce
+- **Aucune formulation incitative.** Pas de « le vendeur est prêt à changer d'agence », pas de « mandat à récupérer ». Les faits, le conseiller juge. Un bien sous mandat exclusif ne se démarche pas sans risque juridique — ce n'est pas à l'app d'y pousser.
+
+### Règles de fonctionnement
+- **Jamais comptées dans `quota_du_jour`** ni dans la barre de progression. Elles s'ajoutent **après** la dernière opportunité de mandat, dans une seconde pile introduite par un titre séparé.
+- **Affichées seulement si `quota_du_jour < 3`** — seuil dans `config_matching`.
+- **Maximum 5 par jour** — également dans `config_matching`.
+- **Réservées au plan Pro.** Un compte Découverte ne les voit jamais.
+- Swipe identique : gauche pour ignorer, droite pour retrouver le bien dans une section dédiée de « Mes opportunités de mandats », clairement séparée des vraies opportunités.
+- Statut propre : `veille_a_surveiller`, `veille_ignoree`, `veille_demarchee`. **N'entrent dans aucun des 3 compteurs de la page Statistiques.**
+
+### Ce que ça ne doit pas devenir
+Ces cartes ne remplacent jamais une opportunité de mandat et ne servent pas à masquer une zone pauvre. Si une zone ne produit que ça pendant plusieurs jours, le **message de zone calme doit quand même apparaître**, au-dessus de la pile de veille.
+
+### Distinction visuelle — non négociable
+Les deux types de cartes doivent être distinguables **au premier coup d'œil, sans lire un mot**.
+- Le rose `#EC8690` est **réservé aux opportunités de mandat**. À bannir de toute carte de veille.
+- Le bandeau **ambre** doit être franchement différent, pas une nuance voisine du rose (choisir `#F59E0B` ou proche, à valider avec la maquette).
+- **Visuel** : opportunités = illustration de bien sur fond rose. Cartes de veille = **photo de l'annonce quand elle existe**, ou fond **neutre gris clair** à défaut.
+- Un conseiller qui feuillette rapidement doit savoir sans réfléchir s'il regarde **une porte à démarcher** ou **un concurrent à surveiller**.
+
+### À valider avant implémentation
+- Copie FR complète (voir message dédié) → validation utilisateur.
+- Traductions EN / IT / DE une fois FR figée.
+- Ambre exact (`#F59E0B` ou autre) et maquette de la carte de veille.
+
+---
+
+
+---
+
 ## 🔮 Session de bascule V2 → B1 (à consigner, aucune implémentation immédiate)
 
 **Contexte** — B1 vit aujourd'hui en parallèle de V2, sans couplage. Le jour de la bascule des 186 comptes existants sur la nouvelle app, une session dédiée sera lancée. Les 6 décisions ci-dessous sont **figées** et doivent être exécutées sans modification.
