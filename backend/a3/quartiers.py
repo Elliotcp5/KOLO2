@@ -1,0 +1,265 @@
+"""KOLO A3 — Quartiers administratifs de Paris.
+
+Fournit :
+  - `point_to_quartier(lat, lng)` : détermine le quartier admin d'un point
+    (ray-casting sur le geojson officiel Ville de Paris — 80 quartiers).
+  - `label_to_quartier(district)`  : mappe un libellé commercial de portail
+    (« Ternes-Maillot », « Prony / Parc Monceau »…) vers un slug de quartier
+    admin. Retourne `(None, is_unknown=True)` pour tout libellé non reconnu,
+    et journalise le libellé pour audit ultérieur.
+  - `adjacency_score(slug_a, slug_b)` : 1.0 même quartier, 0.6 limitrophes,
+    0.0 non-limitrophes, 0.5 si l'un des deux est absent (None).
+
+L'adjacence est calculée automatiquement au 1er appel : deux quartiers sont
+adjacents s'ils partagent au moins 2 sommets exacts sur leurs polygones.
+Vérifié sur le 17e — Ternes/Plaine/Batignolles/Épinettes — ne détecte que
+les vraies adjacences (cas A15 : Épinettes vs Plaine de Monceaux = 0).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import unicodedata
+from threading import Lock
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+_DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "quartiers_paris.geojson")
+
+_LOAD_LOCK = Lock()
+_FEATURES: Optional[list[dict]] = None       # [{slug, l_qu, c_ar, bbox, coords}]
+_ADJACENCY: Optional[dict[str, set[str]]] = None
+_UNKNOWN_LABELS_SEEN: set[str] = set()
+
+
+# ---------------------------------------------------------------------------
+# Table de correspondance : libellés commerciaux (portails) → slug quartier
+# admin. Volontairement en dur, incrémentable au fil des libellés observés.
+# Toute clé absente est journalisée par `label_to_quartier` et compte comme
+# "district absent" côté matching (score 0.5, pas de court-circuit).
+# ---------------------------------------------------------------------------
+LABEL_TO_QUARTIER: dict[str, str] = {
+    # ---- 17e arrondissement ---------------------------------------------
+    # Ternes
+    "ternes": "ternes",
+    "ternes-maillot": "ternes",
+    "ternes maillot": "ternes",
+    "ternes - maillot": "ternes",
+    "champerret-berthier": "ternes",
+    "champerret berthier": "ternes",
+    "champerret - berthier": "ternes",
+    "champerret": "ternes",
+    "porte maillot": "ternes",
+    # Plaine de Monceaux
+    "plaine de monceaux": "plaine-de-monceaux",
+    "plaine-de-monceaux": "plaine-de-monceaux",
+    "pereire-malesherbes": "plaine-de-monceaux",
+    "pereire malesherbes": "plaine-de-monceaux",
+    "pereire": "plaine-de-monceaux",
+    "courcelles-wagram": "plaine-de-monceaux",
+    "courcelles wagram": "plaine-de-monceaux",
+    "courcelles - wagram": "plaine-de-monceaux",
+    "courcelles": "plaine-de-monceaux",
+    "wagram": "plaine-de-monceaux",
+    "prony / parc monceau": "plaine-de-monceaux",
+    "prony/parc monceau": "plaine-de-monceaux",
+    "prony parc monceau": "plaine-de-monceaux",
+    "prony": "plaine-de-monceaux",
+    "parc monceau": "plaine-de-monceaux",
+    "monceau": "plaine-de-monceaux",
+    "malesherbes": "plaine-de-monceaux",
+    # Batignolles
+    "batignolles": "batignolles",
+    "batignolles-cardinet": "batignolles",
+    "batignolles cardinet": "batignolles",
+    "batignolles - cardinet": "batignolles",
+    "cardinet": "batignolles",
+    "legendre - levis": "batignolles",
+    "legendre levis": "batignolles",
+    "legendre-levis": "batignolles",
+    "porte de clichy": "batignolles",
+    # Épinettes
+    "epinettes": "epinettes",
+    "épinettes": "epinettes",
+    "guy moquet": "epinettes",
+    "guy môquet": "epinettes",
+    "guy-moquet": "epinettes",
+    "guy-môquet": "epinettes",
+    "la fourche - guy moquet": "epinettes",
+    "la fourche guy moquet": "epinettes",
+    "epinettes - bessieres": "epinettes",
+    "epinettes bessieres": "epinettes",
+    "porte de saint-ouen": "epinettes",
+    "porte de saint ouen": "epinettes",
+}
+
+
+def _slugify(name: str) -> str:
+    """« Plaine de Monceaux » -> « plaine-de-monceaux »."""
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFKD", str(name))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower().strip()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    return s.strip("-")
+
+
+def _normalize_label(label: str) -> str:
+    """Normalisation pour lookup :
+      - lowercase + accents supprimés
+      - retire les préfixes bruit portails : « paris 17e arrondissement - »,
+        « paris 75017 », « paris 17e - », « 17e arrondissement - » …
+      - retire un suffixe pareil (rare mais safe)
+      - compacte les espaces
+    """
+    if not label:
+        return ""
+    s = unicodedata.normalize("NFKD", str(label))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower().strip()
+    s = re.sub(r"\s+", " ", s)
+    # Retire les préfixes « paris [7501x|17e|17eme|17e arrondissement] [- ]* »
+    # itérativement pour absorber les combinaisons.
+    for _ in range(3):
+        new = re.sub(
+            r"^(?:paris\s+)?(?:\d{5}\s+)?(?:\d{1,2}(?:e|eme|er|ere)?\s+arrondissement)?\s*[-–—]?\s*",
+            "",
+            s,
+        )
+        if new == s:
+            break
+        s = new.strip()
+    # Retire un « paris » ou un CP orphelin restant en tête
+    s = re.sub(r"^(?:paris\s+)?(?:\d{5}\s+)?", "", s).strip()
+    return s
+
+
+def _load_features() -> list[dict]:
+    """Charge le geojson une seule fois. Retourne une liste allégée avec bbox."""
+    global _FEATURES
+    if _FEATURES is not None:
+        return _FEATURES
+    with _LOAD_LOCK:
+        if _FEATURES is not None:
+            return _FEATURES
+        with open(_DATA_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        feats: list[dict] = []
+        for f in data.get("features", []):
+            props = f.get("properties") or {}
+            geom = f.get("geometry") or {}
+            if geom.get("type") != "Polygon":
+                continue
+            ring = geom["coordinates"][0]  # anneau extérieur, [lng, lat]
+            xs = [c[0] for c in ring]
+            ys = [c[1] for c in ring]
+            feats.append({
+                "slug": _slugify(props.get("l_qu") or ""),
+                "l_qu": props.get("l_qu"),
+                "c_ar": props.get("c_ar"),
+                "ring": ring,
+                "bbox": (min(xs), min(ys), max(xs), max(ys)),
+            })
+        _FEATURES = feats
+        return _FEATURES
+
+
+def _point_in_ring(lng: float, lat: float, ring: list[list[float]]) -> bool:
+    """Ray casting classique. `ring` est une liste de [lng, lat]."""
+    inside = False
+    n = len(ring)
+    if n < 3:
+        return False
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > lat) != (yj > lat)) and (
+            lng < (xj - xi) * (lat - yi) / (yj - yi + 1e-15) + xi
+        ):
+            inside = not inside
+        j = i
+    return inside
+
+
+def point_to_quartier(lat: Optional[float], lng: Optional[float]) -> Optional[str]:
+    """Retourne le slug du quartier admin contenant (lat, lng). None si hors Paris."""
+    if lat is None or lng is None:
+        return None
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return None
+    for feat in _load_features():
+        min_x, min_y, max_x, max_y = feat["bbox"]
+        if lng < min_x or lng > max_x or lat < min_y or lat > max_y:
+            continue
+        if _point_in_ring(lng, lat, feat["ring"]):
+            return feat["slug"]
+    return None
+
+
+def label_to_quartier(district: Optional[str]) -> tuple[Optional[str], bool]:
+    """Mappe un libellé commercial vers un slug de quartier admin.
+
+    Retourne `(slug, is_unknown)`.
+      - `slug` = None si non reconnu (ou district vide).
+      - `is_unknown` = True si le libellé est non-vide mais inconnu (à
+        journaliser). False si le district est vide (absence légitime).
+    """
+    if not district:
+        return None, False
+    key = _normalize_label(district)
+    if not key:
+        return None, False
+    slug = LABEL_TO_QUARTIER.get(key)
+    if slug:
+        return slug, False
+    # Libellé non reconnu → log une fois par run
+    if key not in _UNKNOWN_LABELS_SEEN:
+        _UNKNOWN_LABELS_SEEN.add(key)
+        logger.warning(f"quartiers.label_to_quartier: libellé inconnu {key!r}")
+    return None, True
+
+
+def _compute_adjacency() -> dict[str, set[str]]:
+    """Deux quartiers sont adjacents s'ils partagent ≥ 2 sommets exacts.
+
+    Vérifié sur le 17e : détecte Ternes↔Plaine, Plaine↔Batignolles,
+    Batignolles↔Épinettes, et rejette bien Épinettes↔Plaine (cas A15).
+    """
+    global _ADJACENCY
+    if _ADJACENCY is not None:
+        return _ADJACENCY
+    feats = _load_features()
+    # Un set de sommets arrondis par quartier
+    slugs: list[str] = []
+    sets: list[set[tuple[float, float]]] = []
+    for f in feats:
+        slugs.append(f["slug"])
+        sets.append({(round(c[0], 6), round(c[1], 6)) for c in f["ring"]})
+    adj: dict[str, set[str]] = {s: set() for s in slugs}
+    for i in range(len(slugs)):
+        for j in range(i + 1, len(slugs)):
+            if len(sets[i] & sets[j]) >= 2:
+                adj[slugs[i]].add(slugs[j])
+                adj[slugs[j]].add(slugs[i])
+    _ADJACENCY = adj
+    return _ADJACENCY
+
+
+def adjacency_score(slug_a: Optional[str], slug_b: Optional[str]) -> float:
+    """1.0 même quartier ; 0.6 limitrophes ; 0.0 non-limitrophes ; 0.5 si absent."""
+    if not slug_a or not slug_b:
+        return 0.5
+    if slug_a == slug_b:
+        return 1.0
+    adj = _compute_adjacency()
+    if slug_b in adj.get(slug_a, set()):
+        return 0.6
+    return 0.0

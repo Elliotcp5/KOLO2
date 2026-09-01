@@ -55,8 +55,11 @@ _CANONICAL_ALIASES: dict[str, list[str]] = {
     "ventilation":               ["type_ventilation"],
     "vitrage":                   ["type_vitrage"],
     "zone_climatique":           ["zone_climatique"],
-    "latitude":                  ["_geopoint_lat", "coordonnee_cartographique_y_ban"],
-    "longitude":                 ["_geopoint_lon", "coordonnee_cartographique_x_ban"],
+    # `_geopoint` = "lat,lng" en WGS84 côté ADEME. Priorité au geopoint,
+    # les coordonnees_cartographique_*_ban sont en Lambert93 (unsuitable).
+    "geopoint":                  ["_geopoint"],
+    "latitude":                  ["_geopoint_lat"],
+    "longitude":                 ["_geopoint_lon"],
 }
 
 
@@ -127,6 +130,17 @@ def _canonical_from_row(row: dict, schema: SchemaResolver) -> dict:
         real = schema.field(canonical)
         if real and real in row:
             out[canonical] = row[real]
+    # Le champ ADEME `_geopoint` est un string "lat,lng" en WGS84. On le
+    # parse en latitude/longitude si non déjà remplis (les aliases Lambert93
+    # ont été retirés — cf. commentaire du mapping).
+    gp = out.get("geopoint")
+    if gp and out.get("latitude") is None:
+        try:
+            lat_s, lng_s = str(gp).split(",", 1)
+            out["latitude"] = float(lat_s)
+            out["longitude"] = float(lng_s)
+        except (ValueError, AttributeError):
+            pass
     # Toujours conserver tout le row brut pour audit
     out["_raw"] = row
     return out

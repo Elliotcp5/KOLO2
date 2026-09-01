@@ -40,8 +40,8 @@ class TestConfigMatchingLive:
             assert k in cfg, f"missing key: {k}"
         # Poids exacts
         assert cfg["poids"] == {
-            "rue": 0.35, "surface": 0.30, "classe_energie": 0.20,
-            "type_bien": 0.10, "etage": 0.05,
+            "rue": 0.25, "geographie": 0.20, "surface": 0.25,
+            "classe_energie": 0.15, "type_bien": 0.10, "etage": 0.05,
         }
         # Somme des poids = 1.0
         assert abs(sum(cfg["poids"].values()) - 1.0) < 1e-6
@@ -57,13 +57,14 @@ class TestConfigMatchingLive:
         assert r.status_code == 200
         cfg = r.json()["config"]
         assert cfg["poids"]["rue"] == 0.40
-        assert cfg["poids"]["surface"] == 0.30  # préservé
-        assert cfg["poids"]["classe_energie"] == 0.20
+        assert cfg["poids"]["surface"] == 0.25  # préservé
+        assert cfg["poids"]["classe_energie"] == 0.15
+        assert cfg["poids"]["geographie"] == 0.20
         # Restaure valeur initiale pour ne pas contaminer les autres tests
         httpx.patch(
             f"{BASE}/api/admin/config-matching",
             headers=_hh_admin(),
-            json={"updates": {"poids": {"rue": 0.35}}},
+            json={"updates": {"poids": {"rue": 0.25}}},
             timeout=10,
         )
 

@@ -16,7 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### Marketing Site Mobile Fixes & Features Rewrite (Feb 24, 2026) 🔥 LATEST
+### A3 s_geo — Sous-score géographique + circuit-breaker (Sep 1, 2026) 🔥 LATEST
+- Ajout du sous-score `s_geo` combinant adjacence de quartier admin Paris (GeoJSON open data, 80 quartiers, point-in-polygon + adjacence auto par sommets communs) et cohérence prix m² local (mutations_propres, 500 m, 24 mois, même type).
+- Règles :
+  - Adjacence : même quartier = 1.0 · limitrophes = 0.6 · non-limitrophes = 0.0 · absent = 0.5
+  - Prix : écart ≤ 25 % neutre · 25-40 % plafonne à 0.5 · > 40 % force à 0.0
+- **Circuit-breaker** : `s_geo == 0` → annonce écartée sans calcul de score, motif journalisé dans `rapprochements` (`quartier_non_limitrophe`, `prix_m2_incoherent`, `rue_differente`).
+- Nouveaux poids par défaut : `rue=0.25, geographie=0.20, surface=0.25, classe_energie=0.15, type_bien=0.10, etage=0.05`.
+- Correction critique dans `a3/sources/ademe.py` : les DPE utilisaient `coordonnee_cartographique_*_ban` (Lambert93) comme lat/lng WGS84 → tous les DPE tombaient hors polygone. Bascule sur `_geopoint` (string "lat,lng" WGS84).
+- Table `LABEL_TO_QUARTIER` étendue + normalisation qui absorbe les préfixes portails (« Paris 17e Arrondissement - », « Paris 75017 »).
+- Fix index `enrichissements.id_parcelle_1` (unique sans sparse) → recréé en `partialFilterExpression { $type: string }` pour supporter les DPE sans parcelle.
+- Résultats run 75017 (1124 DPE) : 3 opportunités (score confiance moyen 0.844), 338 déjà en vente, 783 filtrés. Court-circuits : 28 481 `quartier_non_limitrophe`, 15 609 `rue_differente`, 7 254 `prix_m2_incoherent`. Un seul libellé district non mappé (« Grandes Carrières - Clichy »).
+- Tests A1/A2/A3 : 168/168 pass.
+
+### Marketing Site Mobile Fixes & Features Rewrite (Feb 24, 2026)
 - **Hero mobile aéré** : marge lead→CTA passée à 44px (au lieu de 32), respiration correcte texte→bouton
 - **Mockups mobile rapprochés** : `.mkt-mockup-stage` isolé en `@media (max-width: 767px)` (height 360px, phones 160px, glow 380px, margin-top 8px). Le bug d'override par la règle tablet `@media (max-width: 1023px)` a été corrigé en la scoping à `min-width: 768px and max-width: 1023px`
 - **Section fonctionnalités refondue** — copy ultra-clair orienté agent immo :

@@ -27,6 +27,7 @@ import httpx
 from a2.config import get_config
 from a2.tz import now_utc_iso, to_paris
 from a3.matching import score_annonce_vs_dpe
+from a3.quartiers import label_to_quartier, point_to_quartier
 from a3.sources.ademe import fetch_dpe_recents, get_schema
 from a3.sources.ban import geocode
 from a3.sources.cadastre import get_or_fetch_parcelle
@@ -86,7 +87,7 @@ async def _fetch_candidates(
     params = {
         "select": ("id,portal,title,description,price,surface,rooms,city,postal_code,"
                    "rue_extraite,etage_extrait,floor,energy_class,type_normalise,url,"
-                   "thumbnail_url,last_seen_at"),
+                   "thumbnail_url,last_seen_at,district,price_per_m2,latitude,longitude"),
         "postal_code": f"eq.{code_postal}",
         "transaction": f"eq.{transaction}",
         "type_normalise": f"eq.{type_norm}",
@@ -104,6 +105,114 @@ async def _fetch_candidates(
         logger.warning(f"a3.fetch_candidates HTTP {r.status_code}: {r.text[:200]}")
         return []
     return r.json() or []
+
+
+# ---------------------------------------------------------------------------
+# Prix médian local (500 m, 24 mois, même type_local) — signal `s_geo`.
+# Mise en cache par (lat_100m, lng_100m, type) sur la durée d'un run pour
+# éviter de rappeler Supabase à chaque couple DPE-annonce.
+# ---------------------------------------------------------------------------
+import math
+from statistics import median as _stat_median
+
+_EARTH_R_M = 6371000.0
+
+
+def _round_100m(lat: Optional[float], lng: Optional[float]) -> Optional[tuple[float, float]]:
+    """Arrondit un couple lat/lng à la centaine de mètres la plus proche.
+    En latitude, 0.001° ≈ 111 m. On garde 3 décimales — suffisant pour du cache."""
+    if lat is None or lng is None:
+        return None
+    try:
+        return round(float(lat), 3), round(float(lng), 3)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bbox_500m(lat: float, lng: float, radius_m: float = 500.0) -> tuple[float, float, float, float]:
+    d_lat = (radius_m / _EARTH_R_M) * (180.0 / math.pi)
+    cos_lat = max(math.cos(math.radians(lat)), 1e-6)
+    d_lng = (radius_m / (_EARTH_R_M * cos_lat)) * (180.0 / math.pi)
+    return lat - d_lat, lat + d_lat, lng - d_lng, lng + d_lng
+
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * _EARTH_R_M * math.asin(math.sqrt(a))
+
+
+_TYPE_TO_TYPE_LOCAL = {"appartement": "Appartement", "maison": "Maison"}
+
+
+async def _fetch_median_local_m2(
+    client: httpx.AsyncClient,
+    lat: float,
+    lng: float,
+    type_norm: str,
+    cache: dict[tuple, Optional[float]],
+) -> Optional[float]:
+    """Médiane du prix/m² dans un rayon de 500 m sur 24 mois, même type_local.
+
+    `cache` est un dict passé par l'appelant et rempli au fil du run pour
+    ne pas rappeler Supabase à chaque couple DPE-annonce.
+    """
+    type_local = _TYPE_TO_TYPE_LOCAL.get(type_norm)
+    if not type_local:
+        return None
+    key100 = _round_100m(lat, lng)
+    if key100 is None:
+        return None
+    cache_key = (key100[0], key100[1], type_local)
+    if cache_key in cache:
+        return cache[cache_key]
+
+    since_iso = (datetime.now(timezone.utc) - timedelta(days=365 * 2)).date().isoformat()
+    lat_min, lat_max, lng_min, lng_max = _bbox_500m(lat, lng, 500.0)
+    params = [
+        ("select", "prix_m2,latitude,longitude"),
+        ("type_local", f"eq.{type_local}"),
+        ("date_mutation", f"gte.{since_iso}"),
+        ("latitude", f"gte.{lat_min}"),
+        ("latitude", f"lte.{lat_max}"),
+        ("longitude", f"gte.{lng_min}"),
+        ("longitude", f"lte.{lng_max}"),
+        ("prix_m2", "not.is.null"),
+        ("limit", "500"),
+    ]
+    try:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/mutations_propres",
+            params=params, headers=_sb_headers(), timeout=15,
+        )
+    except Exception as e:
+        logger.warning(f"a3.fetch_median_local_m2: supabase error {e}")
+        cache[cache_key] = None
+        return None
+    if r.status_code != 200:
+        logger.warning(f"a3.fetch_median_local_m2 HTTP {r.status_code}: {r.text[:200]}")
+        cache[cache_key] = None
+        return None
+    values: list[float] = []
+    for row in r.json() or []:
+        try:
+            rlat = float(row.get("latitude"))
+            rlng = float(row.get("longitude"))
+            if _haversine_m(lat, lng, rlat, rlng) > 500.0:
+                continue
+            v = float(row.get("prix_m2"))
+            if v > 0:
+                values.append(v)
+        except (TypeError, ValueError):
+            continue
+    if not values:
+        cache[cache_key] = None
+        return None
+    med = round(_stat_median(values))
+    cache[cache_key] = med
+    return med
 
 
 async def _get_zone_scraping_state(db, cp: str, client: httpx.AsyncClient) -> dict[str, Any]:
@@ -302,6 +411,58 @@ async def _create_opportunite(
     return opp_id
 
 
+async def _fetch_zone_district_stats(
+    client: httpx.AsyncClient, cp: str,
+) -> dict:
+    """Récupère les listings actifs de la zone et calcule :
+      - `district_fill_rate` : ratio annonces avec district non-vide.
+      - `quartier_repartition` : compteur par slug de quartier admin, avec
+        une clé spéciale `_inconnu` pour les libellés non mappés et
+        `_absent` pour les districts vides.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return {}
+    try:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/listings",
+            params={
+                "select": "district",
+                "postal_code": f"eq.{cp}",
+                "is_active": "eq.true",
+                "est_logement": "eq.true",
+                "limit": "5000",
+            },
+            headers=_sb_headers(), timeout=20,
+        )
+    except Exception as e:
+        logger.warning(f"a3._fetch_zone_district_stats: {e}")
+        return {}
+    if r.status_code != 200:
+        return {}
+    rows = r.json() or []
+    total = len(rows)
+    if total == 0:
+        return {"district_fill_rate": 0.0, "active_listings": 0, "quartier_repartition": {}}
+    filled = 0
+    rep: dict[str, int] = {}
+    for row in rows:
+        d = (row.get("district") or "").strip()
+        if not d:
+            rep["_absent"] = rep.get("_absent", 0) + 1
+            continue
+        filled += 1
+        slug, unknown = label_to_quartier(d)
+        if slug:
+            rep[slug] = rep.get(slug, 0) + 1
+        elif unknown:
+            rep["_inconnu"] = rep.get("_inconnu", 0) + 1
+    return {
+        "active_listings": total,
+        "district_fill_rate": round(filled / total, 4),
+        "quartier_repartition": rep,
+    }
+
+
 async def _process_zone(
     db, client: httpx.AsyncClient, cp: str, cfg: dict, destinataire: dict,
 ) -> dict:
@@ -338,9 +499,15 @@ async def _process_zone(
         "rue_dpe_via_nom_voie": 0,
         "rue_dpe_via_adresse": 0,
         "rue_dpe_null": 0,
+        "court_circuits": {
+            "rue_differente": 0, "quartier_non_limitrophe": 0, "prix_m2_incoherent": 0,
+        },
+        "libelles_district_inconnus": [],
     }
 
     seen_addresses: dict[str, dict] = {}  # dedup DPE
+    _libelles_inconnus_set: set[str] = set()
+    _median_cache: dict[tuple, Optional[float]] = {}
 
     for dpe_raw in dpes:
         dpe = dict(dpe_raw)
@@ -412,12 +579,61 @@ async def _process_zone(
             tolerance_pct, tolerance_plancher,
         )
 
+        # --- s_geo : quartier admin du DPE (via lat/lng BAN, une fois) -----
+        dpe_lat, dpe_lng = dpe.get("latitude"), dpe.get("longitude")
+        quartier_dpe = point_to_quartier(dpe_lat, dpe_lng)
+
+        async def _score_and_track(ann: dict) -> dict:
+            """Résout quartier annonce + prix médian local, puis score.
+            Journalise motif_court_circuit dans rapprochements pour les cas
+            qui écartent l'annonce des candidates.
+            """
+            q_ann, is_unknown = label_to_quartier(ann.get("district"))
+            if is_unknown:
+                lbl = (ann.get("district") or "").strip()
+                if lbl and lbl not in _libelles_inconnus_set:
+                    _libelles_inconnus_set.add(lbl)
+                    stats["libelles_district_inconnus"].append(lbl)
+            # Prix médian local autour du DPE (cache par 100m + type)
+            median_m2: Optional[float] = None
+            if dpe_lat is not None and dpe_lng is not None:
+                try:
+                    median_m2 = await _fetch_median_local_m2(
+                        client, float(dpe_lat), float(dpe_lng), type_norm, _median_cache,
+                    )
+                except (TypeError, ValueError):
+                    median_m2 = None
+            res = score_annonce_vs_dpe(
+                ann, dpe, poids, tolerance_pct, tolerance_plancher,
+                s_rue_defaut_null=s_rue_null,
+                quartier_dpe=quartier_dpe,
+                quartier_annonce=q_ann,
+                prix_median_local_m2=median_m2,
+            )
+            motif_cc = res.get("motif_court_circuit")
+            if motif_cc in stats["court_circuits"]:
+                stats["court_circuits"][motif_cc] += 1
+                # Journal léger — permet à l'audit de retrouver l'annonce écartée
+                await _log_rapprochement(db, {
+                    "dpe_id": dpe.get("numero_dpe"), "code_postal": cp,
+                    "adresse_dpe": dpe.get("adresse"),
+                    "decision": "candidate_ecartee",
+                    "motif_court_circuit": motif_cc,
+                    "listing_id_ecarte": str(ann.get("id")) if ann.get("id") is not None else None,
+                    "rue_dpe": dpe.get("nom_voie"),
+                    "rue_annonce": ann.get("rue_extraite"),
+                    "quartier_dpe": quartier_dpe,
+                    "quartier_annonce": q_ann,
+                    "price_per_m2_annonce": ann.get("price_per_m2"),
+                    "prix_median_local_m2": median_m2,
+                })
+            return res
+
         best_v_score = 0.0
         best_v_annonce: Optional[dict] = None
         best_v_breakdown: Optional[dict] = None
         for ann in cand_v:
-            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher,
-                                     s_rue_defaut_null=s_rue_null)
+            r = await _score_and_track(ann)
             if r["score"] > best_v_score:
                 best_v_score = r["score"]
                 best_v_annonce = ann
@@ -425,8 +641,7 @@ async def _process_zone(
 
         best_l_score = 0.0
         for ann in cand_l:
-            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher,
-                                     s_rue_defaut_null=s_rue_null)
+            r = await _score_and_track(ann)
             if r["score"] > best_l_score:
                 best_l_score = r["score"]
 
@@ -508,6 +723,12 @@ async def _process_zone(
     stats["facteurs"] = {
         "fraicheur": f_fraicheur, "couverture": f_couverture, "location": f_location,
     }
+    # Stats zone : taux de remplissage district + répartition quartier admin
+    try:
+        zone_stats = await _fetch_zone_district_stats(client, cp)
+        stats.update(zone_stats)
+    except Exception as e:
+        logger.warning(f"a3._fetch_zone_district_stats failed for {cp}: {e}")
     return stats
 
 
