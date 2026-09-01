@@ -414,12 +414,14 @@ async def _process_zone(
 
         best_v_score = 0.0
         best_v_annonce: Optional[dict] = None
+        best_v_breakdown: Optional[dict] = None
         for ann in cand_v:
             r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher,
                                      s_rue_defaut_null=s_rue_null)
             if r["score"] > best_v_score:
                 best_v_score = r["score"]
                 best_v_annonce = ann
+                best_v_breakdown = r["breakdown"]
 
         best_l_score = 0.0
         for ann in cand_l:
@@ -432,12 +434,16 @@ async def _process_zone(
             stats["deja_en_vente"] += 1
             await _log_rapprochement(db, {
                 "dpe_id": dpe.get("numero_dpe"), "code_postal": cp,
+                "adresse_dpe": dpe.get("adresse"),
+                "surface_dpe": dpe.get("surface_habitable"),
+                "classe_dpe": dpe.get("classe_dpe"),
                 "decision": "deja_en_vente",
                 "nb_candidates_vente": len(cand_v), "nb_candidates_location": len(cand_l),
                 "meilleur_score_vente": best_v_score, "meilleur_score_location": best_l_score,
                 "listing_id_retenu": str((best_v_annonce or {}).get("id")) if best_v_annonce else None,
                 "rue_dpe": dpe.get("nom_voie"),
                 "rue_annonce_retenue": (best_v_annonce or {}).get("rue_extraite"),
+                "breakdown": best_v_breakdown,
                 "score_confiance": None,
             })
             continue
@@ -462,9 +468,16 @@ async def _process_zone(
             stats["motifs"][motif] = stats["motifs"].get(motif, 0) + 1
             await _log_rapprochement(db, {
                 "dpe_id": dpe.get("numero_dpe"), "code_postal": cp,
+                "adresse_dpe": dpe.get("adresse"),
+                "surface_dpe": dpe.get("surface_habitable"),
+                "classe_dpe": dpe.get("classe_dpe"),
                 "decision": "filtre", "motif_filtre": motif,
+                "nb_candidates_vente": len(cand_v), "nb_candidates_location": len(cand_l),
                 "meilleur_score_vente": best_v_score, "meilleur_score_location": best_l_score,
+                "listing_id_retenu": str((best_v_annonce or {}).get("id")) if best_v_annonce else None,
                 "rue_dpe": dpe.get("nom_voie"),
+                "rue_annonce_retenue": (best_v_annonce or {}).get("rue_extraite"),
+                "breakdown": best_v_breakdown,
                 "score_confiance": round(score_confiance, 4),
             })
             continue

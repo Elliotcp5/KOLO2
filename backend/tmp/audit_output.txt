@@ -1,0 +1,248 @@
+
+================================================================================
+ÉCHANTILLON A: 20 lignes score_confiance_sous_seuil
+================================================================================
+
+--- A 1  score_vente=0.725  score_confiance=0.240 ---
+  DPE     : 8 Rue des Dardanelles 75017 Paris
+            rue_dpe=dardanelles | surface=9.4m² | classe=F
+  ANNONCE : PARIS 17EME PORTE DE CHAMPERET - CHAMBRE DE SERVICE MEUBLÉE
+            rue_extraite=(null) | surface=9m² | classe=F | bienici
+            URL: https://www.bienici.com/annonce/apimo-87139718
+  BREAKDOWN: rue=0.3 surface=0.90 classe=1.0 type=1.0 etage=1.0
+
+--- A 2  score_vente=0.637  score_confiance=0.317 ---
+  DPE     : 85b Avenue de Wagram 75017 Paris
+            rue_dpe=wagram | surface=140.5m² | classe=E
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=141m² | classe=D | seloger
+            URL: https://www.seloger.com/annonces/achat/appartement/paris-17eme-75/champerret-berthier/272095323.htm
+  BREAKDOWN: rue=0.3 surface=0.96 classe=0.6 type=1.0 etage=0.5
+
+--- A 3  score_vente=0.723  score_confiance=0.242 ---
+  DPE     : 6 Rue Déodat de Séverac 75017 Paris
+            rue_dpe=deodat severac | surface=20.1m² | classe=E
+  ANNONCE : Studio 1 pièce 20 m²
+            rue_extraite=(null) | surface=20m² | classe=E | leboncoin
+            URL: https://www.leboncoin.fr/ad/ventes_immobilieres/3258465412
+  BREAKDOWN: rue=0.3 surface=0.97 classe=1.0 type=1.0 etage=0.5
+
+--- A 4  score_vente=0.617  score_confiance=0.334 ---
+  DPE     : 9 Rue Edouard Detaille 75017 Paris
+            rue_dpe=edouard detaille | surface=197.6m² | classe=F
+  ANNONCE : Appartement à vendre Paris
+            rue_extraite=(null) | surface=198m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/netty-company54466zys-appt-73373
+  BREAKDOWN: rue=0.3 surface=0.97 classe=0.6 type=1.0 etage=0.0
+
+--- A 5  score_vente=0.740  score_confiance=0.227 ---
+  DPE     : 27 Rue de Lévis 75017 Paris
+            rue_dpe=levis | surface=22.8m² | classe=E
+  ANNONCE : Appartement  1 pièce(s)
+            rue_extraite=(null) | surface=23m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/immo-facile-58619550
+  BREAKDOWN: rue=0.3 surface=0.95 classe=1.0 type=1.0 etage=1.0
+
+--- A 6  score_vente=0.715  score_confiance=0.249 ---
+  DPE     : 13B Avenue Stéphane Mallarmé 75017 Paris
+            rue_dpe=stephane mallarme | surface=11.8m² | classe=D
+  ANNONCE : PARIS 17EME- MARCHE LEBON- STUDIO EN DERNIER ETAGE AVEC ASCENSUER ET VUE DEGAGEE
+            rue_extraite=(null) | surface=12m² | classe=D | bienici
+            URL: https://www.bienici.com/annonce/apimo-86918224
+  BREAKDOWN: rue=0.3 surface=0.95 classe=1.0 type=1.0 etage=0.5
+
+--- A 7  score_vente=0.722  score_confiance=0.242 ---
+  DPE     : 5 Rue des Renaudes 75017 Paris
+            rue_dpe=renaudes | surface=145.3m² | classe=E
+  ANNONCE : Paris 17e - COURCELLES / TERNES / PARC MONCEAU - RUE DES RENAUDES - Appartement - 5 pièces - 145,30m
+            rue_extraite=(null) | surface=145m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/apimo-87173255
+  BREAKDOWN: rue=0.3 surface=0.97 classe=1.0 type=1.0 etage=0.5
+
+--- A 8  score_vente=0.730  score_confiance=0.236 ---
+  DPE     : 28 Rue des Moines 75017 Paris
+            rue_dpe=moines | surface=68.0m² | classe=E
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=68m² | classe=E | seloger
+            URL: https://www.seloger.com/annonces/achat/appartement/paris-17eme-75/271555489.htm
+  BREAKDOWN: rue=0.3 surface=1.00 classe=1.0 type=1.0 etage=0.5
+
+--- A 9  score_vente=0.728  score_confiance=0.238 ---
+  DPE     : 2 Rue Gounod 75017 Paris
+            rue_dpe=gounod | surface=175.1m² | classe=E
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=175m² | classe=E | seloger
+            URL: https://www.seloger.com/annonces/achat/appartement/paris-17eme-75/pereire-malesherbes/260442897.htm
+  BREAKDOWN: rue=0.3 surface=0.99 classe=1.0 type=1.0 etage=0.5
+
+--- A10  score_vente=0.700  score_confiance=0.262 ---
+  DPE     : 109 Rue Lemercier 75017 Paris
+            rue_dpe=lemercier | surface=44.6m² | classe=F
+  ANNONCE : Appartement Paris 3 pièces 45.5 m2
+            rue_extraite=(null) | surface=45m² | classe=F | bienici
+            URL: https://www.bienici.com/annonce/laforet-immo-facile-52835486
+  BREAKDOWN: rue=0.3 surface=0.90 classe=1.0 type=1.0 etage=0.5
+
+--- A11  score_vente=0.730  score_confiance=0.236 ---
+  DPE     : 68 Rue Laugier 75017 Paris
+            rue_dpe=laugier | surface=33.0m² | classe=E
+  ANNONCE : Appartement 1 pièce 33 m²
+            rue_extraite=(null) | surface=33m² | classe=E | leboncoin
+            URL: https://www.leboncoin.fr/ad/ventes_immobilieres/3219562542
+  BREAKDOWN: rue=0.3 surface=1.00 classe=1.0 type=1.0 etage=0.5
+
+--- A12  score_vente=0.682  score_confiance=0.277 ---
+  DPE     : 9 Rue Fortuny 75017 Paris
+            rue_dpe=fortuny | surface=27.7m² | classe=D
+  ANNONCE : Paris 17e - CHASSEURS / TOCQUEVILLE - Appartement - Studio - 28.83m² loi Carrez - Balcon
+            rue_extraite=(null) | surface=28m² | classe=D | bienici
+            URL: https://www.bienici.com/annonce/apimo-87060611
+  BREAKDOWN: rue=0.3 surface=0.92 classe=1.0 type=1.0 etage=0.0
+
+--- A13  score_vente=0.715  score_confiance=0.249 ---
+  DPE     : 26 Rue Jouffroy d'Abbans 75017 Paris
+            rue_dpe=jouffroy abbans | surface=16.2m² | classe=E
+  ANNONCE : IDEAL PREMIER ACHAT OU INVESTISSEMENT LOCATIF
+            rue_extraite=(null) | surface=16m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/laforet-immo-facile-52511576
+  BREAKDOWN: rue=0.3 surface=0.95 classe=1.0 type=1.0 etage=0.5
+
+--- A14  score_vente=0.718  score_confiance=0.247 ---
+  DPE     : 7 Rue Belidor 75017 Paris
+            rue_dpe=belidor | surface=37.5m² | classe=F
+  ANNONCE : Paris 17è - Avenue des Ternes - 2 pièces de 38,98 m² - 3è étage sur cour
+            rue_extraite=(null) | surface=38m² | classe=F | bienici
+            URL: https://www.bienici.com/annonce/immo-facile-60845424
+  BREAKDOWN: rue=0.3 surface=0.88 classe=1.0 type=1.0 etage=1.0
+
+--- A15  score_vente=0.620  score_confiance=0.332 ---
+  DPE     : 44 Rue de la Jonquière 75017 Paris
+            rue_dpe=jonquiere | surface=135.9m² | classe=B
+  ANNONCE : Paris XVIIe - Prony / Parc Monceau
+            rue_extraite=(null) | surface=137m² | classe=C | bienici
+            URL: https://www.bienici.com/annonce/apimo-84708592
+  BREAKDOWN: rue=0.3 surface=0.90 classe=0.6 type=1.0 etage=0.5
+
+--- A16  score_vente=0.671  score_confiance=0.287 ---
+  DPE     : 11 Rue Roger Bacon 75017 Paris
+            rue_dpe=roger bacon | surface=51.2m² | classe=G
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=52m² | classe=G | century21
+            URL: https://www.century21.fr/trouver_logement/detail/937629033/
+  BREAKDOWN: rue=0.3 surface=0.80 classe=1.0 type=1.0 etage=0.5
+
+--- A17  score_vente=0.635  score_confiance=0.318 ---
+  DPE     : 65 Rue Pierre Demours 75017 Paris
+            rue_dpe=pierre demours | surface=130.7m² | classe=D
+  ANNONCE : Paris 17- Etoile - Elegance Haussmannienne - Profession Libérale - Climatisation
+            rue_extraite=(null) | surface=134m² | classe=D | bienici
+            URL: https://www.bienici.com/annonce/apimo-87166699
+  BREAKDOWN: rue=0.3 surface=0.68 classe=1.0 type=1.0 etage=0.5
+
+--- A18  score_vente=0.700  score_confiance=0.262 ---
+  DPE     : 13B Rue du Débarcadère 75017 Paris
+            rue_dpe=debarcadere | surface=21.6m² | classe=G
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=22m² | classe=G | seloger
+            URL: https://www.seloger.com/annonces/achat/appartement/paris-17eme-75/ternes-maillot/276107509.htm
+  BREAKDOWN: rue=0.3 surface=0.90 classe=1.0 type=1.0 etage=0.5
+
+--- A19  score_vente=0.730  score_confiance=0.236 ---
+  DPE     : 33 Rue Laugier 75017 Paris
+            rue_dpe=laugier | surface=27.0m² | classe=E
+  ANNONCE : Annonce
+            rue_extraite=(null) | surface=27m² | classe=E | seloger
+            URL: https://www.seloger.com/annonces/achat/appartement/paris-17eme-75/batignolles-cardinet/272219965.htm
+  BREAKDOWN: rue=0.3 surface=1.00 classe=1.0 type=1.0 etage=0.5
+
+--- A20  score_vente=0.640  score_confiance=0.314 ---
+  DPE     : 12 Rue Jean Moréas 75017 Paris
+            rue_dpe=jean moreas | surface=31.2m² | classe=C
+  ANNONCE : PARIS 17 EME - TOCQUEVILLE / LEVIS - 2 PIECES EN PARFAIT ETAT
+            rue_extraite=(null) | surface=30m² | classe=C | bienici
+            URL: https://www.bienici.com/annonce/apimo-87294531
+  BREAKDOWN: rue=0.3 surface=0.70 classe=1.0 type=1.0 etage=0.5
+
+================================================================================
+ÉCHANTILLON B: 10 lignes deja_en_vente
+================================================================================
+
+--- B 1  score_vente=0.780 ---
+  DPE     : 88 Boulevard des Batignolles 75017 Paris
+            rue_dpe=batignolles | surface=36.8m² | classe=G
+  ANNONCE : A vendre - Paris 17 - Batignolles - T2 - 38m² - idéal investisseur
+            rue_extraite=batignolles | surface=38m² | classe=F | bienici
+            URL: https://www.bienici.com/annonce/nestenn-1-99939429574
+  BREAKDOWN: rue=1.0 surface=0.70 classe=0.6 type=1.0 etage=0.0
+
+--- B 2  score_vente=0.900 ---
+  DPE     : 47 Boulevard Bessières 75017 Paris
+            rue_dpe=bessieres | surface=23.0m² | classe=E
+  ANNONCE : Charmant studio sur cour
+            rue_extraite=bessieres | surface=22m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/ag752345-531049859
+  BREAKDOWN: rue=1.0 surface=0.75 classe=1.0 type=1.0 etage=0.5
+
+--- B 3  score_vente=0.840 ---
+  DPE     : 2 Rue des Batignolles 75017 Paris
+            rue_dpe=batignolles | surface=23.2m² | classe=E
+  ANNONCE : Appartement 2P 25m² Paris 17E
+            rue_extraite=batignolles | surface=25m² | classe=E | pap
+            URL: https://www.pap.fr/annonces/appartement-paris-17e-75017-r463901544
+  BREAKDOWN: rue=1.0 surface=0.55 classe=1.0 type=1.0 etage=0.5
+
+--- B 4  score_vente=0.810 ---
+  DPE     : 108 Rue Cardinet 75017 Paris
+            rue_dpe=cardinet | surface=28.2m² | classe=E
+  ANNONCE : 2 PIECES 26.2m2 PARFAIT ETAT
+            rue_extraite=cardinet | surface=26m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/ag754271-538608053
+  BREAKDOWN: rue=1.0 surface=0.45 classe=1.0 type=1.0 etage=0.5
+
+--- B 5  score_vente=0.915 ---
+  DPE     : 178 Boulevard Pereire 75017 Paris
+            rue_dpe=pereire | surface=75.1m² | classe=D
+  ANNONCE : PARIS 17 EME - PEREIRE / SAINT URSULE 3/4 PIECES
+            rue_extraite=pereire | surface=75m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/apimo-86840324
+  BREAKDOWN: rue=1.0 surface=0.98 classe=0.6 type=1.0 etage=1.0
+
+--- B 6  score_vente=0.833 ---
+  DPE     : 60 Rue des Batignolles 75017 Paris
+            rue_dpe=batignolles | surface=28.9m² | classe=D
+  ANNONCE : BELLE OPPORTUNITÉ
+            rue_extraite=batignolles | surface=27m² | classe=D | bienici
+            URL: https://www.bienici.com/annonce/immo-facile-60945331
+  BREAKDOWN: rue=1.0 surface=0.53 classe=1.0 type=1.0 etage=0.5
+
+--- B 7  score_vente=0.955 ---
+  DPE     : 128 Boulevard de Courcelles 75017 Paris
+            rue_dpe=courcelles | surface=21.6m² | classe=F
+  ANNONCE : Studio - Dernier étage avec ascenseur - Boulevard de Courcelles, Paris 17e
+            rue_extraite=courcelles | surface=21m² | classe=F | bienici
+            URL: https://www.bienici.com/annonce/laforet-immo-facile-52892043
+  BREAKDOWN: rue=1.0 surface=0.85 classe=1.0 type=1.0 etage=1.0
+
+--- B 8  score_vente=0.850 ---
+  DPE     : 13 Rue des Épinettes 75017 Paris
+            rue_dpe=epinettes | surface=33.4m² | classe=E
+  ANNONCE : EPINETTES<br>Venez découvrir cet appartement lumineux au 5e étage avec ascenseur et balcon, à 2 min 
+            rue_extraite=epinettes | surface=34m² | classe=D | bienici
+            URL: https://www.bienici.com/annonce/century-21-202_2576_3095
+  BREAKDOWN: rue=1.0 surface=0.85 classe=0.6 type=1.0 etage=0.5
+
+--- B 9  score_vente=0.890 ---
+  DPE     : 27 Rue Saint-Ferdinand 75017 Paris
+            rue_dpe=saint ferdinand | surface=84.1m² | classe=D
+  ANNONCE : COEUR SAINT FERDINAND - BELLE COPROPRIETE - GRAND POTENTIEL
+            rue_extraite=saint ferdinand | surface=84m² | classe=E | bienici
+            URL: https://www.bienici.com/annonce/laforet-immo-facile-21578136
+  BREAKDOWN: rue=1.0 surface=0.99 classe=0.6 type=1.0 etage=0.5
+
+--- B10  score_vente=0.887 ---
+  DPE     : 99 Rue des Moines 75017 Paris
+            rue_dpe=moines | surface=35.1m² | classe=F
+  ANNONCE : Appartement à vendre 2 pièces avec cave PARIS 17EME ARRONDISSEMENT (75) - rue Guy Môquet - 34 m2 Loi
+            rue_extraite=moines | surface=35m² | classe=G | bienici
+            URL: https://www.bienici.com/annonce/ag340369-510244052
+  BREAKDOWN: rue=1.0 surface=0.97 classe=0.6 type=1.0 etage=0.5
