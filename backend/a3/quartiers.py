@@ -77,6 +77,8 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "batignolles cardinet": "batignolles",
     "batignolles - cardinet": "batignolles",
     "cardinet": "batignolles",
+    "clichy batignolles": "batignolles",
+    "clichy-batignolles": "batignolles",
     "legendre - levis": "batignolles",
     "legendre levis": "batignolles",
     "legendre-levis": "batignolles",
@@ -136,6 +138,24 @@ def _normalize_label(label: str) -> str:
     # Retire un « paris » ou un CP orphelin restant en tête
     s = re.sub(r"^(?:paris\s+)?(?:\d{5}\s+)?", "", s).strip()
     return s
+
+
+_SLUG_TO_LIBELLE_CACHE: Optional[dict[str, str]] = None
+
+
+def slug_to_libelle(slug: Optional[str]) -> Optional[str]:
+    """Retourne le libellé officiel Ville de Paris pour un slug de quartier
+    (`epinettes` → « Epinettes », `plaine-de-monceaux` → « Plaine de Monceaux »).
+    Utile côté ingestion pour écrire un `district` humain lisible et
+    directement re-mappable par `label_to_quartier`.
+    """
+    global _SLUG_TO_LIBELLE_CACHE
+    if _SLUG_TO_LIBELLE_CACHE is None:
+        feats = _load_features()
+        _SLUG_TO_LIBELLE_CACHE = {f["slug"]: (f.get("l_qu") or f["slug"]) for f in feats}
+    if not slug:
+        return None
+    return _SLUG_TO_LIBELLE_CACHE.get(slug)
 
 
 def _load_features() -> list[dict]:

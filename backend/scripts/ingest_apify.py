@@ -321,7 +321,13 @@ async def _upsert_batch(client: httpx.AsyncClient, rows: list[dict]) -> int:
     if not rows:
         return 0
     total = 0
+    # Cache par process : si la colonne `district_source` n'existe pas côté
+    # Supabase (migration A3 pas encore appliquée), on strip la clé et on ne
+    # réessaie plus pour les chunks suivants.
+    strip_district_source = getattr(_upsert_batch, "_strip_district_source", False)
     for chunk in _chunks(rows, CHUNK_SIZE):
+        if strip_district_source:
+            chunk = [{k: v for k, v in r.items() if k != "district_source"} for r in chunk]
         try:
             r = await client.post(
                 f"{SUPABASE_URL}/rest/v1/listings",
@@ -333,7 +339,30 @@ async def _upsert_batch(client: httpx.AsyncClient, rows: list[dict]) -> int:
             if r.status_code in (200, 201, 204):
                 total += len(chunk)
             else:
-                logger.warning(f"Supabase upsert HTTP {r.status_code}: {r.text[:200]}")
+                body = (r.text or "")[:500]
+                # Colonne district_source absente → strip et retry ce chunk
+                if not strip_district_source and "district_source" in body and "PGRST" in body:
+                    logger.warning(
+                        "Supabase upsert: colonne `district_source` absente "
+                        "(migration A3_listings_district_source.sql non appliquée). "
+                        "Strip du champ pour ce run."
+                    )
+                    strip_district_source = True
+                    _upsert_batch._strip_district_source = True
+                    stripped = [{k: v for k, v in row.items() if k != "district_source"} for row in chunk]
+                    r2 = await client.post(
+                        f"{SUPABASE_URL}/rest/v1/listings",
+                        params={"on_conflict": "portal,external_id"},
+                        headers=_sb_headers(prefer="resolution=merge-duplicates,return=minimal"),
+                        json=stripped,
+                        timeout=25,
+                    )
+                    if r2.status_code in (200, 201, 204):
+                        total += len(stripped)
+                    else:
+                        logger.warning(f"Supabase upsert retry HTTP {r2.status_code}: {r2.text[:200]}")
+                else:
+                    logger.warning(f"Supabase upsert HTTP {r.status_code}: {body[:200]}")
         except Exception as e:
             logger.warning(f"Supabase upsert failed: {e}")
     return total

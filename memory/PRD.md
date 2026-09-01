@@ -16,7 +16,18 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 s_geo v2 — Multiplicateur géo + vérité terrain (Sep 1, 2026) 🔥 LATEST
+### A3 district resolver — Ingestion enrichie (Sep 1, 2026) 🔥 LATEST
+Les 4 portails qui ne remplissaient jamais `district` (seloger, pap, safti, century21 — 309 annonces sur 75017) sont désormais résolus à l'ingestion.
+- Nouveau module `a3/district_resolver.py` avec 3 stratégies par ordre de fiabilité : `url` (slug SeLoger `/paris-17eme-75/<slug>/<id>.htm`), `texte` (regex sur titre/description contre `LABEL_TO_QUARTIER`), `coordonnees` (point-in-polygon sur lat/lng). Retourne `(district_libelle, source)`.
+- `LABEL_TO_QUARTIER` étendu : ajout de `clichy batignolles` (ZAC dans le quartier Batignolles).
+- Migration `A3_listings_district_source.sql` : nouvelle colonne `district_source` (à appliquer manuellement côté Supabase — accès psql direct non dispo).
+- Ingestion : `normalization.py` appelle le resolver quand le portail ne fournit rien. `scripts/ingest_apify.py::_upsert_batch` robuste (strip `district_source` + retry si colonne pas encore créée).
+- Backfill : `scripts/backfill_district.py --cp 75017` — 222/309 listings résolus (176 via URL SeLoger, 32 via texte PAP, 14 via coordonnées Safti). Les 87 non résolus : 44 seloger (URL sans slug), 32 pap (description sans quartier), 11 century21 (tout vide).
+- **Taux `district` 75017 : 71.8 % → 92.1 %** (+20 pts).
+- Run 75017 après backfill : 1124 DPE · 477 `deja_en_vente` (-22 vs run précédent, mieux discriminé) · **4 opportunités** (score confiance moyen 0.7486). Court-circuits : 36 789 quartier (+29 %), 14 951 rue, 6 145 prix.
+- Jeu de test vérité terrain : **2/2 BLOQUANTS ✅** (Renaudes → deja_en_vente, Jonquière → opportunite). Sur les indicatifs, **Gounod bascule maintenant en deja_en_vente ✅** ; Wagram et Pierre Demours restent en opportunité (faux positifs assumés).
+
+### A3 s_geo v2 — Multiplicateur géo + vérité terrain (Sep 1, 2026)
 Le sous-score `geographie` en terme pondéré (v1) accordait une prime quasi systématique (toutes les annonces d'un CP sont dans les 4 quartiers admin) et faisait passer des faux positifs. Refonte :
 - `geographie` devient un **multiplicateur EXTERNE** appliqué à la somme pondérée. Ne bonifie jamais (max 1.0), pénalise (0.7 sur écart prix 25-40 %) ou court-circuite (0.0 sur quartier non-limitrophe ou écart prix > 40 %). Configurable via `config_matching.multiplicateur_geo` (`mult_ecart_prix_25_40`, `seuil_prix_penalite`, `seuil_prix_court_circuit`).
 - Poids restaurés : `rue 0.35 · surface 0.30 · classe 0.20 · type 0.10 · étage 0.05` (somme = 1.0).

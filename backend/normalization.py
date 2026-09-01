@@ -499,10 +499,32 @@ def enrich_from_apify_row(listing: dict, row: dict) -> dict:
     listing["status"] = _status(_first(row.get("status"), row.get("state")))
 
     # --- Découpage administratif ---
-    listing["district"] = _first(
+    district_from_portal = _first(
         row.get("district"), row.get("neighborhood"), row.get("quartier"),
         row.get("arrondissement"),
     )
+    # Fallback résolveur (URL SeLoger / texte / lat-lng) pour les sources
+    # qui ne remplissent JAMAIS district (seloger/pap/safti/century21). Ne
+    # tourne QUE si le portail lui-même n'a rien renseigné.
+    if not district_from_portal:
+        try:
+            from a3.district_resolver import resolve_district
+            resolved, source = resolve_district(
+                portal=listing.get("portal"),
+                url=listing.get("url"),
+                title=listing.get("title"),
+                description=listing.get("description"),
+                latitude=listing.get("latitude"),
+                longitude=listing.get("longitude"),
+            )
+            listing["district"] = resolved
+            listing["district_source"] = source
+        except Exception:
+            listing["district"] = None
+            listing["district_source"] = None
+    else:
+        listing["district"] = district_from_portal
+        listing["district_source"] = "portail"
     pc = listing.get("postal_code")
     dept_auto = None
     if pc and len(str(pc)) >= 2:
