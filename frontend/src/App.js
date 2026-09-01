@@ -73,6 +73,11 @@ import {
   ProfilDeletePage as B1ProfilDeletePage,
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
+import {
+  VeillePileDuJourPage as B1VeillePileDuJourPage,
+  MesVeilleSuivisPage as B1MesVeilleSuivisPage,
+  VeillePaywall as B1VeillePaywall,
+} from "./b1/B1Veille";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -229,6 +234,10 @@ const AppRouter = () => {
       <Route path="/app-b1/profil/zones" element={<B1ProfilZonesPage />} />
       <Route path="/app-b1/profil/paiement" element={<B1ProfilPaiementPage />} />
       <Route path="/app-b1/profil/supprimer" element={<B1ProfilDeletePage />} />
+      {/* Veille — Pro uniquement (paywall si Découverte) */}
+      <Route path="/app-b1/veille" element={<B1VeillePileDuJourPage />} />
+      <Route path="/app-b1/veille/paywall" element={<B1VeillePaywall />} />
+      <Route path="/app-b1/veille/suivis" element={<B1MesVeilleSuivisPage />} />
 
       {/* Protected routes */}
       <Route 

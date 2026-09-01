@@ -649,6 +649,15 @@ STRINGS.de = {
 
 const SUPPORTED = ['fr', 'en', 'it', 'de'];
 
+// Merge veille namespace (defined in a separate file for readability)
+try {
+  // eslint-disable-next-line global-require
+  const veille = require('./b1i18nVeille').default || {};
+  for (const l of SUPPORTED) {
+    if (veille[l]) Object.assign(STRINGS[l], veille[l]);
+  }
+} catch (_e) { /* optional */ }
+
 export const getB1Locale = () => {
   try {
     const l = (localStorage.getItem('kolo_locale') || '').toLowerCase();

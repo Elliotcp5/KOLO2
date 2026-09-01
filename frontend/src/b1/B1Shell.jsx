@@ -106,6 +106,7 @@ export function OpportunitesPage() {
   const [showTour, setShowTour] = useState(() => localStorage.getItem('kolo_b1_show_tour') === '1');
   const [idx, setIdx] = useState(0);
   const [items] = useState(() => DEMO_OPPORTUNITES);
+  const [veilleDispo, setVeilleDispo] = useState(false);
   const cur = items[idx];
   const closeTour = useCallback(() => {
     localStorage.removeItem('kolo_b1_show_tour');
@@ -113,6 +114,24 @@ export function OpportunitesPage() {
     setShowTour(false);
   }, []);
   const next = () => setIdx((i) => Math.min(i + 1, items.length));
+
+  // Fin de pile atteinte → vérifie si une pile de veille est disponible pour cet
+  // utilisateur (Pro + quota_du_jour < seuil + zones couvertes ayant des cartes).
+  // 402 pour Découverte → on n'affiche jamais l'intercalaire.
+  useEffect(() => {
+    if (idx < items.length) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { veilleApi } = await import('./B1Veille');
+        const r = await veilleApi.fileDuJour();
+        if (cancelled) return;
+        setVeilleDispo(r.actif && (r.cartes || []).length > 0);
+      } catch (_e) { /* 402 Découverte ou 401 anonyme → pas d'intercalaire */ }
+    })();
+    return () => { cancelled = true; };
+  }, [idx, items.length]);
+
   return (
     <div className="b1-root">
       <div className="b1-shell">
@@ -122,9 +141,9 @@ export function OpportunitesPage() {
             onStats={() => navigate('/app-b1/rapport')}
           />
           <div className="b1-opp-header">
-            <div className="b1-opp-count">{idx + 1}/{items.length}</div>
+            <div className="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length}</div>
             <div className="b1-progress-track" style={{ margin: '8px 40px' }}>
-              <div className="b1-progress-fill" style={{ width: `${((idx + 1) / items.length) * 100}%` }} />
+              <div className="b1-progress-fill" style={{ width: `${(Math.min(idx + 1, items.length) / items.length) * 100}%` }} />
             </div>
             <div className="b1-opp-title">Opportunités de mandats quotidiennes</div>
           </div>
@@ -155,6 +174,14 @@ export function OpportunitesPage() {
                 </button>
               </div>
             </div>
+          ) : veilleDispo ? (
+            // Intercalaire — ambre franc, jamais rose, jamais dans la pile d'opps.
+            <React.Suspense fallback={null}>
+              <VeilleIntercalaireLazy
+                onOuvrir={() => navigate('/app-b1/veille')}
+                onPlusTard={() => setVeilleDispo(false)}
+              />
+            </React.Suspense>
           ) : (
             <div className="b1-opp-empty" data-testid="b1-opp-empty">
               <p>Vous avez consulté toutes vos opportunités du moment.</p>
@@ -168,6 +195,11 @@ export function OpportunitesPage() {
     </div>
   );
 }
+
+// Lazy-loaded veille intercalaire — evite le cycle d'import
+const VeilleIntercalaireLazy = React.lazy(() =>
+  import('./B1Veille').then((m) => ({ default: m.VeilleIntercalaire }))
+);
 
 // ============================================================================
 // Placeholder pages (Estimation / Rapport / Assistant)
@@ -231,6 +263,7 @@ export function ProfilPage() {
     { id: 'perso', to: '/app-b1/profil/perso', icon: User, label: b1t('profil.menu.perso') },
     { id: 'pro', to: '/app-b1/profil/pro', icon: HeadphonesIcon, label: b1t('profil.menu.pro') },
     { id: 'zones', to: '/app-b1/profil/zones', icon: MapPin, label: b1t('profil.menu.zones') },
+    { id: 'veille', to: '/app-b1/veille/suivis', icon: Compass, label: b1t('veille.section.titre') },
     { id: 'paiement', to: '/app-b1/profil/paiement', icon: CreditCard, label: b1t('profil.menu.paiement') },
     { id: 'tour', to: '/app-b1', icon: Compass, label: b1t('profil.menu.tour'), onSelect: () => localStorage.setItem('kolo_b1_show_tour', '1') },
     { id: 'support', to: 'mailto:contact@trykolo.io', icon: HeadphonesIcon, label: b1t('profil.menu.support'), external: true },

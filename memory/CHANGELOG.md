@@ -261,3 +261,47 @@ Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onbo
 - Frontend : `b1/b1i18n.js`, `b1/b1.css`, `b1/b1api.js`, `b1/B1Icons.jsx`, `b1/demoOpportunites.js`, `b1/B1Onboarding.jsx`, `b1/B1Shell.jsx`
 - Docs : `memory/B1_COPY_FR.md` (copie FR figée), `design_guidelines.json`
 
+
+## 1er septembre 2026 — BLOC B / Cartes « Biens en vente à surveiller »
+
+### Backend
+- `a2/config.py` — nouveau bloc `veille` : `min_days_on_market=90`, `dom_cap_days=180`, `price_drop_weight=2`, `seuil_quota_du_jour=3`, `max_par_jour=5`. `ensure_config_seeded` complète non destructivement les configs existantes.
+- `a3/job_generer_opportunites.py` — extension **sans job séparé** : à chaque `deja_en_vente`, `_maybe_insert_veille_card()` évalue signaux (`days_on_market > 90` OU `price_drop_count ≥ 1`) et insère dans `veille_cards`. Idempotent sur `(dpe_id, listing_id)`. Score = `min(dom, 180) / 30 + price_drop_count * 2`. `_fetch_candidates` élargi à `first_seen_at`, `posted_at`, `days_on_market`, `price_drop_count`, `price_drop_pct`, `previous_price`.
+- `b1/routes.py` — 3 endpoints :
+  - `GET /api/me/veille` — Pro uniquement (402 Découverte), n'affiche rien si `quota_du_jour ≥ 3`, capé à 5, exclut cartes déjà actionnées, tri `score_veille` DESC.
+  - `PATCH /api/me/veille/{listing_id}/statut` — statuts propres : `veille_a_surveiller` / `veille_ignoree` / `veille_demarchee`, **jamais dans les compteurs de la page Statistiques**.
+  - `GET /api/me/veille/suivis` — liste des biens marqués à suivre.
+
+### Frontend
+- `b1i18nVeille.js` — namespace `veille.*` FR/EN/IT/DE (30+ clés).
+- `b1Veille.css` — ambre franc `#F59E0B`, fond gris neutre `#F1F5F9`. **Rose banni** sur toute carte veille.
+- `B1Veille.jsx` — 4 composants : `VeilleCard`, `VeilleIntercalaire`, `VeillePileDuJourPage`, `VeillePaywall`, `MesVeilleSuivisPage`.
+- `B1Shell.jsx` — intercalaire ambre à la fin de la pile opportunités (Pro uniquement, quota du jour < seuil). Nouvelle entrée profil « Biens en vente à surveiller ».
+- Routes : `/app-b1/veille`, `/app-b1/veille/paywall`, `/app-b1/veille/suivis`.
+
+### Textes-clés imposés (dans `b1i18nVeille.js`)
+- Bandeau : « Bien en vente à surveiller »
+- Fait ancienneté : « Annoncé depuis {n} jours »
+- Baisse simple : « Prix baissé une fois, −{pct} % » (jamais « 1 fois »)
+- Baisse multiple : « Prix baissé {n} fois, −{pct} % »
+- Boutons : « Passer » / « Marquer à suivre »
+- Source : « Source : annonce en ligne » (jamais nommer le portail)
+- Intercalaire : « Vous avez vu toutes vos opportunités de mandats du jour. »
+
+### Ce qui est banni (commentaire en tête de `B1Veille.jsx`)
+- Jamais « mandat à récupérer », « à démarcher », « opportunité », « mandat exclusif/simple » en surimpression
+- Jamais de barre de progression sur la pile veille
+- Jamais d'insertion dans la pile opportunités
+- Rose `#EC8690` **interdit** sur toute carte veille
+
+### Tests
+- 7 tests pytest `test_b1_veille.py` : config defaults, signal min, DOM cap 180, baisse seule suffit, idempotence, plan Pro requis.
+- Régression : **111/111 tests** verts.
+- Smoke visuel : paywall FR + carte veille rendue « 12 rue Ampère », « Annoncé depuis 143 jours » + « Prix baissé 2 fois, −8 % », chip ambre overlay, aucun rose.
+
+### Fichiers
+- Backend : `tests/test_b1_veille.py` + patchs `a2/config.py`, `a3/job_generer_opportunites.py`, `b1/routes.py`
+- Frontend : `b1/b1i18nVeille.js`, `b1/b1Veille.css`, `b1/B1Veille.jsx` + patchs `b1/B1Shell.jsx`, `App.js`
+- Docs : `memory/B1_VEILLE_COPY_FR.md`, ajout PRD
+
+

@@ -1,0 +1,236 @@
+/* =============================================================
+   KOLO — Cartes « Biens en vente à surveiller »
+   Ambre franc `#F59E0B`. Rose `#EC8690` INTERDIT sur ces cartes.
+   ============================================================= */
+.b1-root {
+  --veille-amber: #F59E0B;
+  --veille-amber-dark: #B45309;
+  --veille-amber-tint: rgba(245, 158, 11, 0.10);
+  --veille-neutral-bg: #F1F5F9;
+  --veille-neutral-text: #475569;
+}
+
+/* Chip ambre en overlay coin haut-gauche */
+.b1-veille-chip {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: var(--veille-amber);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 6px 12px;
+  border-radius: var(--b1-radius-pill);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35);
+  z-index: 2;
+}
+
+/* Carte de veille — grise/neutre, jamais rose */
+.b1-veille-card {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 0 0 20px;
+  box-shadow: var(--b1-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+.b1-veille-photo {
+  aspect-ratio: 1 / 0.75;
+  background: var(--veille-neutral-bg);
+  color: var(--veille-neutral-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.b1-veille-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.b1-veille-body {
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.b1-veille-adresse {
+  color: var(--b1-text-primary);
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+.b1-veille-complement {
+  color: var(--b1-text-secondary);
+  font-size: 13px;
+  margin: 0;
+}
+.b1-veille-fait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--veille-amber-dark);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.b1-veille-fait svg { flex-shrink: 0; }
+.b1-veille-carac {
+  color: var(--b1-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.b1-veille-lien {
+  color: var(--veille-amber-dark);
+  font-size: 14px;
+  font-weight: 700;
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.b1-veille-source {
+  align-self: flex-start;
+  background: var(--veille-neutral-bg);
+  color: var(--veille-neutral-text);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: var(--b1-radius-pill);
+}
+
+/* Actions — couleurs neutres et ambre, jamais roses */
+.b1-veille-actions {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 14px 0 4px;
+}
+.b1-veille-action-btn {
+  min-width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: var(--b1-shadow-card);
+}
+.b1-veille-action-btn:active { transform: scale(0.92); }
+.b1-veille-action-btn--skip {
+  background: #fff;
+  color: var(--b1-text-muted);
+  border: 1px solid var(--b1-border);
+}
+.b1-veille-action-btn--watch {
+  background: var(--veille-amber);
+  color: #fff;
+}
+
+/* Intercalaire entre les deux piles */
+.b1-veille-inter {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 28px 24px;
+  box-shadow: var(--b1-shadow-card);
+  text-align: center;
+  border-top: 4px solid var(--veille-amber);
+}
+.b1-veille-inter-titre {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--b1-text-primary);
+  margin: 0 0 8px;
+  line-height: 1.25;
+}
+.b1-veille-inter-sous {
+  font-size: 14px;
+  color: var(--b1-text-secondary);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.b1-veille-inter-cta {
+  background: var(--veille-amber);
+  color: #fff;
+  min-height: 52px;
+  padding: 14px 24px;
+  border-radius: var(--b1-radius-pill);
+  font-size: 16px;
+  font-weight: 700;
+  width: 100%;
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              background 160ms ease;
+  box-shadow: 0 10px 20px -4px rgba(245, 158, 11, 0.4);
+}
+.b1-veille-inter-cta:active {
+  background: var(--veille-amber-dark);
+  transform: scale(0.97);
+}
+.b1-veille-inter-lien {
+  display: block;
+  margin-top: 14px;
+  color: var(--b1-text-muted);
+  font-size: 14px;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Section « Biens en vente à surveiller » (dans les suivis) */
+.b1-veille-suivi-item {
+  background: var(--b1-card);
+  border-radius: var(--b1-radius-card);
+  padding: 16px;
+  box-shadow: var(--b1-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.b1-veille-suivi-adresse {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--b1-text-primary);
+  margin: 0;
+}
+.b1-veille-suivi-fait {
+  font-size: 13px;
+  color: var(--veille-amber-dark);
+  font-weight: 600;
+}
+.b1-veille-suivi-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  align-items: center;
+}
+.b1-veille-suivi-lien {
+  color: var(--veille-amber-dark);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.b1-veille-suivi-retirer {
+  color: var(--b1-text-muted);
+  font-size: 13px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 4px 0;
+}

@@ -533,3 +533,137 @@ async def ensure_b1_bootstrap(db) -> None:
             },
             upsert=True,
         )
+
+
+# ---------------------------------------------------------------------------
+# Cartes « Biens en vente à surveiller » — Pro uniquement
+# ---------------------------------------------------------------------------
+async def _quota_du_jour(user: dict) -> int:
+    """Nombre d'opportunités de mandat déjà vues aujourd'hui par cet utilisateur.
+
+    Utilisé pour décider si la pile de veille s'affiche (seuil_quota_du_jour).
+    """
+    from a2.tz import period_bounds_utc
+    start, end = period_bounds_utc("quotidien")
+    q = {
+        "user_id": user["user_id"],
+        "date_creation": {"$gte": start.isoformat(), "$lt": end.isoformat()},
+    }
+    try:
+        return await _db().opportunites.count_documents(q)
+    except Exception:
+        return 0
+
+
+@router.get("/api/me/veille")
+async def get_my_veille(request: Request):
+    """Retourne la file de veille du jour pour l'utilisateur.
+
+    Règles :
+    - Pro uniquement (402 pour Découverte / Agence sans plan Pro).
+    - Ne se déclenche que si le quota du jour < `seuil_quota_du_jour` (défaut 3).
+    - Cappé à `max_par_jour` (défaut 5).
+    - Filtré par les zones perso de l'utilisateur.
+    - Trié par `score_veille` décroissant.
+    - Exclut les cartes déjà actionnées (`veille_ignoree`, `veille_a_surveiller`,
+      `veille_demarchee`) par cet utilisateur.
+    """
+    user = await _current_user_doc(request)
+    plan = _plan_effectif(user)
+    if plan != "pro":
+        raise HTTPException(status_code=402, detail={"code": "veille_pro_only", "plan": plan})
+
+    from a2.config import get_config
+    cfg = await get_config(_db())
+    v = (cfg.get("veille") or {})
+    seuil = int(v.get("seuil_quota_du_jour", 3))
+    max_par_jour = int(v.get("max_par_jour", 5))
+
+    quota = await _quota_du_jour(user)
+    if quota >= seuil:
+        return {
+            "ok": True, "actif": False, "raison": "quota_du_jour_atteint",
+            "quota_du_jour": quota, "cartes": [],
+        }
+
+    zones = user.get("zones_perso") or []
+    if not zones:
+        return {"ok": True, "actif": True, "cartes": []}
+
+    # Actions utilisateur → set de listing_id à exclure
+    actions_cur = _db().veille_actions.find(
+        {"user_id": user["user_id"]}, {"listing_id": 1}
+    )
+    seen = {a["listing_id"] async for a in actions_cur if a.get("listing_id")}
+
+    cur = _db().veille_cards.find({"code_postal": {"$in": zones}}, {"_id": 1}).limit(0)
+    docs = _db().veille_cards.find(
+        {"code_postal": {"$in": zones}}
+    ).sort("score_veille", -1)
+    cartes = []
+    async for d in docs:
+        if d.get("listing_id") in seen:
+            continue
+        d["id"] = str(d.pop("_id", ""))
+        cartes.append(d)
+        if len(cartes) >= max_par_jour:
+            break
+    return {"ok": True, "actif": True, "quota_du_jour": quota, "cartes": cartes}
+
+
+class VeilleStatutPayload(BaseModel):
+    statut: str  # "veille_a_surveiller" | "veille_ignoree" | "veille_demarchee"
+
+    @field_validator("statut")
+    @classmethod
+    def _validate(cls, v: str) -> str:
+        v = (v or "").strip().lower()
+        if v not in {"veille_a_surveiller", "veille_ignoree", "veille_demarchee"}:
+            raise ValueError("statut_invalide")
+        return v
+
+
+@router.patch("/api/me/veille/{listing_id}/statut")
+async def patch_veille_statut(listing_id: str, payload: VeilleStatutPayload, request: Request):
+    """Enregistre l'action de l'utilisateur sur une carte de veille.
+
+    Statuts propres à la veille — n'entrent JAMAIS dans les compteurs
+    d'opportunités / démarchées / mandats de la page Statistiques.
+    """
+    user = await _current_user_doc(request)
+    plan = _plan_effectif(user)
+    if plan != "pro":
+        raise HTTPException(status_code=402, detail={"code": "veille_pro_only", "plan": plan})
+
+    now = now_utc_iso()
+    await _db().veille_actions.update_one(
+        {"user_id": user["user_id"], "listing_id": listing_id},
+        {
+            "$set": {"statut": payload.statut, "updated_at": now},
+            "$setOnInsert": {
+                "user_id": user["user_id"],
+                "listing_id": listing_id,
+                "created_at": now,
+            },
+        },
+        upsert=True,
+    )
+    return {"ok": True, "listing_id": listing_id, "statut": payload.statut}
+
+
+@router.get("/api/me/veille/suivis")
+async def get_my_veille_suivis(request: Request):
+    """Liste des biens que l'utilisateur a marqués « à suivre »."""
+    user = await _current_user_doc(request)
+    actions_cur = _db().veille_actions.find(
+        {"user_id": user["user_id"], "statut": "veille_a_surveiller"}
+    ).sort("updated_at", -1)
+    suivis = []
+    async for a in actions_cur:
+        card = await _db().veille_cards.find_one({"listing_id": a["listing_id"]})
+        if not card:
+            continue
+        card["id"] = str(card.pop("_id", ""))
+        card["marque_a_surveiller_at"] = a.get("updated_at")
+        suivis.append(card)
+    return {"ok": True, "suivis": suivis}

@@ -87,7 +87,9 @@ async def _fetch_candidates(
     params = {
         "select": ("id,portal,title,description,price,surface,rooms,city,postal_code,"
                    "rue_extraite,etage_extrait,floor,energy_class,type_normalise,url,"
-                   "thumbnail_url,last_seen_at,district,price_per_m2,latitude,longitude"),
+                   "thumbnail_url,last_seen_at,first_seen_at,posted_at,days_on_market,"
+                   "price_drop_count,price_drop_pct,previous_price,"
+                   "district,price_per_m2,latitude,longitude"),
         "postal_code": f"eq.{code_postal}",
         "transaction": f"eq.{transaction}",
         "type_normalise": f"eq.{type_norm}",
@@ -526,10 +528,110 @@ async def _fetch_zone_district_stats(
     }
 
 
+# ---------------------------------------------------------------------------
+# Cartes « Biens en vente à surveiller » — pool alimenté depuis la branche
+# `deja_en_vente` du même job. Aucun rapprochement rejoué.
+#
+# Sélection : un `deja_en_vente` devient carte de veille ssi l'annonce a AU
+# MOINS un signal de difficulté (`days_on_market > min_days_on_market` OU
+# `price_drop_count >= 1`). Sans aucun signal exploitable (ni date ni
+# baisse), la carte est ignorée.
+#
+# Score de tri (constantes dans `config_matching.veille`) :
+#   min(days_on_market, dom_cap_days) / 30 + price_drop_count * price_drop_weight
+# ---------------------------------------------------------------------------
+class _VeilleSkip(Exception):
+    """Signal interne — l'annonce n'a pas les signaux nécessaires."""
+
+
+async def _maybe_insert_veille_card(
+    db, *, cp: str, dpe: dict, annonce: Optional[dict], cfg: dict,
+) -> None:
+    if not annonce:
+        raise _VeilleSkip("no_annonce")
+    veille_cfg = (cfg.get("veille") or {})
+    min_dom = int(veille_cfg.get("min_days_on_market", 90))
+    dom_cap = int(veille_cfg.get("dom_cap_days", 180))
+    weight = float(veille_cfg.get("price_drop_weight", 2))
+
+    dom_raw = annonce.get("days_on_market")
+    try:
+        dom = int(dom_raw) if dom_raw is not None else None
+    except (TypeError, ValueError):
+        dom = None
+    pdc_raw = annonce.get("price_drop_count")
+    try:
+        pdc = int(pdc_raw) if pdc_raw is not None else 0
+    except (TypeError, ValueError):
+        pdc = 0
+    pdp_raw = annonce.get("price_drop_pct")
+    try:
+        pdp = float(pdp_raw) if pdp_raw is not None else None
+    except (TypeError, ValueError):
+        pdp = None
+
+    # Signal minimum : ancienneté significative OU au moins une baisse.
+    has_dom_signal = dom is not None and dom > min_dom
+    has_drop_signal = pdc >= 1
+    if not (has_dom_signal or has_drop_signal):
+        raise _VeilleSkip("no_signal")
+
+    # Score de tri (plus haut = à montrer d'abord)
+    dom_effective = min(dom or 0, dom_cap)
+    score = (dom_effective / 30.0) + (pdc * weight)
+
+    listing_id = str(annonce.get("id")) if annonce.get("id") is not None else None
+    if not listing_id:
+        raise _VeilleSkip("no_listing_id")
+
+    # Idempotent — un (dpe_id, listing_id) ne crée qu'une seule carte
+    key = {
+        "dpe_id": dpe.get("numero_dpe"),
+        "listing_id": listing_id,
+    }
+    now = now_utc_iso()
+    doc = {
+        **key,
+        "code_postal": cp,
+        # DPE (contexte)
+        "adresse": dpe.get("adresse"),
+        "complement_adresse": dpe.get("complement_adresse"),
+        "surface_dpe": dpe.get("surface_habitable"),
+        "classe_dpe": dpe.get("classe_dpe"),
+        "rooms": annonce.get("rooms"),
+        "floor": annonce.get("floor") or annonce.get("etage_extrait"),
+        # Annonce (contenu carte)
+        "prix": annonce.get("price"),
+        "prix_m2": annonce.get("price_per_m2"),
+        "surface": annonce.get("surface"),
+        "energy_class": annonce.get("energy_class"),
+        "url_annonce": annonce.get("url"),
+        "thumbnail_url": annonce.get("thumbnail_url"),
+        "portal": annonce.get("portal"),
+        # Signaux
+        "days_on_market": dom,
+        "price_drop_count": pdc,
+        "price_drop_pct": pdp,
+        "previous_price": annonce.get("previous_price"),
+        "posted_at": annonce.get("posted_at"),
+        "first_seen_at": annonce.get("first_seen_at"),
+        # Tri + méta
+        "score_veille": round(float(score), 4),
+        "date_creation": now,
+        "date_dernier_statut": now,
+    }
+    await db.veille_cards.update_one(
+        key,
+        {"$set": {**doc, "updated_at": now}, "$setOnInsert": {"created_at": now}},
+        upsert=True,
+    )
+
+
+
+
 async def _process_zone(
     db, client: httpx.AsyncClient, cp: str, cfg: dict, destinataire: dict,
 ) -> dict:
-    """Traite une zone. Retourne un rapport."""
     zone_doc = await db.zones_couvertes.find_one({"code_postal": cp})
     zone_state = await _get_zone_scraping_state(db, cp, client)
 
@@ -645,7 +747,6 @@ async def _process_zone(
             client, cp, "location", type_norm, surface_dpe,
             tolerance_pct, tolerance_plancher,
         )
-
         # --- s_geo : quartier admin du DPE (via lat/lng BAN, une fois) -----
         dpe_lat, dpe_lng = dpe.get("latitude"), dpe.get("longitude")
         quartier_dpe = point_to_quartier(dpe_lat, dpe_lng)
@@ -731,6 +832,19 @@ async def _process_zone(
                 "breakdown": best_v_breakdown,
                 "score_confiance": None,
             })
+            # Cartes « Biens en vente à surveiller » — pool alimenté ici, jamais
+            # dans un job séparé. La sélection lit le rapprochement qu'on vient
+            # d'écrire (celui-ci) + les signaux de difficulté de l'annonce
+            # rapprochée. Voir /app/memory/B1_VEILLE_COPY_FR.md.
+            try:
+                await _maybe_insert_veille_card(
+                    db, cp=cp, dpe=dpe, annonce=best_v_annonce, cfg=cfg,
+                )
+                stats["veille_created"] = stats.get("veille_created", 0) + 1
+            except _VeilleSkip:
+                pass  # signal manquant ou déjà présent — silencieux
+            except Exception as e:
+                logger.warning(f"a3.veille_card insert failed for {cp}: {e}")
             continue
 
         if best_l_score >= seuil_l:

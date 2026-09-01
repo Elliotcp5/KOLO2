@@ -53,6 +53,26 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "plafond_cumul_cartes": 15,
     "marge_negociation": 0.04,
     "duree_validite_dossier_mois": 3,
+    # ---------------------------------------------------------------------
+    # Veille des biens en vente (BLOC B) — cartes de type distinct.
+    # Voir /app/memory/B1_VEILLE_COPY_FR.md.
+    # ---------------------------------------------------------------------
+    "veille": {
+        # Signal minimum : au moins un des deux critères doit être vrai
+        # pour qu'un bien `deja_en_vente` devienne carte de veille.
+        "min_days_on_market": 90,
+        # Plafond d'ancienneté au-delà duquel days_on_market cesse d'ajouter
+        # au score : 6 mois. La baisse de prix reste le signal fort.
+        "dom_cap_days": 180,
+        # Poids d'une baisse de prix dans le score de tri.
+        "price_drop_weight": 2,
+        # Seuil de quota du jour SOUS lequel la pile de veille s'affiche.
+        # Si l'utilisateur a >= 3 opportunités de mandat, on ne montre pas
+        # la pile de veille (elle ne comble pas une zone pauvre).
+        "seuil_quota_du_jour": 3,
+        # Nombre maximum de cartes de veille par jour.
+        "max_par_jour": 5,
+    },
     "quotas": {
         # `quotidien`, `hebdo`, `mensuel` ou `illimite` (chaîne)
         "decouverte": {
@@ -90,11 +110,24 @@ def _bust_cache() -> None:
 async def ensure_config_seeded(db) -> None:
     """Insère `DEFAULT_CONFIG` si le document n'existe pas encore.
 
-    Idempotent — n'écrase aucune valeur existante.
+    Idempotent — n'écrase aucune valeur existante, mais **ajoute** les nouvelles
+    clés introduites après le premier seed (ex. bloc `veille` en B/veille).
     """
     existing = await db.config_matching.find_one({"_id": CONFIG_ID})
     if existing is None:
         await db.config_matching.insert_one(copy.deepcopy(DEFAULT_CONFIG))
+    else:
+        # Ajout non destructif des clés absentes (ex. `veille`).
+        to_add: dict[str, Any] = {}
+        for k, v in DEFAULT_CONFIG.items():
+            if k in ("_id",):
+                continue
+            if k not in existing:
+                to_add[k] = copy.deepcopy(v)
+        if to_add:
+            await db.config_matching.update_one(
+                {"_id": CONFIG_ID}, {"$set": to_add}
+            )
     _bust_cache()
 
 
