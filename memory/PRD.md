@@ -16,7 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 Webhook Apify + LABEL Lyon/Marseille (Sep 1, 2026) 🔥 LATEST
+### A3 Webhook Apify opérationnel + comparaison 3 zones (Sep 1, 2026) 🔥 LATEST
+- **Bug critique corrigé** : la valeur `APIFY_WEBHOOK_SECRET` en `.env` ne correspondait pas à celle configurée côté Apify (handoff antérieur contenait une valeur obsolète). Alignée. Les 5 dispatches natifs Apify sont désormais acceptés (rejeu OK via le webhook lui-même).
+- **Webhook natif Apify validé** : URL `/api/webhooks/apify?mode=complet`, header `X-Apify-Secret`. Payload natif (`resource.id`+`resource.status`) supporté ; `ABORTED` accepté (upsert sans jamais désactiver).
+- **Ingestion via webhook** : run `viU72M8KCbuS9MXm0` (SUCCEEDED, 1176 items 13008/69003) → 1146 inserts + 29 updates + 89 désactivations (mode complet). Run `y3eHCY8A35snu2i4W` (ABORTED, dataset `bq7kaEpcfhDUo5xTi`, 1280 items) → 139 inserts + 1140 updates, 0 désactivation.
+- **Backfill district hors Paris** : `district_resolver` généralisé (regex URL SeLoger multi-villes + regex arrondissement URL/titre + libellés Lyon/Marseille étendus). Taux post-backfill : 13008 = 100 %, 69003 = 93.4 %, 75017 = 92.1 %.
+- **Comparaison zones (seuil 0.70)** :
+  | Zone | DPE | Décisions | Opportunités | Score moy. | active_listings | Couverture |
+  |------|:---:|:---:|:---:|:---:|:---:|:---:|
+  | 75017 | 1 124 | déjà 476 · filtre 644 | **4** | 0.749 | 1 097 | 0.844 |
+  | 13008 | 477 | déjà 168 · filtre 262 | **47** | 0.830 | 663 | 1.00 |
+  | 69003 | 1 020 | déjà 418 · filtre 574 | **28** | 0.821 | 588 | 1.00 |
+- **Limite explicite hors Paris** : le point-in-polygon des quartiers admin ne couvre QUE Paris. Les DPE de Lyon/Marseille ont `quartier_dpe = None`, donc adjacence = 0.5 (« absent »), aucun court-circuit `quartier_non_limitrophe`. Seul le signal prix opère → 3 983 court-circuits `prix_m2_incoherent` sur 69003, 3 463 sur 13008 (efficace).
+
+### A3 Webhook Apify + LABEL Lyon/Marseille (Sep 1, 2026)
 - **Webhook Apify** `POST /api/webhooks/apify` :
   - Auth : header `X-Apify-Secret` OU `X-Admin-Secret` avec `APIFY_WEBHOOK_SECRET`.
   - Supporte 3 formats : (a) natif Apify avec `resource.id`+`resource.status` ; (b) custom `{mode, run_ids}` ; (c) import dataset `{dataset_id}`.

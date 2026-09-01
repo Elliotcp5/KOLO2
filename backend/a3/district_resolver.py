@@ -29,10 +29,26 @@ from a3.quartiers import (
     slug_to_libelle,
 )
 
-# Slug URL SeLoger : /paris-<n>eme-75/<slug-quartier>/<id>.htm
-# Le slug quartier est en 3e segment. On tolère aussi -er (« paris-1er-75 »).
-_SELOGER_URL_SLUG_RE = re.compile(
-    r"/paris-\d+(?:er|eme|nd)?-75/([a-z0-9\-]+)/\d+\.\w+",
+# Regex : slug quartier détaillé (SeLoger) — accepte n'importe quelle ville.
+# Ex : `/paris-17eme-75/champerret-berthier/272095323.htm`
+#       `/marseille-8eme-13/sainte-anne/274020383.htm`
+#       `/lyon-3eme-69/la-guillotiere-nord/267620559.htm`
+_URL_SLUG_QUARTIER_RE = re.compile(
+    r"/([a-z\-]+)-\d+(?:er|eme|nd)?-\d{2,3}/([a-z0-9\-]+)/\d+\.\w+",
+    re.IGNORECASE,
+)
+
+# Regex : arrondissement dans l'URL (fallback quand pas de slug quartier).
+# Ex : `paris-17eme-75`, `marseille-8e-13008`, `lyon-3eme-69`, `lyon-69`.
+_URL_ARRONDISSEMENT_RE = re.compile(
+    r"\b(paris|lyon|marseille)-(\d+)(?:er|eme|nd|e)?(?:-\d{2,5})?\b",
+    re.IGNORECASE,
+)
+
+# Regex : arrondissement dans le titre / description.
+# Ex : « Marseille 8E », « Lyon 3e », « Paris 17e ».
+_TEXT_ARRONDISSEMENT_RE = re.compile(
+    r"\b(paris|lyon|marseille)\s+(\d+)(?:e|er|eme|nd)?\b",
     re.IGNORECASE,
 )
 
@@ -76,41 +92,59 @@ def _get_text_index() -> list[tuple[str, str]]:
 
 
 def _resolve_via_url(url: Optional[str]) -> Optional[str]:
-    """Extrait le slug SeLoger de l'URL et le mappe à un slug admin."""
+    """Extrait un slug quartier ou d'arrondissement depuis l'URL.
+
+    Priorité :
+      1) slug de quartier fin (SeLoger « /marseille-8eme-13/perier/… »)
+      2) slug d'arrondissement (« marseille-8e-13008 », « lyon-3eme-69 »,
+         « paris-17eme-75 ») — fallback quand pas de slug quartier
+    """
     if not url:
         return None
-    m = _SELOGER_URL_SLUG_RE.search(url)
-    if not m:
-        return None
-    slug_url = m.group(1).lower()
-    # Le slug URL peut être « ternes-maillot », « courcelles-wagram », etc.
-    # Le passage par label_to_quartier (avec sa normalisation) traite les tirets
-    # et cases sans effort.
-    admin_slug, _unknown = label_to_quartier(slug_url.replace("-", " "))
-    return admin_slug
+    # 1) Slug quartier fin
+    m = _URL_SLUG_QUARTIER_RE.search(url)
+    if m:
+        slug_url = m.group(2).lower()
+        admin_slug, _unknown = label_to_quartier(slug_url.replace("-", " "))
+        if admin_slug:
+            return admin_slug
+    # 2) Arrondissement
+    m = _URL_ARRONDISSEMENT_RE.search(url)
+    if m:
+        city = m.group(1).lower()
+        num = m.group(2)
+        admin_slug, _unknown = label_to_quartier(f"{city} {num}")
+        if admin_slug:
+            return admin_slug
+    return None
 
 
 def _resolve_via_texte(title: Optional[str], description: Optional[str]) -> Optional[str]:
     """Cherche un libellé connu (mot entier) dans title + description.
 
     Priorité aux plus longs libellés (« champerret-berthier » avant
-    « champerret ») pour éviter les faux matches trop généraux comme
-    « monceau ». On accepte tolérance : espaces, tirets ou barres obliques.
+    « champerret »). Fallback : regex arrondissement direct (« Marseille 8E »,
+    « Lyon 3e », « Paris 17e ») quand rien de plus fin ne matche.
     """
     if not title and not description:
         return None
     txt = f"{title or ''}\n{description or ''}"
     hay = _strip_accents(txt).lower()
-    # Normalise séparateurs pour matcher « champerret-berthier » écrit avec espaces
     hay_flat = re.sub(r"[\s\-/]+", " ", hay)
+    # 1) Libellés fins connus (Ternes-Maillot, Perier, Bonneveine…)
     for norm, slug in _get_text_index():
         needle = re.sub(r"[\s\-/]+", " ", norm).strip()
         if not needle or len(needle) < 5:
-            # Évite les faux matches sur 3-4 lettres (ex : « ternes » se trouve
-            # dans « auternes » — improbable, mais on cap à 5).
             continue
-        # Recherche mot-entier
         if re.search(rf"\b{re.escape(needle)}\b", hay_flat):
+            return slug
+    # 2) Fallback arrondissement (Marseille 8, Lyon 3, Paris 17)
+    m = _TEXT_ARRONDISSEMENT_RE.search(txt)
+    if m:
+        city = m.group(1).lower()
+        num = m.group(2)
+        slug, _unknown = label_to_quartier(f"{city} {num}")
+        if slug:
             return slug
     return None
 
