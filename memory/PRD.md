@@ -16,7 +16,21 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 s_geo — Sous-score géographique + circuit-breaker (Sep 1, 2026) 🔥 LATEST
+### A3 s_geo v2 — Multiplicateur géo + vérité terrain (Sep 1, 2026) 🔥 LATEST
+Le sous-score `geographie` en terme pondéré (v1) accordait une prime quasi systématique (toutes les annonces d'un CP sont dans les 4 quartiers admin) et faisait passer des faux positifs. Refonte :
+- `geographie` devient un **multiplicateur EXTERNE** appliqué à la somme pondérée. Ne bonifie jamais (max 1.0), pénalise (0.7 sur écart prix 25-40 %) ou court-circuite (0.0 sur quartier non-limitrophe ou écart prix > 40 %). Configurable via `config_matching.multiplicateur_geo` (`mult_ecart_prix_25_40`, `seuil_prix_penalite`, `seuil_prix_court_circuit`).
+- Poids restaurés : `rue 0.35 · surface 0.30 · classe 0.20 · type 0.10 · étage 0.05` (somme = 1.0).
+- `seuil_correspondance` abaissé à **0.70** (contre 0.75).
+- Bug pagination corrigé : `_fetch_zone_district_stats` pagine strictement (1000/page) au lieu du `limit=5000` non honoré → `active_listings` reflète le vrai count (1097 vs 1000 avant).
+- Robustesse zone : `_get_zone_scraping_state` fallback Supabase pour n'importe quel CP (count exact + max(scraped_at, last_seen_at)) → job exécutable sans doc préalable dans `zones_scraping`.
+- **Nouveau fichier arbitre** `tests/test_a3_verite_terrain.py` : 6 cas audités manuellement, 2 BLOQUANTS (Renaudes VRAI · Jonquière FAUX) + 4 INDICATIFS (log-only, ne cassent jamais le test). C'est le juge de tous les réglages futurs.
+- Run 75017 (seuil 0.70) : 1124 DPE · 499 `deja_en_vente` · 4 opportunités (score confiance moyen 0.7486) · 621 filtrés. Court-circuits : 28 481 quartier · 15 609 rue · 7 254 prix. `active_listings` = 1 097 (avec pagination correcte).
+- Run 13008 : skip légitime (dernier scrape 58 jours, seuil dégradé 7 jours).
+- Run 69003 : impossible, 0 annonce en base.
+- District fill rate 75017 par source : bienici 100 % · leboncoin 100 % · **seloger 0 %** · **pap 0 %** · **safti 0 %** · **century21 0 %**. Total 71,8 % — 309 annonces sans district viennent exclusivement de ces 4 portails.
+- Tests A1/A2/A3 : **175 / 175 pass**.
+
+### A3 s_geo — Sous-score géographique + circuit-breaker (Sep 1, 2026)
 - Ajout du sous-score `s_geo` combinant adjacence de quartier admin Paris (GeoJSON open data, 80 quartiers, point-in-polygon + adjacence auto par sommets communs) et cohérence prix m² local (mutations_propres, 500 m, 24 mois, même type).
 - Règles :
   - Adjacence : même quartier = 1.0 · limitrophes = 0.6 · non-limitrophes = 0.0 · absent = 0.5

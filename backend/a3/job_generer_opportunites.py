@@ -218,54 +218,89 @@ async def _fetch_median_local_m2(
 async def _get_zone_scraping_state(db, cp: str, client: httpx.AsyncClient) -> dict[str, Any]:
     """Retourne les métadonnées de scraping pour un CP (fraîcheur, volume actif).
 
-    `last_active_count` est optionnel dans A1 ; s'il manque, on interroge
-    directement Supabase pour compter les annonces actives du CP.
+    Ordre de résolution :
+      1) doc `zones_scraping` (Mongo) — `last_ingest_at` + `last_active_count`
+      2) fallback Supabase — max(scraped_at) sur les listings actifs + count exact
+    Ce fallback rend le job exécutable sur **n'importe quel CP** en base même
+    s'il n'a jamais été alimenté par le pipeline `zones_scraping`.
     """
     now = datetime.now(timezone.utc)
-    docs = [d async for d in db.zones_scraping.find({"postal_code": cp})]
-    if not docs:
-        return {"days_since_scrape": 999, "active_count": 0, "days_since_location": 999}
-    latest = max(
-        (d for d in docs if d.get("last_ingest_at")),
-        key=lambda d: d["last_ingest_at"],
-        default=None,
-    )
     days = 999
-    if latest and latest.get("last_ingest_at"):
-        try:
-            dt = datetime.fromisoformat(latest["last_ingest_at"].replace("Z", "+00:00"))
-            days = (now - dt).days
-        except Exception:
-            pass
+    total_active = 0
+    docs = [d async for d in db.zones_scraping.find({"postal_code": cp})]
+    if docs:
+        latest = max(
+            (d for d in docs if d.get("last_ingest_at")),
+            key=lambda d: d["last_ingest_at"],
+            default=None,
+        )
+        if latest and latest.get("last_ingest_at"):
+            try:
+                dt = datetime.fromisoformat(latest["last_ingest_at"].replace("Z", "+00:00"))
+                days = (now - dt).days
+            except Exception:
+                pass
+        total_active = sum(int(d.get("last_active_count", 0) or 0) for d in docs)
 
-    # `last_active_count` optionnel — fallback via Supabase (source de vérité)
-    total_active = sum(int(d.get("last_active_count", 0) or 0) for d in docs)
-    if total_active <= 0 and SUPABASE_URL and SUPABASE_KEY:
-        try:
-            r = await client.get(
-                f"{SUPABASE_URL}/rest/v1/listings",
-                params={
-                    "select": "id",
-                    "postal_code": f"eq.{cp}",
-                    "is_active": "eq.true",
-                    "est_logement": "eq.true",
-                    "limit": "1",
-                },
-                headers={
-                    **_sb_headers(),
-                    "Prefer": "count=exact",
-                    "Range": "0-0",
-                },
-                timeout=10,
-            )
-            cr = r.headers.get("content-range", "")
-            if "/" in cr:
+    # Fallback Supabase — source de vérité
+    if SUPABASE_URL and SUPABASE_KEY:
+        # Count exact
+        if total_active <= 0:
+            try:
+                r = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/listings",
+                    params={
+                        "select": "id",
+                        "postal_code": f"eq.{cp}",
+                        "is_active": "eq.true",
+                        "est_logement": "eq.true",
+                        "limit": "1",
+                    },
+                    headers={
+                        **_sb_headers(),
+                        "Prefer": "count=exact",
+                        "Range": "0-0",
+                    },
+                    timeout=10,
+                )
+                cr = r.headers.get("content-range", "")
+                if "/" in cr:
+                    try:
+                        total_active = int(cr.split("/")[-1])
+                    except (ValueError, IndexError):
+                        total_active = 0
+            except Exception as e:
+                logger.warning(f"a3._get_zone_scraping_state: supabase count fallback: {e}")
+
+        # Fraîcheur — max(scraped_at) sur les listings actifs, avec fallback
+        # `last_seen_at` (certaines sources ne remplissent pas `scraped_at`).
+        if days == 999 and total_active > 0:
+            for date_field in ("scraped_at", "last_seen_at"):
                 try:
-                    total_active = int(cr.split("/")[-1])
-                except (ValueError, IndexError):
-                    total_active = 0
-        except Exception as e:
-            logger.warning(f"a3._get_zone_scraping_state: supabase fallback failed: {e}")
+                    r = await client.get(
+                        f"{SUPABASE_URL}/rest/v1/listings",
+                        params={
+                            "select": date_field,
+                            "postal_code": f"eq.{cp}",
+                            "is_active": "eq.true",
+                            "est_logement": "eq.true",
+                            "order": f"{date_field}.desc.nullslast",
+                            "limit": "1",
+                        },
+                        headers=_sb_headers(), timeout=10,
+                    )
+                    if r.status_code != 200:
+                        continue
+                    rows = r.json() or []
+                    if rows and rows[0].get(date_field):
+                        try:
+                            dt = datetime.fromisoformat(rows[0][date_field].replace("Z", "+00:00"))
+                            days = max(0, (now - dt).days)
+                            break
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.warning(f"a3._get_zone_scraping_state: {date_field} fallback: {e}")
 
     return {"days_since_scrape": days, "active_count": total_active,
             "days_since_location": days}

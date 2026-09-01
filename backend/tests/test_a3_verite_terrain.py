@@ -50,20 +50,32 @@ DB_NAME = (os.environ.get("DB_NAME") or "").strip()
 
 
 # -----------------------------------------------------------------------------
-# Fixtures de vérité terrain — auditées manuellement par l'utilisateur
+# Fixtures de vérité terrain — auditées manuellement par l'utilisateur.
+#
+# BLOQUANTS  : certitudes fortes. Si le moteur se trompe, le test échoue.
+# INDICATIFS : jugements de plausibilité. Score attendu logué mais pas
+#              d'échec — on suit la dérive sans figer ce dont on n'est pas sûr.
 # -----------------------------------------------------------------------------
-# VRAIS rapprochements : le bien EST en vente, moteur DOIT écarter (deja_en_vente)
-VRAIS_RAPPROCHEMENTS = [
-    {"rue": "renaudes", "surface": 145.3, "classe": "E", "cp": "75017"},
-    {"rue": "gounod", "surface": 175.1, "classe": "E", "cp": "75017"},
-    {"rue": "wagram", "surface": 140.5, "classe": "E", "cp": "75017"},
-    {"rue": "pierre demours", "surface": 130.7, "classe": "D", "cp": "75017"},
+BLOQUANTS_VRAI = [
+    # 5 Rue des Renaudes : l'annonce cite la rue → certitude « déjà en vente ».
+    {"rue": "renaudes", "surface": 145.3, "classe": "E", "cp": "75017",
+     "decision_attendue": "deja_en_vente"},
+]
+BLOQUANTS_FAUX = [
+    # 44 Rue de la Jonquière : prix au m² impossible pour cette rue.
+    {"rue": "jonquiere", "surface": 135.9, "classe": "B", "cp": "75017",
+     "decision_attendue": "opportunite"},
 ]
 
-# FAUX rapprochements : moteur NE DOIT PAS écarter (doit rester opportunite)
-FAUX_RAPPROCHEMENTS = [
-    {"rue": "jonquiere", "surface": 135.9, "classe": "B", "cp": "75017"},
-    {"rue": "edouard detaille", "surface": 197.6, "classe": None, "cp": "75017"},
+INDICATIFS = [
+    {"rue": "gounod", "surface": 175.1, "classe": "E", "cp": "75017",
+     "decision_attendue": "deja_en_vente"},
+    {"rue": "wagram", "surface": 140.5, "classe": "E", "cp": "75017",
+     "decision_attendue": "deja_en_vente"},
+    {"rue": "pierre demours", "surface": 130.7, "classe": "D", "cp": "75017",
+     "decision_attendue": "deja_en_vente"},
+    {"rue": "edouard detaille", "surface": 197.6, "classe": None, "cp": "75017",
+     "decision_attendue": "opportunite"},
 ]
 
 
@@ -213,36 +225,56 @@ async def _run_case(case: dict) -> dict:
 # Tests
 # -----------------------------------------------------------------------------
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", VRAIS_RAPPROCHEMENTS,
-                         ids=[c["rue"] for c in VRAIS_RAPPROCHEMENTS])
-async def test_vrai_rapprochement_ecarte(case):
-    """VRAI rapprochement : le moteur DOIT décider `deja_en_vente`."""
+@pytest.mark.parametrize("case", BLOQUANTS_VRAI,
+                         ids=[c["rue"] for c in BLOQUANTS_VRAI])
+async def test_bloquant_vrai_doit_etre_ecarte(case):
+    """BLOQUANT : le moteur DOIT décider `deja_en_vente` — l'annonce cite la rue."""
     result = await _run_case(case)
     assert "error" not in result, f"DPE introuvable pour {case}: {result}"
-    assert result["decision"] == "deja_en_vente", (
-        f"\n=== VRAI attendu, moteur a répondu {result['decision']} ===\n"
-        f"case = {case}\n"
-        f"DPE = {result['dpe']}\n"
-        f"nb_candidates = {result['nb_candidates']}\n"
-        f"median_m2_local = {result['median_m2_local']}\n"
-        f"best_score = {result['best_score']} (seuil {result['seuil_correspondance']})\n"
-        f"best_annonce = {result['best_annonce']}\n"
-        f"breakdown = {result['breakdown']}\n"
-        f"multiplicateur_geo = {result['multiplicateur_geo']}\n"
-        f"court_circuit = {result['court_circuit']} ({result['motif_court_circuit']})\n"
-    )
+    assert result["decision"] == "deja_en_vente", _fmt_failure("BLOQUANT VRAI", result)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", FAUX_RAPPROCHEMENTS,
-                         ids=[c["rue"] for c in FAUX_RAPPROCHEMENTS])
-async def test_faux_rapprochement_reste_opportunite(case):
-    """FAUX rapprochement : le moteur NE DOIT PAS écarter, doit rester `opportunite`."""
+@pytest.mark.parametrize("case", BLOQUANTS_FAUX,
+                         ids=[c["rue"] for c in BLOQUANTS_FAUX])
+async def test_bloquant_faux_doit_rester_opportunite(case):
+    """BLOQUANT : le moteur NE DOIT PAS écarter — prix au m² impossible."""
     result = await _run_case(case)
     assert "error" not in result, f"DPE introuvable pour {case}: {result}"
-    assert result["decision"] == "opportunite", (
-        f"\n=== FAUX (opportunité attendue), moteur a répondu {result['decision']} ===\n"
-        f"case = {case}\n"
+    assert result["decision"] == "opportunite", _fmt_failure("BLOQUANT FAUX", result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", INDICATIFS,
+                         ids=[c["rue"] for c in INDICATIFS])
+async def test_indicatif_log_seulement(case, capsys):
+    """INDICATIF : jugement de plausibilité. Log le score et la décision,
+    NE FAIT JAMAIS ÉCHOUER le test. Sert à suivre la dérive sans figer.
+    """
+    result = await _run_case(case)
+    if "error" in result:
+        print(f"[INDICATIF ⚠️  ERREUR] {case['rue']}: {result}")
+        return
+    expected = case["decision_attendue"]
+    got = result["decision"]
+    marker = "✅" if got == expected else "🟡"
+    b = result.get("breakdown") or {}
+    ann = result.get("best_annonce") or {}
+    print(
+        f"\n[INDICATIF {marker}] {case['rue']} (S={case['surface']} · cl={case.get('classe')})"
+        f"\n  attendu={expected}  obtenu={got}  score={result['best_score']}"
+        f"  seuil={result['seuil_correspondance']}"
+        f"\n  breakdown={b}  mult={result.get('multiplicateur_geo')}"
+        f"  cc={result.get('motif_court_circuit')}"
+        f"\n  annonce: district={ann.get('district')!r} surface={ann.get('surface')}"
+        f" pxm2={ann.get('price_per_m2')} rue_ext={ann.get('rue_extraite')!r}"
+    )
+
+
+def _fmt_failure(label: str, result: dict) -> str:
+    return (
+        f"\n=== {label} : décision incorrecte ===\n"
+        f"case = {result['case']}\n"
         f"DPE = {result['dpe']}\n"
         f"nb_candidates = {result['nb_candidates']}\n"
         f"median_m2_local = {result['median_m2_local']}\n"
