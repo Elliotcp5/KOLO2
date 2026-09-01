@@ -29,6 +29,65 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Tests : **7 tests pytest B1 verts**, **97 tests Bloc A verts**, aucune régression.
 
 
+---
+
+## 🔮 Session de bascule V2 → B1 (à consigner, aucune implémentation immédiate)
+
+**Contexte** — B1 vit aujourd'hui en parallèle de V2, sans couplage. Le jour de la bascule des 186 comptes existants sur la nouvelle app, une session dédiée sera lancée. Les 6 décisions ci-dessous sont **figées** et doivent être exécutées sans modification.
+
+### Le problème exact
+La migration A2 a mis `onboarding_infos_ok = true` et `tour_guide_vu = true` sur les 186 comptes existants. Le jour de la bascule, ils sauteraient donc l'onboarding et atterriraient directement sur l'onglet Opportunités — **sans `zones_perso` renseigné**, donc sans aucune carte. Écran vide, aucune explication, désinstallation.
+
+### Décision 1 — Un écran de reprise, une seule fois
+Ajouter un champ `zones_confirmees` (booléen, `false` par défaut sur les comptes migrés). À la première ouverture de la nouvelle app, si `zones_confirmees` est `false`, afficher un écran unique de reprise, **avant tout le reste** :
+
+- **Titre** : « KOLO a changé. Confirmez vos zones de prospection. »
+- **Sous-titre** : « Nous avons repris celles que vous travailliez déjà. »
+- Un ou deux codes postaux **pré-remplis**, jamais un champ vide. L'utilisateur confirme d'un tap ou corrige.
+- Vérification de couverture et enregistrement dans `zones_demandees` fonctionnent comme à l'écran 5 de l'onboarding.
+- À la validation : `zones_confirmees = true`, et la première fournée d'opportunités est calculée pendant l'écran de traitement, exactement comme pour un nouveau compte.
+
+### Décision 2 — Comment on pré-remplit ces zones
+Par ordre de priorité, **la première source qui donne un résultat gagne** :
+1. Les codes postaux les plus fréquents dans les **dossiers et biens V2** de cet utilisateur.
+2. À défaut, le code postal de ses **contacts V2**.
+3. À défaut, le code postal de son **profil personnel**.
+4. À défaut seulement, champ vide avec le clavier ouvert.
+
+**Journaliser la source retenue** pour chaque utilisateur — ça dira si la déduction fonctionne avant de l'exposer à tout le monde.
+
+### Décision 3 — Le tour guidé se rejoue
+Remettre `tour_guide_vu = false` sur les comptes migrés. L'app change de structure, quatre nouveaux onglets apparaissent : ces utilisateurs découvrent **une nouvelle application, pas une mise à jour cosmétique**. Le tour reste passable en un tap.
+
+### Décision 4 — Les 18 comptes Pro restent Pro, sans rien payer
+Ils ne voient **aucun paywall** et ne déclenchent **aucun appel à StoreKit**.
+
+Ajouter un champ `plan_source` valant `apple_iap`, `stripe` ou `manuel` : certains comptes ont été passés Pro à la main et ne doivent pas être coupés par le webhook Apple, qui ne recevra jamais de notification les concernant.
+
+Les **168 comptes Découverte** restent en Découverte. Ils ne voient le paywall que lorsqu'ils atteignent une limite, jamais de façon forcée.
+
+### Décision 5 — Les données V2 ne sont pas migrées, elles restent consultables
+Dossiers, contacts et agenda n'ont aucun équivalent dans les quatre onglets de la refonte. **Ne pas les migrer, ne pas les supprimer.**
+
+Ajouter dans le profil une entrée « **Mes anciennes données** » qui ouvre l'app V2 en **lecture seule**. Elle reste accessible **six mois** après la bascule, puis on avise. Un bandeau non intrusif en haut : « Ancienne version de KOLO, en lecture seule. »
+
+C'est la solution la moins chère et la moins risquée : aucune perte, aucun script de migration à écrire, aucun utilisateur en colère.
+
+### Décision 6 — Bascule progressive, jamais sèche
+Ajouter un champ `app_version` sur `users`, valant `v2` ou `b1`, avec `v2` par défaut. La réponse d'authentification le renvoie, et le front aiguille dessus.
+
+Un écran du back-office permet de basculer **un utilisateur, ou un lot d'utilisateurs**.
+
+**Ordre prévu** : d'abord Elliot, puis 5 utilisateurs actifs choisis à la main, puis les Pro, puis le reste. Retour arrière possible à tout moment en repassant le champ à `v2`.
+
+---
+
+**⚠️ Ne rien construire de tout ça maintenant.** Décisions consignées, à exécuter en session dédiée « Bascule V2 → B1 » à la fin du bloc B.
+
+---
+
+
+
 ### A3 Point-in-polygon Lyon + Marseille — fin bloc A (Sep 1, 2026)
 - **GeoJSON quartiers Lyon** (data.grandlyon.com, 201 polygones Grand Lyon) et **Marseille** (data.gouv.fr, 111 polygones avec code d'arrondissement DEPCO) téléchargés et intégrés.
 - `_load_features` : loader unifié 3 sources ; supporte MultiPolygon. Slug Paris = legacy (`ternes`), Lyon/Marseille = préfixés (`lyon-voltaire-part-dieu`, `marseille-perier`). 460 features au total.
