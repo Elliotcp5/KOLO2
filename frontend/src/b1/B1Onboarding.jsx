@@ -99,7 +99,7 @@ function ScreenStatut({ initial, onNext }) {
               <div className="b1-card-title">{c.title}</div>
               <div className="b1-card-sub">{c.sub}</div>
             </div>
-            {statut === c.id && <Check size={22} color="#EC8690" strokeWidth={3} />}
+            {statut === c.id && <span style={{ color: 'var(--b1-accent)' }}><Check size={22} strokeWidth={3} /></span>}
           </button>
         ))}
       </div>
@@ -186,7 +186,7 @@ function ScreenZones({ initial, onNext }) {
               </div>
             )}
             {lookupError && (
-              <div className="b1-zone-chip-ville" style={{ marginTop: 6, marginLeft: 4, color: '#DC2626' }} data-testid="onb-zone-error">
+              <div className="b1-zone-chip-ville" style={{ marginTop: 6, marginLeft: 4, color: 'var(--b1-danger)' }} data-testid="onb-zone-error">
                 {lookupError}
               </div>
             )}
@@ -280,8 +280,8 @@ function ScreenResultat({ resultats, au_moins_une_couverte, onOk, onModifier }) 
             width: 76,
             height: 76,
             borderRadius: 999,
-            background: isKo ? 'rgba(220,38,38,0.1)' : 'rgba(34,197,94,0.12)',
-            color: isKo ? '#DC2626' : '#16A34A',
+            background: isKo ? 'var(--b1-danger-tint)' : 'var(--b1-success-tint)',
+            color: isKo ? 'var(--b1-danger)' : 'var(--b1-success)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -397,7 +397,7 @@ function ScreenPlan({ onCommit }) {
             <div className="b1-plan-pro-title">{b1t('onb.plan.pro.nom')}</div>
             <div className="b1-plan-pro-price">{b1t('onb.plan.pro.prix')}</div>
           </div>
-          <Crown size={30} color="#fff" strokeWidth={2.2} />
+          <Crown size={30} strokeWidth={2.2} />
         </div>
         <div className="b1-plan-pro-feat"><Check size={18} /><span>{b1t('onb.plan.pro.l1')}</span></div>
         <div className="b1-plan-pro-feat"><Check size={18} /><span>{b1t('onb.plan.pro.l2')}</span></div>
@@ -426,7 +426,7 @@ function ScreenPlan({ onCommit }) {
         <div className="b1-plan-dec-feat">• {b1t('onb.plan.decouverte.l4')}</div>
       </div>
 
-      {error && <div className="b1-small" style={{ color: '#DC2626', textAlign: 'center' }}>{error}</div>}
+      {error && <div className="b1-small" style={{ color: 'var(--b1-danger)', textAlign: 'center' }}>{error}</div>}
 
       <div className="b1-plan-legal">
         <a href="/terms" onClick={(e) => { e.preventDefault(); openLegal('/terms'); }} data-testid="onb-plan-tos">{b1t('onb.plan.legal.cgu')}</a>
@@ -448,7 +448,7 @@ function ScreenBienvenue({ onFinish }) {
         <div
           style={{
             width: 96, height: 96, borderRadius: 999,
-            background: 'linear-gradient(180deg, #EC8690, #d85c68)',
+            background: 'linear-gradient(180deg, var(--b1-accent), var(--b1-accent-pressed))',
             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 20px 40px rgba(236,134,144,0.4)',
           }}

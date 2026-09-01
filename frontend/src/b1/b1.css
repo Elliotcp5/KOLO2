@@ -14,6 +14,11 @@
   --b1-text-primary: #0A0A0A;
   --b1-text-secondary: #6B7280;
   --b1-text-muted: #9CA3AF;
+  --b1-danger: #DC2626;
+  --b1-danger-pressed: #B91C1C;
+  --b1-danger-tint: rgba(220, 38, 38, 0.08);
+  --b1-success: #16A34A;
+  --b1-success-tint: rgba(22, 163, 74, 0.12);
   --b1-border: rgba(0, 0, 0, 0.06);
   --b1-shadow-card: 0 8px 24px -4px rgba(236, 134, 144, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
   --b1-shadow-cta: 0 10px 25px -5px rgba(236, 134, 144, 0.40), 0 4px 10px -2px rgba(236, 134, 144, 0.20);
@@ -242,11 +247,11 @@
 }
 .b1-pill--ghost:active { transform: scale(0.97); background: var(--b1-accent-light); }
 .b1-pill--danger {
-  background: #DC2626;
+  background: var(--b1-danger);
   color: #fff;
   box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4);
 }
-.b1-pill--danger:active { transform: scale(0.97); background: #B91C1C; }
+.b1-pill--danger:active { transform: scale(0.97); background: var(--b1-danger-pressed); }
 .b1-pill--fullwidth { width: 100%; }
 
 /* ===========================================================================
@@ -344,7 +349,7 @@
    Plan cards (Screen 6)
    =========================================================================== */
 .b1-plan-pro {
-  background: linear-gradient(180deg, #EC8690 0%, #d85c68 100%);
+  background: linear-gradient(180deg, var(--b1-accent) 0%, var(--b1-accent-pressed) 100%);
   color: #fff;
   border-radius: var(--b1-radius-card);
   padding: 24px 22px 20px;
@@ -643,7 +648,7 @@
   color: var(--b1-text-muted);
 }
 .b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-icon,
-.b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-label { color: #DC2626; background: rgba(220, 38, 38, 0.08); }
+.b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-label { color: var(--b1-danger); background: var(--b1-danger-tint); }
 .b1-profil-menu-item[data-danger="true"] .b1-profil-menu-item-label { background: transparent; }
 
 .b1-logout {

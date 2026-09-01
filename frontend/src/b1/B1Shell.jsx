@@ -557,7 +557,7 @@ export function ProfilZonesPage() {
                 <div className="b1-card-title">{c}</div>
                 <div className="b1-card-sub" style={{ color: 'var(--b1-accent)' }}>{b1t('profil.zones.couverte')}</div>
               </div>
-              <MapPin size={22} color="#EC8690" />
+              <span style={{ color: 'var(--b1-accent)', display: 'inline-flex' }}><MapPin size={22} /></span>
             </div>
           </div>
         ))}
@@ -591,7 +591,7 @@ export function ProfilZonesPage() {
                 </button>
               </div>
             )}
-            {errModif && <div className="b1-small" style={{ color: '#DC2626' }}>{errModif}</div>}
+            {errModif && <div className="b1-small" style={{ color: 'var(--b1-danger)' }}>{errModif}</div>}
           </>
         )}
         <div style={{ flex: 1 }} />
@@ -669,7 +669,7 @@ export function ProfilDeletePage() {
             {b1t('profil.suppr.abonnement_cta')}
           </button>
         </div>
-        {error && <div className="b1-small" style={{ color: '#DC2626' }}>{error}</div>}
+        {error && <div className="b1-small" style={{ color: 'var(--b1-danger)' }}>{error}</div>}
         <div style={{ flex: 1 }} />
         {confirmStep === 0 && (
           <>
