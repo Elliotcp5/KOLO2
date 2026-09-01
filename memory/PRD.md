@@ -16,7 +16,17 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### A3 district resolver — Ingestion enrichie (Sep 1, 2026) 🔥 LATEST
+### A3 Webhook Apify + LABEL Lyon/Marseille (Sep 1, 2026) 🔥 LATEST
+- **Webhook Apify** `POST /api/webhooks/apify` :
+  - Auth : header `X-Apify-Secret` OU `X-Admin-Secret` avec `APIFY_WEBHOOK_SECRET`.
+  - Supporte 3 formats : (a) natif Apify avec `resource.id`+`resource.status` ; (b) custom `{mode, run_ids}` ; (c) import dataset `{dataset_id}`.
+  - `mode` (`complet` | `incremental`) : query string > header `X-Apify-Mode` > body. Défaut `incremental`.
+  - Runs `ABORTED` désormais acceptés (upsert des items collectés), sans jamais déclencher de désactivation.
+- **Import dataset manuel** : `ingest_dataset(dataset_id)` — récupère les items du dataset, retrouve le run parent si possible, ingère avec `clean=False` (jamais de désactivation).
+- **`LABEL_TO_QUARTIER` étendu** : ajout des arrondissements Lyon 1-9 + Marseille 1-16 (+ quelques quartiers courants : Croix-Rousse, Vaise, Prado, Perier, Bagatelle, Brotteaux, etc.). Round-trip `slug ↔ libellé` validé.
+- **`district_source` en base** : après application manuelle de la migration Supabase, backfill relancé sur 75017 → 1010/1097 listings ont `district_source` renseigné (texte 586 · coordonnees 248 · url 176 · null 87). Écart cible/atteint = 100 % pour les portails dotés d'un signal exploitable ; century21 (11) reste irrécupérable.
+
+### A3 district resolver — Ingestion enrichie (Sep 1, 2026)
 Les 4 portails qui ne remplissaient jamais `district` (seloger, pap, safti, century21 — 309 annonces sur 75017) sont désormais résolus à l'ingestion.
 - Nouveau module `a3/district_resolver.py` avec 3 stratégies par ordre de fiabilité : `url` (slug SeLoger `/paris-17eme-75/<slug>/<id>.htm`), `texte` (regex sur titre/description contre `LABEL_TO_QUARTIER`), `coordonnees` (point-in-polygon sur lat/lng). Retourne `(district_libelle, source)`.
 - `LABEL_TO_QUARTIER` étendu : ajout de `clichy batignolles` (ZAC dans le quartier Batignolles).

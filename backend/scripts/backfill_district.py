@@ -52,17 +52,22 @@ def _sb_headers(prefer: Optional[str] = None) -> dict:
 async def _fetch_listings_without_district(
     client: httpx.AsyncClient, cp: str,
 ) -> list[dict]:
-    """Récupère tous les listings actifs du CP dont `district` est NULL ou
-    chaîne vide. Pagine strictement (1000/page)."""
+    """Récupère les listings actifs du CP à backfiller :
+      - soit `district` est NULL / vide (résolution + écriture)
+      - soit `district` est rempli mais `district_source` est NULL — on
+        rejoue le resolver pour remplir la trace de source (utile après
+        application tardive de la migration `A3_listings_district_source`).
+    Pagine strictement (1000/page).
+    """
     out: list[dict] = []
     page_size = 1000
     for page_idx in range(20):
         params = {
-            "select": "id,portal,url,title,description,latitude,longitude,district",
+            "select": "id,portal,url,title,description,latitude,longitude,district,district_source",
             "postal_code": f"eq.{cp}",
             "is_active": "eq.true",
             "est_logement": "eq.true",
-            "or": "(district.is.null,district.eq.)",
+            "or": "(district.is.null,district.eq.,district_source.is.null)",
             "order": "id.asc",
             "limit": str(page_size),
             "offset": str(page_idx * page_size),
@@ -142,6 +147,11 @@ async def run(cp: str, dry_run: bool = False) -> dict:
 
         with_source_col = True
         for L in listings:
+            existing_district = (L.get("district") or "").strip()
+            # Si le district est déjà rempli et district_source manque, on
+            # rejoue le resolver en IGNORANT le district existant (pour
+            # tester url/texte/coordonnees). Si aucune stratégie non-portail
+            # ne matche mais que le district existe, on marque `portail`.
             district, source = resolve_district(
                 portal=L.get("portal"),
                 url=L.get("url"),
@@ -149,7 +159,15 @@ async def run(cp: str, dry_run: bool = False) -> dict:
                 description=L.get("description"),
                 latitude=L.get("latitude"),
                 longitude=L.get("longitude"),
+                # Ne pas passer district_from_portal si un district existe
+                # mais qu'on veut auditer la source réelle.
+                district_from_portal=None if existing_district else None,
             )
+            # Si aucun signal externe et district déjà présent → source portail
+            if not district and existing_district:
+                district = existing_district
+                source = "portail"
+
             portal = (L.get("portal") or "unknown").lower()
             if not district:
                 stats["unresolved"] += 1
@@ -160,11 +178,15 @@ async def run(cp: str, dry_run: bool = False) -> dict:
             stats["by_source_portal"].setdefault(portal, Counter())[source] += 1
 
             if not dry_run:
+                # Si un district existe déjà, on ne le remplace QUE si le
+                # resolver a trouvé une piste plus fiable que « portail » —
+                # sinon on écrit uniquement district_source (patch minimal).
+                write_district = district if not existing_district else existing_district
                 ok, still = await _update_listing(
-                    client, L["id"], district, source or "unknown", with_source_col,
+                    client, L["id"], write_district, source or "unknown", with_source_col,
                 )
                 if not ok:
-                    stats["unresolved"] += 1  # écriture échouée
+                    stats["unresolved"] += 1
                     stats["resolved"] -= 1
                     stats["by_source"][source] -= 1
                 if not still:

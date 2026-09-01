@@ -55,7 +55,21 @@ def _check_auth(request: Request) -> None:
 
 
 async def handle_apify_webhook(request: Request, db) -> dict:
-    """Point d'entrée du webhook. `db` = base Mongo (motor)."""
+    """Point d'entrée du webhook. `db` = base Mongo (motor).
+
+    Modes d'appel supportés :
+
+      1. **Manuel / custom** — body JSON `{mode, run_ids?, stale_hours?}`
+      2. **Natif Apify**    — body JSON avec `resource.id` et
+         `resource.status` (envoyé par la plateforme). Le `mode` peut être
+         fourni via query string (`?mode=incremental`) ou header
+         (`X-Apify-Mode`). Par défaut : `incremental`.
+      3. **Import dataset**  — body `{dataset_id: "..."}` pour rattraper un
+         run par son dataset (typiquement un run ABORTED coupé au plafond).
+
+    Les runs `ABORTED` sont désormais acceptés en plus des `SUCCEEDED` : on
+    ingère les items collectés mais on ne désactive jamais rien.
+    """
     _check_auth(request)
 
     try:
@@ -65,29 +79,57 @@ async def handle_apify_webhook(request: Request, db) -> dict:
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="Body must be a JSON object")
 
-    mode = str(body.get("mode") or "").strip().lower()
+    # `mode` : query > header > body > défaut « incremental » (safe pour les
+    # webhooks natifs Apify — on ne veut jamais désactiver par accident).
+    mode = (
+        (request.query_params.get("mode") or "").strip().lower()
+        or (request.headers.get("x-apify-mode") or "").strip().lower()
+        or str(body.get("mode") or "").strip().lower()
+        or "incremental"
+    )
     if mode not in ("complet", "incremental"):
         raise HTTPException(
             status_code=400,
-            detail="Field `mode` is required and must be 'complet' or 'incremental'",
+            detail="Field `mode` must be 'complet' or 'incremental'",
         )
 
     stale_hours = int(body.get("stale_hours") or 48)
     stale_hours = max(1, min(720, stale_hours))
-    run_ids_raw = body.get("run_ids")
-
     allow_deactivate = mode == "complet"
 
     # Import tardif pour éviter tout couplage au démarrage du serveur.
-    from scripts.ingest_apify import ingest_latest_run, ingest_runs  # type: ignore
+    from scripts.ingest_apify import (  # type: ignore
+        ingest_dataset, ingest_latest_run, ingest_runs,
+    )
     from scripts.zones_scraping import ensure_indexes, record_ingest  # type: ignore
 
-    if isinstance(run_ids_raw, list) and run_ids_raw:
+    # ---- Route selon le format du payload --------------------------------
+    call_kind: str
+    result: dict
+    dataset_id = str(body.get("dataset_id") or "").strip()
+    resource = body.get("resource") if isinstance(body.get("resource"), dict) else None
+    run_ids_raw = body.get("run_ids")
+
+    if dataset_id:
+        # Import direct par dataset (mode = force incremental pour safety)
+        call_kind = "dataset"
+        result = await ingest_dataset(dataset_id, stale_hours=stale_hours,
+                                      allow_deactivate=False)
+    elif resource and resource.get("id"):
+        # Format natif Apify — run_id dans resource.id
+        call_kind = "apify_native"
+        run_id = str(resource.get("id")).strip()
+        result = await ingest_runs(
+            [run_id], stale_hours=stale_hours, allow_deactivate=allow_deactivate,
+        )
+    elif isinstance(run_ids_raw, list) and run_ids_raw:
+        call_kind = "manual_run_ids"
         run_ids = [str(x).strip() for x in run_ids_raw if str(x).strip()]
         result = await ingest_runs(
             run_ids, stale_hours=stale_hours, allow_deactivate=allow_deactivate,
         )
     else:
+        call_kind = "manual_last"
         result = await ingest_latest_run(
             stale_hours=stale_hours, allow_deactivate=allow_deactivate,
         )
@@ -123,6 +165,7 @@ async def handle_apify_webhook(request: Request, db) -> dict:
     try:
         summary = {
             "kind": "apify_webhook",
+            "call_kind": call_kind,
             "mode": mode,
             "ran_at": datetime.now(timezone.utc).isoformat(),
             "inserted": int(result.get("inserted") or 0),

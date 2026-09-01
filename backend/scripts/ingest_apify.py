@@ -433,8 +433,10 @@ async def _ingest_one_run(
     input_pcs = _extract_input_postal_codes(run)
     clean, reason = _run_is_clean(run)
 
-    # Skip entirely if the run itself did not succeed — no upsert, no deactivate.
-    if status != "SUCCEEDED":
+    # Skip entirely if the run itself did not succeed AND was not aborted.
+    # `ABORTED` runs (typiquement coupés au plafond de coût) restent
+    # exploitables : on ingère leurs items mais on ne désactive rien.
+    if status not in ("SUCCEEDED", "ABORTED"):
         logger.info(f"[run {run_id}] status={status} → skipped (no upsert, no deactivate)")
         return {
             "run_id": run_id,
@@ -448,6 +450,11 @@ async def _ingest_one_run(
             "reason": reason,
             "skipped": True,
         }
+    # ABORTED runs sont par nature "non-clean" — override explicite pour
+    # empêcher toute désactivation, même si `allow_deactivate=True`.
+    if status == "ABORTED":
+        clean = False
+        reason = f"aborted ({reason})"
 
     # Upsert phase (always run for SUCCEEDED, even if truncated by a limit —
     # every item we did get is real).
@@ -604,6 +611,90 @@ async def ingest_latest_run(
         return {
             "runs": [res],
             "runs_total": 1,
+            "inserted": res.get("inserted", 0),
+            "updated": res.get("updated", 0),
+            "deactivated": res.get("deactivated", 0),
+            "items_fetched": res.get("items_fetched", 0),
+            "runs_clean": 1 if res.get("clean") else 0,
+            "stale_hours": stale_hours,
+            "allow_deactivate": allow_deactivate,
+            "items_by_postal_code": res.get("items_by_postal_code") or {},
+            "input_postal_codes": res.get("input_postal_codes") or [],
+            "sources": res.get("sources") or [],
+        }
+
+
+async def ingest_dataset(
+    dataset_id: str,
+    stale_hours: int = STALE_HOURS,
+    allow_deactivate: bool = False,
+) -> dict:
+    """Import direct des items d'un dataset Apify par son ID.
+
+    Utilisé pour rattraper un run passé, y compris ABORTED. On synthétise
+    un pseudo-run pour réutiliser `_ingest_one_run` (status=SUCCEEDED,
+    clean=False → jamais de désactivation). `allow_deactivate` reste False
+    par défaut : sur un import de dataset isolé on ne connaît pas le vrai
+    scope postalCodes du run.
+    """
+    err = _validate_env()
+    if err:
+        return err
+    dataset_id = (dataset_id or "").strip()
+    if not dataset_id:
+        return {"error": "dataset_id_required"}
+    async with httpx.AsyncClient() as client:
+        # Récupère les métadonnées du dataset pour retrouver le run parent
+        # si présent (utile pour statusMessage / usage / input).
+        run: dict = {}
+        try:
+            r = await client.get(
+                f"https://api.apify.com/v2/datasets/{dataset_id}",
+                params={"token": APIFY_TOKEN}, timeout=15,
+            )
+            if r.status_code == 200:
+                meta = (r.json() or {}).get("data") or {}
+                actor_run_id = meta.get("actRunId")
+                if actor_run_id:
+                    r2 = await client.get(
+                        f"https://api.apify.com/v2/actor-runs/{actor_run_id}",
+                        params={"token": APIFY_TOKEN}, timeout=15,
+                    )
+                    if r2.status_code == 200:
+                        run = (r2.json() or {}).get("data") or {}
+        except Exception as e:
+            logger.warning(f"ingest_dataset: run metadata fetch failed: {e}")
+
+        # Pseudo-run minimal si on n'a pas retrouvé le run parent
+        if not run:
+            run = {
+                "id": f"manual-{dataset_id}",
+                "defaultDatasetId": dataset_id,
+                "status": "SUCCEEDED",
+                "startedAt": datetime.now(timezone.utc).isoformat(),
+                "input": {},
+            }
+        else:
+            # On force SUCCEEDED pour permettre l'upsert même si ABORTED,
+            # et on marque le run comme non-clean pour empêcher toute
+            # désactivation (double sécurité avec allow_deactivate).
+            run["defaultDatasetId"] = dataset_id
+            if (run.get("status") or "").upper() == "ABORTED":
+                run["_original_status"] = "ABORTED"
+                run["status"] = "SUCCEEDED"  # bypass early-skip
+                run["statusMessage"] = (run.get("statusMessage") or "") + " (aborted, forced upsert)"
+
+        res = await _ingest_one_run(
+            client, run, stale_hours, allow_deactivate=allow_deactivate,
+        )
+        # Restaure le vrai status dans le résultat pour l'audit
+        if run.get("_original_status"):
+            res["status"] = run["_original_status"]
+            res["clean"] = False
+        return {
+            "runs": [res],
+            "runs_total": 1,
+            "dataset_id": dataset_id,
             "inserted": res.get("inserted", 0),
             "updated": res.get("updated", 0),
             "deactivated": res.get("deactivated", 0),

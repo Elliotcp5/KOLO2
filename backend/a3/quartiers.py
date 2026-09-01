@@ -96,6 +96,86 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "epinettes bessieres": "epinettes",
     "porte de saint-ouen": "epinettes",
     "porte de saint ouen": "epinettes",
+    # ---- LYON (arrondissements) — pas de point-in-polygon, seul le libellé
+    # sert de discriminant. Les DPE hors Paris tombent en `s_geo=0.5`
+    # (neutre), le multiplicateur reste à 1.0.
+    "lyon 1er": "lyon-1",
+    "lyon 1": "lyon-1",
+    "1er arrondissement lyon": "lyon-1",
+    "lyon 2eme": "lyon-2",
+    "lyon 2e": "lyon-2",
+    "lyon 2": "lyon-2",
+    "lyon 3eme": "lyon-3",
+    "lyon 3e": "lyon-3",
+    "lyon 3": "lyon-3",
+    "lyon 4eme": "lyon-4",
+    "lyon 4e": "lyon-4",
+    "lyon 4": "lyon-4",
+    "croix-rousse": "lyon-4",
+    "croix rousse": "lyon-4",
+    "lyon 5eme": "lyon-5",
+    "lyon 5e": "lyon-5",
+    "lyon 5": "lyon-5",
+    "vieux lyon": "lyon-5",
+    "lyon 6eme": "lyon-6",
+    "lyon 6e": "lyon-6",
+    "lyon 6": "lyon-6",
+    "brotteaux": "lyon-6",
+    "foch": "lyon-6",
+    "tete d or": "lyon-6",
+    "tete-d-or": "lyon-6",
+    "lyon 7eme": "lyon-7",
+    "lyon 7e": "lyon-7",
+    "lyon 7": "lyon-7",
+    "guillotiere": "lyon-7",
+    "jean mace": "lyon-7",
+    "lyon 8eme": "lyon-8",
+    "lyon 8e": "lyon-8",
+    "lyon 8": "lyon-8",
+    "montplaisir": "lyon-8",
+    "monplaisir": "lyon-8",
+    "monchat": "lyon-8",
+    "lyon 9eme": "lyon-9",
+    "lyon 9e": "lyon-9",
+    "lyon 9": "lyon-9",
+    "vaise": "lyon-9",
+    # ---- MARSEILLE (arrondissements 1-16) ----
+    "marseille 1er": "marseille-1",
+    "marseille 1": "marseille-1",
+    "marseille 2eme": "marseille-2",
+    "marseille 2": "marseille-2",
+    "marseille 3eme": "marseille-3",
+    "marseille 3": "marseille-3",
+    "marseille 4eme": "marseille-4",
+    "marseille 4": "marseille-4",
+    "marseille 5eme": "marseille-5",
+    "marseille 5": "marseille-5",
+    "marseille 6eme": "marseille-6",
+    "marseille 6": "marseille-6",
+    "marseille 7eme": "marseille-7",
+    "marseille 7": "marseille-7",
+    "marseille 8eme": "marseille-8",
+    "marseille 8": "marseille-8",
+    "prado": "marseille-8",
+    "perier": "marseille-8",
+    "bagatelle": "marseille-8",
+    "bonneveine": "marseille-8",
+    "marseille 9eme": "marseille-9",
+    "marseille 9": "marseille-9",
+    "marseille 10eme": "marseille-10",
+    "marseille 10": "marseille-10",
+    "marseille 11eme": "marseille-11",
+    "marseille 11": "marseille-11",
+    "marseille 12eme": "marseille-12",
+    "marseille 12": "marseille-12",
+    "marseille 13eme": "marseille-13",
+    "marseille 13": "marseille-13",
+    "marseille 14eme": "marseille-14",
+    "marseille 14": "marseille-14",
+    "marseille 15eme": "marseille-15",
+    "marseille 15": "marseille-15",
+    "marseille 16eme": "marseille-16",
+    "marseille 16": "marseille-16",
 }
 
 
@@ -142,6 +222,17 @@ def _normalize_label(label: str) -> str:
 
 _SLUG_TO_LIBELLE_CACHE: Optional[dict[str, str]] = None
 
+# Libellés canoniques hors-Paris (pas dans le GeoJSON quartiers admin).
+# `slug_to_libelle` retourne ces libellés pour permettre le round-trip
+# `label_to_quartier(libelle) → slug` après backfill.
+_SLUG_TO_LIBELLE_HORS_PARIS: dict[str, str] = {
+    f"lyon-{i}": f"Lyon {i}{'er' if i == 1 else 'e'}" for i in range(1, 10)
+}
+_SLUG_TO_LIBELLE_HORS_PARIS.update({
+    f"marseille-{i}": f"Marseille {i}{'er' if i == 1 else 'e'}"
+    for i in range(1, 17)
+})
+
 
 def slug_to_libelle(slug: Optional[str]) -> Optional[str]:
     """Retourne le libellé officiel Ville de Paris pour un slug de quartier
@@ -153,6 +244,9 @@ def slug_to_libelle(slug: Optional[str]) -> Optional[str]:
     if _SLUG_TO_LIBELLE_CACHE is None:
         feats = _load_features()
         _SLUG_TO_LIBELLE_CACHE = {f["slug"]: (f.get("l_qu") or f["slug"]) for f in feats}
+        # Merge hors-Paris (Lyon, Marseille)
+        for k, v in _SLUG_TO_LIBELLE_HORS_PARIS.items():
+            _SLUG_TO_LIBELLE_CACHE.setdefault(k, v)
     if not slug:
         return None
     return _SLUG_TO_LIBELLE_CACHE.get(slug)

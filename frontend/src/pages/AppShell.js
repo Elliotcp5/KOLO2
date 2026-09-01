@@ -7458,6 +7458,7 @@ const AppShell = () => {
   const { theme, changeTheme, initializeFromUser } = useTheme();
   const { fetchPlanData, planData, checkFeature } = usePlan();
   const { locale } = useLocale();
+  const { checkAuth } = useAuth();
   const [activeTab, setActiveTab] = useState('today');
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
