@@ -1,5 +1,12 @@
 # KOLO - Changelog
 
+## Revue visuelle pré-BLOC C — 1 sept. 2026
+
+- 10 captures d'écran de l'app dans son état BLOC B (fin de session précédente) partagées avec l'utilisateur pour validation avant lancement du BLOC C (Estimation + Dossier PDF + Dictée).
+- Écrans couverts : Onboarding steps 1/2/3, Opportunités (carte rose démo), Performances (état vierge "Vos premiers chiffres"), Profil menu (plan Pro), Profil pro (formulaire), Veille Suivis (état vide), Zones prospection, Paywall Veille (ambre), et écran facturation "Tu es Pro".
+- Aucune modification de code. Login effectué via compte Apple Review (`applereview@trykolo.io`, code `424242`).
+
+
 ## Version 2.10.0 - 1er Juillet 2026
 
 ### Refonte Site Marketing (www.trykolo.io) — Palette monochrome stricte
