@@ -10,9 +10,40 @@ import './b1.css';
 
 // ============================================================================
 // Bottom nav — pill floating
+// Optional ambre badge on Opportunités tab quand des cartes de veille attendent.
+// Ne concerne QUE Pro (l'API renvoie 402 pour Découverte, on ignore silencieux).
+// N'entre JAMAIS dans la barre de progression des opportunités.
 // ============================================================================
+const _veilleBadgeCache = { count: null, at: 0 };
+
 export function BottomTabPill({ active }) {
   const navigate = useNavigate();
+  const [badge, setBadge] = useState(_veilleBadgeCache.count || 0);
+  useEffect(() => {
+    // Cache 60s pour ne pas taper l'API à chaque changement d'onglet.
+    const stale = Date.now() - _veilleBadgeCache.at > 60_000;
+    if (!stale && _veilleBadgeCache.count != null) {
+      setBadge(_veilleBadgeCache.count);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { veilleApi } = await import('./B1Veille');
+        const r = await veilleApi.fileDuJour();
+        const n = r?.actif ? (r.cartes || []).length : 0;
+        _veilleBadgeCache.count = n;
+        _veilleBadgeCache.at = Date.now();
+        if (!cancelled) setBadge(n);
+      } catch (_e) {
+        // 402 (Découverte) / 401 (anonyme) → pas de badge
+        _veilleBadgeCache.count = 0;
+        _veilleBadgeCache.at = Date.now();
+        if (!cancelled) setBadge(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const tabs = [
     { id: 'opportunites', to: '/app-b1', Icon: IconSwipe, label: b1t('nav.opportunites') },
     { id: 'estimation',   to: '/app-b1/estimation', Icon: IconCalc,  label: b1t('nav.estimation') },
@@ -29,8 +60,18 @@ export function BottomTabPill({ active }) {
           data-testid={`b1-tab-${t.id}`}
           onClick={() => navigate(t.to)}
           aria-label={t.label}
+          style={{ position: 'relative' }}
         >
           <t.Icon size={24} />
+          {t.id === 'opportunites' && badge > 0 && (
+            <span
+              className="b1-tab-badge"
+              data-testid="b1-tab-veille-badge"
+              aria-label={`${badge} biens en vente à surveiller`}
+            >
+              {badge}
+            </span>
+          )}
         </button>
       ))}
     </nav>

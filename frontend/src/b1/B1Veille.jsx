@@ -95,10 +95,10 @@ export function VeilleCard({ card, onSkip, onWatch }) {
   };
   return (
     <div className="b1-veille-card" data-testid="b1-veille-card">
+      <div className="b1-veille-bandeau" data-testid="b1-veille-bandeau">
+        {b1t('veille.bandeau')}
+      </div>
       <div className="b1-veille-photo">
-        <div className="b1-veille-chip" data-testid="b1-veille-bandeau">
-          {b1t('veille.bandeau')}
-        </div>
         {card.thumbnail_url ? (
           <img src={card.thumbnail_url} alt="" loading="lazy" />
         ) : (
@@ -196,7 +196,7 @@ export function VeillePaywall() {
         </div>
         <div style={{ flex: 1 }} />
         <button
-          className="b1-pill b1-pill--primary b1-pill--fullwidth"
+          className="b1-veille-inter-cta"
           data-testid="b1-veille-paywall-cta"
           onClick={() => navigate('/app-v2/settings/subscription')}
         >
