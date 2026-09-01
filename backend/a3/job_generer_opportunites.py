@@ -35,6 +35,32 @@ from a3.text import normalize_ges_class, normalize_type_bien_dpe, normalize_voie
 
 logger = logging.getLogger(__name__)
 
+# Numéro de rue au début d'une adresse : « 43 », « 190B », « 2 bis », « 4-6 »
+# ⚠️ [a-z]? doit être collé aux chiffres (« 190B ») et ne PAS avaler la lettre
+# initiale du type de voie (« R » de « Rue Legendre »).
+_NUM_PREFIX_RE = re.compile(
+    r"^\s*\d+(?:[a-z](?=\s))?(?:\s+(?:bis|ter|quater))?\s*[-,]?\s+", re.I
+)
+# Fin d'adresse : «  75017 Paris » ou virgule + code postal
+_CP_TAIL_RE = re.compile(r"\s*[,\s]\s*\d{5}\b.*$")
+
+
+def _extract_voie_from_adresse(adresse: Optional[str]) -> Optional[str]:
+    """Extrait la voie depuis un champ `adresse` type « 43 Rue Legendre 75017 Paris ».
+
+    Retourne None si non extractible. Le nom retourné n'est PAS encore normalisé
+    (on laisse `normalize_voie()` s'en charger, comme pour les rues d'annonces).
+    """
+    if not adresse:
+        return None
+    s = str(adresse).strip()
+    # Coupe le code postal + ville en queue
+    s = _CP_TAIL_RE.sub("", s)
+    # Retire le numéro en tête
+    s = _NUM_PREFIX_RE.sub("", s)
+    s = s.strip(" ,-")
+    return s or None
+
 SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
 SUPABASE_KEY = (os.environ.get("SUPABASE_SECRET_KEY") or "").strip()
 
@@ -309,6 +335,9 @@ async def _process_zone(
         "filtre": 0, "deja_en_vente": 0, "location_recente": 0, "opportunite": 0,
         "created": 0, "motifs": {},
         "score_confiance_sum": 0.0,
+        "rue_dpe_via_nom_voie": 0,
+        "rue_dpe_via_adresse": 0,
+        "rue_dpe_null": 0,
     }
 
     seen_addresses: dict[str, dict] = {}  # dedup DPE
@@ -319,7 +348,18 @@ async def _process_zone(
         type_norm = normalize_type_bien_dpe(dpe.get("type_batiment"))
         dpe["type_batiment_norm"] = type_norm
         dpe["classe_dpe"] = normalize_ges_class(dpe.get("classe_dpe"))
-        dpe["nom_voie"] = normalize_voie(dpe.get("nom_voie") or "")
+        # `nom_voie` prioritaire ; fallback depuis `adresse` si vide
+        voie_raw = dpe.get("nom_voie") or ""
+        if voie_raw and normalize_voie(voie_raw):
+            dpe["nom_voie"] = normalize_voie(voie_raw)
+            stats["rue_dpe_via_nom_voie"] += 1
+        else:
+            fallback = _extract_voie_from_adresse(dpe.get("adresse"))
+            dpe["nom_voie"] = normalize_voie(fallback) if fallback else None
+            if dpe["nom_voie"]:
+                stats["rue_dpe_via_adresse"] += 1
+            else:
+                stats["rue_dpe_null"] += 1
         dpe["etage_dpe"] = _etage_dpe_from_complement(dpe.get("complement_adresse"))
         surface_dpe = dpe.get("surface_habitable")
         try:
