@@ -51,6 +51,6 @@
 - Password: **Psychologue94340!**
 
 ## Secrets serveur
-- **ADMIN_SECRET** (bypass admin, header `X-Admin-Secret`) : `EjQ1iRaMUZ9iLmAl9amx1qt6MME1NhbPjRJOD6YEO3s`
-- **APIFY_WEBHOOK_SECRET** (header `X-Apify-Secret` pour `POST /api/webhooks/apify`) : voir `backend/.env` (auto-généré 29 Août 2026)
+- **ADMIN_SECRET** (bypass admin, header `X-Admin-Secret`) : voir `backend/.env` (rotationné 1 Sept 2026 en début de Session A3 — l'ancien avait été partagé en clair)
+- **APIFY_WEBHOOK_SECRET** (header `X-Apify-Secret` pour `POST /api/webhooks/apify`) : voir `backend/.env` (rotationné 1 Sept 2026)
 

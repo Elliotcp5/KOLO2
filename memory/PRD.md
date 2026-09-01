@@ -644,7 +644,15 @@ Trois fixes P0/P1 appliqués sur cette itération :
 - Réponse auth étendue (role, organisation_id, organisation_nom, plan, onboarding_infos_ok, tour_guide_vu, zones)
 - 24 tests pytest verts sur 8 runs consécutifs
 
-### Session A3 — Opportunities Engine  (P1, prochaine session)
+### Session A3 — Opportunities Engine  ✅ (1 Sept 2026)
+- Extraction rue/étage batch : 315/1225 rues écrites sur le 75017 (25.7%)
+  - Taux par source cohérent avec la mesure user : bienici 36.4%, pap 34.3%, seloger/leboncoin/century21/safti 0% (description non fournie)
+- Job nocturne à **03h00 Europe/Paris** (cron asyncio via zoneinfo, gère heure d'été/hiver)
+- 5 sous-scores + court-circuit rue≠surface<0.9 (voir `a3/matching.py`)
+- Cadastre (bloquant, cache 6 mois) + Géorisques (fire & forget, ordre lon,lat)
+- Sur 75017 : 1124 DPE traités → 838 déjà en vente (74.6%), 279 filtrés, 7 opportunités quand seuil_publication baissé à 0.20
+- Aucun seuil en dur — tout via `config_matching`
+- Secrets rotationnés : ADMIN_SECRET + APIFY_WEBHOOK_SECRET (leakés en clair)
 - Extraction rue + étage depuis les listings (regex + parsing description)
 - Intégration APIs : BAN (géocodage), Cadastre, Georisques, ADEME (DPE)
 - Scoring 5 axes : rue (30%), surface (25%), classe énergie (20%), type (15%), étage (10%)

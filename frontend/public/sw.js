@@ -1,5 +1,6 @@
 // KOLO Service Worker for Push Notifications
 // Version 3 - bump to invalidate old caches and force fresh HTML/assets
+/* global clients */
 const CACHE_VERSION = 'kolo-v3';
 
 // Install event - force update

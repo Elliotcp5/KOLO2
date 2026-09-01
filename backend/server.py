@@ -8468,6 +8468,17 @@ except Exception as _a2_err:
 
 
 # ============================================================================
+# A3 router — /api/jobs/* + /api/admin/rapprochements
+# ============================================================================
+try:
+    from a3.routes import router as a3_router
+    app.include_router(a3_router)
+    logger.info("KOLO A3 router mounted (jobs + rapprochements)")
+except Exception as _a3_err:
+    logger.error(f"Failed to mount A3 router: {_a3_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.
@@ -8728,6 +8739,15 @@ async def startup_event():
         logger.info("A2 indexes + config_matching seeded")
     except Exception as e:
         logger.error(f"A2 startup init failed: {e}")
+
+    # === Session A3 — scheduler 03h00 Europe/Paris ===
+    try:
+        import asyncio as _asyncio
+        from a3.scheduler import scheduler_loop
+        _asyncio.create_task(scheduler_loop(db))
+        logger.info("A3 scheduler task launched (03h00 Europe/Paris)")
+    except Exception as e:
+        logger.error(f"A3 scheduler start failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
