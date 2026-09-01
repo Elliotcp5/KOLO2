@@ -12,14 +12,17 @@ from typing import Any, Optional
 from a3.text import normalize_ges_class, normalize_voie
 
 
-def _s_rue(rue_annonce: Optional[str], rue_dpe: Optional[str]) -> float:
-    """rue_extraite null → 0.5 (absence d'info)
+def _s_rue(rue_annonce: Optional[str], rue_dpe: Optional[str],
+           defaut_null: float = 0.5) -> float:
+    """rue_extraite null d'un côté → `defaut_null` (paramétrable via
+    `config_matching.s_rue_defaut_null` ; 0.5 par défaut = absence d'info neutre,
+    0.30 = ne rien offrir quand on ne sait rien).
     rue == voie du DPE → 1.0
     rue != voie du DPE → 0.0"""
     a = normalize_voie(rue_annonce)
     d = normalize_voie(rue_dpe)
     if not a or not d:
-        return 0.5
+        return float(defaut_null)
     return 1.0 if a == d else 0.0
 
 
@@ -72,15 +75,15 @@ def score_annonce_vs_dpe(
     poids: dict[str, float],
     tolerance_surface_pct: float,
     tolerance_surface_plancher_m2: float,
+    s_rue_defaut_null: float = 0.5,
 ) -> dict[str, Any]:
     """Retourne `{score, breakdown, court_circuit}` — breakdown = dict des 5 sous-scores.
 
-    `annonce` attendues clés : `rue_extraite`, `surface`, `energy_class`,
-    `type_normalise`, `floor` OU `etage_extrait`.
-    `dpe` attendues clés canoniques (voir a3.sources.ademe) : `nom_voie`,
-    `surface_habitable`, `classe_dpe`, `type_batiment` (déjà normalisé), etage_dpe.
+    `s_rue_defaut_null` (0.5 par défaut, paramétrable dans `config_matching`) contrôle
+    la valeur de `s_rue` quand la rue est manquante d'au moins un côté. Baisser à 0.30
+    pour ne pas offrir de points quand on ne sait rien.
     """
-    s_rue = _s_rue(annonce.get("rue_extraite"), dpe.get("nom_voie"))
+    s_rue = _s_rue(annonce.get("rue_extraite"), dpe.get("nom_voie"), s_rue_defaut_null)
     s_surface = _s_surface(
         annonce.get("surface"),
         dpe.get("surface_habitable"),

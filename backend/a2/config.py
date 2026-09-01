@@ -39,6 +39,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "seuil_correspondance_location": 0.80,
     "seuil_publication": 0.70,
     "score_ban_minimum": 0.8,
+    "s_rue_defaut_null": 0.5,
     "fraicheur": {"jours_plein": 3, "jours_degrade": 7},
     "facteur_location_perime": 0.85,
     "plafond_cumul_cartes": 15,

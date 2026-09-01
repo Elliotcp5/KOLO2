@@ -301,6 +301,7 @@ async def _process_zone(
     seuil_v = float(cfg.get("seuil_correspondance", 0.75))
     seuil_l = float(cfg.get("seuil_correspondance_location", 0.80))
     seuil_pub = float(cfg.get("seuil_publication", 0.70))
+    s_rue_null = float(cfg.get("s_rue_defaut_null", 0.5))
     poids = cfg.get("poids") or {}
 
     stats = {
@@ -374,14 +375,16 @@ async def _process_zone(
         best_v_score = 0.0
         best_v_annonce: Optional[dict] = None
         for ann in cand_v:
-            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher)
+            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher,
+                                     s_rue_defaut_null=s_rue_null)
             if r["score"] > best_v_score:
                 best_v_score = r["score"]
                 best_v_annonce = ann
 
         best_l_score = 0.0
         for ann in cand_l:
-            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher)
+            r = score_annonce_vs_dpe(ann, dpe, poids, tolerance_pct, tolerance_plancher,
+                                     s_rue_defaut_null=s_rue_null)
             if r["score"] > best_l_score:
                 best_l_score = r["score"]
 

@@ -203,3 +203,26 @@ class TestMatchingScores:
         assert r["court_circuit"] is False
         assert r["breakdown"]["rue"] == 0.0
         assert r["breakdown"]["surface"] == 1.0
+
+    def test_s_rue_defaut_null_parametrable(self):
+        """`s_rue_defaut_null` doit être appliqué quand la rue est null d'un côté."""
+        base = self._ann(rue_extraite=None)
+        # Défaut 0.5
+        r = score_annonce_vs_dpe(base, self._dpe(), self._cfg(), 0.08, 4)
+        assert r["breakdown"]["rue"] == 0.5
+        # Paramétré à 0.30
+        r = score_annonce_vs_dpe(base, self._dpe(), self._cfg(), 0.08, 4,
+                                 s_rue_defaut_null=0.30)
+        assert r["breakdown"]["rue"] == 0.30
+        # Paramétré à 0 (aucun crédit)
+        r = score_annonce_vs_dpe(base, self._dpe(), self._cfg(), 0.08, 4,
+                                 s_rue_defaut_null=0.0)
+        assert r["breakdown"]["rue"] == 0.0
+
+    def test_s_rue_defaut_null_naffect_pas_match_exact(self):
+        """Quand les deux rues existent et matchent, `s_rue_defaut_null` est ignoré."""
+        r = score_annonce_vs_dpe(
+            self._ann(surface=60), self._dpe(), self._cfg(), 0.08, 4,
+            s_rue_defaut_null=0.0,
+        )
+        assert r["breakdown"]["rue"] == 1.0
