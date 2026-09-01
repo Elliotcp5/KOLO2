@@ -242,3 +242,37 @@ async def apple_webhook(request: Request):
 
     await _apply(db, user_id, updates, notif_type, audit_base)
     return {"ok": True, "matched": True, "type": notif_type}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/apple/orphelins — compteur de qualité (filet de sécurité)
+# ---------------------------------------------------------------------------
+# Toute notification Apple qui aboutit à `user_not_found` est déjà écrite
+# dans `apple_webhook_logs` avec `note="user_not_found"`. Ce compteur doit
+# rester à ZÉRO. S'il monte, c'est qu'un abonné payant n'est pas rattaché.
+@router.get("/api/admin/apple/orphelins")
+async def admin_apple_orphelins(request: Request):
+    from server import get_user_from_session  # type: ignore
+    u = await get_user_from_session(request)
+    if not u:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    doc = await _db().users.find_one({"user_id": u.user_id}, {"_id": 0})
+    if not (doc and (doc.get("is_super_admin") or doc.get("role") == "super_admin")):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="admin_only")
+
+    total = await _db().apple_webhook_logs.count_documents({"note": "user_not_found"})
+    # Détail par type de notification + 20 dernières occurrences
+    cur = _db().apple_webhook_logs.find(
+        {"note": "user_not_found"}
+    ).sort("at", -1).limit(20)
+    exemples = []
+    async for row in cur:
+        exemples.append({
+            "at": row.get("at"),
+            "type": row.get("event") or (row.get("transaction") or {}).get("type"),
+            "originalTransactionId": (row.get("transaction") or {}).get("originalTransactionId"),
+            "productId": (row.get("transaction") or {}).get("productId"),
+        })
+    return {"ok": True, "orphelins_total": total, "exemples": exemples}
