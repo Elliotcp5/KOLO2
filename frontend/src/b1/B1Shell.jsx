@@ -190,6 +190,9 @@ export function OpportunitesPage() {
         surface_habitable: caracs.surface_habitable || cur.superficie,
         classe_dpe: caracs.classe_dpe || cur.dpe,
         annee_construction: caracs.annee_construction,
+        // Passe le DPE complet pour le pré-remplissage (etage_dpe, nb_niveaux, etc.)
+        caracteristiques: caracs,
+        listing: cur.listing || null,
       };
       // Démo : pas de lat/lng → on retombe sur l'estimation depuis adresse.
       if (bien.lat == null || bien.lng == null) {

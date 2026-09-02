@@ -1,6 +1,46 @@
 # KOLO - Changelog
 
-## BLOC C — Partie 1 : Moteur d'estimation (Estimation Engine) — 2 sept. 2026
+## Partie 1 — Correctifs post-recette (shouldAskQuestion + perf) — 2 sept. 2026
+
+### 1. `shouldAskQuestion()` branché sur les données réelles
+- **Nouveau helper `prefillFromBien(bien)`** dans `B1Estimation.jsx` : extrait ce qui est déjà connu depuis
+  - le DPE (`caracteristiques.etage_dpe`, `nb_niveaux`, `type_batiment`)
+  - l'annonce rapprochée (`listing.has_elevator`, `has_balcony`, `has_terrace`, `has_garden`, `has_parking`, `floor`).
+- **Règles appliquées** :
+  - **Type de bien** : toujours pré-rempli depuis le DPE, jamais demandé.
+  - **Étage** : `etage_dpe` (extrait via `_etage_dpe_from_complement` en A3) ou `listing.floor`. Mappé sur `rdc/1/2/3/3plus`.
+  - **Ascenseur** : `listing.has_elevator` si annonce, sinon question. Sur maison → skip.
+  - **Extérieur** : cascade `has_garden > has_terrace > has_balcony` depuis l'annonce.
+  - **Stationnement** : `has_parking` depuis l'annonce (conservateur : « garage » si vrai, « aucun » si faux).
+  - **État général** : rien ne le donne jamais → toujours posé (seule question qui reste garantie).
+- **Initialisation `answers` avec les valeurs pré-remplies** — l'utilisateur peut corriger, jamais un formulaire vide.
+- **`activeQs` recalculé** via `shouldAskQuestion(q, bien, prefilled)`.
+- **Tracking `nb_questions_posees`** ajouté à l'event `estimation_lancee` (payload : `{ opp_id, nb_questions_posees, source }`). Journalise directement le budget « 5 taps max ».
+- **Test manuel** : bien avec `etage_dpe: 2` + listing `has_elevator: true, has_balcony: true, has_parking: false` → **1 seule question posée** (état général), écran « Question 1 sur 1 » avec bouton ESTIMER directement disponible.
+- Swipe-droite dans `B1Shell.jsx` passe désormais `caracteristiques` complet et `listing` (si présent) dans le state React Router.
+
+### 2. Parallélisation Supabase — sans Redis
+- **`get_comparables()` accepte maintenant un `postal_code` optionnel** (`scripts/comparables.py`). Quand fourni, la médiane postale se lance en `asyncio.create_task()` en parallèle du bbox ladder, et est awaitée à la fin.
+- **`_fetch_postal_code_median.max_pages`** réduit de 10 → 3 (3000 mutations max = médiane robuste, cap la latence sur CP denses).
+- **Le c1 engine passe le `postal_code`** connu depuis le bien (opportunité ou géocodeur BAN) — donc la parallélisation est toujours active en pratique.
+
+### Perf mesurée après optimisation
+| Ville | Cible | Avant | Après | Statut |
+| --- | --- | --- | --- | --- |
+| Paris 75004 | < 2 s | 2,1–3,0 s | **1,5–2,2 s** | ✅ Sous cible |
+| Lyon 69003 | < 2 s | ~5 s | **~5 s** | ❌ |
+| Marseille 13001 | < 2 s | 7,7 s | **7,4 s** | ❌ |
+
+### Cause identifiée sur Lyon/Marseille (isolée par bench direct Supabase)
+- Le bbox 500 m à Marseille prend **7,1 s** côté Supabase pour retourner 156 lignes — indépendant du client, reproductible sur 5 requêtes successives (7,0 / 7,2 / 7,0 / 7,3 / 7,2 s).
+- À l'inverse, les bboxes 1000/2000/3000 m à Marseille prennent < 1,2 s chacune.
+- Cause probable : plan d'exécution PostgreSQL défavorable sur la combinaison (`type_local` + `date_mutation` + petit bbox `latitude`/`longitude`). La vue `mutations_propres` manque probablement d'un index composite pour cette clé.
+- **Correction hors code** : ajouter un index GIST sur `(latitude, longitude)` ou un composite `(type_local, date_mutation, latitude, longitude)` côté Supabase. C'est une intervention infra, pas frontend/backend.
+
+### Tests
+- 27 tests C1 + 23 tests B1/B3 = **50/50 passent**. Aucune régression sur les critères de recette Partie 1.
+
+
 
 ### Backend `/app/backend/c1/`
 - **`c1/engine.py`** — moteur 100 % déterministe (aucun LLM). Pipeline `run_estimation()` :

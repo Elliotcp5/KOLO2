@@ -98,12 +98,63 @@ export function EstimationHomePage() {
 // ---------------------------------------------------------------------------
 const QUESTIONS_ORDER = ['etat', 'etage', 'ascenseur', 'exterieur', 'stationnement'];
 
-function shouldAskQuestion(qKey, bien) {
-  // Ne pas poser une question si le DPE l'a déjà donnée. Ici la démo n'a rien
-  // en dur ⇒ toutes les questions restent posées. Cette fonction est un
-  // extension point pour brancher plus tard des champs DPE (etage, exterieur…).
-  if (qKey === 'etage' && bien?.type_bien === 'Maison') return false;
-  if (qKey === 'ascenseur' && bien?.type_bien === 'Maison') return false;
+// Extrait ce qui est déjà connu du DPE et de l'annonce rapprochée.
+// Règle : ne demande jamais ce qu'on connaît. Pré-remplit et laisse corriger.
+// Retour : { prefilled: { etage?, ascenseur?, exterieur?, exterieur_surface_m2?, stationnement? } }
+function prefillFromBien(bien) {
+  const out = {};
+  const caracs = bien?.caracteristiques || {};
+  const listing = bien?.listing || null;
+
+  // Étage — DPE `etage_dpe` (extrait du complement_adresse) ou `floor` de l'annonce
+  const etageRaw = (
+    caracs.etage_dpe != null ? caracs.etage_dpe
+    : listing?.floor != null ? listing.floor
+    : null
+  );
+  if (etageRaw != null) {
+    const n = Number(etageRaw);
+    if (n === 0) out.etage = 'rdc';
+    else if (n === 1 || n === 2 || n === 3) out.etage = String(n);
+    else if (n > 3) out.etage = '3plus';
+  }
+
+  // Ascenseur — uniquement disponible via annonce
+  if (listing && listing.has_elevator != null) {
+    out.ascenseur = !!listing.has_elevator;
+  }
+  // Sur maison → pas de question ascenseur
+  if ((bien?.type_bien || '').toLowerCase() === 'maison') {
+    out.ascenseur = out.ascenseur ?? false; // marqueur "connu"
+  }
+
+  // Extérieur — via annonce (has_balcony/has_terrace/has_garden)
+  if (listing) {
+    if (listing.has_garden) out.exterieur = 'jardin';
+    else if (listing.has_terrace) out.exterieur = 'terrasse';
+    else if (listing.has_balcony) out.exterieur = 'balcon';
+    else if (listing.has_balcony === false && listing.has_terrace === false && listing.has_garden === false) {
+      out.exterieur = 'aucun';
+    }
+  }
+
+  // Stationnement — via annonce (has_parking)
+  if (listing) {
+    if (listing.has_parking === true) out.stationnement = 'garage'; // conservateur : on ne sait pas garage vs place
+    else if (listing.has_parking === false) out.stationnement = 'aucun';
+  }
+
+  return out;
+}
+
+function shouldAskQuestion(qKey, bien, prefilled) {
+  // État général : rien ne le donne jamais → toujours posé.
+  if (qKey === 'etat') return true;
+  // Maison : pas d'étage / pas d'ascenseur.
+  if (qKey === 'etage' && (bien?.type_bien || '').toLowerCase() === 'maison') return false;
+  if (qKey === 'ascenseur' && (bien?.type_bien || '').toLowerCase() === 'maison') return false;
+  // Si le champ est déjà pré-rempli par le DPE ou l'annonce, on n'ouvre pas la question.
+  if (prefilled && Object.prototype.hasOwnProperty.call(prefilled, qKey)) return false;
   return true;
 }
 
@@ -115,10 +166,16 @@ export function EstimationFlowPage() {
   const bien = location.state?.bien || {};
   const oppId = location.state?.opportunite_id || null;
 
-  const activeQs = useMemo(() => QUESTIONS_ORDER.filter((k) => shouldAskQuestion(k, bien)), [bien]);
+  const prefilled = useMemo(() => prefillFromBien(bien), [bien]);
+  const activeQs = useMemo(
+    () => QUESTIONS_ORDER.filter((k) => shouldAskQuestion(k, bien, prefilled)),
+    [bien, prefilled],
+  );
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [ext_surface, setExtSurface] = useState('');
+  const [answers, setAnswers] = useState(() => ({ ...prefilled }));
+  const [ext_surface, setExtSurface] = useState(() => (
+    prefilled.exterieur_surface_m2 ? String(prefilled.exterieur_surface_m2) : ''
+  ));
   const [calc, setCalc] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -167,7 +224,11 @@ export function EstimationFlowPage() {
       const t0 = Date.now();
       const res = await b1api.postEstimation(payload);
       const durationMs = Date.now() - t0;
-      track(EVENTS?.ESTIMATION_LANCEE || 'estimation_lancee', { opp_id: oppId });
+      track(EVENTS?.ESTIMATION_LANCEE || 'estimation_lancee', {
+        opp_id: oppId,
+        nb_questions_posees: activeQs.length,
+        source: oppId ? 'opportunite' : 'adresse',
+      });
       track(EVENTS?.ESTIMATION_AFFICHEE || 'estimation_affichee', { duree_ms: durationMs });
       setResult(res);
       clearDraft(draftKey);

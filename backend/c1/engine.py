@@ -431,7 +431,10 @@ async def run_estimation(
       8. Prix commercialisation = valeur × (1 + marge_negociation).
     """
     # 1) Comparables — ladder built-in (rayon), puis élargir fenêtre si vide
-    result = await get_comparables(lat=lat, lng=lng, type_local=type_local, surface=surface, radius_m=500)
+    result = await get_comparables(
+        lat=lat, lng=lng, type_local=type_local, surface=surface,
+        radius_m=500, postal_code=postal_code or None,
+    )
     comparables = result.get("comparables") or []
     radius_used = result.get("radius_used_m") or 500
 
