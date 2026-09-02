@@ -1,12 +1,14 @@
 // =============================================================
-// KOLO v2 — Auth pages (Login + Signup with email code) + Google
+// KOLO — Écran de connexion (langue visuelle B1)
+// Fond uni #F0EEF8, logo KOLO noir centré, tagline vouvoyée,
+// pilule rose pleine. Aucun texte en dur, aucune couleur en dur —
+// i18n via b1t (FR/EN/IT/DE).
 // =============================================================
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { V2Logo } from '../V2Layout';
-import v2api, { getApiBase } from '../v2api';
-import v2t from '../v2i18n';
-import '../../styles/v2.css';
+import v2api from '../v2api';
+import b1t from '../../b1/b1i18n';
+import '../../b1/b1.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
   const navigate = useNavigate();
@@ -22,196 +24,190 @@ export default function V2AuthPage({ mode = 'login' }) {
   const [referralName, setReferralName] = useState('');
 
   useEffect(() => {
-    // Pick up ?ref=CODE from URL or from previously stored referral (set by /r/:code landing)
     const fromUrl = params.get('ref') || '';
-    const fromStorage = localStorage.getItem('kolo_referral_code') || '';
+    const fromStorage = (() => { try { return localStorage.getItem('kolo_referral_code') || ''; } catch { return ''; } })();
     const ref = (fromUrl || fromStorage || '').toUpperCase().trim();
     if (ref) {
       setReferralCode(ref);
-      v2api.referralInfo(ref).then(r => setReferralName(r.referrer_first_name || '')).catch(() => {});
+      v2api.referralInfo(ref).then((r) => setReferralName(r.referrer_first_name || '')).catch(() => {});
     }
   }, [params]);
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const sendCode = async () => {
+    if (!emailValid) return;
     setError(''); setBusy(true);
     try {
-      await v2api.sendEmailCode(email);
+      await v2api.sendEmailCode(email.trim().toLowerCase());
       setStep('code');
-    } catch (e) { setError(e.message); } finally { setBusy(false); }
+    } catch (e) { setError(e.message || 'error'); } finally { setBusy(false); }
   };
+
   const verify = async () => {
     setError(''); setBusy(true);
     try {
-      const r = await v2api.verifyEmailCode({ email, code, first_name: firstName, last_name: lastName, referral_code: referralCode || undefined });
+      const r = await v2api.verifyEmailCode({
+        email: email.trim().toLowerCase(),
+        code,
+        first_name: firstName,
+        last_name: lastName,
+        referral_code: referralCode || undefined,
+      });
       v2api.setSession(r.session_token);
-      if (referralCode) localStorage.removeItem('kolo_referral_code');
-      // Persiste l'aiguillage V2↔B1 pour un accès rapide côté front
+      if (referralCode) { try { localStorage.removeItem('kolo_referral_code'); } catch (_) {} }
       try {
         if (r.app_version) localStorage.setItem('kolo_app_version', r.app_version);
         localStorage.setItem('kolo_zones_confirmees', r.zones_confirmees ? '1' : '0');
       } catch (_) {}
-      // Aiguillage :
-      // - app_version === 'b1' + zones non confirmées → écran de reprise
-      // - app_version === 'b1' → app-b1
-      // - sinon → v2 (défaut historique)
       if (r.app_version === 'b1') {
         if (!r.zones_confirmees) { navigate('/app-b1/reprise', { replace: true }); return; }
         navigate('/app-b1', { replace: true }); return;
       }
       navigate(r.new_user ? '/app-v2/onboarding' : '/app-v2');
-    } catch (e) { setError(e.message); } finally { setBusy(false); }
+    } catch (e) { setError(e.message || 'error'); } finally { setBusy(false); }
   };
 
   return (
-    <div className="v2-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, paddingBottom: 24 }}>
-      <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1 }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <img src="/kolo-mark-v5-256.png" alt="KOLO" style={{ width: 72, height: 72, objectFit: 'contain', filter: 'invert(1)', display: 'block', margin: '0 auto' }} />
-          <div style={{ fontSize: 13.5, color: 'var(--v2-muted)', marginTop: 14 }}>
-            Ton copilote IA terrain
-          </div>
-        </div>
-
-        {referralName && mode === 'signup' && (
-          <div style={{
-            background: 'linear-gradient(135deg, #EEF4FF 0%, #FAF5FF 100%)',
-            border: '1px solid #E5E7FF',
-            borderRadius: 14,
-            padding: '12px 14px',
-            marginBottom: 18,
-            fontSize: 13.5,
-            color: 'var(--v2-ink)',
-            textAlign: 'center',
-          }} data-testid="auth-referral-banner">
-            🎁 Tu es invité par <strong>{referralName}</strong> — rejoins KOLO gratuitement.
-          </div>
-        )}
-
-        {step === 'email' && (
-          <>
-            <div className="v2-field">
-              <label className="v2-label">{v2t('auth.email')}</label>
-              <input className="v2-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={v2t('auth.email_placeholder')} data-testid="auth-email" />
+    <div className="b1-root" data-testid="auth-root">
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          {/* Logo KOLO — SVG inline noir sur fond lilas B1 */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 100 100"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ display: 'block', margin: '0 auto 16px' }}
+              data-testid="auth-logo"
+              aria-label="KOLO"
+            >
+              {/* barre verticale */}
+              <rect x="18" y="12" width="18" height="76" rx="9" fill="var(--b1-text)" />
+              {/* branche haute droite */}
+              <rect
+                x="50" y="12" width="18" height="52" rx="9" fill="var(--b1-text)"
+                transform="rotate(30 59 38)"
+              />
+              {/* branche basse droite */}
+              <rect
+                x="50" y="36" width="18" height="52" rx="9" fill="var(--b1-text)"
+                transform="rotate(-30 59 62)"
+              />
+            </svg>
+            <div className="b1-lead" style={{ marginTop: 0 }}>
+              {b1t('auth.tagline')}
             </div>
-            {mode === 'signup' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div className="v2-field">
-                  <label className="v2-label">{v2t('auth.first_name')}</label>
-                  <input className="v2-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} data-testid="auth-firstname" />
-                </div>
-                <div className="v2-field">
-                  <label className="v2-label">{v2t('auth.last_name')}</label>
-                  <input className="v2-input" value={lastName} onChange={(e) => setLastName(e.target.value)} data-testid="auth-lastname" />
-                </div>
-              </div>
-            )}
-            {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 0, marginBottom: 10 }}>{error}</p>}
-            <button className="v2-btn primary full" onClick={sendCode} disabled={busy || !email} data-testid="auth-send-code">
-              {busy ? '…' : v2t('auth.send_code')}
-            </button>
+          </div>
 
-            {false && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0', color: 'var(--v2-muted-2)', fontSize: 12 }}>
-              <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
-              <span>ou</span>
-              <div style={{ flex: 1, height: 1, background: 'var(--v2-line)' }} />
-            </div>
-            )}
-            {/* Apple Sign-In désactivé temporairement — sera réactivé en v2.1 quand le provisioning profile sera régénéré.
-                Apple Review §4.8 accepte l'email-code comme méthode d'auth unique. */}
-            {false && (
-            <button className="v2-btn secondary full" onClick={async () => {
-              setError('');
-              try {
-                const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-                const result = await SignInWithApple.authorize({
-                  clientId: 'io.kolo.app.web',
-                  redirectURI: `${window.location.origin}/app-v2/login`,
-                  scopes: 'email name',
-                });
-                const r = await fetch(`${getApiBase()}/api/v2/auth/apple/exchange`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    identity_token: result.response.identityToken,
-                    email: result.response.email || null,
-                    first_name: result.response.givenName || null,
-                    last_name: result.response.familyName || null,
-                  }),
-                });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.detail || 'Échec Apple Sign-In');
-                v2api.setSession(d.session_token);
-                navigate(d.new_user ? '/app-v2/onboarding' : '/app-v2');
-              } catch (e) {
-                setError(e.message || 'Apple Sign-In indisponible');
-              }
-            }} data-testid="auth-apple">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6 }}>
-                <path d="M11.182.008C11.148-.03 9.923.023 8.857 1.18c-1.066 1.156-.902 2.482-.878 2.516.024.034 1.52.087 2.475-1.258.955-1.345.762-2.391.728-2.43zm3.314 11.733c-.048-.096-2.325-1.234-2.113-3.422.212-2.189 1.675-2.789 1.698-2.854.023-.065-.597-.79-1.254-1.157a3.692 3.692 0 0 0-1.563-.434c-1.082-.031-1.903.626-2.34.626-.438 0-1.01-.626-1.896-.626-1.082 0-2.114.626-2.839 1.496C1.498 7.391 1.054 9.4 1.832 11.698c.778 2.298 2.083 4.295 3.038 4.295.955 0 1.25-.595 2.564-.595 1.314 0 1.554.595 2.564.595 1.01 0 2.325-2.059 3.038-4.295.713-2.236 1.119-4.148 1.446-4.544z"/>
-              </svg>
-              Continuer avec Apple
-            </button>
-            )}
-            {false && (
-            <button className="v2-btn secondary full" onClick={async () => {
-              try {
-                const r = await fetch(`${getApiBase()}/api/auth/google/client-id`);
-                const d = await r.json();
-                if (!d.client_id) throw new Error('Google non configuré');
-                const redirectUri = window.location.origin + '/auth/google';
-                const state = Math.random().toString(36).slice(2);
-                try {
-                  sessionStorage.setItem('kolo_oauth_state', state);
-                  sessionStorage.setItem('kolo_oauth_mode', mode);
-                  sessionStorage.setItem('kolo_oauth_locale', 'fr');
-                  sessionStorage.setItem('kolo_oauth_target', 'v2');
-                } catch (_) {}
-                const params = new URLSearchParams({
-                  client_id: d.client_id,
-                  redirect_uri: redirectUri,
-                  response_type: 'code',
-                  scope: 'openid email profile',
-                  access_type: 'online',
-                  include_granted_scopes: 'true',
-                  prompt: 'select_account',
-                  state,
-                });
-                window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-              } catch (e) {
-                setError(e.message || 'Google indisponible');
-              }
-            }} data-testid="auth-google">
-              Continuer avec Google
-            </button>
-            )}
-
-            <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--v2-muted)' }}>
-              {mode === 'login' ? (
-                <>Pas encore de compte ? <a onClick={() => navigate('/app-v2/signup')} style={{ color: 'var(--v2-accent)', cursor: 'pointer' }}>Créer un compte</a></>
-              ) : (
-                <>Déjà inscrit ? <a onClick={() => navigate('/app-v2/login')} style={{ color: 'var(--v2-accent)', cursor: 'pointer' }}>Se connecter</a></>
+          {step === 'email' && (
+            <>
+              <div className="b1-input-label">{b1t('auth.email_label')}</div>
+              <input
+                className="b1-input"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={b1t('auth.email_placeholder')}
+                data-testid="auth-email"
+              />
+              {mode === 'signup' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                  <div>
+                    <div className="b1-input-label">{b1t('auth.first_name')}</div>
+                    <input className="b1-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} data-testid="auth-firstname" autoComplete="given-name" />
+                  </div>
+                  <div>
+                    <div className="b1-input-label">{b1t('auth.last_name')}</div>
+                    <input className="b1-input" value={lastName} onChange={(e) => setLastName(e.target.value)} data-testid="auth-lastname" autoComplete="family-name" />
+                  </div>
+                </div>
               )}
-            </p>
-          </>
-        )}
+              {error && <p className="b1-small" style={{ color: 'var(--b1-danger)', marginTop: 8 }}>{error}</p>}
+              <button
+                className="b1-pill b1-pill--primary b1-pill--fullwidth"
+                style={{ marginTop: 20 }}
+                onClick={sendCode}
+                disabled={busy || !emailValid}
+                data-testid="auth-send-code"
+              >
+                {busy ? b1t('sys.un_instant') : b1t('auth.send_code')}
+              </button>
 
-        {step === 'code' && (
-          <>
-            <p style={{ fontSize: 14, color: 'var(--v2-muted)', marginBottom: 18 }}>
-              Code envoyé à <strong style={{ color: 'var(--v2-ink)' }}>{email}</strong>
-            </p>
-            <div className="v2-field">
-              <label className="v2-label">Code à 6 chiffres</label>
-              <input className="v2-input" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} style={{ textAlign: 'center', letterSpacing: '8px', fontSize: 20, fontWeight: 700 }} data-testid="auth-code-input" />
-            </div>
-            {error && <p style={{ color: '#DC2626', fontSize: 13 }}>{error}</p>}
-            <button className="v2-btn primary full" onClick={verify} disabled={busy || code.length !== 6} data-testid="auth-verify">
-              {busy ? 'Vérification…' : 'Confirmer'}
-            </button>
-            <button className="v2-btn secondary full" style={{ marginTop: 10 }} onClick={() => setStep('email')}>Modifier l'email</button>
-          </>
-        )}
+              <p className="b1-small" style={{ textAlign: 'center', marginTop: 24, color: 'var(--b1-text-muted)' }}>
+                {mode === 'login' ? (
+                  <>{b1t('auth.no_account_q')}{' '}
+                    <a
+                      onClick={() => navigate('/app-v2/signup')}
+                      style={{ color: 'var(--b1-accent)', cursor: 'pointer', fontWeight: 600 }}
+                      data-testid="auth-goto-signup"
+                    >
+                      {b1t('auth.create_account')}
+                    </a>
+                  </>
+                ) : (
+                  <>{b1t('auth.have_account_q')}{' '}
+                    <a
+                      onClick={() => navigate('/app-v2/login')}
+                      style={{ color: 'var(--b1-accent)', cursor: 'pointer', fontWeight: 600 }}
+                      data-testid="auth-goto-login"
+                    >
+                      {b1t('auth.login')}
+                    </a>
+                  </>
+                )}
+              </p>
+            </>
+          )}
+
+          {step === 'code' && (
+            <>
+              <p className="b1-lead" style={{ textAlign: 'center', marginBottom: 20 }}>
+                {b1t('auth.code_sent_to', { email })}
+              </p>
+              <div className="b1-input-label">{b1t('auth.code_label')}</div>
+              <input
+                className="b1-input"
+                inputMode="numeric"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                style={{ textAlign: 'center', letterSpacing: '8px', fontSize: 20, fontWeight: 700 }}
+                data-testid="auth-code-input"
+                autoComplete="one-time-code"
+              />
+              {error && <p className="b1-small" style={{ color: 'var(--b1-danger)', marginTop: 8 }}>{error}</p>}
+              <button
+                className="b1-pill b1-pill--primary b1-pill--fullwidth"
+                style={{ marginTop: 20 }}
+                onClick={verify}
+                disabled={busy || code.length !== 6}
+                data-testid="auth-verify"
+              >
+                {busy ? b1t('auth.checking') : b1t('auth.confirm')}
+              </button>
+              <button
+                className="b1-pill b1-pill--ghost b1-pill--fullwidth"
+                style={{ marginTop: 10 }}
+                onClick={() => { setStep('email'); setCode(''); setError(''); }}
+                data-testid="auth-edit-email"
+              >
+                {b1t('auth.edit_email')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>fr</string>
 	<key>CFBundleDisplayName</key>
 	<string>KOLO</string>
 	<key>CFBundleExecutable</key>
@@ -33,8 +33,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -46,17 +44,37 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>UIStatusBarStyle</key>
-	<string>UIStatusBarStyleLightContent</string>
-	<key>NSContactsUsageDescription</key>
-	<string>KOLO a besoin d'accéder à vos contacts pour vous permettre d'importer rapidement vos prospects immobiliers.</string>
+	<string>UIStatusBarStyleDarkContent</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!-- Permissions iOS — textes FR vouvoyés, explicites (Apple Review) -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KOLO utilise le micro pour transcrire vos observations de visite en texte, directement dans le dossier du bien.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>KOLO utilise l'appareil photo pour ajouter des photos à vos biens et prospects.</string>
+	<string>KOLO utilise l'appareil photo pour ajouter des photos aux dossiers de vos biens immobiliers.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>KOLO accède à votre bibliothèque photos pour ajouter des images à vos biens immobiliers.</string>
+	<string>KOLO accède à votre photothèque pour joindre des photos aux dossiers de vos biens immobiliers.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>KOLO enregistre les PDF des dossiers d'estimation générés dans votre photothèque.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>KOLO utilise la reconnaissance vocale pour transcrire automatiquement vos dictées de visite en texte.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>KOLO importe vos contacts pour vous aider à retrouver rapidement vos prospects immobiliers.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>KOLO utilise votre position pour vous afficher les opportunités et DPE de votre secteur lors des visites.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>KOLO utilise Face ID pour sécuriser l'accès à votre compte.</string>
+
+	<!-- Push notifications -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>aps-environment</key>
+	<string>production</string>
+
+	<!-- Deep links -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -69,51 +87,33 @@
 			</array>
 		</dict>
 	</array>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>KOLO utilise le microphone pour enregistrer tes notes vocales de terrain (notes de visite, comptes-rendus de rendez-vous).</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>KOLO accède à ta photothèque pour ajouter des photos aux dossiers de tes biens immobiliers.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>KOLO utilise la caméra pour prendre en photo les documents et les biens lors de tes visites.</string>
-	<key>NSContactsUsageDescription</key>
-	<string>KOLO importe tes contacts pour t'aider à les retrouver et à gérer ton portefeuille clients.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>KOLO utilise ta position pour t'afficher les annonces et DPE de ton secteur lors des visites.</string>
-        <key>NSAppTransportSecurity</key>
-        <dict>
-                <key>NSAllowsArbitraryLoads</key>
-                <false/>
-                <key>NSExceptionDomains</key>
-                <dict>
-                        <key>emergentagent.com</key>
-                        <dict>
-                                <key>NSIncludesSubdomains</key>
-                                <true/>
-                                <key>NSExceptionAllowsInsecureHTTPLoads</key>
-                                <false/>
-                                <key>NSExceptionRequiresForwardSecrecy</key>
-                                <true/>
-                                <key>NSExceptionMinimumTLSVersion</key>
-                                <string>TLSv1.2</string>
-                        </dict>
-                        <key>trykolo.io</key>
-                        <dict>
-                                <key>NSIncludesSubdomains</key>
-                                <true/>
-                                <key>NSExceptionMinimumTLSVersion</key>
-                                <string>TLSv1.2</string>
-                        </dict>
-                </dict>
-        </dict>
-        <key>NSMicrophoneUsageDescription</key>
-        <string>KOLO utilise le micro pour enregistrer tes notes vocales et les transcrire automatiquement.</string>
-        <key>NSSpeechRecognitionUsageDescription</key>
-        <string>KOLO utilise la reconnaissance vocale pour transcrire tes dictées en texte.</string>
-        <key>NSPhotoLibraryUsageDescription</key>
-        <string>KOLO accède à ta photothèque pour joindre des images à tes dossiers.</string>
-        <key>NSFaceIDUsageDescription</key>
-        <string>KOLO utilise Face ID pour sécuriser l'accès à ton compte.</string>
+
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>emergentagent.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			<key>trykolo.io</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>
