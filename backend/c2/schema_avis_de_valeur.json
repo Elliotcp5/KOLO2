@@ -1,0 +1,464 @@
+{
+  "$schema": "kolo/avis-de-valeur/v1",
+  "version": "1.0.0",
+  "updated": "2026-08-24",
+  "legend": {
+    "src": {
+      "auto": "rempli sans intervention (DVF, ADEME, cadastre, Géorisques, base listings, profil agence)",
+      "saisie": "saisi par le conseiller",
+      "calc": "dérivé d'autres champs"
+    },
+    "lvl": {
+      "1": "rapport immédiat, généré en sortie de visite",
+      "2": "rapport enrichi, complété plus tard"
+    },
+    "if": "condition d'affichage du bloc ou du champ (expression sur les champs déjà saisis)"
+  },
+
+  "property_types": ["appartement", "maison", "immeuble", "terrain", "local", "parking"],
+
+  "sections": [
+    {
+      "id": "dossier",
+      "label": "Identité du dossier",
+      "lvl": 1,
+      "fields": [
+        { "id": "ref", "label": "Référence du dossier", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "date_edition", "label": "Date d'établissement", "type": "date", "src": "auto", "lvl": 1 },
+        { "id": "date_visite", "label": "Date de la visite", "type": "date", "src": "saisie", "lvl": 1 },
+        { "id": "bien_visite", "label": "Bien visité physiquement", "type": "bool", "src": "saisie", "lvl": 1 },
+        { "id": "validite_mois", "label": "Durée de validité", "type": "int", "unit": "mois", "src": "auto", "default": 6, "lvl": 1 },
+        { "id": "photo_couverture", "label": "Photo principale", "type": "image", "src": "saisie", "lvl": 1 },
+        { "id": "adresse_masquee", "label": "Masquer l'adresse", "type": "bool", "src": "saisie", "lvl": 2, "default": false }
+      ]
+    },
+
+    {
+      "id": "redacteur",
+      "label": "Rédacteur et agence",
+      "lvl": 1,
+      "note": "Entièrement pré-rempli depuis le profil. Aucune saisie sur le terrain.",
+      "fields": [
+        { "id": "agent_nom", "label": "Nom du conseiller", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "agent_qualite", "label": "Qualité", "type": "enum", "options": ["agent immobilier", "mandataire", "négociateur salarié", "agent commercial"], "src": "auto", "lvl": 1 },
+        { "id": "agent_tel", "label": "Téléphone", "type": "phone", "src": "auto", "lvl": 1 },
+        { "id": "agent_email", "label": "E-mail", "type": "email", "src": "auto", "lvl": 1 },
+        { "id": "agence_nom", "label": "Enseigne", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "agence_forme", "label": "Forme juridique", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "agence_siren", "label": "SIREN", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "agence_adresse", "label": "Adresse", "type": "address", "src": "auto", "lvl": 1 },
+        { "id": "carte_pro", "label": "N° de carte professionnelle T", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "carte_pro_cci", "label": "CCI de délivrance", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "rcp_assureur", "label": "Assureur RCP", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "rcp_police", "label": "N° de police RCP", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "garantie_financiere", "label": "Garantie financière", "type": "string", "src": "auto", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "mission",
+      "label": "Demandeur et objet de la mission",
+      "lvl": 1,
+      "fields": [
+        { "id": "demandeur_nom", "label": "Nom du demandeur", "type": "string", "src": "saisie", "lvl": 1 },
+        { "id": "demandeur_qualite", "label": "Qualité du demandeur", "type": "enum", "options": ["propriétaire", "indivisaire", "usufruitier", "nu-propriétaire", "mandataire", "notaire", "héritier", "gérant SCI"], "src": "saisie", "lvl": 1 },
+        { "id": "objet", "label": "Objet de l'avis", "type": "enum", "options": ["mise en vente", "succession", "divorce", "donation", "partage", "arbitrage patrimonial", "garantie bancaire", "IFI", "information"], "src": "saisie", "lvl": 1 },
+        { "id": "perimetre", "label": "Périmètre", "type": "enum", "options": ["après visite physique", "sur pièces"], "src": "saisie", "lvl": 1 },
+        { "id": "docs_remis", "label": "Documents remis par le demandeur", "type": "multiselect", "options": ["titre de propriété", "DPE", "règlement de copropriété", "3 derniers PV d'AG", "appels de charges", "taxe foncière", "plans", "factures de travaux", "bail", "diagnostics"], "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "identification",
+      "label": "Identification du bien",
+      "lvl": 1,
+      "fields": [
+        { "id": "type_bien", "label": "Type de bien", "type": "enum", "options": ["appartement", "maison", "immeuble", "terrain", "local", "parking"], "src": "saisie", "lvl": 1, "required": true },
+        { "id": "adresse", "label": "Adresse", "type": "address", "src": "saisie", "lvl": 1, "required": true },
+        { "id": "code_postal", "label": "Code postal", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "commune", "label": "Commune", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "complement", "label": "Bâtiment / escalier / porte", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "cadastre_section", "label": "Section cadastrale", "type": "string", "src": "auto", "lvl": 2 },
+        { "id": "cadastre_numero", "label": "Numéro de parcelle", "type": "string", "src": "auto", "lvl": 2 },
+        { "id": "cadastre_contenance", "label": "Contenance cadastrale", "type": "number", "unit": "m²", "src": "auto", "lvl": 2 },
+        { "id": "lots", "label": "N° de lot(s)", "type": "string", "src": "saisie", "lvl": 2, "if": "type_bien == 'appartement'" },
+        { "id": "tantiemes", "label": "Tantièmes de copropriété", "type": "string", "src": "saisie", "lvl": 2, "if": "type_bien == 'appartement'" },
+        { "id": "nature_propriete", "label": "Nature de la propriété", "type": "enum", "options": ["pleine propriété", "indivision", "usufruit", "nue-propriété", "SCI"], "src": "saisie", "lvl": 2 },
+        { "id": "regime", "label": "Régime", "type": "enum", "options": ["monopropriété", "copropriété", "lotissement", "division en volumes"], "src": "saisie", "lvl": 1 },
+        { "id": "occupation", "label": "Occupation", "type": "enum", "options": ["libre", "occupé par le propriétaire", "loué", "viager"], "src": "saisie", "lvl": 1 },
+        { "id": "loyer_actuel", "label": "Loyer mensuel hors charges", "type": "money", "src": "saisie", "lvl": 2, "if": "occupation == 'loué'" },
+        { "id": "bail_type", "label": "Type de bail", "type": "enum", "options": ["nu résidence principale", "meublé", "mobilité", "commercial", "professionnel"], "src": "saisie", "lvl": 2, "if": "occupation == 'loué'" },
+        { "id": "bail_echeance", "label": "Échéance du bail", "type": "date", "src": "saisie", "lvl": 2, "if": "occupation == 'loué'" },
+        { "id": "servitudes", "label": "Servitudes et droits de passage", "type": "text", "src": "saisie", "lvl": 2 },
+        { "id": "preemption", "label": "Droit de préemption", "type": "multiselect", "options": ["commune", "SAFER", "locataire", "aucun"], "src": "saisie", "lvl": 2 },
+        { "id": "annee_construction", "label": "Année de construction", "type": "int", "src": "saisie", "lvl": 1 },
+        { "id": "annee_renovation", "label": "Dernière rénovation lourde", "type": "int", "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "surfaces",
+      "label": "Surfaces",
+      "lvl": 1,
+      "note": "La surface pondérée est le pivot de tout le calcul. Les coefficients doivent être affichés dans le rapport.",
+      "fields": [
+        { "id": "surface_carrez", "label": "Surface loi Carrez", "type": "number", "unit": "m²", "src": "saisie", "lvl": 1, "if": "regime == 'copropriété'" },
+        { "id": "surface_habitable", "label": "Surface habitable (loi Boutin)", "type": "number", "unit": "m²", "src": "saisie", "lvl": 1, "required": true },
+        { "id": "surface_utile", "label": "Surface utile", "type": "number", "unit": "m²", "src": "calc", "lvl": 2 },
+        { "id": "surface_terrain", "label": "Surface du terrain", "type": "number", "unit": "m²", "src": "auto", "lvl": 1, "if": "type_bien in ['maison','immeuble','terrain']" },
+        { "id": "origine_surface", "label": "Origine de la surface", "type": "enum", "options": ["mesurage certifié", "plan", "déclaratif propriétaire", "estimation sur place"], "src": "saisie", "lvl": 1 },
+        { "id": "pieces_detail", "label": "Détail pièce par pièce", "type": "table", "src": "saisie", "lvl": 2, "columns": [
+          { "id": "nom", "label": "Pièce", "type": "string" },
+          { "id": "surface", "label": "Surface", "type": "number", "unit": "m²" },
+          { "id": "exposition", "label": "Exposition", "type": "enum", "options": ["N", "NE", "E", "SE", "S", "SO", "O", "NO"] },
+          { "id": "hsp", "label": "Hauteur sous plafond", "type": "number", "unit": "m" },
+          { "id": "etat", "label": "État", "type": "enum", "options": ["neuf", "bon", "à rafraîchir", "à rénover"] }
+        ]},
+        { "id": "annexes", "label": "Annexes pondérées", "type": "table", "src": "saisie", "lvl": 1, "columns": [
+          { "id": "nature", "label": "Nature", "type": "enum", "options": ["balcon", "terrasse", "loggia", "jardin privatif", "cave", "grenier", "combles", "garage", "box", "place de parking", "dépendance"] },
+          { "id": "surface", "label": "Surface", "type": "number", "unit": "m²" },
+          { "id": "coef", "label": "Coefficient", "type": "number" },
+          { "id": "surface_ponderee", "label": "Surface pondérée", "type": "number", "unit": "m²", "src": "calc" }
+        ]},
+        { "id": "surface_ponderee_totale", "label": "Surface pondérée totale", "type": "number", "unit": "m²", "src": "calc", "lvl": 1 }
+      ],
+      "coefficients_defaut": {
+        "balcon": 0.25,
+        "terrasse": 0.35,
+        "loggia": 0.4,
+        "jardin privatif": 0.1,
+        "cave": 0.15,
+        "grenier": 0.15,
+        "combles": 0.2,
+        "garage": 0.4,
+        "box": 0.4,
+        "place de parking": 0.3,
+        "dépendance": 0.3
+      }
+    },
+
+    {
+      "id": "composition",
+      "label": "Composition et agencement",
+      "lvl": 1,
+      "fields": [
+        { "id": "nb_pieces", "label": "Nombre de pièces", "type": "int", "src": "saisie", "lvl": 1, "required": true },
+        { "id": "nb_chambres", "label": "Chambres", "type": "int", "src": "saisie", "lvl": 1 },
+        { "id": "nb_sdb", "label": "Salles de bain / d'eau", "type": "int", "src": "saisie", "lvl": 1 },
+        { "id": "nb_wc", "label": "WC", "type": "int", "src": "saisie", "lvl": 2 },
+        { "id": "etage", "label": "Étage", "type": "int", "src": "saisie", "lvl": 1, "if": "type_bien == 'appartement'" },
+        { "id": "nb_etages_immeuble", "label": "Nombre d'étages de l'immeuble", "type": "int", "src": "saisie", "lvl": 2, "if": "type_bien == 'appartement'" },
+        { "id": "ascenseur", "label": "Ascenseur", "type": "bool", "src": "saisie", "lvl": 1, "if": "type_bien == 'appartement'" },
+        { "id": "dernier_etage", "label": "Dernier étage", "type": "bool", "src": "calc", "lvl": 2, "if": "type_bien == 'appartement'" },
+        { "id": "exposition_principale", "label": "Exposition principale", "type": "enum", "options": ["N", "NE", "E", "SE", "S", "SO", "O", "NO", "traversant"], "src": "saisie", "lvl": 1 },
+        { "id": "vue", "label": "Vue", "type": "enum", "options": ["dégagée", "sur rue", "sur cour", "vis-à-vis", "exceptionnelle"], "src": "saisie", "lvl": 1 },
+        { "id": "luminosite", "label": "Luminosité", "type": "enum", "options": ["faible", "correcte", "bonne", "excellente"], "src": "saisie", "lvl": 1 },
+        { "id": "nuisances", "label": "Nuisances relevées", "type": "multiselect", "options": ["voie passante", "voie ferrée", "aérien", "commerce en pied d'immeuble", "chantier", "aucune"], "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "technique",
+      "label": "État technique",
+      "lvl": 2,
+      "note": "Bloc dictable à la voix. C'est ici que se joue le mode « expert qui a l'œil ».",
+      "fields": [
+        { "id": "etat_general", "label": "État général", "type": "enum", "options": ["neuf", "refait à neuf", "bon état", "à rafraîchir", "à rénover", "gros œuvre à reprendre"], "src": "saisie", "lvl": 1, "required": true },
+        { "id": "type_construction", "label": "Type de construction", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "toiture", "label": "Toiture (nature et état)", "type": "string", "src": "saisie", "lvl": 2, "if": "type_bien in ['maison','immeuble']" },
+        { "id": "facade", "label": "Façade (état, dernier ravalement)", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "menuiseries", "label": "Menuiseries", "type": "object", "src": "saisie", "lvl": 2, "children": [
+          { "id": "materiau", "label": "Matériau", "type": "enum", "options": ["bois", "PVC", "aluminium", "mixte"] },
+          { "id": "vitrage", "label": "Vitrage", "type": "enum", "options": ["simple", "double", "triple"] },
+          { "id": "annee", "label": "Année de pose", "type": "int" }
+        ]},
+        { "id": "chauffage_type", "label": "Chauffage", "type": "enum", "options": ["individuel gaz", "individuel électrique", "pompe à chaleur", "collectif", "fioul", "bois", "réseau de chaleur"], "src": "saisie", "lvl": 1 },
+        { "id": "chauffage_age", "label": "Âge de la chaudière / PAC", "type": "int", "unit": "ans", "src": "saisie", "lvl": 2 },
+        { "id": "eau_chaude", "label": "Production d'eau chaude", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "ventilation", "label": "Ventilation", "type": "enum", "options": ["naturelle", "VMC simple flux", "VMC double flux", "aucune"], "src": "saisie", "lvl": 2 },
+        { "id": "electricite_annee", "label": "Année du tableau électrique", "type": "int", "src": "saisie", "lvl": 2 },
+        { "id": "isolation", "label": "Isolation", "type": "multiselect", "options": ["combles", "murs par l'intérieur", "murs par l'extérieur", "planchers bas", "aucune"], "src": "saisie", "lvl": 2 },
+        { "id": "equipements", "label": "Équipements", "type": "multiselect", "options": ["cuisine équipée", "climatisation", "cheminée", "piscine", "alarme", "fibre", "panneaux solaires", "borne de recharge"], "src": "saisie", "lvl": 2 },
+        { "id": "travaux", "label": "Travaux à prévoir", "type": "table", "src": "saisie", "lvl": 1, "columns": [
+          { "id": "poste", "label": "Poste", "type": "string" },
+          { "id": "urgence", "label": "Urgence", "type": "enum", "options": ["immédiate", "à 2 ans", "à 5 ans", "confort"] },
+          { "id": "cout_min", "label": "Coût bas", "type": "money" },
+          { "id": "cout_max", "label": "Coût haut", "type": "money" },
+          { "id": "avant_vente", "label": "À faire avant la mise en vente", "type": "bool" }
+        ]},
+        { "id": "travaux_total", "label": "Total travaux estimés", "type": "money_range", "src": "calc", "lvl": 1 }
+      ]
+    },
+
+    {
+      "id": "energie",
+      "label": "Énergie et diagnostics",
+      "lvl": 1,
+      "note": "Bloc alimenté par l'ADEME dès que l'adresse est identifiée.",
+      "fields": [
+        { "id": "dpe_classe", "label": "Classe DPE", "type": "enum", "options": ["A", "B", "C", "D", "E", "F", "G"], "src": "auto", "lvl": 1 },
+        { "id": "ges_classe", "label": "Classe GES", "type": "enum", "options": ["A", "B", "C", "D", "E", "F", "G"], "src": "auto", "lvl": 1 },
+        { "id": "dpe_conso", "label": "Consommation", "type": "number", "unit": "kWh/m²/an", "src": "auto", "lvl": 1 },
+        { "id": "dpe_emissions", "label": "Émissions", "type": "number", "unit": "kg CO2/m²/an", "src": "auto", "lvl": 1 },
+        { "id": "dpe_numero", "label": "N° du DPE", "type": "string", "src": "auto", "lvl": 2 },
+        { "id": "dpe_date", "label": "Date de réalisation", "type": "date", "src": "auto", "lvl": 1 },
+        { "id": "dpe_validite", "label": "Valable jusqu'au", "type": "date", "src": "calc", "lvl": 1 },
+        { "id": "cout_energie_annuel", "label": "Coût annuel d'énergie estimé", "type": "money_range", "src": "auto", "lvl": 2 },
+        { "id": "passoire", "label": "Passoire énergétique", "type": "bool", "src": "calc", "lvl": 1 },
+        { "id": "interdiction_location", "label": "Échéance d'interdiction de location", "type": "string", "src": "calc", "lvl": 1, "if": "passoire == true" },
+        { "id": "audit_obligatoire", "label": "Audit énergétique obligatoire", "type": "bool", "src": "calc", "lvl": 2 },
+        { "id": "impact_valeur_verte", "label": "Impact estimé de l'étiquette sur la valeur", "type": "percent", "src": "calc", "lvl": 2 },
+        { "id": "diagnostics_autres", "label": "Autres diagnostics", "type": "multiselect", "options": ["amiante", "plomb", "termites", "électricité", "gaz", "assainissement", "ERP", "bruit aéroportuaire", "mérule"], "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "copropriete",
+      "label": "Copropriété",
+      "lvl": 2,
+      "if": "regime == 'copropriété'",
+      "fields": [
+        { "id": "nb_lots", "label": "Nombre de lots", "type": "int", "src": "saisie", "lvl": 2 },
+        { "id": "syndic", "label": "Syndic", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "charges_annuelles", "label": "Charges annuelles courantes", "type": "money", "src": "saisie", "lvl": 1 },
+        { "id": "charges_m2", "label": "Charges au m² par an", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "fonds_travaux", "label": "Quote-part du fonds de travaux", "type": "money", "src": "saisie", "lvl": 2 },
+        { "id": "travaux_votes", "label": "Travaux votés non appelés", "type": "money", "src": "saisie", "lvl": 1 },
+        { "id": "travaux_a_venir", "label": "Travaux à venir non votés", "type": "text", "src": "saisie", "lvl": 2 },
+        { "id": "procedures", "label": "Procédures en cours", "type": "text", "src": "saisie", "lvl": 2 },
+        { "id": "impayes", "label": "Taux d'impayés", "type": "percent", "src": "saisie", "lvl": 2 },
+        { "id": "immatriculation", "label": "N° d'immatriculation au registre", "type": "string", "src": "auto", "lvl": 2 },
+        { "id": "equipements_collectifs", "label": "Équipements collectifs", "type": "multiselect", "options": ["gardien", "ascenseur", "chauffage collectif", "espaces verts", "local vélos", "interphone", "digicode"], "src": "saisie", "lvl": 2 },
+        { "id": "dpe_collectif", "label": "DPE collectif", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "ppt", "label": "Plan pluriannuel de travaux voté", "type": "bool", "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "charges_fiscalite",
+      "label": "Charges et fiscalité",
+      "lvl": 2,
+      "fields": [
+        { "id": "taxe_fonciere", "label": "Taxe foncière", "type": "money", "src": "saisie", "lvl": 1 },
+        { "id": "rendement_brut", "label": "Rendement brut actuel", "type": "percent", "src": "calc", "lvl": 2, "if": "occupation == 'loué'" },
+        { "id": "zone_tendue", "label": "Zone tendue", "type": "bool", "src": "auto", "lvl": 2 },
+        { "id": "encadrement_loyers", "label": "Encadrement des loyers applicable", "type": "bool", "src": "auto", "lvl": 2 },
+        { "id": "dispositifs", "label": "Dispositifs mobilisables", "type": "multiselect", "options": ["MaPrimeRénov'", "Denormandie", "PTZ acquéreur", "éco-PTZ", "aides locales"], "src": "calc", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "environnement",
+      "label": "Environnement et localisation",
+      "lvl": 1,
+      "fields": [
+        { "id": "quartier", "label": "Quartier / micro-marché", "type": "string", "src": "saisie", "lvl": 1 },
+        { "id": "carte", "label": "Carte de situation", "type": "map", "src": "auto", "lvl": 1 },
+        { "id": "transports", "label": "Transports", "type": "table", "src": "auto", "lvl": 2, "columns": [
+          { "id": "nom", "label": "Ligne / arrêt", "type": "string" },
+          { "id": "distance", "label": "Distance à pied", "type": "string" }
+        ]},
+        { "id": "commodites", "label": "Commerces, écoles, santé", "type": "table", "src": "auto", "lvl": 2 },
+        { "id": "plu_zonage", "label": "Zonage PLU", "type": "string", "src": "saisie", "lvl": 2 },
+        { "id": "constructibilite", "label": "Constructibilité résiduelle", "type": "text", "src": "saisie", "lvl": 2, "if": "type_bien in ['maison','terrain','immeuble']" },
+        { "id": "projets_urbains", "label": "Projets urbains à proximité", "type": "text", "src": "saisie", "lvl": 2 },
+        { "id": "risques", "label": "Risques naturels et technologiques", "type": "multiselect", "options": ["inondation", "argiles", "sismicité", "radon", "pollution des sols", "installations classées", "aucun"], "src": "auto", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "marche",
+      "label": "Marché local",
+      "lvl": 1,
+      "note": "100 % auto. C'est le bloc qui fait la crédibilité du rapport sans coûter une seconde de saisie.",
+      "fields": [
+        { "id": "prix_m2_commune", "label": "Prix médian au m² de la commune", "type": "money", "src": "auto", "lvl": 1 },
+        { "id": "prix_m2_quartier", "label": "Prix médian au m² du quartier", "type": "money", "src": "auto", "lvl": 1 },
+        { "id": "prix_m2_segment", "label": "Prix médian du segment (type + nb de pièces)", "type": "money", "src": "auto", "lvl": 1 },
+        { "id": "fourchette_marche", "label": "Fourchette observée bas / médian / haut", "type": "money_range", "src": "auto", "lvl": 1 },
+        { "id": "evolution_12m", "label": "Évolution sur 12 mois", "type": "percent", "src": "auto", "lvl": 1 },
+        { "id": "evolution_60m", "label": "Évolution sur 5 ans", "type": "percent", "src": "auto", "lvl": 2 },
+        { "id": "volume_transactions", "label": "Transactions sur 12 mois", "type": "int", "src": "auto", "lvl": 2 },
+        { "id": "delai_vente_moyen", "label": "Délai de vente moyen observé", "type": "int", "unit": "jours", "src": "auto", "lvl": 1 },
+        { "id": "ecart_affiche_acte", "label": "Écart moyen prix affiché / prix acté", "type": "percent", "src": "auto", "lvl": 2 },
+        { "id": "stock_concurrent", "label": "Biens comparables actuellement en vente", "type": "int", "src": "auto", "lvl": 1 },
+        { "id": "tension", "label": "Tension du marché", "type": "enum", "options": ["acheteurs", "équilibré", "vendeurs"], "src": "calc", "lvl": 1 },
+        { "id": "profil_acquereur", "label": "Profil d'acquéreur type", "type": "text", "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "methode",
+      "label": "Méthode de valorisation",
+      "lvl": 1,
+      "fields": [
+        { "id": "methodes_retenues", "label": "Méthodes retenues", "type": "multiselect", "options": ["comparaison", "capitalisation du revenu", "sol + construction", "bilan promoteur", "indiciaire"], "src": "calc", "lvl": 1, "default": ["comparaison"] },
+        { "id": "ponderation_methodes", "label": "Pondération entre méthodes", "type": "table", "src": "calc", "lvl": 2 },
+        { "id": "justification_methode", "label": "Justification du choix", "type": "text", "src": "calc", "lvl": 1 }
+      ]
+    },
+
+    {
+      "id": "comparables",
+      "label": "Références comparables",
+      "lvl": 1,
+      "min_rows": 3,
+      "note": "Distinguer systématiquement ventes actées (DVF) et biens en vente (prix affichés). C'est le différenciant technique.",
+      "fields": [
+        { "id": "comparables", "label": "Comparables", "type": "table", "src": "auto", "lvl": 1, "columns": [
+          { "id": "nature", "label": "Nature", "type": "enum", "options": ["vente actée", "bien en vente"] },
+          { "id": "adresse", "label": "Adresse ou rue", "type": "string" },
+          { "id": "distance", "label": "Distance", "type": "string" },
+          { "id": "type", "label": "Type", "type": "string" },
+          { "id": "surface", "label": "Surface", "type": "number", "unit": "m²" },
+          { "id": "pieces", "label": "Pièces", "type": "int" },
+          { "id": "etage", "label": "Étage", "type": "int" },
+          { "id": "dpe", "label": "DPE", "type": "string" },
+          { "id": "prix", "label": "Prix", "type": "money" },
+          { "id": "date", "label": "Date de mutation ou de mise en ligne", "type": "date" },
+          { "id": "prix_m2", "label": "Prix au m²", "type": "money", "src": "calc" },
+          { "id": "ajustement", "label": "Ajustement appliqué", "type": "percent" },
+          { "id": "justification", "label": "Motif de l'ajustement", "type": "string" },
+          { "id": "prix_m2_corrige", "label": "Prix au m² corrigé", "type": "money", "src": "calc" }
+        ]},
+        { "id": "prix_m2_moyen_corrige", "label": "Prix au m² moyen corrigé", "type": "money", "src": "calc", "lvl": 1 }
+      ]
+    },
+
+    {
+      "id": "ajustements",
+      "label": "Grille d'ajustement du bien",
+      "lvl": 2,
+      "fields": [
+        { "id": "grille", "label": "Critères d'ajustement", "type": "table", "src": "calc", "lvl": 2, "columns": [
+          { "id": "critere", "label": "Critère", "type": "enum", "options": ["étage", "ascenseur", "exposition", "vue", "état général", "extérieur", "stationnement", "DPE", "nuisances", "standing de l'immeuble", "agencement", "travaux à prévoir"] },
+          { "id": "appreciation", "label": "Appréciation", "type": "enum", "options": ["très défavorable", "défavorable", "neutre", "favorable", "très favorable"] },
+          { "id": "impact_pct", "label": "Impact", "type": "percent" },
+          { "id": "impact_eur", "label": "Impact", "type": "money", "src": "calc" }
+        ]},
+        { "id": "note_globale", "label": "Note globale du bien", "type": "number", "unit": "/100", "src": "calc", "lvl": 2 },
+        { "id": "total_ajustements", "label": "Total des ajustements", "type": "money", "src": "calc", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "swot",
+      "label": "Atouts et points de vigilance",
+      "lvl": 1,
+      "fields": [
+        { "id": "atouts", "label": "Points forts", "type": "list", "src": "saisie", "lvl": 1, "min": 3, "max": 6 },
+        { "id": "faiblesses", "label": "Points de vigilance", "type": "list", "src": "saisie", "lvl": 1, "min": 2, "max": 6 },
+        { "id": "corrigeable", "label": "Corrigeable avant mise en vente", "type": "list", "src": "saisie", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "conclusion",
+      "label": "Conclusion de valeur",
+      "lvl": 1,
+      "fields": [
+        { "id": "valeur_venale", "label": "Valeur vénale retenue", "type": "money", "src": "calc", "lvl": 1, "required": true },
+        { "id": "valeur_basse", "label": "Fourchette basse", "type": "money", "src": "calc", "lvl": 1 },
+        { "id": "valeur_haute", "label": "Fourchette haute", "type": "money", "src": "calc", "lvl": 1 },
+        { "id": "amplitude", "label": "Amplitude de la fourchette", "type": "percent", "src": "calc", "lvl": 2 },
+        { "id": "prix_m2_retenu", "label": "Prix au m² retenu", "type": "money", "src": "calc", "lvl": 1 },
+        { "id": "prix_presentation", "label": "Prix de présentation conseillé", "type": "money", "src": "calc", "lvl": 1 },
+        { "id": "marge_negociation", "label": "Marge de négociation intégrée", "type": "percent", "src": "calc", "lvl": 2 },
+        { "id": "valeur_vente_rapide", "label": "Valeur en vente rapide", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "valeur_locative", "label": "Valeur locative mensuelle", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "rendement_potentiel", "label": "Rendement brut potentiel", "type": "percent", "src": "calc", "lvl": 2 },
+        { "id": "indice_confiance", "label": "Indice de confiance", "type": "enum", "options": ["faible", "moyen", "élevé"], "src": "calc", "lvl": 1 },
+        { "id": "hypotheses", "label": "Hypothèses retenues", "type": "text", "src": "calc", "lvl": 1 }
+      ]
+    },
+
+    {
+      "id": "net_vendeur",
+      "label": "Simulation net vendeur",
+      "lvl": 2,
+      "fields": [
+        { "id": "prix_affiche", "label": "Prix de vente affiché", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "honoraires_montant", "label": "Honoraires d'agence", "type": "money", "src": "saisie", "lvl": 2 },
+        { "id": "honoraires_charge", "label": "Honoraires à la charge de", "type": "enum", "options": ["vendeur", "acquéreur"], "src": "saisie", "lvl": 2 },
+        { "id": "frais_acquisition", "label": "Frais d'acquisition côté acheteur", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "capital_restant_du", "label": "Capital restant dû", "type": "money", "src": "saisie", "lvl": 2 },
+        { "id": "ira", "label": "Indemnités de remboursement anticipé", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "cout_diagnostics", "label": "Coût des diagnostics", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "plus_value", "label": "Plus-value imposable estimée", "type": "money", "src": "calc", "lvl": 2 },
+        { "id": "exoneration_rp", "label": "Exonération résidence principale", "type": "bool", "src": "saisie", "lvl": 2 },
+        { "id": "duree_detention", "label": "Durée de détention", "type": "int", "unit": "ans", "src": "saisie", "lvl": 2 },
+        { "id": "net_vendeur", "label": "Net vendeur estimé", "type": "money", "src": "calc", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "strategie",
+      "label": "Stratégie de commercialisation",
+      "lvl": 2,
+      "note": "Le bloc qui transforme l'avis de valeur en mandat. À garder même en niveau 1 sous forme courte.",
+      "fields": [
+        { "id": "positionnement", "label": "Positionnement prix recommandé", "type": "money", "src": "calc", "lvl": 1 },
+        { "id": "scenario_alternatif", "label": "Scénario alternatif et conséquence sur le délai", "type": "text", "src": "calc", "lvl": 2 },
+        { "id": "delai_previsionnel", "label": "Délai de vente prévisionnel", "type": "int", "unit": "jours", "src": "calc", "lvl": 1 },
+        { "id": "cible", "label": "Cible acquéreur", "type": "text", "src": "saisie", "lvl": 2 },
+        { "id": "plan_action", "label": "Plan d'action", "type": "list", "src": "saisie", "lvl": 2 },
+        { "id": "travaux_rentables", "label": "Travaux à rentabilité positive avant vente", "type": "table", "src": "saisie", "lvl": 2 },
+        { "id": "type_mandat", "label": "Type de mandat proposé", "type": "enum", "options": ["simple", "exclusif", "semi-exclusif"], "src": "saisie", "lvl": 2 },
+        { "id": "calendrier_30j", "label": "Calendrier des 30 premiers jours", "type": "list", "src": "calc", "lvl": 2 }
+      ]
+    },
+
+    {
+      "id": "mentions",
+      "label": "Mentions légales",
+      "lvl": 1,
+      "note": "Bloc non éditable par le conseiller. Toujours imprimé, quel que soit le niveau du rapport.",
+      "locked": true,
+      "fields": [
+        { "id": "mention_nature", "label": "Nature du document", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_non_contractuel", "label": "Caractère non contractuel", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_validite", "label": "Durée de validité", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_base", "label": "Base des informations retenues", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_absence_controle", "label": "Absence de contrôle technique et juridique", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_confidentialite", "label": "Confidentialité", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_gratuite", "label": "Gratuité ou conditions de facturation", "type": "static", "src": "auto", "lvl": 1 },
+        { "id": "mention_rgpd", "label": "Traitement des données personnelles", "type": "static", "src": "auto", "lvl": 1 }
+      ]
+    },
+
+    {
+      "id": "annexes",
+      "label": "Annexes",
+      "lvl": 2,
+      "fields": [
+        { "id": "photos", "label": "Photos datées", "type": "image[]", "src": "saisie", "lvl": 1 },
+        { "id": "plans", "label": "Plans", "type": "file[]", "src": "saisie", "lvl": 2 },
+        { "id": "extrait_cadastral", "label": "Extrait cadastral", "type": "file", "src": "auto", "lvl": 2 },
+        { "id": "dpe_pdf", "label": "DPE complet", "type": "file", "src": "auto", "lvl": 2 },
+        { "id": "tableau_dvf", "label": "Tableau DVF des comparables", "type": "file", "src": "auto", "lvl": 2 },
+        { "id": "etat_risques", "label": "État des risques", "type": "file", "src": "auto", "lvl": 2 },
+        { "id": "pv_ag", "label": "PV d'assemblée générale", "type": "file[]", "src": "saisie", "lvl": 2, "if": "regime == 'copropriété'" }
+      ]
+    },
+
+    {
+      "id": "signature",
+      "label": "Signature",
+      "lvl": 1,
+      "fields": [
+        { "id": "lieu", "label": "Fait à", "type": "string", "src": "auto", "lvl": 1 },
+        { "id": "date_signature", "label": "Le", "type": "date", "src": "auto", "lvl": 1 },
+        { "id": "signature_image", "label": "Signature", "type": "image", "src": "auto", "lvl": 2 }
+      ]
+    }
+  ],
+
+  "niveau_1": {
+    "objectif": "rapport envoyable dans les 2 minutes qui suivent la visite",
+    "saisies_obligatoires": [
+      "type_bien", "adresse", "surface_habitable", "nb_pieces", "etage",
+      "etat_general", "annexes", "travaux", "atouts", "faiblesses"
+    ],
+    "tout_le_reste": "auto ou calculé"
+  }
+}

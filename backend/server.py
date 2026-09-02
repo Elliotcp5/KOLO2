@@ -8532,6 +8532,17 @@ except Exception as _c1_err:
 
 
 # ============================================================================
+# C2 router — /api/dossiers (Avis de valeur)
+# ============================================================================
+try:
+    from c2.routes import router as c2_router
+    app.include_router(c2_router)
+    logger.info("KOLO C2 router mounted (/api/dossiers)")
+except Exception as _c2_err:
+    logger.error(f"Failed to mount C2 router: {_c2_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.

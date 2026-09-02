@@ -704,6 +704,15 @@ try {
   }
 } catch (_e) { /* optional */ }
 
+// Merge C2 namespace (dossier / avis de valeur)
+try {
+  // eslint-disable-next-line global-require
+  const c2 = require('./b1i18nDossier').default || {};
+  for (const l of SUPPORTED) {
+    if (c2[l]) Object.assign(STRINGS[l], c2[l]);
+  }
+} catch (_e) { /* optional */ }
+
 /**
  * Plural helper — chooses `{key}_one` / `{key}_other` / `{key}_zero` based on `count`.
  * Follows CLDR-lite: 0 → _zero if defined, 1 → _one, else _other.

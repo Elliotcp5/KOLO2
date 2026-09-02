@@ -1,0 +1,480 @@
+<meta charset="utf-8">
+<title>Avis de valeur — template KOLO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cream:#FFFFFF;
+    --navy:#1A1A1A;
+    --ink:#2A2536;
+    --muted:#6E6880;
+    --rule:#D8D3CB;
+    --blue:#EC8690;
+    --violet:#D9707B;
+    --grad:linear-gradient(90deg,#EC8690 0%,#D9707B 100%);
+    --alert:#B23A2E;
+  }
+
+  @page{ size:A4; margin:16mm 15mm 18mm; }
+
+  *{ box-sizing:border-box; }
+  html{ background:#F0EEF8; }
+  body{
+    margin:0; background:#F0EEF8;
+    font-family:"DM Sans",system-ui,sans-serif;
+    font-size:9.6pt; line-height:1.5; color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page{
+    width:210mm; min-height:297mm; padding:16mm 15mm 18mm;
+    margin:0 auto 8mm; background:var(--cream);
+    position:relative; page-break-after:always; break-after:page;
+  }
+  .page:last-child{ page-break-after:auto; break-after:auto; }
+
+  h1,h2,h3,h4,.display{ font-family:"League Spartan",sans-serif; color:var(--navy); margin:0; font-weight:700; letter-spacing:-.01em; }
+
+  .eyebrow{
+    font-family:"DM Mono",ui-monospace,monospace; font-size:7.2pt; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+  }
+  .num{ font-family:"DM Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .muted{ color:var(--muted); }
+  .rule{ border:0; border-top:1px solid var(--rule); margin:6mm 0; }
+  .hair{ border:0; border-top:1px solid var(--rule); margin:3mm 0; }
+
+  /* ---------- couverture ---------- */
+  .cover{ display:flex; flex-direction:column; min-height:265mm; }
+  .cover-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .brandmark{ font-family:"League Spartan",sans-serif; font-weight:700; font-size:13pt; letter-spacing:.02em; color:var(--navy); }
+  .cover-title{ margin-top:auto; }
+  .cover-title h1{ font-size:34pt; line-height:1.02; letter-spacing:-.02em; }
+  .cover-title .sub{ font-size:13pt; font-weight:400; color:var(--ink); margin-top:4mm; font-family:"DM Sans",sans-serif; }
+  .cover-photo{
+    margin:8mm 0; height:78mm; width:100%; object-fit:cover; display:block;
+    background:#F0EEF8; border:1px solid var(--rule);
+  }
+  .cover-meta{ display:grid; grid-template-columns:repeat(4,1fr); gap:5mm; margin-top:auto; padding-top:5mm; border-top:1px solid var(--rule); }
+  .cover-meta .k{ font-size:7.2pt; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-family:"DM Mono",monospace; }
+  .cover-meta .v{ font-size:10pt; color:var(--navy); font-weight:500; margin-top:1.5mm; }
+  .cover-legal{ font-size:7.4pt; color:var(--muted); margin-top:5mm; line-height:1.45; }
+
+  /* ---------- en-tête courant ---------- */
+  .runhead{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--rule); padding-bottom:2.5mm; margin-bottom:7mm; }
+  .runhead .t{ font-family:"DM Mono",monospace; font-size:7.2pt; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  /* ---------- titres de section ---------- */
+  .sec{ margin-bottom:8mm; break-inside:avoid; }
+  .sec-head{ display:flex; align-items:baseline; gap:4mm; margin-bottom:4mm; }
+  .sec-num{ font-family:"DM Mono",monospace; font-size:8pt; color:var(--violet); font-weight:500; }
+  .sec-head h2{ font-size:14pt; }
+  .sec-note{ font-size:8.4pt; color:var(--muted); margin:-2mm 0 4mm 0; }
+
+  /* ---------- l'essentiel ---------- */
+  .headline-value{ font-family:"League Spartan",sans-serif; font-size:40pt; font-weight:700; color:var(--navy); line-height:1; letter-spacing:-.025em; }
+  .headline-sub{ font-size:10pt; color:var(--muted); margin-top:2mm; }
+
+  .scale{ margin:9mm 0 4mm; }
+  .scale-rail{ position:relative; height:5px; background:var(--grad); border-radius:3px; }
+  .scale-tick{ position:absolute; top:-4px; width:2px; height:13px; background:var(--navy); }
+  .scale-pin{ position:absolute; top:-11px; transform:translateX(-50%); }
+  .scale-pin .dot{ width:11px; height:11px; border-radius:50%; background:var(--cream); border:3px solid var(--navy); margin:0 auto; }
+  .scale-labels{ display:flex; justify-content:space-between; margin-top:4mm; }
+  .scale-labels div{ text-align:center; flex:1; }
+  .scale-labels .k{ font-family:"DM Mono",monospace; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .scale-labels .v{ font-size:11pt; font-weight:700; color:var(--navy); font-family:"League Spartan",sans-serif; margin-top:1mm; }
+  .scale-labels .center .v{ font-size:13pt; }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); }
+  .kpi{ padding:4mm 4mm 4mm 0; border-right:1px solid var(--rule); }
+  .kpi:last-child{ border-right:0; }
+  .kpi .k{ font-family:"DM Mono",monospace; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .kpi .v{ font-family:"League Spartan",sans-serif; font-size:15pt; font-weight:700; color:var(--navy); margin-top:1.5mm; }
+  .kpi .s{ font-size:8pt; color:var(--muted); }
+
+  /* ---------- tableaux ---------- */
+  table{ width:100%; border-collapse:collapse; font-size:8.8pt; }
+  th{ text-align:left; font-family:"DM Mono",monospace; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:500; padding:0 3mm 2mm 0; border-bottom:1px solid var(--navy); }
+  td{ padding:2.4mm 3mm 2.4mm 0; border-bottom:1px solid var(--rule); vertical-align:top; }
+  td.n, th.n{ text-align:right; padding-right:0; font-variant-numeric:tabular-nums; }
+  tr.total td{ border-bottom:0; border-top:1px solid var(--navy); font-weight:700; color:var(--navy); }
+  .tag{ display:inline-block; font-family:"DM Mono",monospace; font-size:6.8pt; letter-spacing:.08em; text-transform:uppercase; padding:.6mm 1.6mm; border:1px solid var(--rule); color:var(--muted); }
+  .tag.acte{ border-color:var(--blue); color:var(--blue); }
+  .tag.affiche{ border-color:var(--violet); color:var(--violet); }
+
+  /* ---------- listes descriptives ---------- */
+  .dl{ display:grid; grid-template-columns:repeat(2,1fr); gap:0 8mm; }
+  .dl .row{ display:flex; justify-content:space-between; gap:3mm; padding:2mm 0; border-bottom:1px solid var(--rule); }
+  .dl .k{ color:var(--muted); font-size:8.8pt; }
+  .dl .v{ color:var(--navy); font-weight:500; text-align:right; font-size:8.8pt; }
+
+  /* ---------- DPE ---------- */
+  .dpe{ display:flex; gap:3mm; align-items:flex-end; }
+  .dpe-bar{ display:flex; flex-direction:column; gap:1px; width:52mm; }
+  .dpe-bar span{ font-family:"DM Mono",monospace; font-size:7.4pt; color:#fff; padding:.8mm 2mm; opacity:.32; }
+  .dpe-bar span.on{ opacity:1; font-weight:500; }
+  .g-a{background:#319A5B}.g-b{background:#52A83F}.g-c{background:#8FBB25}.g-d{background:#F1D000}.g-e{background:#EFA02C}.g-f{background:#E4682B}.g-g{background:#D0322B}
+
+  /* ---------- points forts / vigilance ---------- */
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:8mm; }
+  ul.plain{ margin:0; padding-left:0; list-style:none; }
+  ul.plain li{ padding:2mm 0 2mm 6mm; border-bottom:1px solid var(--rule); position:relative; }
+  ul.plain li::before{ content:""; position:absolute; left:0; top:3.6mm; width:3mm; height:1px; background:var(--blue); }
+  ul.warn li::before{ background:var(--alert); }
+
+  /* ---------- mentions légales ---------- */
+  .legal{ font-size:7.8pt; line-height:1.55; color:var(--ink); }
+  .legal p{ margin:0 0 2.5mm; padding-left:6mm; text-indent:-6mm; }
+  .legal b{ color:var(--navy); }
+
+  .sign{ margin-top:10mm; display:flex; justify-content:space-between; align-items:flex-end; }
+  .sign .box{ width:70mm; border-top:1px solid var(--navy); padding-top:2mm; font-size:8.4pt; }
+
+  .foot{ position:absolute; bottom:10mm; left:15mm; right:15mm; display:flex; justify-content:space-between; font-family:"DM Mono",monospace; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--rule); padding-top:2mm; }
+
+  @media print{
+    html,body{ background:var(--cream); }
+    .page{ margin:0; box-shadow:none; width:auto; min-height:0; padding:0; }
+    .foot{ position:fixed; }
+  }
+</style>
+
+<!-- =====================================================================
+     TEMPLATE — syntaxe Handlebars/Mustache. {{champ}} = donnée du schéma.
+     Les blocs data-lvl="2" sont supprimés pour le rapport de niveau 1.
+     ===================================================================== -->
+
+<!-- ============================ COUVERTURE ============================ -->
+<div class="page cover">
+  <div class="cover-top">
+    <div class="brandmark">{{agence_nom}}</div>
+    <div class="eyebrow">Dossier {{ref}}</div>
+  </div>
+
+  <div class="cover-title">
+    <div class="eyebrow" style="margin-bottom:4mm">Avis de valeur</div>
+    <h1>{{adresse_ligne1}}<br>{{code_postal}} {{commune}}</h1>
+    <div class="sub">{{type_bien}} — {{nb_pieces}} pièces — {{surface_habitable}} m²{{#if surface_terrain}} sur {{surface_terrain}} m² de terrain{{/if}}</div>
+  </div>
+
+  <img class="cover-photo" src="{{photo_couverture}}" alt="">
+
+  <div class="cover-meta">
+    <div><div class="k">Établi le</div><div class="v num">{{date_edition}}</div></div>
+    <div><div class="k">Visite du</div><div class="v num">{{date_visite}}</div></div>
+    <div><div class="k">À l'attention de</div><div class="v">{{demandeur_nom}}</div></div>
+    <div><div class="k">Objet</div><div class="v">{{objet}}</div></div>
+  </div>
+
+  <div class="cover-legal">
+    Document établi par {{agent_nom}}, {{agent_qualite}} — {{agent_tel}} — {{agent_email}}<br>
+    {{agence_nom}}, {{agence_forme}} — SIREN {{agence_siren}} — {{agence_adresse}}<br>
+    Carte professionnelle T n° {{carte_pro}} délivrée par la {{carte_pro_cci}} — RCP {{rcp_assureur}} n° {{rcp_police}}<br>
+    Avis de valeur, à distinguer d'une expertise immobilière. Valable {{validite_mois}} mois à compter du {{date_edition}}.
+  </div>
+</div>
+
+<!-- ============================ L'ESSENTIEL ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">Avis de valeur — {{adresse_ligne1}}</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">01</span><h2>L'essentiel</h2></div>
+
+    <div class="eyebrow">Valeur vénale retenue</div>
+    <div class="headline-value">{{valeur_venale}}</div>
+    <div class="headline-sub">soit {{prix_m2_retenu}} / m² sur une surface pondérée de {{surface_ponderee_totale}} m² — indice de confiance {{indice_confiance}}</div>
+
+    <!-- élément signature : l'échelle de valeur -->
+    <div class="scale">
+      <div class="scale-rail">
+        <div class="scale-tick" style="left:0"></div>
+        <div class="scale-tick" style="right:0"></div>
+        <div class="scale-pin" style="left:{{position_valeur_pct}}%"><div class="dot"></div></div>
+      </div>
+      <div class="scale-labels">
+        <div style="text-align:left"><div class="k">Fourchette basse</div><div class="v num">{{valeur_basse}}</div></div>
+        <div class="center"><div class="k">Prix de présentation</div><div class="v num">{{prix_presentation}}</div></div>
+        <div style="text-align:right"><div class="k">Fourchette haute</div><div class="v num">{{valeur_haute}}</div></div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k">Marché du quartier</div><div class="v num">{{prix_m2_quartier}}</div><div class="s">prix médian au m², actes constatés</div></div>
+      <div class="kpi"><div class="k">Délai de vente</div><div class="v num">{{delai_vente_moyen}} j</div><div class="s">moyenne du segment</div></div>
+      <div class="kpi"><div class="k">Concurrence</div><div class="v num">{{stock_concurrent}}</div><div class="s">biens comparables en vente</div></div>
+      <div class="kpi"><div class="k">Étiquette</div><div class="v">{{dpe_classe}}</div><div class="s">{{dpe_conso}} kWh/m²/an</div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Atouts et points de vigilance</h2></div>
+    <div class="two">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2mm">Ce qui porte la valeur</div>
+        <ul class="plain">{{#each atouts}}<li>{{this}}</li>{{/each}}</ul>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:2mm">Ce qui la freine</div>
+        <ul class="plain warn">{{#each faiblesses}}<li>{{this}}</li>{{/each}}</ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 2</span></div>
+</div>
+
+<!-- ============================ LE BIEN ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">Le bien</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Identification</h2></div>
+    <div class="dl">
+      <div class="row"><span class="k">Type de bien</span><span class="v">{{type_bien}}</span></div>
+      <div class="row"><span class="k">Année de construction</span><span class="v num">{{annee_construction}}</span></div>
+      <div class="row"><span class="k">Régime</span><span class="v">{{regime}}</span></div>
+      <div class="row"><span class="k">Occupation</span><span class="v">{{occupation}}</span></div>
+      <div class="row"><span class="k">Étage</span><span class="v num">{{etage}} sur {{nb_etages_immeuble}}</span></div>
+      <div class="row"><span class="k">Ascenseur</span><span class="v">{{ascenseur}}</span></div>
+      <div class="row"><span class="k">Exposition</span><span class="v">{{exposition_principale}}</span></div>
+      <div class="row"><span class="k">Vue</span><span class="v">{{vue}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Références cadastrales</span><span class="v num">{{cadastre_section}} {{cadastre_numero}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Lot / tantièmes</span><span class="v num">{{lots}} — {{tantiemes}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Nature de la propriété</span><span class="v">{{nature_propriete}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Servitudes</span><span class="v">{{servitudes}}</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Surfaces</h2></div>
+    <p class="sec-note">Surfaces {{origine_surface}}. Les annexes sont retenues après application des coefficients ci-dessous, seule base de comparaison valable avec les transactions du secteur.</p>
+    <table>
+      <thead><tr><th>Poste</th><th class="n">Surface</th><th class="n">Coefficient</th><th class="n">Surface retenue</th></tr></thead>
+      <tbody>
+        <tr><td>Surface habitable{{#if surface_carrez}} (Carrez : {{surface_carrez}} m²){{/if}}</td><td class="n num">{{surface_habitable}} m²</td><td class="n num">1,00</td><td class="n num">{{surface_habitable}} m²</td></tr>
+        {{#each annexes}}
+        <tr><td>{{nature}}</td><td class="n num">{{surface}} m²</td><td class="n num">{{coef}}</td><td class="n num">{{surface_ponderee}} m²</td></tr>
+        {{/each}}
+        <tr class="total"><td>Surface pondérée totale</td><td class="n"></td><td class="n"></td><td class="n num">{{surface_ponderee_totale}} m²</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Composition</h2></div>
+    <table>
+      <thead><tr><th>Pièce</th><th class="n">Surface</th><th class="n">Exposition</th><th class="n">Hauteur</th><th class="n">État</th></tr></thead>
+      <tbody>{{#each pieces_detail}}
+        <tr><td>{{nom}}</td><td class="n num">{{surface}} m²</td><td class="n">{{exposition}}</td><td class="n num">{{hsp}} m</td><td class="n">{{etat}}</td></tr>
+      {{/each}}</tbody>
+    </table>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 3</span></div>
+</div>
+
+<!-- ============================ ÉTAT & ÉNERGIE ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">État, énergie, charges</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">06</span><h2>État technique et travaux</h2></div>
+    <p class="sec-note">État général constaté : {{etat_general}}. Les montants ci-dessous sont des ordres de grandeur relevés lors de la visite, hors devis d'entreprise.</p>
+    <table>
+      <thead><tr><th>Poste</th><th>Constat</th><th class="n">Échéance</th><th class="n">Fourchette</th></tr></thead>
+      <tbody>{{#each travaux}}
+        <tr><td>{{poste}}</td><td class="muted">{{constat}}</td><td class="n">{{urgence}}</td><td class="n num">{{cout_min}} – {{cout_max}}</td></tr>
+      {{/each}}
+        <tr class="total"><td colspan="3">Total estimé</td><td class="n num">{{travaux_total}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Performance énergétique</h2></div>
+    <div style="display:flex; gap:10mm; align-items:flex-start">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2mm">DPE — {{dpe_conso}} kWh/m²/an</div>
+        <div class="dpe-bar">
+          <span class="g-a {{#eq dpe_classe 'A'}}on{{/eq}}">A</span>
+          <span class="g-b {{#eq dpe_classe 'B'}}on{{/eq}}">B</span>
+          <span class="g-c {{#eq dpe_classe 'C'}}on{{/eq}}">C</span>
+          <span class="g-d {{#eq dpe_classe 'D'}}on{{/eq}}">D</span>
+          <span class="g-e {{#eq dpe_classe 'E'}}on{{/eq}}">E</span>
+          <span class="g-f {{#eq dpe_classe 'F'}}on{{/eq}}">F</span>
+          <span class="g-g {{#eq dpe_classe 'G'}}on{{/eq}}">G</span>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div class="dl" style="grid-template-columns:1fr">
+          <div class="row"><span class="k">Classe GES</span><span class="v">{{ges_classe}} — {{dpe_emissions}} kg CO2/m²/an</span></div>
+          <div class="row"><span class="k">DPE réalisé le</span><span class="v num">{{dpe_date}}, valable jusqu'au {{dpe_validite}}</span></div>
+          <div class="row" data-lvl="2"><span class="k">Coût annuel d'énergie estimé</span><span class="v num">{{cout_energie_annuel}}</span></div>
+          {{#if passoire}}
+          <div class="row"><span class="k" style="color:var(--alert)">Location interdite à compter du</span><span class="v" style="color:var(--alert)">{{interdiction_location}}</span></div>
+          {{/if}}
+          <div class="row" data-lvl="2"><span class="k">Effet estimé de l'étiquette sur la valeur</span><span class="v num">{{impact_valeur_verte}}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Copropriété et charges</h2></div>
+    <div class="dl">
+      <div class="row"><span class="k">Charges annuelles</span><span class="v num">{{charges_annuelles}}</span></div>
+      <div class="row"><span class="k">Charges au m²</span><span class="v num">{{charges_m2}}</span></div>
+      <div class="row"><span class="k">Taxe foncière</span><span class="v num">{{taxe_fonciere}}</span></div>
+      <div class="row"><span class="k">Fonds de travaux</span><span class="v num">{{fonds_travaux}}</span></div>
+      <div class="row"><span class="k">Travaux votés non appelés</span><span class="v num">{{travaux_votes}}</span></div>
+      <div class="row"><span class="k">Nombre de lots</span><span class="v num">{{nb_lots}}</span></div>
+      <div class="row"><span class="k">Syndic</span><span class="v">{{syndic}}</span></div>
+      <div class="row"><span class="k">Procédures en cours</span><span class="v">{{procedures}}</span></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 4</span></div>
+</div>
+
+<!-- ============================ MARCHÉ ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">Marché et comparables</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Le marché du secteur</h2></div>
+    <p class="sec-note">Données issues des valeurs foncières publiées, c'est-à-dire des prix réellement actés chez le notaire, et non des prix affichés dans les annonces. Sur ce secteur, l'écart moyen entre les deux est de {{ecart_affiche_acte}}.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Commune</div><div class="v num">{{prix_m2_commune}}</div><div class="s">médian au m²</div></div>
+      <div class="kpi"><div class="k">Quartier</div><div class="v num">{{prix_m2_quartier}}</div><div class="s">{{quartier}}</div></div>
+      <div class="kpi"><div class="k">Segment</div><div class="v num">{{prix_m2_segment}}</div><div class="s">{{type_bien}} {{nb_pieces}} pièces</div></div>
+      <div class="kpi"><div class="k">Sur 12 mois</div><div class="v num">{{evolution_12m}}</div><div class="s">{{volume_transactions}} transactions</div></div>
+    </div>
+    <p style="margin-top:4mm">{{commentaire_marche}}</p>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Références retenues</h2></div>
+    <p class="sec-note">Méthode retenue : {{methodes_retenues}}. {{justification_methode}}</p>
+    <table>
+      <thead><tr><th>Nature</th><th>Adresse</th><th class="n">Surf.</th><th class="n">Étage</th><th class="n">DPE</th><th class="n">Prix</th><th class="n">€/m²</th><th class="n">Ajust.</th><th class="n">€/m² corrigé</th></tr></thead>
+      <tbody>{{#each comparables}}
+        <tr>
+          <td><span class="tag {{#eq nature 'vente actée'}}acte{{else}}affiche{{/eq}}">{{#eq nature 'vente actée'}}Acté{{else}}En vente{{/eq}}</span></td>
+          <td>{{adresse}}<div class="muted" style="font-size:7.6pt">{{distance}} — {{date}}</div></td>
+          <td class="n num">{{surface}}</td><td class="n num">{{etage}}</td><td class="n">{{dpe}}</td>
+          <td class="n num">{{prix}}</td><td class="n num">{{prix_m2}}</td>
+          <td class="n num">{{ajustement}}<div class="muted" style="font-size:7.4pt">{{justification}}</div></td>
+          <td class="n num">{{prix_m2_corrige}}</td>
+        </tr>
+      {{/each}}
+        <tr class="total"><td colspan="8">Prix au m² moyen corrigé</td><td class="n num">{{prix_m2_moyen_corrige}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <div class="sec-head"><span class="sec-num">11</span><h2>Ajustements propres au bien</h2></div>
+    <table>
+      <thead><tr><th>Critère</th><th>Appréciation</th><th class="n">Impact</th><th class="n">Effet</th></tr></thead>
+      <tbody>{{#each grille}}
+        <tr><td>{{critere}}</td><td class="muted">{{appreciation}}</td><td class="n num">{{impact_pct}}</td><td class="n num">{{impact_eur}}</td></tr>
+      {{/each}}
+        <tr class="total"><td colspan="3">Total des ajustements</td><td class="n num">{{total_ajustements}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 5</span></div>
+</div>
+
+<!-- ============================ CONCLUSION & STRATÉGIE ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">Conclusion et stratégie</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">12</span><h2>Valeur retenue</h2></div>
+    <div class="dl">
+      <div class="row"><span class="k">Valeur vénale</span><span class="v num">{{valeur_venale}}</span></div>
+      <div class="row"><span class="k">Prix au m² retenu</span><span class="v num">{{prix_m2_retenu}}</span></div>
+      <div class="row"><span class="k">Fourchette</span><span class="v num">{{valeur_basse}} – {{valeur_haute}}</span></div>
+      <div class="row"><span class="k">Prix de présentation conseillé</span><span class="v num">{{prix_presentation}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Valeur en vente rapide</span><span class="v num">{{valeur_vente_rapide}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Marge de négociation intégrée</span><span class="v num">{{marge_negociation}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Valeur locative mensuelle</span><span class="v num">{{valeur_locative}}</span></div>
+      <div class="row" data-lvl="2"><span class="k">Rendement brut potentiel</span><span class="v num">{{rendement_potentiel}}</span></div>
+    </div>
+    <p style="margin-top:4mm">{{hypotheses}}</p>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <div class="sec-head"><span class="sec-num">13</span><h2>Ce qu'il vous reste</h2></div>
+    <table>
+      <tbody>
+        <tr><td>Prix de vente affiché</td><td class="n num">{{prix_affiche}}</td></tr>
+        <tr><td>Honoraires d'agence, à la charge {{honoraires_charge}}</td><td class="n num">– {{honoraires_montant}}</td></tr>
+        <tr><td>Remboursement du prêt et indemnités</td><td class="n num">– {{capital_restant_du}} / {{ira}}</td></tr>
+        <tr><td>Diagnostics</td><td class="n num">– {{cout_diagnostics}}</td></tr>
+        <tr><td>Plus-value imposable estimée</td><td class="n num">– {{plus_value}}</td></tr>
+        <tr class="total"><td>Net vendeur estimé</td><td class="n num">{{net_vendeur}}</td></tr>
+      </tbody>
+    </table>
+    <p class="sec-note" style="margin-top:3mm">Simulation indicative. Seul le notaire chiffre définitivement la plus-value et les frais d'acte.</p>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <div class="sec-head"><span class="sec-num">14</span><h2>Plan de commercialisation</h2></div>
+    <div class="dl" style="grid-template-columns:1fr">
+      <div class="row"><span class="k">Positionnement recommandé</span><span class="v num">{{positionnement}}</span></div>
+      <div class="row"><span class="k">Délai de vente prévisionnel</span><span class="v num">{{delai_previsionnel}} jours</span></div>
+      <div class="row"><span class="k">Cible acquéreur</span><span class="v">{{cible}}</span></div>
+      <div class="row"><span class="k">Mandat proposé</span><span class="v">{{type_mandat}}</span></div>
+    </div>
+    <div class="eyebrow" style="margin:5mm 0 2mm">Les 30 premiers jours</div>
+    <ul class="plain">{{#each calendrier_30j}}<li>{{this}}</li>{{/each}}</ul>
+    <p style="margin-top:4mm">{{scenario_alternatif}}</p>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 6</span></div>
+</div>
+
+<!-- ============================ MENTIONS LÉGALES ============================ -->
+<div class="page">
+  <div class="runhead"><div class="t">Mentions</div><div class="t">{{ref}}</div></div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">15</span><h2>Conditions et limites de cet avis</h2></div>
+    <div class="legal">
+      <p><b>Nature du document.</b> Le présent document constitue un avis de valeur établi par un professionnel de la transaction immobilière. Il ne constitue ni une expertise immobilière, ni une évaluation judiciaire, ni une certification de valeur.</p>
+      <p><b>Portée.</b> Cet avis n'a pas de caractère contractuel. Il n'est opposable ni aux tiers, ni à l'administration fiscale, ni à un établissement bancaire, et n'engage pas son auteur sur le prix auquel le bien sera effectivement cédé, le prix de vente résultant de la seule rencontre de l'offre et de la demande.</p>
+      <p><b>Validité.</b> Les valeurs indiquées s'apprécient à la date du {{date_edition}} et dans les conditions de marché constatées à cette date. Elles sont réputées valables {{validite_mois}} mois. Au-delà, une réactualisation est nécessaire.</p>
+      <p><b>Informations retenues.</b> Cet avis a été établi à partir des éléments observés lors de la visite du {{date_visite}}, des documents communiqués par le demandeur et des bases de données publiques consultées (valeurs foncières, diagnostics de performance énergétique, cadastre). L'exactitude des éléments déclarés n'a pas été vérifiée.</p>
+      <p><b>Absence de contrôle technique et juridique.</b> Aucun sondage destructif, aucun contrôle de structure, de conformité aux règles d'urbanisme, de conformité des installations ni d'analyse du titre de propriété n'a été réalisé. Les surfaces retenues sont {{origine_surface}} et ne se substituent pas à un mesurage certifié. La présence éventuelle de vices cachés, de pollution ou de non-conformités non apparentes n'est pas prise en compte.</p>
+      <p><b>Confidentialité.</b> Ce document est établi à l'attention exclusive de {{demandeur_nom}} pour l'objet mentionné en couverture. Toute diffusion, reproduction ou utilisation à d'autres fins requiert l'accord écrit de son auteur.</p>
+      <p><b>Conditions financières.</b> {{mention_gratuite}}</p>
+      <p><b>Données personnelles.</b> Les données recueillies sont traitées par {{agence_nom}} aux fins d'établissement du présent avis et, le cas échéant, de commercialisation du bien. Elles sont conservées {{duree_conservation}} et ne font l'objet d'aucune cession à des tiers à des fins commerciales. Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition, exerçable auprès de {{agent_email}}.</p>
+    </div>
+
+    <div class="sign">
+      <div class="box">
+        Fait à {{lieu}}, le {{date_signature}}<br>
+        <b>{{agent_nom}}</b>, {{agent_qualite}}<br>
+        {{agence_nom}} — Carte T n° {{carte_pro}}
+      </div>
+      <div class="box" style="text-align:right">
+        <img src="{{signature_image}}" alt="" style="max-height:18mm">
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-lvl="2">
+    <hr class="rule">
+    <div class="eyebrow" style="margin-bottom:2mm">Annexes jointes</div>
+    <ul class="plain">{{#each annexes_jointes}}<li>{{this}}</li>{{/each}}</ul>
+  </div>
+
+  <div class="foot"><span>{{agence_nom}} — Avis de valeur {{ref}}</span><span>Page 7</span></div>
+</div>

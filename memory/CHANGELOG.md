@@ -1,5 +1,68 @@
 # KOLO - Changelog
 
+## BLOC C Partie B — Session 1 : Copie figée + Mongo + CRUD Dossier — 2 sept. 2026
+
+### Livrables backend (`/app/backend/c2/`)
+- **`schemas.py`** — `SECTION_IDS` (22 sections figées ordonnées, alignées sur `schema_avis_de_valeur.json`), `DossierSections` (Pydantic, `extra="forbid"` par section pour rejeter tout id inconnu), `DossierCreate`, `DossierPatch` (niveau/statut/sections).
+- **`prefill.py`** — `build_prefill(estim, user, config, creation_payload)` : rehydrate le dossier depuis l'estimation C1 (adresse, type, surface, DPE, comparables figés, prix commercialisation, marge de négociation) + le profil rédacteur/agence (`infos_pro`). `generate_ref()` → `AV-YYYY-XXXXXX`. Filtre les champs vides pour ne pas polluer le PDF.
+- **`routes.py`** — 4 endpoints `/api/dossiers` :
+  - `POST /api/dossiers` — création + pré-remplissage depuis `estimation_id`. 404 si estimation inconnue ou non possédée par le user.
+  - `GET /api/dossiers` — liste projetée (ref, adresse, valeur vénale, statut) triée par date descendante.
+  - `GET /api/dossiers/{id}` — détail complet.
+  - `PATCH /api/dossiers/{id}` — mise à jour partielle : `niveau` (1↔2), `statut` (brouillon/complet/envoyé/archivé), `sections` (remplacement par section, whitelist des 22 ids). 400 sur patch vide.
+- **`server.py`** — mount `c2_router` sous `app` à la suite de C1.
+- **Fichiers de référence** copiés dans `c2/` : `schema_avis_de_valeur.json` (JSON canonique, source de vérité) et `template_avis_de_valeur.html` (mentions légales verbatim + Jinja2, pour Session 2).
+
+### Copie i18n figée (`/app/frontend/src/b1/b1i18nDossier.js`)
+- **Niveaux** : « L'essentiel » / « Tout le dossier » (jamais « Niveau 1/2 » exposé au user).
+- **Bandeau incomplet gris neutre** : « Dossier en cours — complétez avant l'envoi ». Ambre banni (réservé à la veille).
+- **Sauvegarde hors ligne** : « Hors ligne — sauvegardé sur l'appareil ».
+- **Ajustement manuel** : sous-titre explicite « Le motif que vous saisissez apparaîtra dans le document, sous la valeur retenue ».
+- **22 sections** : libellés exactement alignés sur le schéma canonique.
+- **Aucune référence OCR** : v1 = saisie manuelle, écran capture/succès/échec supprimés du glossaire.
+- Traductions FR/EN/IT/DE complètes. Mergées dans `b1i18n.js` via require optionnel.
+
+### Règle « expertise » (verbatim message 512)
+Le mot n'est pas interdit : il est **autorisé uniquement dans le bloc `mentions` et la mention de couverture** (« Avis de valeur, à distinguer d'une expertise immobilière » + « il ne constitue ni une expertise immobilière »). Interdit dans titre, sous-titre, nom de fichier, métadonnées PDF, énumérations. Le test unitaire correspondant sera écrit en Session 2 (rendu PDF).
+
+### Tests
+- **`tests/test_c2_dossiers.py`** — 19 tests pytest verts (unit + intégration HTTP avec sessions Mongo + Bearer token). Couvre : Pydantic strict, `generate_ref`, 10 tests `build_prefill`, CRUD end-to-end, 401 sans auth, 404 estimation inconnue, isolation multi-user.
+- **Non-régression** : 41/41 tests C1 + B1 (onboarding + veille) verts.
+
+### Modèle Mongo `dossiers`
+```
+{
+  dossier_id: "dos_xxxx",  // secrets.token_urlsafe(9)
+  user_id: str,
+  estimation_id: str,      // référence C1
+  niveau: 1|2,
+  statut: "brouillon"|"complet"|"envoye"|"archive",
+  sections: {              // 22 clés, dict libre par section
+    dossier: {ref, date_edition, date_visite, validite_mois, ...},
+    redacteur: {agent_nom, agence_nom, carte_pro, rcp_*, ...},
+    identification: {type_bien, adresse, code_postal, regime, ...},
+    surfaces: {surface_habitable, surface_ponderee_totale, origine_surface, ...},
+    conclusion: {valeur_venale, prix_presentation, prix_m2_retenu, indice_confiance, ...},
+    comparables: {comparables: [...], prix_m2_moyen_corrige, ...},
+    mentions: {mention_gratuite, duree_conservation},
+    // + 15 autres sections initialement vides ou pré-remplies selon le contexte
+  },
+  date_creation, date_maj: ISO UTC
+}
+```
+
+### Restrictions respectées (message 512)
+- ✅ Niveau selector « L'essentiel » / « Tout le dossier »
+- ✅ Bandeau gris neutre, jamais d'ambre
+- ✅ Aucune trace d'OCR en v1
+- ✅ Mentions légales verbatim conservées dans le template HTML (Session 2 les rendra via Jinja2)
+- ✅ Règle expertise assouplie (autorisé dans `mentions` + couverture uniquement)
+
+### Prochaines sessions
+- **Session 2** — Génération PDF WeasyPrint. Endpoint `POST /api/dossiers/{id}/generer-pdf`, template `template_avis_de_valeur.html` + `pdf_fonts.css`, compression images 1600px, cible < 10 s / < 10 Mo. Test unitaire strict sur la règle « expertise ».
+- **Session 3** — UI éditeur 22 sections (React), mur rédacteur/agence bloquant à l'export, offline draft.
+
+
 ## BLOC C Session 3 — Polices packagées en local — 2 sept. 2026
 
 ### Livrables
