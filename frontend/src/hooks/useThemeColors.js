@@ -1,5 +1,4 @@
-import { useContext } from 'react';
-import { ThemeContext, useTheme } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * Theme-aware color helper hook

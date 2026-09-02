@@ -21,7 +21,6 @@ export default function V2AuthPage({ mode = 'login' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [referralName, setReferralName] = useState('');
 
   useEffect(() => {
     const fromUrl = params.get('ref') || '';
@@ -29,7 +28,8 @@ export default function V2AuthPage({ mode = 'login' }) {
     const ref = (fromUrl || fromStorage || '').toUpperCase().trim();
     if (ref) {
       setReferralCode(ref);
-      v2api.referralInfo(ref).then((r) => setReferralName(r.referrer_first_name || '')).catch(() => {});
+      // referrer name loaded but not shown in the B1-style stripped UI
+      v2api.referralInfo(ref).catch(() => {});
     }
   }, [params]);
 
