@@ -45,6 +45,19 @@ export default function V2AuthPage({ mode = 'login' }) {
       const r = await v2api.verifyEmailCode({ email, code, first_name: firstName, last_name: lastName, referral_code: referralCode || undefined });
       v2api.setSession(r.session_token);
       if (referralCode) localStorage.removeItem('kolo_referral_code');
+      // Persiste l'aiguillage V2↔B1 pour un accès rapide côté front
+      try {
+        if (r.app_version) localStorage.setItem('kolo_app_version', r.app_version);
+        localStorage.setItem('kolo_zones_confirmees', r.zones_confirmees ? '1' : '0');
+      } catch (_) {}
+      // Aiguillage :
+      // - app_version === 'b1' + zones non confirmées → écran de reprise
+      // - app_version === 'b1' → app-b1
+      // - sinon → v2 (défaut historique)
+      if (r.app_version === 'b1') {
+        if (!r.zones_confirmees) { navigate('/app-b1/reprise', { replace: true }); return; }
+        navigate('/app-b1', { replace: true }); return;
+      }
       navigate(r.new_user ? '/app-v2/onboarding' : '/app-v2');
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };

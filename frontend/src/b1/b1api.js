@@ -183,6 +183,11 @@ export const streamChat = async ({ message, conversation_id, context, onDelta, o
   onDone && onDone();
 };
 
+// --- D1 · Bascule V2→B1 + reprise ---
+export const getSuggestionsZones = () => req('/api/d1/onboarding-b1/suggestions');
+export const confirmerZones = (codes_postaux) =>
+  req('/api/d1/onboarding-b1/confirmer-zones', { method: 'POST', body: { codes_postaux } });
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
@@ -197,5 +202,6 @@ export const b1api = {
   listInvitations, createInvitation, relancerInvitation, annulerInvitation, checkInvitation,
   getEquipe, retirerConseiller,
   attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
+  getSuggestionsZones, confirmerZones,
 };
 export default b1api;

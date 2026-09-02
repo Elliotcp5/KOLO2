@@ -29,6 +29,19 @@
 
 ## IAP (App Store Connect)
 - Product ID actif: **`PRO_Plus`** (display name "KOLO PRO" à 24,99€/mois)
+
+## D1 · Bascule V2 → B1 (Sep 2, 2026)
+- **Elliot basculé sur B1** : `app_version=b1`, `zones_perso=[13008]`, `zones_confirmees=false` (verra l'écran de reprise à la 1ère ouverture), `zones_suggestions=[13008, 75017]`, `tour_guide_vu=false`, `role=independant`, `plan=pro_plus`.
+- **5 opportunités 13008 en statut `proposee` attribuées à Elliot** — swipe direct après validation de la reprise.
+- **Endpoint admin de bascule** (X-Admin-Secret requis) :
+  - `POST /api/d1/admin/bascule-b1` body `{"email": "..."}` ou `{"user_ids": ["..."]}` — bascule 1 ou N users vers B1
+  - `POST /api/d1/admin/bascule-v2` — retour arrière (l'app_version repasse à v2, tout le reste préservé)
+- **Endpoints reprise (user auth)** :
+  - `GET /api/d1/onboarding-b1/suggestions` — retourne `zones_suggestions` (jamais liste vide, fallback `["75017"]`)
+  - `POST /api/d1/onboarding-b1/confirmer-zones` body `{"codes_postaux": [...]}` — pose `zones_perso` + `zones_confirmees=true`
+- **Aiguillage login** : `V2AuthPage.js::verify()` lit `app_version` de la réponse d'auth et redirige : `b1+zones_confirmees=false → /app-b1/reprise`, `b1 → /app-b1`, sinon `/app-v2`.
+- **Aiguillage racine natif** : `RootRedirect` (Capacitor) lit `localStorage.kolo_app_version` et route en conséquence.
+
 - Backend mappe `PRO_Plus → plan='pro'`
 - Frontend `iapStore.PRODUCT_IDS.*` tous → `'PRO_Plus'` (single source)
 

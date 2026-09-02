@@ -9,6 +9,14 @@
 
 const D1 = {
   fr: {
+    // -------- Reprise post-migration V2 → B1 --------
+    'reprise.titre': 'KOLO a changé.',
+    'reprise.sous': 'Confirmez vos zones de prospection pour recevoir vos opportunités quotidiennes.',
+    'reprise.cta': 'Continuer',
+    'profil.menu.legacy': 'Mes anciennes données',
+    'legacy.bandeau': 'Consultation de vos anciennes données. Les nouvelles fonctionnalités sont dans KOLO.',
+    'legacy.retour': 'Retour à KOLO',
+
     // -------- Rôles (affichés dans les listes, sélecteurs, badges) --------
     'role.independant': 'Indépendant',
     'role.directeur': 'Directeur',
@@ -116,6 +124,13 @@ const D1 = {
   },
 
   en: {
+    'reprise.titre': 'KOLO has changed.',
+    'reprise.sous': 'Confirm your prospecting areas to receive your daily opportunities.',
+    'reprise.cta': 'Continue',
+    'profil.menu.legacy': 'My previous data',
+    'legacy.bandeau': 'Viewing your previous data. New features are in KOLO.',
+    'legacy.retour': 'Back to KOLO',
+
     'role.independant': 'Independent',
     'role.directeur': 'Director',
     'role.conseiller': 'Advisor',
@@ -215,6 +230,13 @@ const D1 = {
   },
 
   it: {
+    'reprise.titre': 'KOLO è cambiato.',
+    'reprise.sous': 'Conferma le tue zone di prospezione per ricevere le opportunità quotidiane.',
+    'reprise.cta': 'Continua',
+    'profil.menu.legacy': 'I miei vecchi dati',
+    'legacy.bandeau': 'Consultazione dei tuoi vecchi dati. Le nuove funzionalità sono in KOLO.',
+    'legacy.retour': 'Torna a KOLO',
+
     'role.independant': 'Indipendente',
     'role.directeur': 'Direttore',
     'role.conseiller': 'Consulente',
@@ -314,6 +336,13 @@ const D1 = {
   },
 
   de: {
+    'reprise.titre': 'KOLO wurde geändert.',
+    'reprise.sous': 'Bestätigen Sie Ihre Akquise-Gebiete, um Ihre täglichen Chancen zu erhalten.',
+    'reprise.cta': 'Weiter',
+    'profil.menu.legacy': 'Meine alten Daten',
+    'legacy.bandeau': 'Ansicht Ihrer alten Daten. Neue Funktionen finden Sie in KOLO.',
+    'legacy.retour': 'Zurück zu KOLO',
+
     'role.independant': 'Selbstständig',
     'role.directeur': 'Leitung',
     'role.conseiller': 'Berater',

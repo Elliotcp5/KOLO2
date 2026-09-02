@@ -37,6 +37,7 @@ from .invitations import (
     make_expiration_iso,
     send_invitation_email,
 )
+from .migration_v2_to_b1 import bascule_to_b1, bascule_to_v2, compute_suggested_zones
 from .schemas import (
     AttribuerLotPayload,
     AttribuerPayload,
@@ -84,6 +85,95 @@ def _oid(x: Any) -> ObjectId:
 
 # Statuts "actifs" côté conseiller : ne plus autoriser le retrait d'attribution
 STATUTS_TRAITEMENT_ACTIF = {"a_demarcher", "demarchee", "mandat_signe", "abandon"}
+
+
+def _check_admin(request: Request) -> None:
+    """Admin via X-Admin-Secret. Utilisé pour la bascule V2↔B1."""
+    import os
+    provided = (request.headers.get("x-admin-secret") or "").strip()
+    expected = (os.environ.get("ADMIN_SECRET") or "").strip()
+    if not expected or provided != expected:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+# ===========================================================================
+# BASCULE V2 ↔ B1  (admin uniquement)
+# ===========================================================================
+from pydantic import BaseModel
+
+
+class BasculePayload(BaseModel):
+    user_ids: list[str] = []
+    email: str | None = None
+
+
+@router.post("/api/d1/admin/bascule-b1")
+async def admin_bascule_b1(payload: BasculePayload, request: Request):
+    _check_admin(request)
+    targets: list[str] = list(payload.user_ids or [])
+    if payload.email:
+        u = await _db().users.find_one({"email": payload.email.strip().lower()}, {"user_id": 1})
+        if u and u.get("user_id"):
+            targets.append(u["user_id"])
+    if not targets:
+        raise HTTPException(status_code=400, detail="no_targets")
+    results = [await bascule_to_b1(_db(), uid) for uid in targets]
+    return {"total": len(results), "results": results}
+
+
+@router.post("/api/d1/admin/bascule-v2")
+async def admin_bascule_v2(payload: BasculePayload, request: Request):
+    _check_admin(request)
+    targets: list[str] = list(payload.user_ids or [])
+    if payload.email:
+        u = await _db().users.find_one({"email": payload.email.strip().lower()}, {"user_id": 1})
+        if u and u.get("user_id"):
+            targets.append(u["user_id"])
+    if not targets:
+        raise HTTPException(status_code=400, detail="no_targets")
+    results = [await bascule_to_v2(_db(), uid) for uid in targets]
+    return {"total": len(results), "results": results}
+
+
+# ===========================================================================
+# ONBOARDING B1 — reprise post-migration
+# ===========================================================================
+@router.get("/api/d1/onboarding-b1/suggestions")
+async def suggestions_zones(request: Request):
+    """Retourne les CP suggérés persistés ; en fallback, recalcul à la volée."""
+    user = await _current_user(request)
+    zs = user.get("zones_suggestions")
+    if not zs:
+        zs = await compute_suggested_zones(_db(), user["user_id"])
+        await _db().users.update_one(
+            {"user_id": user["user_id"]}, {"$set": {"zones_suggestions": zs}}
+        )
+    return {"zones_suggestions": zs, "zones_confirmees": bool(user.get("zones_confirmees", False))}
+
+
+class ConfirmerZonesPayload(BaseModel):
+    codes_postaux: list[str]
+
+
+@router.post("/api/d1/onboarding-b1/confirmer-zones")
+async def confirmer_zones(payload: ConfirmerZonesPayload, request: Request):
+    user = await _current_user(request)
+    cps: list[str] = []
+    for raw in payload.codes_postaux[:2]:  # max 2 CP
+        cp = (raw or "").strip()
+        if len(cp) == 5 and cp.isdigit():
+            cps.append(cp)
+    if not cps:
+        raise HTTPException(status_code=400, detail="aucun_cp_valide")
+    await _db().users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "zones_perso": cps,
+            "zones_confirmees": True,
+            "updated_at": now_utc_iso(),
+        }},
+    )
+    return {"ok": True, "zones_perso": cps}
 
 
 # ===========================================================================

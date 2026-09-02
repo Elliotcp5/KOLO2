@@ -91,6 +91,7 @@ import {
   DirecteurEquipePage as D1DirecteurEquipePage,
   DirecteurAgencePage as D1DirecteurAgencePage,
 } from "./b1/B1Directeur";
+import B1RepriseZones from "./b1/B1RepriseZones";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -138,6 +139,22 @@ const ThemedToaster = () => {
 };
 
 // Router component that checks for session_id in URL
+// RootRedirect — aiguille / vers /app-b1 ou /app-v2 selon app_version stockée.
+// Utilisé en natif (Capacitor) où / est la racine du build.
+const RootRedirect = () => {
+  let appVersion = 'v2';
+  let zonesConfirmees = true;
+  try {
+    appVersion = localStorage.getItem('kolo_app_version') || 'v2';
+    zonesConfirmees = localStorage.getItem('kolo_zones_confirmees') === '1';
+  } catch (_) { /* localStorage absent */ }
+  if (appVersion === 'b1') {
+    if (!zonesConfirmees) return <Navigate to="/app-b1/reprise" replace />;
+    return <Navigate to="/app-b1" replace />;
+  }
+  return <Navigate to="/app-v2" replace />;
+};
+
 const AppRouter = () => {
   const location = useLocation();
 
@@ -173,10 +190,34 @@ const AppRouter = () => {
     return <AuthCallback />;
   }
 
+  // Bandeau legacy — affiché sur /app-v2/* quand ?legacy=1 (accès depuis B1)
+  const showLegacyBanner = location.pathname.startsWith('/app-v2') && location.search.includes('legacy=1');
+
   return (
-    <Routes>
+    <>
+      {showLegacyBanner && (
+        <div
+          data-testid="legacy-banner"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: '#F0EEF8', borderBottom: '1px solid rgba(0,0,0,0.06)',
+            padding: '10px 16px', fontSize: 13, color: '#4B5563',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}
+        >
+          <span>Consultation de vos anciennes données. Les nouvelles fonctionnalités sont dans KOLO.</span>
+          <a
+            href="/app-b1"
+            style={{ color: '#EC8690', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+            data-testid="legacy-banner-return"
+          >
+            Retour à KOLO →
+          </a>
+        </div>
+      )}
+      <Routes>
       {/* Public routes — Marketing v3 (web only, app native redirige sur /app-v2) */}
-      <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app-v2" replace /> : <MarketingHomePage />} />
+      <Route path="/" element={Capacitor.isNativePlatform() ? <RootRedirect /> : <MarketingHomePage />} />
       <Route path="/comment-kolo" element={<MarketingHowKoloPage />} />
       <Route path="/ressources" element={<MarketingResourcesPage />} />
       <Route path="/a-propos" element={<MarketingAboutPage />} />
@@ -266,6 +307,9 @@ const AppRouter = () => {
       <Route path="/app-b1/directeur/equipe" element={<D1DirecteurEquipePage />} />
       <Route path="/app-b1/directeur/agence" element={<D1DirecteurAgencePage />} />
 
+      {/* D1 — Reprise post-migration V2 → B1 */}
+      <Route path="/app-b1/reprise" element={<B1RepriseZones />} />
+
       {/* Protected routes */}
       <Route 
         path="/app" 
@@ -335,6 +379,7 @@ const AppRouter = () => {
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 };
 

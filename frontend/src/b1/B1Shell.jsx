@@ -366,6 +366,7 @@ export function ProfilPage() {
     { id: 'veille', to: '/app-b1/veille/suivis', icon: Compass, label: b1t('veille.section.titre') },
     { id: 'paiement', to: '/app-b1/profil/paiement', icon: CreditCard, label: b1t('profil.menu.paiement') },
     { id: 'tour', to: '/app-b1', icon: Compass, label: b1t('profil.menu.tour'), onSelect: () => localStorage.setItem('kolo_b1_show_tour', '1') },
+    { id: 'legacy', to: '/app-v2?legacy=1', icon: LogOut, label: b1t('profil.menu.legacy') },
     { id: 'support', to: 'mailto:contact@trykolo.io', icon: HeadphonesIcon, label: b1t('profil.menu.support'), external: true },
     { id: 'suppr', to: '/app-b1/profil/supprimer', icon: Trash2, label: b1t('profil.menu.suppr'), danger: true },
   ];

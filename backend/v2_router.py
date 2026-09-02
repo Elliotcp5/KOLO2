@@ -1136,6 +1136,8 @@ async def _build_a2_auth_response(db, session_token: str, user_doc: dict, new_us
         "onboarding_infos_ok": bool(user_doc.get("onboarding_infos_ok", False)),
         "tour_guide_vu": bool(user_doc.get("tour_guide_vu", False)),
         "zones": list(user_doc.get("zones_perso") or []),
+        "app_version": user_doc.get("app_version") or "v2",
+        "zones_confirmees": bool(user_doc.get("zones_confirmees", False)),
     }
 
 
