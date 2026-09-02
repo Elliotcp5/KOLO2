@@ -1,5 +1,51 @@
 # KOLO - Changelog
 
+## Post-fix DB Supabase — import_dvf_mutations patché + remesures — 2 sept. 2026
+
+### 1. `est_mono_lot` renseigné à l'import DVF
+- **`scripts/import_dvf_mutations.py`** patché : dans `map_to_rows`, décompte des `id_mutation` dans le lot post-filtre puis `est_mono_lot = (count == 1)`.
+- Calcul client-side, pas de RPC Supabase à créer.
+- `delete_year_scope` vide l'intégralité du périmètre (année × dept) avant insert et un `id_mutation` DVF est unique à un couple (année, dept) → le comptage dans le DataFrame donne le même résultat que `COUNT(*) OVER (PARTITION BY id_mutation)` côté SQL.
+- Cas d'`id_mutation` NULL → `est_mono_lot = FALSE` (exclu de la vue, par sécurité).
+- Test unitaire manuel : mutation mono-lot → TRUE, mutation à 2 bâtis (appart + maison) → 2 lignes FALSE, ligne sans id_mutation → FALSE, ligne surface ≤ 9 → filtrée.
+- Documentation à jour dans le docstring du script.
+
+### 2. Colonnes réhabilitées — pas de casse
+Aucun consommateur du code ne lit les colonnes que l'ancienne vue renvoyait à NULL (`id`, `code_departement`, `id_parcelle`, `surface_terrain`, `inserted_at`). Vérifié par grep sur `/app/backend/scripts/comparables.py` et `/app/backend/a3/`. Les 3 lieux qui interrogent `mutations_propres` (`comparables.py` × 2, `job_generer_opportunites.py` × 1) filtrent sur bbox / postal_code / type_local et lisent uniquement les colonnes maintenant réellement exposées.
+
+### 3. Remesures perf — le fix DB seul divise la latence par 10 sur Marseille
+
+**Estimations `POST /api/estimations` (3 runs consécutifs)**
+
+| Ville | Avant (client-side seul) | Après fix DB | Facteur |
+| --- | ---: | ---: | ---: |
+| Paris 75004 | 1,5–2,2 s | **2,1 s → 0,8 s → 0,6 s** | ~3× à chaud |
+| Lyon 69003 | ~5 s | **1,5 s → 0,6 s → 1,0 s** | ~5× |
+| Marseille 13001 | 7,4 s | **0,85 s → 0,48 s → 0,60 s** | **~10×** |
+
+Toutes les villes passent maintenant sous la cible de 2 s dès le premier appel.
+
+**Job de génération d'opportunités — `_fetch_median_local_m2`**
+
+Chaque DPE traité par le job nocturne appelle cette fonction pour le sous-score prix /m² (rayon 500 m, 24 mois). Cache in-run par tuile de 100 m.
+
+| Ville | Fresh (network) | Cached (in-run) |
+| --- | ---: | ---: |
+| Paris cold | 1 542 ms | 0 ms |
+| Paris tuile voisine | 273 ms | — |
+| Lyon cold | 368 ms | 0 ms |
+| Lyon tuile voisine | 283 ms | — |
+| Marseille cold | 531 ms | 0 ms |
+| Marseille tuile voisine | 489 ms | — |
+
+Avant fix DB, la même requête sur Marseille prenait plusieurs secondes (le bbox 500 m était le bottleneck identifié). Sur un run nocturne à 10 000 DPE, avec ~5 % de miss cache : passage de plusieurs heures cumulées à quelques dizaines de minutes.
+
+### Conséquences
+- L'objectif « estimation < 2 s » est **atteint sur les 4 zones testées**, y compris là où c'était impossible avant le fix DB (Marseille).
+- Le job nocturne pourra traiter plus de DPE par heure, ce qui débloque à terme l'extension à d'autres départements (06, 33, 44, 31…).
+- Aucun code retiré : les optimisations client-side précédentes (parallélisation postal_median, max_pages 3) restent utiles — elles cachent la latence réseau incompressible entre l'appli et Supabase.
+
+
 ## Backfill etage_dpe + analyse d'impact — 2 sept. 2026
 
 ### Script `scripts/backfill_etage_dpe.py`

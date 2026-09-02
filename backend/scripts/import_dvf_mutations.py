@@ -40,6 +40,9 @@ longitude                      longitude
 latitude                       latitude
 adresse_numero + suffixe +     adresse (concatenated, single-spaced,
 adresse_nom_voie                        trimmed)
+(computed batch-side)          est_mono_lot (TRUE quand id_mutation
+                                             n'apparaît qu'une fois dans
+                                             le lot post-filtre)
 
 `prix_m2` is NOT populated — the DB computes it via a generated column /
 trigger.
@@ -245,8 +248,25 @@ def download_and_read(year: int, dept: str) -> pd.DataFrame:
 # Mapping to Supabase rows
 # ---------------------------------------------------------------------------
 def map_to_rows(df: pd.DataFrame) -> list[dict]:
-    """Map DataFrame → list of dicts matching `mutations` schema."""
-    out: list[dict] = []
+    """Map DataFrame → list of dicts matching `mutations` schema.
+
+    We also flag each row with `est_mono_lot`, computed HERE (client-side)
+    from the batch itself : a mutation is « mono-lot » quand `id_mutation`
+    n'apparaît qu'une fois dans le lot filtré.
+
+    Pourquoi ici et pas côté base : la vue `mutations_propres` filtre
+    `est_mono_lot = TRUE`. Si le prochain rafraîchissement DVF laissait ce
+    champ à NULL, toutes les nouvelles lignes seraient invisibles pour
+    l'estimation et pour le sous-score prix /m² du moteur d'opportunités —
+    c'est le piège le plus coûteux du correctif base du 2 sept. 2026.
+
+    Comme `delete_year_scope` vide l'intégralité du périmètre (année × dept)
+    AVANT l'insert et qu'un `id_mutation` DVF est unique à un couple
+    (année, dept), le comptage dans le DataFrame donne le même résultat
+    que le `COUNT(*) OVER (PARTITION BY id_mutation)` côté SQL.
+    """
+    # Première passe : filtrage identique à l'ancien code + collecte des id_mutation
+    rows_raw: list[dict] = []
     for _, row in df.iterrows():
         vf = _nullable_number(str(row.get("valeur_fonciere") or "").replace(",", "."))
         if vf is None:
@@ -255,7 +275,7 @@ def map_to_rows(df: pd.DataFrame) -> list[dict]:
         if srb is None or srb <= 9:
             continue
 
-        out.append({
+        rows_raw.append({
             "id_mutation": _nullable_str(row.get("id_mutation")),
             "date_mutation": _to_iso_date(row.get("date_mutation")),
             "valeur_fonciere": vf,
@@ -275,7 +295,18 @@ def map_to_rows(df: pd.DataFrame) -> list[dict]:
             "latitude": _nullable_number(str(row.get("latitude") or "").replace(",", ".")),
             "adresse": _clean_adresse(row),
         })
-    return out
+
+    # Deuxième passe : décompte des id_mutation dans le lot, puis flag est_mono_lot.
+    id_counts: dict[str, int] = {}
+    for r in rows_raw:
+        idm = r.get("id_mutation")
+        if idm:
+            id_counts[idm] = id_counts.get(idm, 0) + 1
+    for r in rows_raw:
+        idm = r.get("id_mutation")
+        # NULL id_mutation ⇒ on ne peut pas décider ⇒ FALSE (exclu de la vue).
+        r["est_mono_lot"] = bool(idm and id_counts.get(idm, 0) == 1)
+    return rows_raw
 
 
 # ---------------------------------------------------------------------------
