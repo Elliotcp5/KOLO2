@@ -70,9 +70,12 @@
         <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-v3.png" />
         <link rel="icon" type="image/x-icon" href="%PUBLIC_URL%/favicon-v3.ico" />
         <link rel="shortcut icon" href="%PUBLIC_URL%/favicon-v3.ico" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+        <!-- Polices packagées en local (2 sept. 2026). L'app doit fonctionner
+             en réseau dégradé — sous-sol pendant une visite. Plus de dépendance
+             à Google Fonts. Voir /public/fonts/fonts.css. -->
+        <link rel="preload" as="font" type="font/woff2" href="%PUBLIC_URL%/fonts/DMSans-700-lat.woff2" crossorigin />
+        <link rel="preload" as="font" type="font/woff2" href="%PUBLIC_URL%/fonts/LeagueSpartan-700-lat.woff2" crossorigin />
+        <link rel="stylesheet" href="%PUBLIC_URL%/fonts/fonts.css" />
 
         <!-- Structured data: SoftwareApplication (ASO boost + Google rich results) -->
         <script type="application/ld+json">

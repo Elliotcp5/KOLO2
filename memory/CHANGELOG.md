@@ -1,5 +1,33 @@
 # KOLO - Changelog
 
+## BLOC C Session 3 — Polices packagées en local — 2 sept. 2026
+
+### Livrables
+- **`/app/frontend/public/fonts/`** — 11 fichiers woff2 (208 Ko total) : League Spartan (500/700, subsets latin/latin-ext/vietnamese), DM Sans (400/500/700 + italic 400), DM Mono (400/500). Familles variables (DM Sans, LS) partagent un fichier via descripteurs `font-weight` distincts.
+- **`/app/frontend/public/fonts/fonts.css`** — 18 blocs `@font-face` avec `unicode-range` préservé (latin/latin-ext), `font-display: swap`. Chargé via `<link rel="stylesheet">` dans `index.html`.
+- **`/app/backend/c1/fonts/`** — copie miroir des 11 woff2 (200 Ko), pour WeasyPrint.
+- **`/app/backend/c1/pdf_fonts.css`** — mêmes `@font-face` avec `url('file:///app/backend/c1/fonts/...')` en chemin absolu disque, à `<link>` dans le template PDF au moment du BLOC B.
+
+### Modifications `index.html`
+- **Retiré** : `<link rel="preconnect">` × 2 vers `fonts.googleapis.com` / `fonts.gstatic.com`, et `<link>` vers la CSS Google Fonts.
+- **Ajouté** : deux `<link rel="preload">` sur les fichiers critiques (LeagueSpartan-700-lat.woff2, DMSans-700-lat.woff2) pour rendu FCP rapide, et `<link rel="stylesheet" href="/fonts/fonts.css">`.
+
+### Vérification offline
+Test Playwright avec `page.route('**/fonts.googleapis.com/**', abort)` et `**/fonts.gstatic.com/**` bloqués : l'onboarding se rend correctement. Titre « Bienvenue sur KOLO » en League Spartan (bold, letter-spacing serré caractéristique), sous-titre en DM Sans, pilule « Continuer » rose. Aucune requête réseau vers Google. L'app fonctionne dans un ascenseur ou en sous-sol.
+
+### Ce qui n'a PAS été touché (hors périmètre B1)
+- `/app/frontend/src/styles/v2.css` importe encore Google Fonts (Inter) pour l'app V2 legacy.
+- `/app/frontend/src/styles/blog.css` importe Fraunces + Inter pour le blog marketing.
+- `/app/frontend/src/context/OrgContext.js` charge dynamiquement une police custom par organisation.
+- Aucun de ces fichiers n'est importé par `/app/frontend/src/b1/`. Le périmètre « app conseiller B1 en réseau dégradé » est propre.
+
+### Prêt pour BLOC C Partie B
+Quand la session Partie B (Dossier + PDF) sera lancée, il suffira dans le template `template_avis_de_valeur.html` de :
+1. Retirer les `<link>` Google Fonts.
+2. Ajouter `<link rel="stylesheet" href="/app/backend/c1/pdf_fonts.css">` (ou inclure le contenu inline).
+3. WeasyPrint résoudra les `file:///...` sans latence réseau.
+
+
 ## BLOC C Session 2 — Partie A (corrections d'interface) — 2 sept. 2026
 
 ### 1. Locale FR par défaut (bug le plus grave)
