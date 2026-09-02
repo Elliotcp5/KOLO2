@@ -14,6 +14,11 @@ const dossier = {
     'dos.liste.vide.titre': "Aucun dossier pour le moment.",
     'dos.liste.vide.sous': "Créez un dossier à partir d'une de vos estimations.",
     'dos.liste.rechercher': "Rechercher",
+    'dos.liste.retour': "Retour aux dossiers",
+    'dos.creer.titre': "Créer un dossier",
+    'dos.creer.choisir': "Choisissez une estimation",
+    'dos.creer.aucune': "Vous n'avez pas encore d'estimation. Créez-en une depuis l'onglet Estimation.",
+    'dos.creer.cta': "Créer le dossier",
 
     // Sélecteur de niveau
     'dos.niveau.titre': "Niveau du dossier",
@@ -22,10 +27,9 @@ const dossier = {
     'dos.niveau.2': "Tout le dossier",
     'dos.niveau.2.sous': "Dossier enrichi, à compléter après la visite.",
 
-    // Bandeau « dossier incomplet » — gris neutre, jamais d'ambre
-    'dos.incomplet.titre': "Dossier en cours",
-    'dos.incomplet.texte': "Dossier en cours — complétez avant l'envoi",
-    'dos.incomplet.cta': "Compléter",
+    // Bandeaux (gris = en cours, rose = prêt) — jamais d'ambre
+    'dos.banniere.encours': "Dossier en cours — complétez avant l'envoi",
+    'dos.banniere.pret': "Avis de valeur prêt à l'envoi",
 
     // Statuts
     'dos.statut.brouillon': "Brouillon",
@@ -35,20 +39,64 @@ const dossier = {
 
     // Sauvegarde hors ligne
     'dos.offline.saved': "Hors ligne — sauvegardé sur l'appareil",
-    'dos.offline.sync': "Synchronisation en cours…",
+    'dos.offline.reprendre.titre': "Reprendre votre brouillon",
+    'dos.offline.reprendre.sous': "Vous aviez commencé à éditer ce dossier hors ligne.",
+    'dos.offline.reprendre.cta': "Reprendre votre brouillon",
+    'dos.offline.repartir.cta': "Repartir de zéro",
 
-    // Ajustement manuel — le motif apparaît dans le document
+    // Complétude — page d'accueil du dossier
+    'dos.completude.titre': "Cinq éléments pour envoyer votre dossier",
+    'dos.completude.sous': "Renseignez le destinataire, l'adresse, la surface habitable, la photo de couverture et complétez votre profil. Le reste est déjà rempli.",
+    'dos.completude.compteur': "{n} sur 5",
+    'dos.completude.item.demandeur': "Nom du destinataire",
+    'dos.completude.item.adresse': "Adresse du bien",
+    'dos.completude.item.surface': "Surface habitable",
+    'dos.completude.item.photo': "Photo de couverture",
+    'dos.completude.item.redacteur': "Profil rédacteur complet",
+    'dos.completude.item.redacteur.manque': "Profil rédacteur — {n} information{s} manquante{s}",
+
+    // Mur rédacteur — un champ par écran
+    'dos.mur.eyebrow': "Encore {n} information{s}",
+    'dos.mur.sous': "Cette information figurera dans l'en-tête du document et dans les mentions légales.",
+    'dos.mur.champ.agent_nom': "Votre nom",
+    'dos.mur.champ.agent_email': "Votre e-mail professionnel",
+    'dos.mur.champ.agent_tel': "Votre téléphone",
+    'dos.mur.champ.agence_nom': "Le nom de votre agence",
+    'dos.mur.champ.agence_siren': "Le SIREN de votre agence",
+    'dos.mur.champ.carte_pro': "Votre numéro de carte T",
+    'dos.mur.champ.carte_pro_cci': "La CCI qui a délivré votre carte T",
+    'dos.mur.champ.rcp_assureur': "Votre assureur en responsabilité civile professionnelle",
+    'dos.mur.champ.rcp_police': "Le numéro de votre police RCP",
+    'dos.mur.fini.titre': "Vous êtes prêt.",
+    'dos.mur.fini.cta': "Retour au dossier",
+    'dos.mur.continuer': "Continuer",
+    'dos.mur.retour': "Retour",
+
+    // Export
+    'dos.export.titre': "Exporter votre dossier",
+    'dos.export.generer': "Générer le PDF",
+    'dos.export.enregistrer': "Enregistrer sur l'appareil",
+    'dos.export.envoyer': "Envoyer par e-mail",
+    'dos.export.mailto.sujet': "Avis de valeur — {adresse}",
+    'dos.export.reussi': "PDF prêt — vous pouvez maintenant l'enregistrer ou l'envoyer.",
+
+    // Progression et annulation
+    'dos.progress.titre': "Génération en cours",
+    'dos.progress.l1': "Préparation du document…",
+    'dos.progress.l2': "Rendu des pages en cours…",
+    'dos.progress.l3': "Finalisation…",
+    'dos.progress.annuler': "Annuler",
+    'dos.progress.annule': "Génération annulée. Vous pouvez relancer quand vous voulez.",
+    'dos.progress.erreur': "La génération n'a pas abouti. Réessayez dans un instant.",
+
+    // Ajustement manuel
     'dos.ajust.titre': "Ajustement manuel",
     'dos.ajust.sous': "Le motif que vous saisissez apparaîtra dans le document, sous la valeur retenue.",
     'dos.ajust.motif': "Motif de l'ajustement",
+    'dos.ajust.motif.placeholder': "Exemple : positionnement retenu 3 % sous le milieu de fourchette pour capter le stock.",
     'dos.ajust.valeur': "Valeur retenue",
 
-    // Mur rédacteur/agence (bloquant à l'export)
-    'dos.mur.titre': "Complétez votre profil avant d'envoyer le dossier",
-    'dos.mur.sous': "Ces informations figureront dans l'en-tête du document et dans les mentions légales.",
-    'dos.mur.cta': "Compléter mon profil",
-
-    // Sections (22) — libellés exactement identiques au schéma canonique
+    // 22 sections
     'dos.section.dossier': "Identité du dossier",
     'dos.section.redacteur': "Rédacteur et agence",
     'dos.section.mission': "Demandeur et objet de la mission",
@@ -72,11 +120,28 @@ const dossier = {
     'dos.section.annexes': "Annexes",
     'dos.section.signature': "Signature",
 
-    // CTAs
-    'dos.action.creer': "Créer le dossier",
+    // Champs formulaire — sections éditables
+    'dos.f.demandeur_nom': "Nom du destinataire",
+    'dos.f.demandeur_qualite': "Qualité du demandeur",
+    'dos.f.objet': "Objet de l'avis",
+    'dos.f.date_visite': "Date de la visite",
+    'dos.f.bien_visite': "Bien visité physiquement",
+    'dos.f.photo_couverture': "Photo de couverture",
+    'dos.f.photo_ajouter': "Ajouter une photo",
+    'dos.f.surface_habitable': "Surface habitable",
+    'dos.f.nb_pieces': "Nombre de pièces",
+    'dos.f.nb_chambres': "Nombre de chambres",
+    'dos.f.nb_sdb': "Salles d'eau",
+    'dos.f.nb_wc': "WC",
+    'dos.f.etat_general': "État général",
+    'dos.f.atouts': "Points forts",
+    'dos.f.atouts.placeholder': "Un atout par ligne (au moins 3)",
+    'dos.f.faiblesses': "Points de vigilance",
+    'dos.f.faiblesses.placeholder': "Un point de vigilance par ligne (au moins 2)",
+
+    // CTAs génériques
     'dos.action.enregistrer': "Enregistrer",
-    'dos.action.telecharger': "Télécharger le PDF",
-    'dos.action.envoyer': "Envoyer par e-mail",
+    'dos.action.exporter': "Exporter",
     'dos.action.dupliquer': "Dupliquer",
     'dos.action.archiver': "Archiver",
   },
@@ -95,9 +160,8 @@ dossier.en = {
   'dos.niveau.2': "Full report",
   'dos.niveau.2.sous': "Extended report to complete after the visit.",
 
-  'dos.incomplet.titre': "Report in progress",
-  'dos.incomplet.texte': "Report in progress — complete before sending",
-  'dos.incomplet.cta': "Complete",
+  'dos.banniere.encours': "Report in progress — complete before sending",
+  'dos.banniere.pret': "Property valuation ready to send",
 
   'dos.statut.brouillon': "Draft",
   'dos.statut.complet': "Complete",
@@ -105,12 +169,80 @@ dossier.en = {
   'dos.statut.archive': "Archived",
 
   'dos.offline.saved': "Offline — saved on device",
-  'dos.offline.sync': "Syncing…",
+  'dos.offline.reprendre.titre': "Resume your draft",
+  'dos.offline.reprendre.sous': "You had started editing this report offline.",
+  'dos.offline.reprendre.cta': "Resume your draft",
+  'dos.offline.repartir.cta': "Start over",
+
+  'dos.completude.titre': "Five items to send your report",
+  'dos.completude.sous': "Fill in the recipient, address, living area, cover photo, and complete your profile. The rest is already filled.",
+  'dos.completude.compteur': "{n} of 5",
+  'dos.completude.item.demandeur': "Recipient name",
+  'dos.completude.item.adresse': "Property address",
+  'dos.completude.item.surface': "Living area",
+  'dos.completude.item.photo': "Cover photo",
+  'dos.completude.item.redacteur': "Editor profile complete",
+  'dos.completude.item.redacteur.manque': "Editor profile — {n} missing item{s}",
+
+  'dos.mur.eyebrow': "{n} more item{s}",
+  'dos.mur.sous': "This information will appear in the header of the document and in the legal notices.",
+  'dos.mur.champ.agent_nom': "Your name",
+  'dos.mur.champ.agent_email': "Your professional e-mail",
+  'dos.mur.champ.agent_tel': "Your phone",
+  'dos.mur.champ.agence_nom': "Your agency name",
+  'dos.mur.champ.agence_siren': "Your agency SIREN",
+  'dos.mur.champ.carte_pro': "Your professional card number",
+  'dos.mur.champ.carte_pro_cci': "The chamber that issued your card",
+  'dos.mur.champ.rcp_assureur': "Your professional liability insurer",
+  'dos.mur.champ.rcp_police': "Your liability policy number",
+  'dos.mur.fini.titre': "You are ready.",
+  'dos.mur.fini.cta': "Back to the report",
+  'dos.mur.continuer': "Continue",
+  'dos.mur.retour': "Back",
+
+  'dos.export.titre': "Export your report",
+  'dos.export.generer': "Generate PDF",
+  'dos.export.enregistrer': "Save to device",
+  'dos.export.envoyer': "Send by email",
+  'dos.export.mailto.sujet': "Property valuation — {adresse}",
+  'dos.export.reussi': "PDF ready — you can now save or send it.",
+
+  'dos.progress.titre': "Generating",
+  'dos.progress.l1': "Preparing the document…",
+  'dos.progress.l2': "Rendering pages…",
+  'dos.progress.l3': "Finalizing…",
+  'dos.progress.annuler': "Cancel",
+  'dos.progress.annule': "Generation cancelled. You can restart whenever you want.",
+  'dos.progress.erreur': "Generation did not complete. Try again in a moment.",
 
   'dos.ajust.titre': "Manual adjustment",
   'dos.ajust.sous': "The reason you enter will appear in the document, below the retained value.",
   'dos.ajust.motif': "Reason for the adjustment",
+  'dos.ajust.motif.placeholder': "Example: retained 3% below the mid-range to capture demand.",
   'dos.ajust.valeur': "Retained value",
+
+  'dos.creer.titre': "Create a report",
+  'dos.creer.choisir': "Choose an estimate",
+  'dos.creer.aucune': "You don't have any estimate yet. Create one from the Estimate tab.",
+  'dos.creer.cta': "Create the report",
+  'dos.liste.retour': "Back to reports",
+
+  'dos.f.demandeur_nom': "Recipient name",
+  'dos.f.demandeur_qualite': "Recipient status",
+  'dos.f.objet': "Purpose",
+  'dos.f.date_visite': "Visit date",
+  'dos.f.bien_visite': "Property physically visited",
+  'dos.f.photo_couverture': "Cover photo",
+  'dos.f.photo_ajouter': "Add a photo",
+  'dos.f.surface_habitable': "Living area",
+  'dos.f.nb_pieces': "Number of rooms",
+  'dos.f.nb_chambres': "Number of bedrooms",
+  'dos.f.nb_sdb': "Bathrooms",
+  'dos.f.nb_wc': "WC",
+  'dos.f.atouts': "Strengths",
+  'dos.f.atouts.placeholder': "One strength per line (at least 3)",
+  'dos.f.faiblesses': "Warning points",
+  'dos.f.faiblesses.placeholder': "One warning per line (at least 2)",
 
   'dos.mur.titre': "Complete your profile before sending the report",
   'dos.mur.sous': "This information will appear in the header of the document and in the legal notices.",

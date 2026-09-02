@@ -3,12 +3,24 @@
 Prend en entrée :
   - le doc `estimation` (résultat du moteur C1 + bien + comparables figés)
   - le doc `user` (avec `infos_pro` complété)
-  - `config_matching` (pour `marge_negociation`, `validite_mois`…)
+  - `config_matching` (pour `marge_negociation`, `validite_mois`,
+    `composition_bornes_surface`…)
 
 Retourne un dict `{section_id: {field_id: value}}` conforme au schéma
 canonique `schema_avis_de_valeur.json`. Les champs non calculables
 (demandeur, date de visite, atouts…) restent absents — le rédacteur les
 saisit ensuite via PATCH.
+
+**Composition (pièces / chambres / SdB / WC) :** jamais un compteur à 0.
+Ordre de déduction (première source qui répond gagne) :
+  1. `listings.rooms` de l'annonce rapprochée (non implémenté v1 — laissé
+     pour plus tard, nécessite lookup Supabase).
+  2. Médiane `nombre_pieces_principales` des comparables figés DVF, filtrée
+     sur même `type_local` et surface à ±20 %.
+  3. Repli par bornes de surface — configuré dans
+     `config_matching.composition_bornes_surface`.
+Puis règles dérivées : chambres = pièces − 1 (min 1), SdB/WC = 1 si <90 m²,
+2 sinon.
 """
 from __future__ import annotations
 
@@ -95,6 +107,85 @@ def _fiabilite_to_confiance(fiab: str | None) -> str:
     return {"elevee": "élevé", "moyenne": "moyen", "faible": "faible"}.get(fiab or "", "moyen")
 
 
+# ---------------------------------------------------------------------------
+# Déduction composition (jamais un compteur à zéro)
+# ---------------------------------------------------------------------------
+COMPOSITION_BORNES_DEFAUT: list[tuple[float, int]] = [
+    (30.0, 1),
+    (45.0, 2),
+    (70.0, 3),
+    (95.0, 4),
+    (130.0, 5),
+]
+
+
+def _median(values: list[int]) -> int | None:
+    xs = sorted(v for v in values if isinstance(v, int) and v > 0)
+    if not xs:
+        return None
+    n = len(xs)
+    mid = n // 2
+    if n % 2:
+        return int(xs[mid])
+    return int(round((xs[mid - 1] + xs[mid]) / 2))
+
+
+def _nb_pieces_from_bornes(surface: float | None, bornes: list) -> int:
+    if surface is None:
+        return 3
+    s = float(surface)
+    # bornes : liste de [seuil, pieces] triée croissante ; le premier seuil > s gagne
+    for seuil, pieces in bornes:
+        if s < float(seuil):
+            return int(pieces)
+    # au-delà de la dernière borne, +1 pièce
+    return int(bornes[-1][1]) + 1 if bornes else 6
+
+
+def _nb_pieces_from_comparables(estim: dict[str, Any], type_bien: str, surface: float | None) -> int | None:
+    """Médiane sur les comparables figés, filtrés type + surface ±20 %."""
+    if surface is None or surface <= 0:
+        return None
+    lo, hi = surface * 0.8, surface * 1.2
+    same_type: list[int] = []
+    for c in estim.get("comparables_figes") or []:
+        try:
+            s = float(c.get("surface") or 0)
+        except (TypeError, ValueError):
+            continue
+        if s <= 0 or not (lo <= s <= hi):
+            continue
+        ctype = (c.get("type") or c.get("type_local") or "").lower()
+        if type_bien and ctype and ctype != type_bien:
+            continue
+        pieces = c.get("nb_pieces") or c.get("pieces") or c.get("nombre_pieces_principales")
+        if isinstance(pieces, (int, float)):
+            same_type.append(int(pieces))
+    return _median(same_type)
+
+
+def deduce_composition(
+    estim: dict[str, Any],
+    type_bien: str,
+    surface: float | None,
+    config: dict[str, Any],
+) -> dict[str, int]:
+    """Retourne `{nb_pieces, nb_chambres, nb_sdb, nb_wc}` — jamais 0."""
+    # 1. DVF median
+    nb = _nb_pieces_from_comparables(estim, type_bien, surface)
+    # 2. Repli par bornes de surface
+    if not nb:
+        bornes = config.get("composition_bornes_surface") or [list(b) for b in COMPOSITION_BORNES_DEFAUT]
+        nb = _nb_pieces_from_bornes(surface, bornes)
+    nb = max(1, int(nb))
+    chambres = max(1, nb - 1) if nb > 1 else 0
+    if chambres == 0:
+        chambres = 1 if nb >= 1 else 0
+    sdb = 2 if (surface or 0) >= 90 else 1
+    wc = 2 if (surface or 0) >= 90 else 1
+    return {"nb_pieces": nb, "nb_chambres": max(1, chambres), "nb_sdb": sdb, "nb_wc": wc}
+
+
 def build_prefill(
     *,
     estim: dict[str, Any],
@@ -173,6 +264,10 @@ def build_prefill(
 
     # ---- Section `surfaces` -------------------------------------------------
     surface_habitable = estim.get("surface_habitable")
+    try:
+        surface_habitable = float(surface_habitable) if surface_habitable is not None else None
+    except (TypeError, ValueError):
+        surface_habitable = None
     surface_ponderee = resultat.get("surface_ponderee_m2")
     surfaces = {
         "surface_habitable": surface_habitable,
@@ -180,8 +275,8 @@ def build_prefill(
         "origine_surface": "déclaratif propriétaire",
     }
 
-    # ---- Section `composition` --------------------------------------------
-    composition: dict[str, Any] = {}
+    # ---- Section `composition` — déduction jamais nulle ---------------
+    composition: dict[str, Any] = dict(deduce_composition(estim, type_bien, surface_habitable, config))
     etage_input = inputs.get("etage")
     if isinstance(etage_input, str):
         composition["etage"] = {"rdc": 0, "1": 1, "2": 2, "3": 3, "3plus": 4}.get(etage_input)

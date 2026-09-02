@@ -77,10 +77,30 @@ export const getEstimation = (id) =>
 export const geocoderAdresse = (adresse, code_postal) =>
   req('/api/estimations/geocoder', { method: 'POST', body: { adresse, code_postal } });
 
+// --- C2 Dossiers (Avis de valeur)
+export const postDossier = (payload) =>
+  req('/api/dossiers', { method: 'POST', body: payload });
+export const getDossiers = () => req('/api/dossiers');
+export const getDossier = (id) =>
+  req(`/api/dossiers/${encodeURIComponent(id)}`);
+export const patchDossier = (id, payload) =>
+  req(`/api/dossiers/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload });
+export const startDossierPdf = (id) =>
+  req(`/api/dossiers/${encodeURIComponent(id)}/generer-pdf`, { method: 'POST' });
+export const getDossierPdfJob = (dossierId, jobId) =>
+  req(`/api/dossiers/${encodeURIComponent(dossierId)}/generer-pdf/${encodeURIComponent(jobId)}`);
+export const cancelDossierPdfJob = (dossierId, jobId) =>
+  req(`/api/dossiers/${encodeURIComponent(dossierId)}/generer-pdf/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+// URL directe (téléchargement natif ou fetch blob)
+export const dossierPdfUrl = (id) =>
+  `${API}/api/dossiers/${encodeURIComponent(id)}/pdf`;
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
   verifyAppleReceipt,
   postEstimation, getEstimations, getEstimation, geocoderAdresse,
+  postDossier, getDossiers, getDossier, patchDossier,
+  startDossierPdf, getDossierPdfJob, cancelDossierPdfJob, dossierPdfUrl,
 };
 export default b1api;

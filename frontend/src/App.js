@@ -63,7 +63,6 @@ import V2SubscriptionPage from "./v2/pages/V2SubscriptionPage";
 import B1Onboarding from "./b1/B1Onboarding";
 import {
   OpportunitesPage as B1OpportunitesPage,
-  RapportPage as B1RapportPage,
   AssistantPage as B1AssistantPage,
   ProfilPage as B1ProfilPage,
   ProfilPersoPage as B1ProfilPersoPage,
@@ -72,6 +71,7 @@ import {
   ProfilDeletePage as B1ProfilDeletePage,
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
+import { DossierListPage as C2DossierList, DossierEditorPage as C2DossierEditor } from "./b1/B1Dossier";
 import {
   EstimationHomePage as C1EstimationHome,
   EstimationFlowPage as C1EstimationFlow,
@@ -238,7 +238,8 @@ const AppRouter = () => {
       <Route path="/app-b1/estimation/flow" element={<C1EstimationFlow />} />
       <Route path="/app-b1/estimations" element={<C1MesEstimations />} />
       <Route path="/app-b1/estimations/:id" element={<C1EstimationDetail />} />
-      <Route path="/app-b1/rapport" element={<B1RapportPage />} />
+      <Route path="/app-b1/rapport" element={<C2DossierList />} />
+      <Route path="/app-b1/rapport/:id" element={<C2DossierEditor />} />
       <Route path="/app-b1/assistant" element={<B1AssistantPage />} />
       <Route path="/app-b1/profil" element={<B1ProfilPage />} />
       <Route path="/app-b1/profil/perso" element={<B1ProfilPersoPage />} />

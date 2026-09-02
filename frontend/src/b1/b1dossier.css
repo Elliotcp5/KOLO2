@@ -1,0 +1,102 @@
+/* KOLO — BLOC C2 : Éditeur de dossier « Avis de valeur »
+ * Scopé `.b1-root .dos-*`, réutilise les tokens B1 (rose #EC8690, gris, blanc).
+ * Aucune couleur en dur. */
+
+.b1-root .dos-banner {
+  border-radius: 16px; padding: 12px 16px; font-size: 14px; margin: 12px 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.b1-root .dos-banner--wip {
+  background: #F1F1F4; color: var(--b1-text-secondary);
+  border: 1px solid var(--b1-border);
+}
+.b1-root .dos-banner--ready {
+  background: var(--b1-accent-light); color: var(--b1-accent-pressed);
+  border: 1px solid var(--b1-accent);
+  font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 12px;
+}
+
+.b1-root .dos-level {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  background: #EFEFF3; padding: 4px; border-radius: 14px;
+}
+.b1-root .dos-level-opt {
+  border: 0; background: transparent; padding: 10px; border-radius: 10px;
+  text-align: center; cursor: pointer; color: var(--b1-text-secondary);
+  font-size: 14px; font-weight: 500;
+}
+.b1-root .dos-level-opt[data-active="true"] {
+  background: var(--b1-card); color: var(--b1-text-primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.b1-root .dos-level-opt-sub { display: block; font-size: 11px; color: var(--b1-text-muted); margin-top: 2px; font-weight: 400; }
+
+.b1-root .dos-completude {
+  background: var(--b1-card); border-radius: var(--b1-radius-card);
+  padding: 20px; margin: 12px 0; box-shadow: var(--b1-shadow-card);
+}
+.b1-root .dos-completude h3 { font-size: 18px; margin: 0 0 6px; }
+.b1-root .dos-completude p { color: var(--b1-text-secondary); font-size: 14px; margin: 0 0 16px; }
+.b1-root .dos-completude-progress { height: 6px; background: #EEE; border-radius: 3px; margin-bottom: 4px; overflow: hidden; }
+.b1-root .dos-completude-progress span { display: block; height: 100%; background: var(--b1-accent); transition: width 240ms; }
+.b1-root .dos-completude-count { font-size: 12px; color: var(--b1-text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 16px; }
+.b1-root .dos-completude-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--b1-border); }
+.b1-root .dos-completude-item:first-of-type { border-top: 0; }
+.b1-root .dos-completude-item[data-ok="true"] .dos-check { color: var(--b1-success); }
+.b1-root .dos-completude-item[data-ok="false"] .dos-check { color: var(--b1-text-muted); }
+.b1-root .dos-completude-item-label { flex: 1; font-size: 14px; }
+.b1-root .dos-completude-item-detail { font-size: 12px; color: var(--b1-text-muted); }
+
+.b1-root .dos-section-list { display: grid; gap: 10px; margin-top: 8px; }
+.b1-root .dos-section-row {
+  background: var(--b1-card); border-radius: 14px; padding: 14px 16px;
+  border: 1px solid var(--b1-border);
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+}
+.b1-root .dos-section-row-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--b1-accent); width: 24px; }
+.b1-root .dos-section-row-label { flex: 1; font-size: 14px; }
+
+.b1-root .dos-editor-page { padding: 16px 20px 96px; }
+.b1-root .dos-topbar { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+.b1-root .dos-topbar h1 { font-size: 20px; flex: 1; margin: 0; }
+.b1-root .dos-topbar .dos-offline-tag {
+  font-size: 11px; color: var(--b1-text-muted); letter-spacing: 0.06em;
+}
+
+.b1-root .dos-mur {
+  padding: 24px 20px 96px; background: var(--b1-bg); min-height: 100vh;
+}
+.b1-root .dos-mur .dos-mur-eyebrow {
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--b1-accent);
+  font-weight: 600; margin: 0 0 12px;
+}
+.b1-root .dos-mur h1 { font-size: 22px; margin: 0 0 8px; }
+.b1-root .dos-mur p { color: var(--b1-text-secondary); font-size: 14px; margin: 0 0 24px; }
+.b1-root .dos-mur .b1-input { margin-bottom: 24px; }
+
+.b1-root .dos-export-actions { display: grid; gap: 10px; margin-top: 20px; }
+.b1-root .dos-export-actions .b1-pill--ghost + .b1-pill--ghost { }
+
+.b1-root .dos-progress {
+  padding: 32px 24px; background: var(--b1-card);
+  border-radius: var(--b1-radius-card); box-shadow: var(--b1-shadow-card);
+  text-align: center; margin-top: 20px;
+}
+.b1-root .dos-progress h3 { font-size: 20px; margin: 0 0 20px; }
+.b1-root .dos-progress-lines {
+  color: var(--b1-text-secondary); font-size: 14px;
+  min-height: 22px; margin-bottom: 16px;
+}
+.b1-root .dos-progress-bar { height: 4px; background: #EEE; border-radius: 2px; margin-bottom: 24px; overflow: hidden; }
+.b1-root .dos-progress-bar span { display: block; height: 100%; background: var(--b1-accent); transition: width 300ms; }
+.b1-root .dos-progress-cancel {
+  border: 0; background: transparent; color: var(--b1-text-secondary);
+  font-size: 14px; padding: 8px 16px; cursor: pointer;
+}
+
+.b1-root .dos-toast {
+  position: fixed; left: 16px; right: 16px; bottom: 80px;
+  background: var(--b1-text-primary); color: #FFF;
+  padding: 12px 16px; border-radius: 12px; font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.20); z-index: 30;
+}

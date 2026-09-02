@@ -1,5 +1,78 @@
 # KOLO - Changelog
 
+## BLOC C Partie B — Session 3 : Éditeur 22 sections + complétude + mur + export — 2 sept. 2026
+
+### Fix Session 2 (tags comparables)
+Passés en contours plutôt qu'en pleins : `Vente actée` = contour et texte rose `#EC8690`, `En vente` = contour et texte gris. Plus aucun rouge/violet dans le PDF (rappel : la charte n'a que rose, blanc, gris, ambre-veille).
+
+### Backend
+- **Prefill enrichi (`c2/prefill.py`)** — `deduce_composition(estim, type_bien, surface, config)` retourne `{nb_pieces, nb_chambres, nb_sdb, nb_wc}`, jamais 0 :
+  1. Médiane DVF sur `comparables_figes` (même `type_local`, surface ±20 %)
+  2. Repli par bornes de surface, configurable via `config_matching.composition_bornes_surface` (défaut `[[30,1],[45,2],[70,3],[95,4],[130,5]]`)
+  3. Règles dérivées : `chambres = max(1, pieces-1)`, `sdb/wc = 1 si <90 m², 2 sinon`
+- **Complétude (`c2/routes.py::_completude`)** — 5 blocages exposés dans GET/PATCH : `demandeur`, `adresse`, `surface`, `photo`, `redacteur`. `redacteur_manquants` liste les 9 champs bloquants restants (agent_nom/email/tel + agence_nom/siren + carte_pro/cci + rcp_assureur/rcp_police).
+- **Auto-bascule brouillon → complet** — sur PATCH, si les 5 blocages sont satisfaits, le statut passe automatiquement à `complet` (ne redégrade jamais un statut manuel `envoye`/`archive`).
+- **Cancel (`c2/pdf/jobs.py::cancel_job`)** — `DELETE /api/dossiers/{id}/generer-pdf/{job_id}` : marque le job `cancelled`, le thread WeasyPrint termine mais son fichier est supprimé et le statut reste `cancelled`. 409 si job déjà `done`/`error`.
+- **Endpoints S3 ajoutés** :
+  - `DELETE /api/dossiers/{id}/generer-pdf/{job_id}` (cancel)
+  - `GET /api/dossiers/{id}` renvoie désormais aussi `completude`
+  - `PATCH /api/dossiers/{id}` renvoie `completude` + bascule auto
+
+### Frontend — nouveau bloc `/app/frontend/src/b1/`
+- **`B1Dossier.jsx`** — 4 vues :
+  - **Liste** (`DossierListPage`) : empty state, bouton `Nouveau dossier` → panneau création avec liste des estimations existantes.
+  - **Vue d'ensemble éditeur** (`DossierEditorPage`) : bandeau gris `Dossier en cours — complétez avant l'envoi` ou bandeau rose `Avis de valeur prêt à l'envoi`, sélecteur `L'essentiel` / `Tout le dossier`, carte complétude `X sur 5` avec 5 items cliquables, tag hors-ligne discret `Hors ligne — sauvegardé sur l'appareil`, liste des 22 sections numérotées.
+  - **Mur rédacteur** (`RedacteurWall`) : un champ par écran, eyebrow `Encore {n} information(s)`, sous-titre contextuel, retour disponible, écran final `Vous êtes prêt. — Retour au dossier`. 9 écrans (l'assureur RCP et le numéro de police sont deux écrans distincts).
+  - **Export** (`ExportScreen`) : 3 boutons `Générer le PDF` / `Enregistrer sur l'appareil` / `Envoyer par e-mail`, les 2 derniers apparaissent seulement après génération. Écran de progression n'apparaît qu'au-delà de **3 s** (via `setTimeout`), affiche 3 lignes contextuelles (`Préparation… / Rendu… / Finalisation…`), bouton `Annuler` qui appelle `cancelDossierPdfJob`. Banner erreur/annulé.
+- **`b1dossier.css`** — styles scopés `.b1-root .dos-*`, aucune couleur en dur, tous les tokens B1 réutilisés (accent, card, border, text-primary/secondary/muted).
+- **`b1api.js`** — 7 nouvelles méthodes `postDossier`, `getDossiers`, `getDossier`, `patchDossier`, `startDossierPdf`, `getDossierPdfJob`, `cancelDossierPdfJob`, `dossierPdfUrl`.
+- **`App.js`** — 2 nouvelles routes : `/app-b1/rapport` (liste) et `/app-b1/rapport/:id` (éditeur), remplacent l'ancien placeholder `RapportPage`.
+
+### Sauvegarde hors ligne
+- **PATCH offline-safe** : chaque édition de section écrit d'abord dans `saveDraft('dossier_{id}', {sections: {...}})` (b3offline), puis tente le PATCH réseau. Si le réseau échoue, le brouillon local reste, sera fusionné au prochain `getDossier`. `loadDraft` fusionne à l'ouverture, `saveDraft` supprime la section une fois persistée côté serveur.
+
+### Partage natif iOS
+- Import dynamique de `@capacitor/share` + `@capacitor/filesystem` (installés). Sur natif : le PDF est téléchargé via l'API authentifiée, écrit dans `Directory.Cache`, puis `Share.share` ouvre le sheet natif iOS avec titre = nom de fichier (Mail.app pré-sélectionnable).
+- **Web fallback** : téléchargement direct via `URL.createObjectURL(blob)`.
+- **Envoi par mail** : sur natif, mêmes actions que save (le partage natif propose Mail). Sur web, `mailto:?subject="Avis de valeur — {adresse_ligne1}"` (objet uniquement, corps vierge comme spécifié).
+
+### Copie figée (`b1i18nDossier.js`)
+- Sélecteur : `L'essentiel` / `Tout le dossier` + sous-titres
+- Bandeau gris : `Dossier en cours — complétez avant l'envoi`
+- Bandeau rose : `Avis de valeur prêt à l'envoi` (corrigé du lapsus `ESTIMATION`)
+- Complétude : `Cinq éléments pour envoyer votre dossier` + `X sur 5` + `Profil rédacteur — {n} information(s) manquante(s)`
+- Mur : `Encore {n} information(s)` + libellés des 9 champs verbatim
+- Ajustement manuel : sous-titre + placeholder verbatim
+- Progression : `Génération en cours` + 3 lignes + `Annuler` + messages annulé/erreur
+- Traductions EN complètes ; IT/DE : les clés inchangées restent traduites, les nouvelles clés retombent en FR via le fallback natif de `b1t` (à traduire ultérieurement — FR est le marché principal).
+
+### Tests
+- **9 nouveaux tests** dans `test_c2_pdf.py` (Session 3) :
+  - Composition : studio 25 m² → 1P, 50 m² → 3P, maison 150 m² → 6P/2SdB, DVF prioritaire sur bornes, DVF ignore hors ±20 %, jamais 0.
+  - `test_cancel_pdf_job` : DELETE annule le job.
+  - `test_patch_bascule_en_complet_quand_5_blocages_leves` : brouillon → complet automatique.
+  - `test_completude_expose_redacteur_manquants` : liste précise des champs manquants.
+- **85/85 tests verts** (C1 + C2 + B1) — aucune régression.
+
+### Critères de recette S3
+- ✅ Sélecteur `L'essentiel` / `Tout le dossier` fonctionnel
+- ✅ Bandeau gris (en cours) / rose (prêt) selon complétude
+- ✅ Mur rédacteur : un champ par écran, 9 écrans, ne bloque QUE l'export
+- ✅ Sauvegarde locale via `saveDraft` / `loadDraft` / `clearDraft` de `b3offline.js`
+- ✅ Composition pré-remplie, jamais 0 (DVF > bornes surface > défauts)
+- ✅ Aucun texte en dur (tout via `b1t`)
+- ✅ Aucune couleur en dur (tokens B1 uniquement)
+- ✅ Écran de progression au-delà de 3 s, avec Annuler qui coupe réellement
+- ✅ Bascule auto `brouillon` → `complet` sur les 5 blocages
+- ✅ Partage natif iOS avec PDF en pièce jointe + mailto préparé (objet uniquement)
+- ✅ Tags comparables : contour rose (Acté) / contour gris (En vente)
+
+### Reste hors périmètre
+- **Photos (upload)** : la Session 3 accepte une `photo_couverture` en URL. L'upload natif (caméra + Emergent Object Storage) viendra en itération suivante.
+- **Dictée vocale** : c'est Partie C, session dédiée.
+- **Complétude niveau 2** : la barre `X sur 5` couvre seulement les 5 blocages niveau 1 (spec explicite).
+
+
 ## BLOC C Partie B — Session 2 : Génération PDF WeasyPrint — 2 sept. 2026
 
 ### Livrables backend (`/app/backend/c2/pdf/`)

@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from a2.config import get_config
 from a2.tz import now_utc_iso
 
-from .pdf.jobs import enqueue as enqueue_pdf, latest_done_job
+from .pdf.jobs import cancel_job, enqueue as enqueue_pdf, latest_done_job
 from .prefill import build_prefill
 from .schemas import (
     SECTION_IDS,
@@ -184,7 +184,61 @@ async def get_dossier(dossier_id: str, request: Request, response: Response):
     )
     if not doc:
         raise HTTPException(status_code=404, detail="dossier_introuvable")
-    return {"ok": True, "dossier": doc}
+    return {"ok": True, "dossier": doc, "completude": _completude(doc)}
+
+
+# ---------------------------------------------------------------------------
+# Complétude — 5 blocages niveau 1 avant export
+# ---------------------------------------------------------------------------
+REDACTEUR_CHAMPS_BLOQUANTS: tuple[str, ...] = (
+    "agent_nom", "agent_email", "agent_tel",
+    "agence_nom", "agence_siren", "carte_pro",
+    "carte_pro_cci", "rcp_assureur", "rcp_police",
+)
+
+
+def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
+    """5 blocages niveau 1 :
+      1. demandeur_nom (mission)
+      2. adresse (identification)
+      3. surface_habitable (surfaces)
+      4. photo_couverture (dossier)
+      5. redacteur complet (9 champs bloquants)
+
+    Retourne :
+      { blocages: {demandeur, adresse, surface, photo, redacteur},
+        redacteur_manquants: [...ids],
+        pret_export: bool }
+    """
+    s = dossier_doc.get("sections") or {}
+    mission = s.get("mission") or {}
+    identification = s.get("identification") or {}
+    surfaces = s.get("surfaces") or {}
+    dossier = s.get("dossier") or {}
+    redacteur = s.get("redacteur") or {}
+
+    demandeur_ok = bool((mission.get("demandeur_nom") or "").strip())
+    adresse_ok = bool((identification.get("adresse") or "").strip())
+    surface_ok = bool(surfaces.get("surface_habitable"))
+    photo_ok = bool(dossier.get("photo_couverture"))
+
+    manquants = [
+        k for k in REDACTEUR_CHAMPS_BLOQUANTS
+        if not (str(redacteur.get(k) or "").strip())
+    ]
+    redacteur_ok = len(manquants) == 0
+
+    return {
+        "blocages": {
+            "demandeur": demandeur_ok,
+            "adresse": adresse_ok,
+            "surface": surface_ok,
+            "photo": photo_ok,
+            "redacteur": redacteur_ok,
+        },
+        "redacteur_manquants": manquants,
+        "pret_export": all([demandeur_ok, adresse_ok, surface_ok, photo_ok, redacteur_ok]),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +282,16 @@ async def patch_dossier(dossier_id: str, payload: DossierPatch, request: Request
         {"dossier_id": dossier_id, "user_id": user["user_id"]},
         {"_id": 0},
     )
-    return {"ok": True, "dossier": doc}
+    # Bascule automatique brouillon -> complet quand les 5 blocages passent.
+    # On ne redégrade jamais un statut manuel (envoye/archive/complet forcé).
+    completude = _completude(doc)
+    if doc.get("statut") == "brouillon" and completude["pret_export"]:
+        await db.dossiers.update_one(
+            {"dossier_id": dossier_id, "user_id": user["user_id"]},
+            {"$set": {"statut": "complet", "date_maj": now_utc_iso()}},
+        )
+        doc["statut"] = "complet"
+    return {"ok": True, "dossier": doc, "completude": completude}
 
 
 
@@ -264,6 +327,27 @@ async def pdf_job_status(dossier_id: str, job_id: str, request: Request):
     if not job:
         raise HTTPException(status_code=404, detail="job_introuvable")
     return {"ok": True, "job": job}
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/dossiers/{id}/generer-pdf/{job_id} — annule un job
+# ---------------------------------------------------------------------------
+@router.delete("/api/dossiers/{dossier_id}/generer-pdf/{job_id}")
+async def cancel_pdf_job(dossier_id: str, job_id: str, request: Request):
+    user = await _current_user_doc(request)
+    db = _db()
+    # Vérif ownership + existence du dossier
+    dos = await db.dossiers.find_one(
+        {"dossier_id": dossier_id, "user_id": user["user_id"]},
+        {"_id": 0, "dossier_id": 1},
+    )
+    if not dos:
+        raise HTTPException(status_code=404, detail="dossier_introuvable")
+    ok = await cancel_job(db, job_id, user["user_id"])
+    if not ok:
+        # Soit le job n'existe pas, soit il est déjà `done`/`error`/`cancelled`
+        raise HTTPException(status_code=409, detail="job_non_annulable")
+    return {"ok": True, "job_id": job_id, "status": "cancelled"}
 
 
 # ---------------------------------------------------------------------------

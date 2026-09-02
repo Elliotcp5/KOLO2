@@ -188,9 +188,9 @@ table th{
 table td{ padding:2.8mm 2mm; border-bottom:1px solid var(--rule); vertical-align: top; }
 table td.n, table th.n{ text-align:right; }
 table tr.total td{ font-weight:700; background:#FCFCFF; border-top:1.5px solid var(--rule); }
-.tag{ display:inline-block; padding:.6mm 1.8mm; font-family:"DM Mono",monospace; font-size:7.2pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; border-radius:1.5mm; }
-.tag.acte{ background:#F0EEF8; color:var(--violet); }
-.tag.affiche{ background:#FDECEE; color:var(--alert); }
+.tag{ display:inline-block; padding:.5mm 1.8mm; font-family:"DM Mono",monospace; font-size:7.2pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; border-radius:1.5mm; border:1px solid transparent; background:transparent; }
+.tag.acte{ color:var(--accent); border-color:var(--accent); }
+.tag.affiche{ color:var(--muted); border-color:var(--rule); }
 
 /* ---------- DPE bar ---------- */
 .dpe-bar{ display:flex; flex-direction:column; gap:.6mm; width:38mm; }

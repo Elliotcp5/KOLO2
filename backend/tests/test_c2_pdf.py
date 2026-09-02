@@ -30,6 +30,7 @@ from PIL import Image
 
 from c2.pdf.images import MAX_WIDTH, optimize_image
 from c2.pdf.renderer import build_filename, render_html, render_pdf
+from c2.prefill import deduce_composition
 
 
 API = "http://localhost:8001"
@@ -332,6 +333,167 @@ async def test_http_pdf_workflow_end_to_end():
             assert r.content[:4] == b"%PDF"
             cd = r.headers.get("content-disposition", "")
             assert "Avis-de-valeur_" in cd
+    finally:
+        await _cleanup(db, user_id)
+
+
+# ---------------------------------------------------------------------------
+# 7. Composition — jamais un compteur à zéro (S3)
+# ---------------------------------------------------------------------------
+class TestDeduceComposition:
+    def _cfg(self):
+        return {"composition_bornes_surface": [[30, 1], [45, 2], [70, 3], [95, 4], [130, 5]]}
+
+    def test_studio_25m2_donne_1_piece(self):
+        r = deduce_composition({"comparables_figes": []}, "appartement", 25, self._cfg())
+        assert r["nb_pieces"] == 1
+        assert r["nb_chambres"] >= 1  # jamais 0
+        assert r["nb_sdb"] == 1
+
+    def test_50m2_donne_3_pieces(self):
+        r = deduce_composition({"comparables_figes": []}, "appartement", 50, self._cfg())
+        assert r["nb_pieces"] == 3
+        assert r["nb_chambres"] == 2
+
+    def test_grande_maison_150m2_donne_6_pieces_2sdb(self):
+        r = deduce_composition({"comparables_figes": []}, "maison", 150, self._cfg())
+        assert r["nb_pieces"] == 6
+        assert r["nb_sdb"] == 2
+        assert r["nb_wc"] == 2
+
+    def test_dvf_median_prioritaire_sur_surface(self):
+        estim = {"comparables_figes": [
+            {"surface": 52, "type": "appartement", "nb_pieces": 2},
+            {"surface": 48, "type": "appartement", "nb_pieces": 2},
+            {"surface": 55, "type": "appartement", "nb_pieces": 2},
+        ]}
+        r = deduce_composition(estim, "appartement", 50, self._cfg())
+        # DVF dit clairement 2 pièces sur ce segment, alors que la borne surface donnerait 3
+        assert r["nb_pieces"] == 2
+        assert r["nb_chambres"] == 1
+
+    def test_dvf_ignore_hors_surface_20pct(self):
+        estim = {"comparables_figes": [
+            {"surface": 100, "type": "appartement", "nb_pieces": 5},  # hors ±20 %
+        ]}
+        r = deduce_composition(estim, "appartement", 50, self._cfg())
+        # Retombe sur les bornes surface → 3 pièces
+        assert r["nb_pieces"] == 3
+
+    def test_jamais_zero(self):
+        r = deduce_composition({}, "parking", None, self._cfg())
+        assert r["nb_pieces"] >= 1
+        assert r["nb_chambres"] >= 1
+        assert r["nb_sdb"] >= 1
+        assert r["nb_wc"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# 8. Cancel job + auto-complet (S3)
+# ---------------------------------------------------------------------------
+async def _seed_dossier_ready(db, user_id: str) -> dict:
+    from c2.routes import _completude
+    d = _minimal_dossier()
+    d["user_id"] = user_id
+    await db.dossiers.insert_one(dict(d))
+    return d
+
+
+@pytest.mark.asyncio
+async def test_cancel_pdf_job():
+    db = _db()
+    user_id = f"u_c2_cancel_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=10) as client:
+            # POST job
+            r = await client.post(f"/api/dossiers/{d['dossier_id']}/generer-pdf", headers=headers)
+            job_id = r.json()["job_id"]
+            # DELETE cancel — attrape avant/pendant le rendu
+            r = await client.delete(f"/api/dossiers/{d['dossier_id']}/generer-pdf/{job_id}", headers=headers)
+            # Selon la vitesse du rendu, soit 200 (annulé), soit 409 (déjà done)
+            assert r.status_code in (200, 409)
+            if r.status_code == 200:
+                # Vérif statut effectif après annulation
+                r = await client.get(f"/api/dossiers/{d['dossier_id']}/generer-pdf/{job_id}", headers=headers)
+                assert r.json()["job"]["status"] == "cancelled"
+    finally:
+        await _cleanup(db, user_id)
+
+
+@pytest.mark.asyncio
+async def test_patch_bascule_en_complet_quand_5_blocages_leves():
+    """Un dossier brouillon dont les 5 blocages sont satisfaits doit passer
+    automatiquement en `complet` sur le prochain PATCH."""
+    db = _db()
+    user_id = f"u_c2_auto_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        # Seed dossier brouillon avec tous les blocages levés SAUF le nom demandeur
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        d["statut"] = "brouillon"
+        # Rédacteur : renseigne les 9 champs bloquants
+        d["sections"]["redacteur"] = {
+            "agent_nom": "T. Test", "agent_email": "t@t.io", "agent_tel": "+33 6",
+            "agence_nom": "A", "agence_siren": "123456789", "carte_pro": "CPI",
+            "carte_pro_cci": "Paris", "rcp_assureur": "MMA", "rcp_police": "42",
+        }
+        # Adresse OK, surface OK, photo OK
+        d["sections"]["identification"]["adresse"] = "12 rue X"
+        d["sections"]["surfaces"]["surface_habitable"] = 50
+        d["sections"]["dossier"]["photo_couverture"] = "https://example.com/x.jpg"
+        # Manque : demandeur_nom (mission)
+        d["sections"]["mission"]["demandeur_nom"] = ""
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+            # 1er PATCH : les 5 blocages ne sont pas encore levés → reste brouillon
+            r = await client.patch(
+                f"/api/dossiers/{d['dossier_id']}",
+                json={"sections": {"identification": {"adresse": "12 rue X", "code_postal": "75017"}}},
+                headers=headers,
+            )
+            assert r.status_code == 200
+            assert r.json()["dossier"]["statut"] == "brouillon"
+            assert r.json()["completude"]["pret_export"] is False
+
+            # 2ème PATCH : renseigne le demandeur → bascule en complet
+            r = await client.patch(
+                f"/api/dossiers/{d['dossier_id']}",
+                json={"sections": {"mission": {"demandeur_nom": "M. Test", "objet": "mise en vente"}}},
+                headers=headers,
+            )
+            assert r.status_code == 200
+            assert r.json()["dossier"]["statut"] == "complet"
+            assert r.json()["completude"]["pret_export"] is True
+    finally:
+        await _cleanup(db, user_id)
+
+
+@pytest.mark.asyncio
+async def test_completude_expose_redacteur_manquants():
+    db = _db()
+    user_id = f"u_c2_comp_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        # redacteur : 2 champs seulement, il en manque 7
+        d["sections"]["redacteur"] = {"agent_nom": "T", "agent_email": "t@t.io"}
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+            r = await client.get(f"/api/dossiers/{d['dossier_id']}", headers=headers)
+            assert r.status_code == 200
+            comp = r.json()["completude"]
+            assert comp["blocages"]["redacteur"] is False
+            assert len(comp["redacteur_manquants"]) == 7  # 9 total - 2 remplis
+            assert "carte_pro" in comp["redacteur_manquants"]
     finally:
         await _cleanup(db, user_id)
 
