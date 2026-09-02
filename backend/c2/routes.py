@@ -190,10 +190,16 @@ async def get_dossier(dossier_id: str, request: Request, response: Response):
 # ---------------------------------------------------------------------------
 # Complétude — 5 blocages niveau 1 avant export
 # ---------------------------------------------------------------------------
-REDACTEUR_CHAMPS_BLOQUANTS: tuple[str, ...] = (
+REDACTEUR_CHAMPS_BLOQUANTS_PROPRE: tuple[str, ...] = (
     "agent_nom", "agent_email", "agent_tel",
     "agence_nom", "agence_siren", "carte_pro",
     "carte_pro_cci", "rcp_assureur", "rcp_police",
+)
+REDACTEUR_CHAMPS_BLOQUANTS_MANDATAIRE: tuple[str, ...] = (
+    "agent_nom", "agent_email", "agent_tel",
+    "agence_nom", "agence_siren",
+    "reseau_nom", "reseau_carte_t", "reseau_cci", "attestation_num",
+    "rcp_assureur", "rcp_police",
 )
 
 
@@ -203,12 +209,8 @@ def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
       2. adresse (identification)
       3. surface_habitable (surfaces)
       4. photo_couverture (dossier)
-      5. redacteur complet (9 champs bloquants)
-
-    Retourne :
-      { blocages: {demandeur, adresse, surface, photo, redacteur},
-        redacteur_manquants: [...ids],
-        pret_export: bool }
+      5. redacteur complet (9 champs bloquants en carte propre,
+         11 en mandataire)
     """
     s = dossier_doc.get("sections") or {}
     mission = s.get("mission") or {}
@@ -222,8 +224,14 @@ def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
     surface_ok = bool(surfaces.get("surface_habitable"))
     photo_ok = bool(dossier.get("photo_couverture"))
 
+    statut_carte = (redacteur.get("statut_carte") or "propre").lower()
+    bloquants = (
+        REDACTEUR_CHAMPS_BLOQUANTS_MANDATAIRE
+        if statut_carte == "mandataire"
+        else REDACTEUR_CHAMPS_BLOQUANTS_PROPRE
+    )
     manquants = [
-        k for k in REDACTEUR_CHAMPS_BLOQUANTS
+        k for k in bloquants
         if not (str(redacteur.get(k) or "").strip())
     ]
     redacteur_ok = len(manquants) == 0
@@ -237,6 +245,7 @@ def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
             "redacteur": redacteur_ok,
         },
         "redacteur_manquants": manquants,
+        "statut_carte": statut_carte,
         "pret_export": all([demandeur_ok, adresse_ok, surface_ok, photo_ok, redacteur_ok]),
     }
 

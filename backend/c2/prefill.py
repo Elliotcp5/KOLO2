@@ -219,7 +219,11 @@ def build_prefill(
     }
 
     # ---- Section `redacteur` — 100 % depuis `infos_pro` ---------------------
+    # `statut_carte` = 'propre' (défaut) | 'mandataire'. En mandataire, le doc
+    # utilise `reseau_*` + `attestation_num` à la place de `carte_pro`.
+    statut_carte = (infos_pro.get("statut_carte") or "propre").lower()
     redacteur = {
+        "statut_carte": statut_carte,
         "agent_nom": (
             f"{user.get('prenom') or ''} {user.get('nom') or ''}".strip()
             or user.get("name")
@@ -237,6 +241,11 @@ def build_prefill(
         "rcp_assureur": infos_pro.get("rcp_assureur") or "",
         "rcp_police": infos_pro.get("rcp_police") or "",
         "garantie_financiere": infos_pro.get("garantie") or "",
+        # Cas mandataire : réseau + attestation d'habilitation
+        "reseau_nom": infos_pro.get("reseau_nom") or "",
+        "reseau_carte_t": infos_pro.get("reseau_carte_t") or "",
+        "reseau_cci": infos_pro.get("reseau_cci") or "",
+        "attestation_num": infos_pro.get("attestation_num") or "",
     }
 
     # ---- Section `mission` — au choix du rédacteur, valeurs par défaut -----
@@ -272,7 +281,7 @@ def build_prefill(
     surfaces = {
         "surface_habitable": surface_habitable,
         "surface_ponderee_totale": surface_ponderee,
-        "origine_surface": "déclaratif propriétaire",
+        "origine_surface": "declaratif_proprietaire",
     }
 
     # ---- Section `composition` — déduction jamais nulle ---------------

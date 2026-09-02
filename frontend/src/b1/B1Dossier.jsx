@@ -342,13 +342,40 @@ function CompletudeItem({ ok, labelKey, detail, onClick, testid }) {
 }
 
 // ============================================================================
-// Mur rédacteur — un champ par écran
+// Mur rédacteur — un champ par écran, avec choix carte propre / mandataire
 // ============================================================================
 function RedacteurWall({ dossier, manquants, index, onIndex, onSubmitField, onDone, onBack }) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const statutCarte = dossier?.sections?.redacteur?.statut_carte;
+  const needChoice = !statutCarte;
   const fieldId = manquants[index];
   useEffect(() => { setValue(''); }, [fieldId]);
+
+  // Étape 0 : choix carte propre / mandataire (une seule fois)
+  if (needChoice) {
+    const pick = async (choice) => {
+      setSaving(true);
+      try { await onSubmitField('statut_carte', choice); } finally { setSaving(false); }
+    };
+    return (
+      <div className="dos-mur b1-root" data-testid="dos-wall-choix">
+        <button type="button" onClick={onBack} data-testid="dos-wall-back" style={{ border: 0, background: 'transparent', padding: 6, marginBottom: 12 }}>
+          <ArrowLeft size={20} />
+        </button>
+        <div className="dos-mur-eyebrow">{b1t('dos.mur.choix.titre')}</div>
+        <h1 className="b1-h1" style={{ marginBottom: 8 }}>{b1t('dos.mur.choix.titre')}</h1>
+        <p>{b1t('dos.mur.choix.sous')}</p>
+        <button type="button" className="b1-pill b1-pill--primary" style={{ width: '100%', marginBottom: 10 }} disabled={saving} onClick={() => pick('propre')} data-testid="dos-wall-choix-propre">
+          {b1t('dos.mur.choix.propre')}
+        </button>
+        <button type="button" className="b1-pill b1-pill--ghost" style={{ width: '100%' }} disabled={saving} onClick={() => pick('mandataire')} data-testid="dos-wall-choix-mandataire">
+          {b1t('dos.mur.choix.mandataire')}
+        </button>
+      </div>
+    );
+  }
+
   if (!fieldId) {
     return (
       <div className="dos-mur" data-testid="dos-wall-done">

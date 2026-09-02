@@ -42,6 +42,39 @@ TYPE_BIEN_LABEL = {
     "parking": "Parking",
 }
 
+# Enum origine_surface -> phrase grammaticale insérable dans un texte
+ORIGINE_SURFACE_PHRASE = {
+    "carrez": "issues du mesurage Carrez",
+    "declaratif_proprietaire": "déclarées par le propriétaire",
+    "declaratif": "déclarées par le propriétaire",
+    "dpe": "issues du diagnostic de performance énergétique",
+    "visite": "relevées lors de la visite",
+    # Rétro-compatibilité avec l'ancien texte libre
+    "déclaratif propriétaire": "déclarées par le propriétaire",
+    "mesurage carrez": "issues du mesurage Carrez",
+}
+
+# Exposition : jamais l'initiale seule dans le document
+EXPOSITION_LABEL = {
+    "N": "Nord", "S": "Sud", "E": "Est", "O": "Ouest",
+    "NE": "Nord-Est", "NO": "Nord-Ouest", "SE": "Sud-Est", "SO": "Sud-Ouest",
+    "nord": "Nord", "sud": "Sud", "est": "Est", "ouest": "Ouest",
+}
+
+
+def _origine_surface_phrase(v: Any) -> str:
+    if not v:
+        return "déclarées par le propriétaire"
+    k = str(v).strip().lower()
+    return ORIGINE_SURFACE_PHRASE.get(k, k)
+
+
+def _exposition_label(v: Any) -> str | None:
+    if v is None or v == "":
+        return None
+    s = str(v).strip()
+    return EXPOSITION_LABEL.get(s) or EXPOSITION_LABEL.get(s.lower()) or s
+
 
 def _fmt_eur(v: Any) -> str | None:
     if v is None or v == "":
@@ -169,6 +202,39 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         raw = (v_ret - v_low) / (v_high - v_low) * 100
         position_valeur_pct = max(2.0, min(98.0, raw))
 
+    # ---- prix au m² : DOIT correspondre à la base annoncée --------------
+    # Règle métier : le prix au m² retenu se calcule sur la surface pondérée
+    # si elle existe (méthode canonique pour la comparaison), sinon sur la
+    # surface habitable. La base est nommée explicitement dans le document.
+    surface_ponderee_totale = surfaces.get("surface_ponderee_totale")
+    surface_habitable_v = surfaces.get("surface_habitable")
+    base_prix_m2_val: float | None = None
+    base_prix_m2_label = ""
+    if isinstance(surface_ponderee_totale, (int, float)) and float(surface_ponderee_totale) > 0:
+        base_prix_m2_val = float(surface_ponderee_totale)
+        base_prix_m2_label = "de surface pondérée"
+    elif isinstance(surface_habitable_v, (int, float)) and float(surface_habitable_v) > 0:
+        base_prix_m2_val = float(surface_habitable_v)
+        base_prix_m2_label = "de surface habitable"
+    prix_m2_retenu_recompute: int | None = None
+    if isinstance(v_ret, (int, float)) and base_prix_m2_val:
+        prix_m2_retenu_recompute = int(round(float(v_ret) / base_prix_m2_val))
+
+    # ---- rédacteur : cas mandataire (réseau) ------------------------------
+    # `statut_carte` = 'propre' (défaut) | 'mandataire'
+    # En mandataire, on affiche la mention légale exacte agrégeant réseau +
+    # attestation d'habilitation.
+    statut_carte = (redacteur.get("statut_carte") or "propre").lower()
+    is_mandataire = statut_carte == "mandataire"
+    mention_habilitation = None
+    if is_mandataire:
+        mention_habilitation = (
+            f"Agent commercial habilité par {redacteur.get('reseau_nom') or '—'}, "
+            f"titulaire de la carte professionnelle T n° {redacteur.get('reseau_carte_t') or '—'} "
+            f"délivrée par la {redacteur.get('reseau_cci') or '—'} — "
+            f"attestation d'habilitation n° {redacteur.get('attestation_num') or '—'}"
+        )
+
     ctx: dict[str, Any] = {
         # metadata
         "fonts_css_path": str(FONTS_CSS_PATH),
@@ -220,14 +286,23 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         "ascenseur": composition.get("ascenseur"),
         "nb_etages_immeuble": composition.get("nb_etages_immeuble"),
         "nb_pieces": composition.get("nb_pieces"),
-        "exposition_principale": composition.get("exposition_principale"),
+        "exposition_principale": _exposition_label(composition.get("exposition_principale")),
         "vue": composition.get("vue"),
         # surfaces
         "surface_habitable": surfaces.get("surface_habitable"),
         "surface_carrez": surfaces.get("surface_carrez"),
         "surface_ponderee_totale": surfaces.get("surface_ponderee_totale"),
         "origine_surface": surfaces.get("origine_surface"),
+        "origine_surface_phrase": _origine_surface_phrase(surfaces.get("origine_surface")),
         "annexes_ponderees": annexes_ponderees,
+        # rédacteur — cas mandataire
+        "statut_carte": statut_carte,
+        "is_mandataire": is_mandataire,
+        "mention_habilitation": mention_habilitation,
+        "reseau_nom": redacteur.get("reseau_nom"),
+        "reseau_carte_t": redacteur.get("reseau_carte_t"),
+        "reseau_cci": redacteur.get("reseau_cci"),
+        "attestation_num": redacteur.get("attestation_num"),
         # énergie
         "dpe_classe": energie.get("dpe_classe"),
         "dpe_conso": energie.get("dpe_conso"),
@@ -237,7 +312,7 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         "dpe_validite_fr": _fmt_date_fr(energie.get("dpe_validite")),
         "passoire": energie.get("passoire") is True,
         "interdiction_location": energie.get("interdiction_location"),
-        # marché
+        # marché — renommage : la « concurrence » est le stock de biens en vente
         "prix_m2_commune_fr": _fmt_eur(marche.get("prix_m2_commune")),
         "prix_m2_quartier_fr": _fmt_eur(marche.get("prix_m2_quartier")),
         "prix_m2_segment_fr": _fmt_eur(marche.get("prix_m2_segment")),
@@ -247,19 +322,22 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         "volume_transactions": marche.get("volume_transactions"),
         "ecart_affiche_acte": _fmt_pct(marche.get("ecart_affiche_acte")),
         "quartier": marche.get("quartier"),
-        # méthode + comparables
+        # méthode + comparables : nb_comparables retenus = ce que le calcul utilise
         "methodes_retenues": methode.get("methodes_retenues") or ["comparaison"],
         "justification_methode": methode.get("justification_methode"),
-        "comparables": rows_out,
+        "comparables": rows_out[:8],  # top 8 dans le tableau
+        "comparables_autres_count": max(0, len(rows_out) - 8),
+        "comparables_total_retenus": len(rows_out),
         "prix_m2_moyen_corrige_fr": _fmt_eur(comparables_sec.get("prix_m2_moyen_corrige")),
         # SWOT
         "atouts": swot.get("atouts") or [],
         "faiblesses": swot.get("faiblesses") or [],
-        # conclusion
+        # conclusion — prix au m² recalculé sur la base annoncée (test unitaire)
         "valeur_venale_fr": _fmt_eur(conclusion.get("valeur_venale")),
         "valeur_basse_fr": _fmt_eur(conclusion.get("valeur_basse")),
         "valeur_haute_fr": _fmt_eur(conclusion.get("valeur_haute")),
-        "prix_m2_retenu_fr": _fmt_eur(conclusion.get("prix_m2_retenu")),
+        "prix_m2_retenu_fr": _fmt_eur(prix_m2_retenu_recompute or conclusion.get("prix_m2_retenu")),
+        "base_prix_m2_label": base_prix_m2_label,
         "prix_presentation_fr": _fmt_eur(conclusion.get("prix_presentation")),
         "marge_negociation_fr": _fmt_pct(conclusion.get("marge_negociation")),
         "net_vendeur_fr": _fmt_eur(net_vendeur.get("net_vendeur")),

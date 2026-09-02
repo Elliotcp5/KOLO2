@@ -55,8 +55,12 @@
       {%- if agent_tel %} — {{ agent_tel }}{% endif %}{% if agent_email %} — {{ agent_email }}{% endif %}<br>{% endif -%}
     {%- if agence_nom %}{{ agence_nom }}{% if agence_forme %}, {{ agence_forme }}{% endif %}
       {%- if agence_siren %} — SIREN {{ agence_siren }}{% endif %}{% if agence_adresse %} — {{ agence_adresse }}{% endif %}<br>{% endif -%}
-    {%- if carte_pro %}Carte professionnelle T n° {{ carte_pro }}{% if carte_pro_cci %} délivrée par la {{ carte_pro_cci }}{% endif %}
-      {%- if rcp_assureur %} — RCP {{ rcp_assureur }}{% if rcp_police %} n° {{ rcp_police }}{% endif %}{% endif %}<br>{% endif -%}
+    {%- if is_mandataire and mention_habilitation -%}
+      {{ mention_habilitation }}{% if rcp_assureur %} — RCP {{ rcp_assureur }}{% if rcp_police %} n° {{ rcp_police }}{% endif %}{% endif %}<br>
+    {%- elif carte_pro -%}
+      Carte professionnelle T n° {{ carte_pro }}{% if carte_pro_cci %} délivrée par la {{ carte_pro_cci }}{% endif %}
+      {%- if rcp_assureur %} — RCP {{ rcp_assureur }}{% if rcp_police %} n° {{ rcp_police }}{% endif %}{% endif %}<br>
+    {%- endif -%}
     Avis de valeur, à distinguer d'une expertise immobilière. Valable {{ validite_mois }} mois à compter du {{ date_edition_fr }}.
   </div>
 </div>
@@ -86,8 +90,13 @@
   <div class="eyebrow">Valeur vénale retenue</div>
   <div class="headline-value num">{{ valeur_venale_fr or "—" }}</div>
   <div class="headline-sub">
-    {%- if prix_m2_retenu_fr %}soit {{ prix_m2_retenu_fr }} / m²{% endif -%}
-    {%- if surface_ponderee_totale %} sur une surface pondérée de {{ surface_ponderee_totale }} m²{% endif -%}
+    {%- if prix_m2_retenu_fr and base_prix_m2_label -%}
+      soit {{ prix_m2_retenu_fr }} / m² {{ base_prix_m2_label }}
+      {%- if 'pondérée' in base_prix_m2_label and surface_ponderee_totale %} ({{ surface_ponderee_totale }} m²)
+      {%- elif surface_habitable %} ({{ surface_habitable }} m²){% endif -%}
+    {%- elif prix_m2_retenu_fr -%}
+      soit {{ prix_m2_retenu_fr }} / m²
+    {%- endif -%}
     {%- if indice_confiance %} — indice de confiance {{ indice_confiance }}{% endif -%}
   </div>
 
@@ -109,7 +118,7 @@
   <div class="kpis">
     <div class="kpi"><div class="k">Marché du quartier</div><div class="v num">{{ prix_m2_segment_fr or "—" }}</div><div class="s">prix médian au m²</div></div>
     <div class="kpi"><div class="k">Délai de vente</div><div class="v num">{{ delai_vente_moyen or "—" }}{% if delai_vente_moyen %} j{% endif %}</div><div class="s">moyenne du segment</div></div>
-    <div class="kpi"><div class="k">Concurrence</div><div class="v num">{{ stock_concurrent or "—" }}</div><div class="s">biens comparables</div></div>
+    <div class="kpi"><div class="k">Stock concurrent</div><div class="v num">{{ stock_concurrent or "—" }}</div><div class="s">biens en vente sur le segment</div></div>
     <div class="kpi"><div class="k">Étiquette</div><div class="v">{{ dpe_classe or "—" }}</div><div class="s">{{ dpe_conso or "" }}{% if dpe_conso %} kWh/m²/an{% endif %}</div></div>
   </div>
 </section>
@@ -149,7 +158,7 @@
 
 <section id="sec-surfaces" class="sec">
   <div class="sec-head"><span class="sec-num">04</span><h2>Surfaces</h2></div>
-  {% if origine_surface %}<p class="sec-note">Surfaces {{ origine_surface }}. Les annexes sont retenues après application des coefficients ci-dessous, seule base de comparaison valable avec les transactions du secteur.</p>{% endif %}
+  {% if origine_surface_phrase %}<p class="sec-note">Surfaces {{ origine_surface_phrase }}. Les annexes sont retenues après application des coefficients ci-dessous, seule base de comparaison valable avec les transactions du secteur.</p>{% endif %}
   <table>
     <thead><tr><th>Poste</th><th class="n">Surface</th><th class="n">Coefficient</th><th class="n">Surface retenue</th></tr></thead>
     <tbody>
@@ -211,7 +220,7 @@
 {#================ 7. COMPARABLES =====================#}
 <section id="sec-comparables" class="sec">
   <div class="sec-head"><span class="sec-num">07</span><h2>Références comparables</h2></div>
-  {% if justification_methode %}<p class="sec-note">Méthode retenue : {{ (methodes_retenues or [])|join(', ') }}. {{ justification_methode }}</p>{% endif %}
+  {% if justification_methode %}<p class="sec-note">Méthode retenue : {{ (methodes_retenues or [])|join(', ') }}. {{ justification_methode }}{% if comparables_total_retenus %} Au total, <b>{{ comparables_total_retenus }}</b> référence{{ 's' if comparables_total_retenus > 1 else '' }} entre{{ 'nt' if comparables_total_retenus > 1 else '' }} dans le calcul.{% endif %}</p>{% endif %}
   <table>
     <thead>
       <tr>
@@ -234,6 +243,9 @@
         <td class="n num">{{ c.prix_m2_corrige_fr or c.prix_m2_corrige or "—" }}</td>
       </tr>
       {% endfor %}
+      {% if comparables_autres_count %}
+      <tr><td colspan="9" class="muted" style="font-size:8.2pt; text-align:center; padding:2.5mm 2mm">et {{ comparables_autres_count }} autre{{ 's' if comparables_autres_count > 1 else '' }} retenu{{ 's' if comparables_autres_count > 1 else '' }} dans le calcul</td></tr>
+      {% endif %}
       {% if prix_m2_moyen_corrige_fr %}<tr class="total"><td colspan="8">Prix au m² moyen corrigé</td><td class="n num">{{ prix_m2_moyen_corrige_fr }}</td></tr>{% endif %}
     </tbody>
   </table>
@@ -263,7 +275,7 @@
     <p><b>Portée.</b> Cet avis n'a pas de caractère contractuel. Il n'est opposable ni aux tiers, ni à l'administration fiscale, ni à un établissement bancaire, et n'engage pas son auteur sur le prix auquel le bien sera effectivement cédé, le prix de vente résultant de la seule rencontre de l'offre et de la demande.</p>
     <p><b>Validité.</b> Les valeurs indiquées s'apprécient à la date du {{ date_edition_fr }} et dans les conditions de marché constatées à cette date. Elles sont réputées valables {{ validite_mois }} mois. Au-delà, une réactualisation est nécessaire.</p>
     <p><b>Informations retenues.</b> Cet avis a été établi à partir des éléments observés lors de la visite du {{ date_visite_fr or "—" }}, des documents communiqués par le demandeur et des bases de données publiques consultées (valeurs foncières, diagnostics de performance énergétique, cadastre). L'exactitude des éléments déclarés n'a pas été vérifiée.</p>
-    <p><b>Absence de contrôle technique et juridique.</b> Aucun sondage destructif, aucun contrôle de structure, de conformité aux règles d'urbanisme, de conformité des installations ni d'analyse du titre de propriété n'a été réalisé. Les surfaces retenues sont {{ origine_surface or "déclaratives" }} et ne se substituent pas à un mesurage certifié. La présence éventuelle de vices cachés, de pollution ou de non-conformités non apparentes n'est pas prise en compte. Les contours cadastraux figurant dans le présent document ont une valeur graphique et non juridique&nbsp;: seul un acte notarié ou un procès-verbal de bornage établit les limites de propriété.</p>
+    <p><b>Absence de contrôle technique et juridique.</b> Aucun sondage destructif, aucun contrôle de structure, de conformité aux règles d'urbanisme, de conformité des installations ni d'analyse du titre de propriété n'a été réalisé. Les surfaces retenues sont {{ origine_surface_phrase }} et ne se substituent pas à un mesurage certifié. La présence éventuelle de vices cachés, de pollution ou de non-conformités non apparentes n'est pas prise en compte. Les contours cadastraux figurant dans le présent document ont une valeur graphique et non juridique&nbsp;: seul un acte notarié ou un procès-verbal de bornage établit les limites de propriété.</p>
     <p><b>Confidentialité.</b> Ce document est établi à l'attention exclusive de {{ demandeur_nom or "—" }} pour l'objet mentionné en couverture. Toute diffusion, reproduction ou utilisation à d'autres fins requiert l'accord écrit de son auteur.</p>
     <p><b>Conditions financières.</b> {{ mention_gratuite }}</p>
     <p><b>Données personnelles.</b> Les données recueillies sont traitées par {{ agence_nom or "l'agence" }} aux fins d'établissement du présent avis et, le cas échéant, de commercialisation du bien. Elles sont conservées {{ duree_conservation }} et ne font l'objet d'aucune cession à des tiers à des fins commerciales. Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition, exerçable auprès de {{ agent_email or agence_nom }}.</p>
@@ -273,7 +285,9 @@
     <div class="box">
       Fait à {{ lieu or "—" }}, le {{ date_signature_fr or date_edition_fr }}<br>
       <b>{{ agent_nom or "—" }}</b>{% if agent_qualite %}, {{ agent_qualite }}{% endif %}<br>
-      {{ agence_nom or "" }}{% if carte_pro %} — Carte T n° {{ carte_pro }}{% endif %}
+      {{ agence_nom or "" }}
+      {%- if is_mandataire and mention_habilitation %}<br><span class="muted" style="font-size:8pt">{{ mention_habilitation }}</span>
+      {%- elif carte_pro %} — Carte T n° {{ carte_pro }}{% endif %}
     </div>
     <div class="box" style="text-align:right; color:var(--muted); font-size:8pt;">
       {% if signature_image %}<img src="{{ signature_image }}" alt="" style="max-height:18mm">{% else %}Signature du conseiller{% endif %}

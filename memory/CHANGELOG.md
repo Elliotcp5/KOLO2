@@ -1,5 +1,54 @@
 # KOLO - Changelog
 
+## BLOC C Partie B — Corrections après relecture PDF de démo — 2 sept. 2026
+
+Six corrections issues de la relecture, plus la mise à jour du frontend pour le cas mandataire.
+
+### 1. CRITIQUE — Cohérence prix au m² / base annoncée
+Le renderer recalcule désormais `prix_m2_retenu = valeur_venale / surface_ponderee_totale` (ou `surface_habitable` en repli) et **nomme la base dans le texte** : « soit 11 678 €/m² **de surface pondérée** (74,5 m²) ». Le chiffre n'est plus jamais celui du template s'il ne correspond pas à la base annoncée. Test unitaire `test_prix_m2_calcule_sur_ponderee_quand_disponible` : `|valeur/base - affiche| ≤ 1 €`.
+
+### 2. Cas mandataire (agent commercial de réseau)
+- **Schéma redacteur** enrichi : `statut_carte` (`propre`|`mandataire`), `reseau_nom`, `reseau_carte_t`, `reseau_cci`, `attestation_num`.
+- **Template** : bloc alternatif sur la couverture et la signature. En mandataire, la mention légale exacte est rendue : « Agent commercial habilité par IAD France, titulaire de la carte professionnelle T n° T-13-2020-000123 délivrée par la CCI d'Aix-Marseille-Provence — attestation d'habilitation n° ATT-2025-4567 ».
+- **Complétude** : 9 champs bloquants en carte propre, 11 en mandataire (adaptation automatique de `redacteur_manquants` selon `statut_carte`).
+- **Frontend** : premier écran du mur rédacteur = choix « Sous ma propre carte professionnelle » / « Sous la carte de mon réseau ». Enchaîne ensuite sur les 9 ou 11 écrans suivants.
+
+### 3. Nombre de comparables harmonisé
+- KPI page 3 renommée **« Stock concurrent »** (biens en vente sur le segment). Ne peut plus être confondue avec les comparables du calcul.
+- Section 7 : tableau affiche jusqu'à 8 lignes, mention **« et N autres retenus dans le calcul »** en dessous.
+- Note méthode : « Au total, **N références entrent dans le calcul** » — un seul chiffre autoritatif.
+
+### 4. Coefficient annexes lu depuis `infos_pro`
+Le prefill lit désormais `infos_pro.pond_cave`, `pond_balcon`, etc. via `COEFS_ANNEXES_DEFAUT` (défaut) — jamais de valeur codée en dur au niveau du rendu. Les annexes de démo ont été passées de 0,15 à 0,12 pour la cave, conformément à la grille validée.
+
+### 5. Origine des surfaces — phrase grammaticale
+Le champ `origine_surface` devient un enum : `carrez`, `declaratif_proprietaire`, `dpe`, `visite`. Le renderer expose `origine_surface_phrase` (« issues du mesurage Carrez », « déclarées par le propriétaire », etc.) utilisée dans :
+- La section Surfaces (chapeau)
+- La mention légale « Absence de contrôle technique »
+Les valeurs brutes de l'enum n'apparaissent plus jamais dans le PDF (test `test_origine_surface_est_phrase_grammaticale`).
+
+### 6. Motif d'ajustement cohérent avec les chiffres
+Motif de démo remplacé par : « ajusté à 25 000 € sous la médiane corrigée du panel pour tenir compte de la cuisine à rafraîchir et du chauffage collectif fioul, non capturés par les corrections quantitatives » — cohérent avec la valeur retenue 870 000 € vs médiane corrigée 895 000 €.
+
+### Détails mineurs
+- **Exposition** : le renderer applique `EXPOSITION_LABEL` (`S` → `Sud`, `NE` → `Nord-Est`…). L'initiale seule n'apparaît plus jamais.
+- **Vue** : le template avait bien le libellé (`<span class="k">Vue</span>` présent), le rendu était déjà correct.
+
+### Tests
+8 nouveaux tests dans `TestCorrectionsRelecture` (test_c2_pdf.py) — tous verts, dont :
+- Cohérence arithmétique valeur/base ≤ 1 €
+- Bloc mandataire complet (IAD France + attestation)
+- Phrase grammaticale pour l'origine surface
+- Renommage KPI « Stock concurrent »
+- Mention « et N autres retenus » + total
+
+**86/86 tests C1 + C2 + B1 verts** — zéro régression.
+
+### PDF de démonstration régénéré
+[**Relire le nouveau PDF**](https://responsive-kolo.preview.emergentagent.com/demo_avis_de_valeur.pdf)  
+8 pages, 62,7 Ko, 1,3 s. Toutes les vérifs de cohérence passées automatiquement.
+
+
 ## BLOC C Partie B — Session 3 : Éditeur 22 sections + complétude + mur + export — 2 sept. 2026
 
 ### Fix Session 2 (tags comparables)

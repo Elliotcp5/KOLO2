@@ -523,3 +523,133 @@ async def test_http_pdf_pas_encore_genere():
             assert "pdf_pas_encore_genere" in r.text
     finally:
         await _cleanup(db, user_id)
+
+
+# ---------------------------------------------------------------------------
+# 9. Corrections après relecture — 6 fixes
+# ---------------------------------------------------------------------------
+class TestCorrectionsRelecture:
+    """CRITIQUE — prix_m2 = valeur_venale / base_declaree, à 1 € près.
+    Base = pondérée si disponible, sinon habitable. Nommée dans le doc."""
+
+    def _dossier_avec_valeurs(self, valeur=870_000, surf_hab=72, surf_pond=74.5):
+        d = _minimal_dossier()
+        d["sections"]["surfaces"]["surface_habitable"] = surf_hab
+        d["sections"]["surfaces"]["surface_ponderee_totale"] = surf_pond
+        d["sections"]["conclusion"]["valeur_venale"] = valeur
+        return d
+
+    def test_prix_m2_calcule_sur_ponderee_quand_disponible(self):
+        from c2.pdf.renderer import build_context
+        ctx = build_context(self._dossier_avec_valeurs(870_000, 72, 74.5))
+        # 870000 / 74.5 = 11678
+        assert "pondérée" in ctx["base_prix_m2_label"]
+        # Le prix m² affiché correspond bien à la base annoncée, à 1 € près
+        prix_str = ctx["prix_m2_retenu_fr"]
+        # Extrait le nombre : « 11 678 € » -> 11678
+        digits = int("".join(c for c in prix_str if c.isdigit()))
+        expected = round(870_000 / 74.5)
+        assert abs(digits - expected) <= 1, (
+            f"prix_m2 affiché {digits} != valeur/base {expected}"
+        )
+
+    def test_prix_m2_calcule_sur_habitable_si_pas_de_ponderee(self):
+        from c2.pdf.renderer import build_context
+        d = self._dossier_avec_valeurs(500_000, 50, None)
+        d["sections"]["surfaces"].pop("surface_ponderee_totale", None)
+        ctx = build_context(d)
+        assert "habitable" in ctx["base_prix_m2_label"]
+        digits = int("".join(c for c in ctx["prix_m2_retenu_fr"] if c.isdigit()))
+        assert abs(digits - 10_000) <= 1  # 500000/50
+
+    def test_prix_m2_visible_dans_pdf(self, tmp_path):
+        d = self._dossier_avec_valeurs(870_000, 72, 74.5)
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        clean = text.replace("\x00", "")
+        # Le PDF contient bien 11 678 (avec espace fine unicode ou espace normale)
+        # ET le libellé "surface pondérée"
+        clean_no_space = clean.replace("\u202f", "").replace("\u00a0", "").replace(" ", "")
+        assert "11678" in clean_no_space, "prix_m2 recalculé absent"
+        assert "surface pondérée" in clean or "surface pond" in clean
+
+    def test_origine_surface_est_phrase_grammaticale(self, tmp_path):
+        d = _minimal_dossier()
+        d["sections"]["surfaces"]["origine_surface"] = "declaratif_proprietaire"
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        clean = text.replace("\x00", "")
+        # La phrase brute enum ne doit JAMAIS apparaître
+        assert "declaratif_proprietaire" not in clean
+        # Une phrase grammaticalement correcte doit apparaître
+        assert "déclarées par le propriétaire" in clean
+
+    def test_exposition_jamais_initiale_seule(self, tmp_path):
+        d = _minimal_dossier()
+        d["sections"]["composition"]["exposition_principale"] = "S"
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        from c2.pdf.renderer import build_context
+        ctx = build_context(d)
+        assert ctx["exposition_principale"] == "Sud"
+
+    def test_stock_concurrent_renomme(self, tmp_path):
+        d = _minimal_dossier()
+        d["sections"]["marche"]["stock_concurrent"] = 14
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        clean = text.replace("\x00", "").lower()
+        assert "stock concurrent" in clean
+        # Anciennement « Concurrence — 14 biens comparables »
+        assert "biens comparables" not in clean
+
+    def test_mandataire_mention_habilitation(self, tmp_path):
+        d = _minimal_dossier()
+        d["sections"]["redacteur"] = {
+            "statut_carte": "mandataire",
+            "agent_nom": "T. Test",
+            "agence_nom": "T. Test Immo",
+            "reseau_nom": "IAD France",
+            "reseau_carte_t": "T-13-2020-000123",
+            "reseau_cci": "CCI d'Aix-Marseille-Provence",
+            "attestation_num": "ATT-2025-4567",
+            "rcp_assureur": "MMA",
+            "rcp_police": "PL-42",
+        }
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        clean = text.replace("\x00", "")
+        assert "Agent commercial habilité par IAD France" in clean
+        assert "T-13-2020-000123" in clean
+        assert "ATT-2025-4567" in clean
+
+    def test_comparables_mention_autres_retenus(self, tmp_path):
+        d = _minimal_dossier()
+        # 10 comparables → tableau affiche 8, mention "et 2 autres retenus"
+        d["sections"]["comparables"]["comparables"] = [
+            {"nature": "vente actée", "adresse": f"Adresse {i}", "surface": 70,
+             "prix": 800000 + i * 1000, "prix_m2": 11429 + i, "prix_m2_corrige": 11429 + i}
+            for i in range(10)
+        ]
+        d["sections"]["methode"] = {"methodes_retenues": ["comparaison"], "justification_methode": "Méthode par comparaison."}
+        out = tmp_path / "avis.pdf"
+        render_pdf(d, out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        clean = text.replace("\x00", "")
+        assert "et 2 autres retenus dans le calcul" in clean
+        # Total retenus mentionné dans la note méthode
+        assert "10 références entrent dans le calcul" in clean
