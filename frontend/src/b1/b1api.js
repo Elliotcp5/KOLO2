@@ -2,6 +2,7 @@
 // All requests hit REACT_APP_BACKEND_URL + `/api/...`.
 
 const API = process.env.REACT_APP_BACKEND_URL;
+export { API };
 
 const readToken = () => {
   try {

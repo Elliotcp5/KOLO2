@@ -8541,6 +8541,18 @@ try:
 except Exception as _c2_err:
     logger.error(f"Failed to mount C2 router: {_c2_err}")
 
+try:
+    from c2.uploads import router as c2_uploads_router, init_storage as _init_storage
+    app.include_router(c2_uploads_router)
+    try:
+        _init_storage()
+        logger.info("KOLO C2 uploads storage initialized")
+    except Exception as _e:
+        logger.warning(f"C2 uploads storage init deferred: {_e}")
+    logger.info("KOLO C2 uploads router mounted")
+except Exception as _c2u_err:
+    logger.error(f"Failed to mount C2 uploads router: {_c2u_err}")
+
 
 # ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)

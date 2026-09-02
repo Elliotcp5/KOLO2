@@ -55,6 +55,32 @@ def _new_dossier_id() -> str:
     return f"dos_{secrets.token_urlsafe(9)}"
 
 
+def _ecart_ajustement(sections: dict[str, Any]) -> float | None:
+    """Écart en fraction (0..1) entre `valeur_venale` (conclusion) et
+    `mediane_locale` implicite estimée par prix_m2_moyen_corrige × base m².
+
+    Formule utilisée : écart = (valeur_venale - reference) / reference,
+    avec reference = prix_m2_moyen_corrige × surface de référence (pondérée
+    si dispo, sinon habitable). Retourne None si les données manquent.
+    """
+    conclusion = sections.get("conclusion") or {}
+    comparables = sections.get("comparables") or {}
+    surfaces = sections.get("surfaces") or {}
+    valeur = conclusion.get("valeur_venale")
+    prix_m2_ref = comparables.get("prix_m2_moyen_corrige")
+    base = surfaces.get("surface_ponderee_totale") or surfaces.get("surface_habitable")
+    try:
+        if not (isinstance(valeur, (int, float)) and isinstance(prix_m2_ref, (int, float))
+                and isinstance(base, (int, float)) and base > 0 and prix_m2_ref > 0):
+            return None
+        reference = float(prix_m2_ref) * float(base)
+        if reference <= 0:
+            return None
+        return (float(valeur) - reference) / reference
+    except Exception:
+        return None
+
+
 def _empty_sections() -> dict[str, dict[str, Any]]:
     return {sid: {} for sid in SECTION_IDS}
 
@@ -184,7 +210,16 @@ async def get_dossier(dossier_id: str, request: Request, response: Response):
     )
     if not doc:
         raise HTTPException(status_code=404, detail="dossier_introuvable")
-    return {"ok": True, "dossier": doc, "completude": _completude(doc)}
+    cfg = await get_config(_db())
+    return {
+        "ok": True,
+        "dossier": doc,
+        "completude": _completude(doc),
+        "ajustement": {
+            "ecart": _ecart_ajustement(doc.get("sections") or {}),
+            "seuil": float(cfg.get("ajustement_seuil_motif_obligatoire") or 0.10),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +313,22 @@ async def patch_dossier(dossier_id: str, payload: DossierPatch, request: Request
         merged = _merge_sections(base, payload.sections)
         # Re-validation (extra="forbid" refuse toute section inconnue résiduelle)
         DossierSections(**merged)
+
+        # Motif d'ajustement obligatoire au-delà du seuil (config_matching).
+        cfg = await get_config(db)
+        seuil = float(cfg.get("ajustement_seuil_motif_obligatoire") or 0.10)
+        ecart = _ecart_ajustement(merged)
+        if ecart is not None and abs(ecart) >= seuil:
+            motif = str((merged.get("ajustements") or {}).get("motif") or "").strip()
+            if not motif:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "motif_ajustement_obligatoire",
+                        "ecart": ecart,
+                        "seuil": seuil,
+                    },
+                )
         updates["sections"] = merged
 
     if len(updates) == 1:  # rien à faire sauf date_maj — pas d'écriture
@@ -300,7 +351,16 @@ async def patch_dossier(dossier_id: str, payload: DossierPatch, request: Request
             {"$set": {"statut": "complet", "date_maj": now_utc_iso()}},
         )
         doc["statut"] = "complet"
-    return {"ok": True, "dossier": doc, "completude": completude}
+    cfg = await get_config(db)
+    return {
+        "ok": True,
+        "dossier": doc,
+        "completude": completude,
+        "ajustement": {
+            "ecart": _ecart_ajustement(doc.get("sections") or {}),
+            "seuil": float(cfg.get("ajustement_seuil_motif_obligatoire") or 0.10),
+        },
+    }
 
 
 

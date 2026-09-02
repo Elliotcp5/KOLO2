@@ -2,9 +2,9 @@
 // UI complète — liste, éditeur 22 sections, mur rédacteur, export, progress.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronRight, X, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, X, FileText, Loader2, Camera } from 'lucide-react';
 import b1t from './b1i18n';
-import b1api from './b1api';
+import b1api, { API } from './b1api';
 import { saveDraft, loadDraft, clearDraft } from './b3offline';
 import './b1dossier.css';
 
@@ -148,7 +148,7 @@ export function DossierEditorPage() {
       if (draft) {
         r.dossier.sections = { ...(r.dossier.sections || {}), ...(draft.sections || {}) };
       }
-      setState({ dossier: r.dossier, completude: r.completude, loading: false });
+      setState({ dossier: r.dossier, completude: r.completude, ajustement: r.ajustement, loading: false });
     } catch (e) {
       setState({ dossier: null, completude: null, loading: false, error: e.message });
     }
@@ -170,7 +170,7 @@ export function DossierEditorPage() {
     }));
     try {
       const r = await b1api.patchDossier(id, { sections: { [sectionId]: values } });
-      setState((s) => ({ ...s, dossier: r.dossier, completude: r.completude }));
+      setState((s) => ({ ...s, dossier: r.dossier, completude: r.completude, ajustement: r.ajustement }));
       // Draft utilisé et synchronisé — on peut le nettoyer sur la section persistée
       const still = loadDraft(draftName) || { sections: {} };
       if (still.sections) { delete still.sections[sectionId]; saveDraft(draftName, still); }
@@ -228,8 +228,16 @@ export function DossierEditorPage() {
     return <SectionEditor
       dossier={dossier}
       sectionId={currentSection}
+      ajustement={state.ajustement}
       onBack={() => { setCurrentSection(null); setMode('overview'); }}
-      onSave={async (values) => { await patchSection(currentSection, values); setCurrentSection(null); setMode('overview'); }}
+      onSave={async (values) => {
+        try {
+          await patchSection(currentSection, values);
+          setCurrentSection(null); setMode('overview');
+        } catch (e) {
+          // erreur remontée : le SectionEditor a déjà l'info via state
+        }
+      }}
     />;
   }
 
@@ -422,10 +430,29 @@ function RedacteurWall({ dossier, manquants, index, onIndex, onSubmitField, onDo
 // ============================================================================
 // Editeur de section (formulaire simple par section critique)
 // ============================================================================
-function SectionEditor({ dossier, sectionId, onBack, onSave }) {
+function SectionEditor({ dossier, sectionId, ajustement, onBack, onSave }) {
   const initial = dossier.sections?.[sectionId] || {};
   const [values, setValues] = useState(initial);
+  const [error, setError] = useState('');
   const setField = (k, v) => setValues((s) => ({ ...s, [k]: v }));
+
+  const ecart = ajustement?.ecart;
+  const seuil = ajustement?.seuil ?? 0.10;
+  const motifObligatoire = sectionId === 'ajustements'
+    && ecart != null && Math.abs(ecart) >= seuil;
+
+  const trySave = async () => {
+    setError('');
+    if (motifObligatoire && !String(values.motif || '').trim()) {
+      setError(b1t('dos.ajust.motif.obligatoire'));
+      return;
+    }
+    try {
+      await onSave(values);
+    } catch (e) {
+      setError(String(e.message || e));
+    }
+  };
 
   const FIELDS = {
     mission: [
@@ -449,7 +476,7 @@ function SectionEditor({ dossier, sectionId, onBack, onSave }) {
       { id: 'nb_wc', labelKey: 'dos.f.nb_wc', type: 'number' },
     ],
     dossier: [
-      { id: 'photo_couverture', labelKey: 'dos.f.photo_couverture', type: 'url' },
+      { id: 'photo_couverture', labelKey: 'dos.f.photo_couverture', type: 'photo', photoType: 'cover' },
       { id: 'date_visite', labelKey: 'dos.f.date_visite', type: 'date' },
     ],
     swot: [
@@ -482,6 +509,22 @@ function SectionEditor({ dossier, sectionId, onBack, onSave }) {
           {sectionId === 'ajustements' && (
             <div className="b1-card" style={{ padding: 16, background: 'var(--b1-accent-light)' }}>
               <div style={{ fontSize: 14, color: 'var(--b1-accent-pressed)' }}>{b1t('dos.ajust.sous')}</div>
+              {ecart != null && (
+                <div
+                  style={{ fontSize: 13, marginTop: 8, fontFamily: 'DM Mono, monospace' }}
+                  data-testid="dos-ajust-ecart"
+                >
+                  {b1t('dos.ajust.ecart', { n: (ecart >= 0 ? '+' : '') + (ecart * 100).toFixed(1) + ' %' })}
+                </div>
+              )}
+              {motifObligatoire && (
+                <div
+                  style={{ fontSize: 13, marginTop: 6, color: 'var(--b1-danger)' }}
+                  data-testid="dos-ajust-motif-obligatoire"
+                >
+                  {b1t('dos.ajust.motif.obligatoire')}
+                </div>
+              )}
             </div>
           )}
           {fields.map((f) => (
@@ -503,6 +546,14 @@ function SectionEditor({ dossier, sectionId, onBack, onSave }) {
                   placeholder={f.placeholderKey ? b1t(f.placeholderKey) : ''}
                   data-testid={`dos-f-${f.id}`}
                 />
+              ) : f.type === 'photo' ? (
+                <PhotoField
+                  dossierId={dossier.dossier_id}
+                  currentUrl={values[f.id]}
+                  photoType={f.photoType || 'cover'}
+                  onChange={(url) => setField(f.id, url)}
+                  testid={`dos-f-${f.id}`}
+                />
               ) : (
                 <input
                   className="b1-input"
@@ -514,9 +565,10 @@ function SectionEditor({ dossier, sectionId, onBack, onSave }) {
               )}
             </div>
           ))}
-          <button type="button" className="b1-pill b1-pill--primary" onClick={() => onSave(values)} data-testid="dos-section-save" style={{ marginTop: 8 }}>
+          <button type="button" className="b1-pill b1-pill--primary" onClick={trySave} data-testid="dos-section-save" style={{ marginTop: 8 }} disabled={motifObligatoire && !String(values.motif || '').trim()}>
             {b1t('dos.action.enregistrer')}
           </button>
+          {error && <div style={{ color: 'var(--b1-danger)', fontSize: 13 }} data-testid="dos-section-error">{error}</div>}
         </div>
       )}
     </div>
@@ -695,3 +747,115 @@ function ExportScreen({ dossier, onBack, onToast }) {
 }
 
 export default { DossierListPage, DossierEditorPage };
+
+// ============================================================================
+// PhotoField — capture native Capacitor Camera, fallback web input file
+// ============================================================================
+function PhotoField({ dossierId, currentUrl, photoType, onChange, testid }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
+
+  const uploadBlob = useCallback(async (blob, filename = 'photo.jpg') => {
+    setBusy(true); setError('');
+    try {
+      const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+      const fd = new FormData();
+      fd.append('file', blob, filename);
+      const res = await fetch(
+        `${API}/api/dossiers/${encodeURIComponent(dossierId)}/photos?type=${photoType}`,
+        { method: 'POST', body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      onChange(j.url);
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }, [dossierId, photoType, onChange]);
+
+  const openNativeCamera = useCallback(async () => {
+    try {
+      const [{ Capacitor }, { Camera, CameraResultType, CameraSource }] = await Promise.all([
+        import('@capacitor/core'), import('@capacitor/camera'),
+      ]);
+      if (!Capacitor.isNativePlatform()) throw new Error('web');
+      const photo = await Camera.getPhoto({
+        quality: 92, allowEditing: false, source: CameraSource.Prompt,
+        resultType: CameraResultType.Base64, saveToGallery: false,
+      });
+      // Base64 -> blob
+      const b = atob(photo.base64String);
+      const arr = new Uint8Array(b.length);
+      for (let i = 0; i < b.length; i++) arr[i] = b.charCodeAt(i);
+      const blob = new Blob([arr], { type: `image/${photo.format || 'jpeg'}` });
+      await uploadBlob(blob, `photo.${photo.format || 'jpg'}`);
+    } catch (e) {
+      // Fallback web
+      fileInputRef.current?.click();
+    }
+  }, [uploadBlob]);
+
+  const onFile = useCallback(async (ev) => {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    await uploadBlob(f, f.name);
+    ev.target.value = '';
+  }, [uploadBlob]);
+
+  const token = (typeof window !== 'undefined')
+    ? (localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '')
+    : '';
+  const imgSrc = currentUrl
+    ? `${API}${currentUrl}${currentUrl.includes('?') ? '&' : '?'}auth=${encodeURIComponent(token)}`
+    : null;
+
+  return (
+    <div data-testid={testid}>
+      {imgSrc && (
+        <div style={{ marginBottom: 8 }}>
+          <img
+            src={imgSrc}
+            alt=""
+            style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, border: '1px solid var(--b1-border)' }}
+            data-testid={`${testid}-preview`}
+          />
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={onFile}
+        data-testid={`${testid}-input`}
+      />
+      <button
+        type="button"
+        className="b1-pill b1-pill--ghost"
+        onClick={openNativeCamera}
+        disabled={busy}
+        data-testid={`${testid}-btn`}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+      >
+        <Camera size={16} />
+        {busy ? b1t('sys.un_instant') : (currentUrl ? b1t('dos.f.photo_ajouter') : b1t('dos.f.photo_ajouter'))}
+      </button>
+      {currentUrl && (
+        <button
+          type="button"
+          className="b1-pill b1-pill--ghost"
+          style={{ marginLeft: 8 }}
+          onClick={() => onChange(null)}
+          data-testid={`${testid}-remove`}
+        >
+          {b1t('sys.supprimer') || 'Supprimer'}
+        </button>
+      )}
+      {error && <div style={{ color: 'var(--b1-danger)', fontSize: 13, marginTop: 6 }} data-testid={`${testid}-error`}>{error}</div>}
+    </div>
+  );
+}

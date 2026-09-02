@@ -1,5 +1,53 @@
 # KOLO - Changelog
 
+## BLOC C Partie B — Trois blocages levés avant la partie C — 2 sept. 2026
+
+### 1. Capture photo native (débloque l'export)
+- **`c2/uploads.py`** — nouveau module :
+  - `POST /api/dossiers/{id}/photos?type=cover|annexe` : reçoit un `multipart/form-data`, compresse silencieusement à 1600 px / JPEG q80, dépose sur Emergent Object Storage (path `kolo/dossiers/{user_id}/{uuid}.jpg`), enregistre la référence dans `dossier_photos` (soft-delete) et met à jour la section `dossier.photo_couverture` (ou pousse dans `annexes.photos`).
+  - `GET /api/dossiers/{id}/photos/{photo_id}` — auth header ou `?auth=<token>` pour permettre `<img>`. Récupère depuis le storage, sert le binaire (jamais base64 en Mongo).
+  - `DELETE /api/dossiers/{id}/photos/{photo_id}` — soft-delete + désaccroche la référence.
+  - Storage : `init_storage()` au démarrage (log `KOLO C2 uploads storage initialized`), retry sur 404 après `init_storage(force=True)`.
+- **Frontend `PhotoField`** :
+  - Bouton unique « Ajouter une photo » avec icône caméra.
+  - Sur natif iOS : `@capacitor/camera` (`Camera.getPhoto` avec `CameraSource.Prompt` → choix appareil photo / pellicule).
+  - Sur web : fallback `<input type="file" accept="image/*" capture="environment">`.
+  - Miniature immédiate, bouton « Supprimer » qui repasse à null.
+  - Récupération authentifiée via `?auth=<token>` sur `<img>`.
+- **Test end-to-end curl** : upload 4000×3000 bruit JPEG q92 → renvoyé en 1600×1200, 530 Ko, JPEG q80. Le doc Mongo ne contient jamais d'octets — juste `/api/dossiers/.../photos/{id}`.
+- La photo compte immédiatement dans la complétude (route déjà branchée).
+
+### 2. Motif d'ajustement obligatoire (règle métier)
+- **Config** : `ajustement_seuil_motif_obligatoire` (défaut `0.10`), lu depuis `config_matching` — jamais codé en dur.
+- **Calcul de l'écart** : `_ecart_ajustement()` compare `valeur_venale` à `prix_m2_moyen_corrige × surface_ponderee_totale` (ou `surface_habitable` en repli). Retourne un ratio signé.
+- **Blocage PATCH** : si `|écart| ≥ seuil` et `motif` vide → HTTP 422 avec `{code:"motif_ajustement_obligatoire", ecart, seuil}`. Le dossier ne peut pas être sauvegardé sans motif.
+- **Frontend** :
+  - `GET /api/dossiers/{id}` et `PATCH` retournent maintenant `ajustement: {ecart, seuil}`.
+  - Dans la section « Grille d'ajustement du bien » : affichage continu `Écart avec l'estimation : +20,0 %`, en `DM Mono` monospace.
+  - Au-delà du seuil : message rouge `Au-delà de 10 % d'écart, le motif devient obligatoire.`, bouton `Enregistrer` désactivé tant que motif vide.
+  - Le motif saisi apparaît sous la valeur retenue dans le PDF (déjà branché en Session 2).
+- **Tests** : `test_patch_refuse_ajustement_sans_motif_au_dela_du_seuil` (422 + code d'erreur explicite), `test_patch_accepte_sans_motif_si_ecart_sous_seuil` (écart 4 % passe sans motif).
+
+### 3. Traductions IT/DE rattrapées + garde-fou
+- Bloc `dossier.it` et `dossier.de` **entièrement récrits** avec toutes les clés du bloc C : bandeaux, niveau, complétude, mur rédacteur (dont mandataire), export, progression, ajustement, sections, formulaires.
+- **Coverage final** : `FR 120 · EN 122 · IT 120 · DE 120` clés. Parité complète pour tous les libellés utilisateur.
+- **Nouveau test `tests/test_i18n_coverage.py`** — 3 tests :
+  - `test_i18n_dossier_toutes_langues_couvrent_fr` : échoue si une clé FR manque dans EN, IT ou DE.
+  - `test_i18n_estimation_toutes_langues_couvrent_fr` : idem sur le bloc estimation.
+  - `test_i18n_report_coverage_count` : rapport visuel des comptes et vérification que EN/IT/DE ont au minimum le count FR.
+
+### Récap tests
+**98/98 tests verts** (C1 + C2 + B1 + i18n coverage), zéro régression. Nouveaux tests :
+- Motif ajustement obligatoire (2 tests)
+- i18n coverage (3 tests)
+
+### Backlog resté hors périmètre (validé par l'utilisateur)
+- Complétude niveau 2 — plus tard, pas bloquant
+- Historique des PDF — non retenu (un dossier = une version courante)
+
+### Prochaine session : Partie C (Dictée vocale) en session fraîche.
+
+
 ## BLOC C Partie B — Corrections après relecture PDF de démo — 2 sept. 2026
 
 Six corrections issues de la relecture, plus la mise à jour du frontend pour le cas mandataire.

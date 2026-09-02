@@ -653,3 +653,71 @@ class TestCorrectionsRelecture:
         assert "et 2 autres retenus dans le calcul" in clean
         # Total retenus mentionné dans la note méthode
         assert "10 références entrent dans le calcul" in clean
+
+
+# ---------------------------------------------------------------------------
+# 10. Motif d'ajustement obligatoire au-delà du seuil (config)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_patch_refuse_ajustement_sans_motif_au_dela_du_seuil():
+    """Écart > 10 % : PATCH échoue avec 422 tant que motif vide."""
+    db = _db()
+    user_id = f"u_c2_adj_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        # Prix m² moyen corrigé = 10 000 €, surface pondérée = 50 m² → référence 500 000 €
+        # Valeur retenue = 600 000 → écart = +20 % > seuil 10 %
+        d["sections"]["surfaces"]["surface_ponderee_totale"] = 50
+        d["sections"]["comparables"] = {"prix_m2_moyen_corrige": 10000, "comparables": []}
+        d["sections"]["conclusion"]["valeur_venale"] = 600000
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+            # PATCH sans motif → 422
+            r = await client.patch(
+                f"/api/dossiers/{d['dossier_id']}",
+                json={"sections": {"ajustements": {"motif": ""}}},
+                headers=headers,
+            )
+            assert r.status_code == 422
+            body = r.json()
+            assert body["detail"]["code"] == "motif_ajustement_obligatoire"
+            assert abs(body["detail"]["ecart"] - 0.20) < 0.001
+            # PATCH avec motif → OK
+            r = await client.patch(
+                f"/api/dossiers/{d['dossier_id']}",
+                json={"sections": {"ajustements": {"motif": "hausse justifiée par la vue exceptionnelle"}}},
+                headers=headers,
+            )
+            assert r.status_code == 200
+            # L'écart est exposé dans la réponse
+            assert "ajustement" in r.json()
+            assert abs(r.json()["ajustement"]["ecart"] - 0.20) < 0.001
+    finally:
+        await _cleanup(db, user_id)
+
+
+@pytest.mark.asyncio
+async def test_patch_accepte_sans_motif_si_ecart_sous_seuil():
+    db = _db()
+    user_id = f"u_c2_adj_ok_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        d["sections"]["surfaces"]["surface_ponderee_totale"] = 50
+        d["sections"]["comparables"] = {"prix_m2_moyen_corrige": 10000, "comparables": []}
+        d["sections"]["conclusion"]["valeur_venale"] = 520000  # +4 %
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+            r = await client.patch(
+                f"/api/dossiers/{d['dossier_id']}",
+                json={"sections": {"ajustements": {"motif": ""}}},
+                headers=headers,
+            )
+            assert r.status_code == 200
+    finally:
+        await _cleanup(db, user_id)
