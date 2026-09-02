@@ -30,14 +30,27 @@
   min-height: 100vh;
   background: var(--b1-bg);
   color: var(--b1-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  /* Charte KOLO : titres en League Spartan, corps en DM Sans.
+     Fallback système au cas où les Google Fonts ne chargent pas
+     (mode avion natif Capacitor). */
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   overflow-x: hidden;
 }
 
-/* Reset button defaults inside B1 */
-.b1-root button {
+.b1-root h1, .b1-root h2, .b1-root h3, .b1-root h4,
+.b1-root .b1-h1, .b1-root .b1-h2,
+.b1-root .est-prix-center-val, .b1-root .est-prix-side-val {
+  font-family: "League Spartan", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Reset button defaults inside B1 — NE PAS toucher aux `.b1-pill`,
+   sinon le reset (spécificité 0,1,1) écrase la couleur de la pilule
+   (spécificité 0,1,0). Bug visible dans les captures Elliot du 2 sept. 2026 :
+   « Continuer » rendu en texte rose sans fond. */
+.b1-root button:not(.b1-pill) {
   font-family: inherit;
   border: none;
   outline: none;
@@ -45,6 +58,12 @@
   background: transparent;
   color: inherit;
   padding: 0;
+}
+.b1-root button.b1-pill {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
 }
 
 .b1-root input,
@@ -241,11 +260,13 @@
   cursor: not-allowed;
 }
 .b1-pill--ghost {
-  background: transparent;
+  background: var(--b1-card);
   color: var(--b1-accent);
   border: 2px solid var(--b1-accent);
+  box-shadow: var(--b1-shadow-card);
 }
 .b1-pill--ghost:active { transform: scale(0.97); background: var(--b1-accent-light); }
+.b1-pill--ghost[disabled] { opacity: 0.42; box-shadow: none; cursor: not-allowed; }
 .b1-pill--danger {
   background: var(--b1-danger);
   color: #fff;
@@ -751,8 +772,10 @@
   transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .b1-opp-action-btn:active { transform: scale(0.9); }
-.b1-opp-action-btn--reject { background: #fff; color: var(--b1-text-muted); }
-.b1-opp-action-btn--accept { background: var(--b1-accent); color: #fff; }
+.b1-opp-action-btn--reject { background: #fff; color: var(--b1-danger); border: 2px solid var(--b1-danger); }
+.b1-opp-action-btn--reject:active { background: var(--b1-danger-tint); }
+.b1-opp-action-btn--accept { background: var(--b1-success); color: #fff; border: 2px solid var(--b1-success); }
+.b1-opp-action-btn--accept:active { background: #128A3E; }
 
 .b1-opp-empty {
   text-align: center;

@@ -77,13 +77,13 @@ export function EstimationHomePage() {
           </div>
 
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <Link
-              to="/app-b1/estimations"
+            <button
               data-testid="est-home-lien-mes"
-              className="b1-small"
-              style={{ color: 'var(--b1-accent)', textDecoration: 'underline' }}>
+              className="b1-pill b1-pill--ghost"
+              style={{ minWidth: 220 }}
+              onClick={() => navigate('/app-b1/estimations')}>
               {b1t('est.home.lien_mes')}
-            </Link>
+            </button>
           </div>
         </div>
         <BottomTabPill active="estimation" />

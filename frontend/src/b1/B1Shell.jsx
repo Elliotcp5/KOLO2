@@ -1,7 +1,7 @@
 // KOLO — BLOC B1 Shell (bottom nav + tour + opportunités + placeholders + profil)
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronRight, Home, MapPin, CreditCard, Compass, HeadphonesIcon, Trash2, User, LogOut, Crown, ArrowLeft, X } from 'lucide-react';
+import { ChevronRight, Home, MapPin, CreditCard, Compass, HeadphonesIcon, Trash2, User, LogOut, Crown, ArrowLeft, X, Heart } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
 import { track, EVENTS } from './b3tracking';
@@ -235,11 +235,11 @@ export function OpportunitesPage() {
             onStats={() => navigate('/app-b1/performances')}
           />
           <div className="b1-opp-header">
-            <div className="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length}</div>
+            <div className="b1-opp-count" data-testid="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length}</div>
             <div className="b1-progress-track" style={{ margin: '8px 40px' }}>
-              <div className="b1-progress-fill" style={{ width: `${(Math.min(idx + 1, items.length) / items.length) * 100}%` }} />
+              <div className="b1-progress-fill" style={{ width: `${(Math.min(idx + 1, items.length) / Math.max(items.length, 1)) * 100}%` }} />
             </div>
-            <div className="b1-opp-title">Opportunités de mandats quotidiennes</div>
+            <div className="b1-opp-title">{b1t('opp.titre_quotidien')}</div>
           </div>
           {cur ? (
             <div className="b1-opp-card" data-testid="b1-opp-card">
@@ -260,11 +260,11 @@ export function OpportunitesPage() {
                 <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
               </div>
               <div className="b1-opp-actions">
-                <button className="b1-opp-action-btn b1-opp-action-btn--reject" onClick={() => swipe('gauche')} data-testid="b1-opp-reject">
-                  <X size={24} />
+                <button className="b1-opp-action-btn b1-opp-action-btn--reject" onClick={() => swipe('gauche')} data-testid="b1-opp-reject" aria-label={b1t('opp.rejeter') || 'Rejeter'}>
+                  <X size={26} strokeWidth={2.5} />
                 </button>
-                <button className="b1-opp-action-btn b1-opp-action-btn--accept" onClick={() => swipe('droite')} data-testid="b1-opp-accept">
-                  <ChevronRight size={26} />
+                <button className="b1-opp-action-btn b1-opp-action-btn--accept" onClick={() => swipe('droite')} data-testid="b1-opp-accept" aria-label={b1t('opp.accepter') || 'Accepter'}>
+                  <Heart size={26} strokeWidth={2.5} fill="currentColor" />
                 </button>
               </div>
             </div>
@@ -278,8 +278,8 @@ export function OpportunitesPage() {
             </React.Suspense>
           ) : (
             <div className="b1-opp-empty" data-testid="b1-opp-empty">
-              <p>Vous avez consulté toutes vos opportunités du moment.</p>
-              <p className="b1-small" style={{ marginTop: 8 }}>Revenez demain pour la prochaine série.</p>
+              <p>{b1t('opp.vide.titre')}</p>
+              <p className="b1-small" style={{ marginTop: 8 }}>{b1t('opp.vide.sous')}</p>
             </div>
           )}
         </div>
@@ -556,11 +556,19 @@ export function ProfilZonesPage() {
   const [cps, setCps] = useState([]);
   const [cp, setCp] = useState('');
   const [errModif, setErrModif] = useState('');
+  const [villes, setVilles] = useState({}); // cp -> ville
 
   const refresh = useCallback(() => {
-    b1api.getProfil().then((r) => {
+    b1api.getProfil().then(async (r) => {
       setUser(r.user);
-      setCps((r.user?.zones_perso || []).map((c) => ({ cp: c, ville: null })));
+      const zones = (r.user?.zones_perso || []);
+      setCps(zones.map((c) => ({ cp: c, ville: null })));
+      // Enrichit chaque CP avec sa commune (résolue via /api/villes)
+      const map = {};
+      await Promise.all(zones.map(async (c) => {
+        try { const vr = await b1api.getVille(c); if (vr?.ville) map[c] = vr.ville; } catch { /* noop */ }
+      }));
+      setVilles(map);
     }).catch(() => {});
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -602,17 +610,29 @@ export function ProfilZonesPage() {
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('profil.zones.titre')} />
-        {!editing && (user?.zones_perso || []).map((c) => (
-          <div key={c} className="b1-card" data-testid={`b1-zone-item-${c}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div className="b1-card-title">{c}</div>
-                <div className="b1-card-sub" style={{ color: 'var(--b1-accent)' }}>{b1t('profil.zones.couverte')}</div>
-              </div>
-              <span style={{ color: 'var(--b1-accent)', display: 'inline-flex' }}><MapPin size={22} /></span>
-            </div>
+        {!editing && (user?.zones_perso || []).length === 0 && (
+          <div className="b1-card" data-testid="b1-zones-vide">
+            <div className="b1-card-title">{b1t('profil.zones.vide.titre')}</div>
+            <div className="b1-card-sub" style={{ marginTop: 6 }}>{b1t('profil.zones.vide.sous')}</div>
           </div>
-        ))}
+        )}
+        {!editing && (user?.zones_perso || []).map((c) => {
+          const ville = villes[c];
+          const couverte = !!ville; // v1 : couverte dès que la commune est reconnue
+          return (
+            <div key={c} className="b1-card" data-testid={`b1-zone-item-${c}`}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="b1-card-title">{c}{ville ? ` · ${ville}` : ''}</div>
+                  <div className="b1-card-sub" style={{ color: couverte ? 'var(--b1-accent)' : 'var(--b1-text-muted)' }}>
+                    {couverte ? b1t('profil.zones.couverte') : b1t('profil.zones.attente')}
+                  </div>
+                </div>
+                <span style={{ color: 'var(--b1-accent)', display: 'inline-flex' }}><MapPin size={22} /></span>
+              </div>
+            </div>
+          );
+        })}
         {editing && (
           <>
             {cps.map((z, idx) => (

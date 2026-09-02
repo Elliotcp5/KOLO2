@@ -1,5 +1,55 @@
 # KOLO - Changelog
 
+## BLOC C Session 2 — Partie A (corrections d'interface) — 2 sept. 2026
+
+### 1. Locale FR par défaut (bug le plus grave)
+- `SUPPORTED_LOCALES` réduit à `['fr','en','de','it']` — un browser en espagnol/portugais/polonais retombait auparavant sur **anglais**, il retombe maintenant sur **français** (langue par défaut de KOLO).
+- Baseline browser : `'fr-FR'` au lieu de `'en-US'` quand `navigator.language` est absent.
+- Fallback final `supportedLocale` : `'fr'` au lieu de `'en'` (`LocaleContext.js` L131-135).
+
+### 2. Bug racine des « boutons qui ressemblent à du texte gris »
+Cause identifiée dans `b1.css` : le reset `.b1-root button { background: transparent; padding: 0 }` (spécificité 0,1,1) écrasait `.b1-pill--primary { background: var(--b1-accent) }` (spécificité 0,1,0). Fix : reset exclut désormais `.b1-pill` via `.b1-root button:not(.b1-pill)`, et une règle dédiée `.b1-root button.b1-pill { border: none; outline: none; cursor: pointer }` reprend juste les propriétés utiles sans casser la pilule.
+Sans ce fix, aucun ajustement local n'aurait suffi — les 4 pilules signalées (Continuer onb1, Continuer onb3, + Ajouter une zone, Estimer depuis une adresse) auraient toutes gardé leur défaut visuel.
+
+### 3. Charte typographique effectivement câblée
+`.b1-root` : `font-family: "DM Sans", …` (corps). Nouvelle règle `.b1-root h1/h2/h3/h4/.b1-h1/.b1-h2/.est-prix-center-val/.est-prix-side-val { font-family: "League Spartan", … }` pour tous les titres et chiffres pivots. Fallback système fourni pour le mode avion natif Capacitor.
+
+### 4. `.b1-pill--ghost` visible même sur fond violet
+Passe de `background: transparent` (invisible sur fond `#F0EEF8`) à `background: var(--b1-card)` (blanc) + shadow-card — plus jamais confondable avec un lien texte. Les CTA « Estimer depuis une adresse » et « Mes estimations » (auparavant lien souligné) sont désormais de vraies pilules blanches à bordure rose.
+
+### 5. Boutons de swipe conformes
+`B1Shell.jsx` : `<X>` rouge à gauche (bordure `--b1-danger`), `<Heart fill="currentColor">` vert à droite (fond `--b1-success`). Aria-labels ajoutés (`opp.rejeter`, `opp.accepter` en 4 langues).
+
+### 6. Badge de carte
+Utilisait déjà `b1t('sys.aucune_annonce')` — la clé était bien traduite en FR (`Aucune annonce détectée`). Le badge affichait juste la version EN à cause du bug locale corrigé ci-dessus.
+
+### 7. Zones actuelles
+`ProfilZonesPage` (`B1Shell.jsx`) :
+- Enrichit chaque CP avec la commune via `getVille()` en parallèle.
+- Affiche `13008 · Marseille 8e · Couverte` ou `33000 · Bordeaux · En attente d'ouverture`.
+- Empty state explicite quand `zones_perso` est vide : titre + sous-titre expliquant qu'il faut ajouter un CP.
+- Clés i18n `profil.zones.vide.titre/sous` en 4 langues.
+
+### 8. Compteur d'opportunités
+`{Math.min(idx+1, items.length)}/{items.length}` : le dénominateur reflète maintenant le nombre réel d'opportunités du jour (Pro = 1+/jour, Découverte = 1/semaine). Sur la démo actuelle avec 4 cartes, affiche `1/4`, `2/4`, etc. — plus le `/5` codé en dur.
+
+### 9. Titre en dur `Opportunités de mandats quotidiennes` remplacé par `b1t('opp.titre_quotidien')` (4 langues).
+
+### 10. Empty state « toutes vos opportunités du moment » i18n-isé (`opp.vide.titre/sous` en 4 langues).
+
+### Clés qui manquaient en FR — aucune
+Toutes les clés listées par Elliot étaient déjà présentes en FR dans `b1i18n.js`. Le problème venait uniquement de la locale par défaut EN. Après fix locale, tous les écrans s'affichent en français sur un appareil configuré en français, sans code de repli.
+
+### Contrôle final (screenshots)
+Onboarding 1 : « Bienvenue sur KOLO / Étape 1 sur 7 » + pilule Continuer rose ✅
+Swipe : « Opportunités de mandats quotidiennes / 1/4 » + croix rouge + cœur vert + badge « Aucune annonce détectée · Démo » ✅
+Estimation home : titres LeagueSpartan + 3 pilules (rose plein, ghost, ghost) ✅
+Zones : empty state clair avec Modifier mes zones en pilule rose ✅
+
+### Partie B (Dossier + PDF) : reportée à session fraîche
+Le user l'a explicitement dit : « Ne la commence pas ici. Je te reviens avec les plans EXPLAIN de Marseille » (déjà appliqués côté DB) et lance la Partie B en fresh context.
+
+
 ## Post-fix DB Supabase — import_dvf_mutations patché + remesures — 2 sept. 2026
 
 ### 1. `est_mono_lot` renseigné à l'import DVF

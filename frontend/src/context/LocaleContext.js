@@ -43,7 +43,7 @@ const COUNTRY_LANGUAGES = {
   'GB': 'en', 'IE': 'en', 'US': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
 };
 
-const SUPPORTED_LOCALES = ['en', 'fr', 'de', 'it', 'es', 'pt', 'pl'];
+const SUPPORTED_LOCALES = ['fr', 'en', 'de', 'it'];
 
 // Resolve a country code + browser language to our locale.
 // Special handling for Switzerland: pick fr/de/it based on the user's
@@ -118,8 +118,10 @@ export const LocaleProvider = ({ children }) => {
     const savedLocale = localStorage.getItem('kolo_locale');
     const savedCurrency = localStorage.getItem('kolo_currency');
 
-    // Browser baseline
-    const browserLocale = navigator.language || navigator.userLanguage || 'en-US';
+    // Browser baseline. Le français est le REPLI de KOLO — pas l'anglais.
+    // Un iPhone français retourne "fr-FR" et sera correctement pris. Un
+    // iPhone dans une langue non supportée (es, pt, pl…) retombe sur "fr".
+    const browserLocale = navigator.language || navigator.userLanguage || 'fr-FR';
     const browserLang = browserLocale.split('-')[0].toLowerCase();
     const browserRegion = browserLocale.split('-')[1]?.toUpperCase();
 
@@ -130,7 +132,8 @@ export const LocaleProvider = ({ children }) => {
       (userChangedLang && savedLocale) ||
       (guessedRegion ? resolveCountryToLocale(guessedRegion) : null) ||
       browserLang;
-    const supportedLocale = SUPPORTED_LOCALES.includes(guessedLang) ? guessedLang : 'en';
+    // Fallback = 'fr' : le produit est en français par défaut.
+    const supportedLocale = SUPPORTED_LOCALES.includes(guessedLang) ? guessedLang : 'fr';
     setLocale(supportedLocale);
     if (!userChangedLang) localStorage.setItem('kolo_locale', supportedLocale);
 
