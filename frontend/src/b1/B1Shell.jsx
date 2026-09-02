@@ -177,6 +177,31 @@ export function OpportunitesPage() {
       }
     } catch {}
     track(EVENTS.SWIPE, { sens, type_carte: 'opportunite' });
+    // Droite = j'accepte → on ouvre l'estimation avec le bien pré-rempli.
+    // Gauche = j'ignore → carte suivante.
+    if (sens === 'droite' && cur) {
+      const caracs = cur.caracteristiques || {};
+      const bien = {
+        adresse: cur.adresse,
+        code_postal: cur.code_postal || caracs.code_postal,
+        lat: cur.lat || caracs.latitude,
+        lng: cur.lng || caracs.longitude,
+        type_bien: caracs.type_batiment === 'maison' ? 'Maison' : 'Appartement',
+        surface_habitable: caracs.surface_habitable || cur.superficie,
+        classe_dpe: caracs.classe_dpe || cur.dpe,
+        annee_construction: caracs.annee_construction,
+      };
+      // Démo : pas de lat/lng → on retombe sur l'estimation depuis adresse.
+      if (bien.lat == null || bien.lng == null) {
+        next();
+        navigate('/app-b1/estimation/adresse');
+        return;
+      }
+      navigate('/app-b1/estimation/flow', {
+        state: { bien, opportunite_id: cur.id || cur._id },
+      });
+      return;
+    }
     next();
   };
 
@@ -300,7 +325,6 @@ function PlaceholderPage({ tab }) {
     </div>
   );
 }
-export const EstimationPage = () => <PlaceholderPage tab="estimation" />;
 export const RapportPage = () => <PlaceholderPage tab="rapport" />;
 export const AssistantPage = () => <PlaceholderPage tab="assistant" />;
 

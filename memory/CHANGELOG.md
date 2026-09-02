@@ -1,5 +1,54 @@
 # KOLO - Changelog
 
+## BLOC C — Partie 1 : Moteur d'estimation (Estimation Engine) — 2 sept. 2026
+
+### Backend `/app/backend/c1/`
+- **`c1/engine.py`** — moteur 100 % déterministe (aucun LLM). Pipeline `run_estimation()` :
+  1. Comparables via `get_comparables()` existant (ladder 500→1000→2000→3000 m).
+  2. Corrections comparables : temporelle (marché stable = 0 % en v1, TODO Supabase agrégé) + taille (±8 %, écart >15 %).
+  3. Surface pondérée depuis `infos_pro` du user + plafond annexes 25 % de habitable + jardin nul sur maison.
+  4. Ajustements spécifiques : étage 3+ sans ascenseur = plancher −10 %, RDC, dernier étage asc., vue/vis-à-vis, état (4 niveaux), travaux € (non-cumul avec énergie).
+  5. Décote énergie : table `config_matching.decote_energie` (région × type × classe) — référence = classe médiane des comparables (pas D absolue). Valeurs provisoires (source + date_maj marqués).
+  6. Non-cumul travaux vs énergie : garde le plus pénalisant.
+  7. Garde-fou ±25 % → si atteint, bascule confiance en faible.
+  8. Fourchette Q1/Q3 sur comparables corrigés + ajustements appliqués.
+  9. Prix commercialisation = valeur × (1 + `config_matching.marge_negociation`).
+  10. Net vendeur optionnel (formule dépend de `honoraires_charge`).
+- **`c1/routes.py`** — endpoints :
+  - `POST /api/estimations` — lance le moteur (quota via `verifier_quota`, 402 si épuisé).
+  - `GET /api/estimations` — liste (auth + `X-Robots-Tag: noindex`).
+  - `GET /api/estimations/{id}` — détail (auth + noindex).
+  - `POST /api/estimations/geocoder` — BAN + rejet score <0,8 + blocage DVF exclu.
+- **`c1/schemas.py`** — Pydantic `EstimationInput` + `EstimationOutput`.
+- **Blocage territoires DVF exclus** : Alsace-Moselle (57/67/68) + Mayotte (976).
+- **`a2/config.py`** : ajout `decote_energie` (IdF + autre) et `stationnement_par_dept` (défauts + 75/92/13/69) avec `source` et `date_maj` traçables.
+- **Persistance** : collection `estimations` (déjà indexée) — comparables figés dans le doc pour rejeu identique après refresh DVF.
+
+### Frontend `/app/frontend/src/b1/`
+- **`B1Estimation.jsx`** — 5 pages : `EstimationHomePage`, `EstimationAdressePage`, `EstimationFlowPage` (state machine 5 questions), `EstimationResultPage` (3 chiffres + confiance + accordéon audit), `MesEstimationsPage`, `EstimationDetailPage`.
+- **`b1i18nEstimation.js`** — copie complète FR / EN / IT / DE (60+ clés, aucune string en dur).
+- **Copie FR figée avec Elliot** (6 corrections intégrées : « Estimation basse / Prix recommandé / Estimation haute », loader sans promesse temporelle, message plafond ±25 % neutre, accordéon = détail chaque ajustement, vocab aligné « Place de parking » / « Garage », règle « 3+ sans ascenseur = plancher −10 % »).
+- **Swipe-droite sur opportunité** → ouvre `/app-b1/estimation/flow` avec bien pré-rempli (fallback vers `/estimation/adresse` si opportunité démo sans lat/lng).
+- **Draft offline** via `saveDraft/loadDraft/clearDraft` (b3offline).
+- **Tracking B3** : `estimation_lancee` + `estimation_affichee` (avec `duree_ms`).
+- **`X-Robots-Tag: noindex, nofollow`** côté API + `<meta name="robots">` côté front sur toutes les pages d'estimation.
+
+### Tests `/app/backend/tests/test_c1_estimation.py`
+- 27 tests unitaires couvrant : `is_dvf_exclu`, `_correction_taille_pct`, `_calculer_surface_ponderee` (dont plafond 25 %, jardin nul sur maison), `_ajustements_specifiques` (dont règle 3+ sans ascenseur), `_ajustement_energie` (référence médiane comparables), `_garde_fou_plafond`.
+- **55 tests total passent** (27 C1 + 28 B1/B3/IAP).
+
+### Perf mesurée
+- Estimation dense (Paris 4e, 20 comparables) : **2,1–3,0 s** end-to-end (au-dessus de la cible < 2 s).
+- Cause : deux appels Supabase séquentiels (`get_comparables` + `_fetch_postal_code_median`).
+- TODO C1.5 : paralléliser + cache Redis 24 h sur médiane postale.
+
+### Ce qui n'est PAS fait dans cette session (à faire en Partie 2 / prochaine session)
+- **Partie 2 (Dossier + PDF WeasyPrint)** : reportée intégralement pour ne pas bâcler (consigne explicite du user « deux parties solides plutôt que trois bâclées »).
+- **Partie 3 (Dictée)** : reportée (session courte séparée prévue).
+- Correction temporelle réelle (v1 = marché stable, calcul à brancher sur mutations_propres).
+- Skip auto de questions déjà répondues par le DPE (extension point `shouldAskQuestion()` prêt).
+
+
 ## Revue visuelle pré-BLOC C — 1 sept. 2026
 
 - 10 captures d'écran de l'app dans son état BLOC B (fin de session précédente) partagées avec l'utilisateur pour validation avant lancement du BLOC C (Estimation + Dossier PDF + Dictée).

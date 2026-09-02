@@ -667,6 +667,15 @@ try {
   }
 } catch (_e) { /* optional */ }
 
+// Merge C1 namespace (estimation engine)
+try {
+  // eslint-disable-next-line global-require
+  const c1 = require('./b1i18nEstimation').default || {};
+  for (const l of SUPPORTED) {
+    if (c1[l]) Object.assign(STRINGS[l], c1[l]);
+  }
+} catch (_e) { /* optional */ }
+
 /**
  * Plural helper — chooses `{key}_one` / `{key}_other` / `{key}_zero` based on `count`.
  * Follows CLDR-lite: 0 → _zero if defined, 1 → _one, else _other.

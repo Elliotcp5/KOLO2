@@ -54,9 +54,34 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "marge_negociation": 0.04,
     "duree_validite_dossier_mois": 3,
     # ---------------------------------------------------------------------
-    # Veille des biens en vente (BLOC B) — cartes de type distinct.
-    # Voir /app/memory/B1_VEILLE_COPY_FR.md.
+    # C1 — Moteur d'estimation. Grille de décote énergie (région × type × classe).
+    # Base 100 pour la classe D. Écart = décote/prime en points de %.
+    # Valeurs PROVISOIRES — à recalibrer sur la dernière étude « valeur verte »
+    # des Notaires de France (cf. `source` et `date_maj`).
     # ---------------------------------------------------------------------
+    "decote_energie": {
+        "source": "Provisoire — à remplacer par étude Notaires de France (valeur verte)",
+        "date_maj": "2026-09-01",
+        "ile_de_france": {
+            "appartement": {"A": 4, "B": 3, "C": 1, "D": 0, "E": -2, "F": -4, "G": -6},
+            "maison":      {"A": 8, "B": 6, "C": 2, "D": 0, "E": -4, "F": -8, "G": -12},
+        },
+        "autre": {
+            "appartement": {"A": 6, "B": 4, "C": 2, "D": 0, "E": -4, "F": -8, "G": -12},
+            "maison":      {"A": 10, "B": 7, "C": 3, "D": 0, "E": -6, "F": -12, "G": -18},
+        },
+    },
+    # Valeur forfaitaire du stationnement par département (à défaut : valeur médiane locale).
+    # v1 : quelques valeurs indicatives. La médiane DVF « dépendance » écrasera ces valeurs.
+    "stationnement_par_dept": {
+        "source": "Provisoire — à calibrer sur mutations DVF type_local=Dépendance",
+        "date_maj": "2026-09-01",
+        "defaut": {"place": 15000, "garage": 25000},
+        "75": {"place": 35000, "garage": 55000},
+        "92": {"place": 28000, "garage": 45000},
+        "13": {"place": 12000, "garage": 20000},
+        "69": {"place": 15000, "garage": 25000},
+    },
     "veille": {
         # Signal minimum : au moins un des deux critères doit être vrai
         # pour qu'un bien `deja_en_vente` devienne carte de veille.

@@ -68,9 +68,19 @@ export const deleteMe = () => req('/api/me', { method: 'DELETE' });
 export const verifyAppleReceipt = (receipt, product_id) =>
   req('/api/iap/verify-apple-receipt', { method: 'POST', body: { receipt, product_id } });
 
+// --- C1 Estimations (moteur déterministe DVF)
+export const postEstimation = (payload) =>
+  req('/api/estimations', { method: 'POST', body: payload });
+export const getEstimations = () => req('/api/estimations');
+export const getEstimation = (id) =>
+  req(`/api/estimations/${encodeURIComponent(id)}`);
+export const geocoderAdresse = (adresse, code_postal) =>
+  req('/api/estimations/geocoder', { method: 'POST', body: { adresse, code_postal } });
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
   verifyAppleReceipt,
+  postEstimation, getEstimations, getEstimation, geocoderAdresse,
 };
 export default b1api;

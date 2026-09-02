@@ -1,0 +1,369 @@
+// KOLO — BLOC C1 i18n Estimation (FR / EN / IT / DE)
+// Vouvoiement partout, cohérence complète avec b1i18n.
+// Copie FR figée avec Elliot le 2 sept. 2026 (6 corrections intégrées).
+
+const FR = {
+  // Écran d'accueil (aucune estimation en cours)
+  'est.home.titre': 'Estimer un bien',
+  'est.home.sous': "Depuis une opportunité swipée à droite ou depuis une adresse.",
+  'est.home.cta_opp': 'Choisir une opportunité',
+  'est.home.cta_adr': 'Estimer depuis une adresse',
+  'est.home.lien_mes': 'Mes estimations',
+
+  // Écran principal — bien identifié
+  'est.bien.type_appart': 'Appartement',
+  'est.bien.type_maison': 'Maison',
+  'est.bien.surface': '{n} m²',
+  'est.bien.ajouter_photos': 'Ajouter ou modifier les informations / photos',
+  'est.bien.cta_estimer': 'ESTIMER',
+
+  // Questions
+  'est.q.progress': 'Question {step} sur {total}',
+  'est.q.suivant': 'Suivant',
+  'est.q.passer': 'Passer',
+
+  'est.q.etat.titre': 'Dans quel état est le bien ?',
+  'est.q.etat.a_rafraichir': 'À rafraîchir',
+  'est.q.etat.bon_etat': 'Bon état',
+  'est.q.etat.renove': 'Rénové',
+  'est.q.etat.neuf': 'Neuf',
+
+  'est.q.etage.titre': 'À quel étage ?',
+  'est.q.etage.rdc': 'RDC',
+  'est.q.etage.1': '1',
+  'est.q.etage.2': '2',
+  'est.q.etage.3': '3',
+  'est.q.etage.3plus': '3+',
+
+  'est.q.ascenseur.titre': 'Il y a un ascenseur ?',
+  'est.q.ascenseur.oui': 'Oui',
+  'est.q.ascenseur.non': 'Non',
+
+  'est.q.exterieur.titre': 'Un extérieur ?',
+  'est.q.exterieur.aucun': 'Aucun',
+  'est.q.exterieur.balcon': 'Balcon',
+  'est.q.exterieur.terrasse': 'Terrasse',
+  'est.q.exterieur.jardin': 'Jardin',
+  'est.q.exterieur.surface': 'Surface (m²)',
+
+  'est.q.stationnement.titre': 'Un stationnement ?',
+  'est.q.stationnement.aucun': 'Aucun',
+  'est.q.stationnement.place': 'Place de parking',
+  'est.q.stationnement.garage': 'Garage',
+
+  // Loader
+  'est.calc.titre': 'Nous cherchons les biens comparables…',
+
+  // Résultat
+  'est.res.bandeau': 'Prix de commercialisation estimé',
+  'est.res.label_basse': 'Estimation basse',
+  'est.res.label_reco': 'Prix recommandé',
+  'est.res.label_haute': 'Estimation haute',
+  'est.res.conf.elevee': 'Confiance élevée',
+  'est.res.conf.moyenne': 'Confiance moyenne',
+  'est.res.conf.faible': 'Confiance faible',
+  'est.res.toggle_net': 'Afficher en net vendeur',
+  'est.res.net_vendeur_titre': 'Net vendeur',
+  'est.res.detail_titre': 'Voir le calcul',
+  'est.res.detail_stats': '{n} biens comparables · Rayon {rayon} m · Fenêtre {mois} mois',
+  'est.res.detail_mediane': 'Prix médian du secteur : {v} €/m²',
+  'est.res.detail_surface': 'Surface pondérée : {v} m²',
+  'est.res.detail_ajust_titre': 'Ajustements appliqués',
+  'est.res.detail_total': 'Total',
+  'est.res.detail_plafond_note': 'plafond ±25 %',
+  'est.res.action_enregistrer': 'Enregistrer',
+  'est.res.action_dossier': 'Générer un dossier',
+
+  // Avertissements
+  'est.warn.faible': "Les biens vendus dans ce secteur sont très hétérogènes — l'étage, la vue et l'état pèsent lourd ici.",
+  'est.warn.plafond': "Les biens comparables trouvés sont trop éloignés de ce bien. Les corrections ont été plafonnées et la confiance abaissée. Vérifiez l'adresse et les caractéristiques saisies.",
+  'est.warn.peu_comparables': "Peu de ventes récentes autour de ce bien. Estimation à prendre avec précaution.",
+  'est.warn.dvf_exclu': "DVF ne couvre pas ce territoire (livre foncier). L'estimation automatique n'est pas disponible ici.",
+  'est.warn.taux_manquant': "Taux d'honoraires non renseigné. Ajoutez-le en un tap pour afficher le net vendeur.",
+  'est.warn.taux_cta': 'Renseigner mon taux',
+
+  // Estimation depuis adresse
+  'est.adr.titre': 'Estimer depuis une adresse',
+  'est.adr.placeholder': 'Ex. 5 rue de Rivoli, 75004 Paris',
+  'est.adr.cta': 'Rechercher',
+  'est.adr.err_introuvable': 'Adresse introuvable. Précisez la voie et le code postal.',
+  'est.adr.dpe_manquant': "Aucun DPE trouvé pour cette adresse. Précisez la surface et le type de bien pour continuer.",
+  'est.adr.q_type': 'Type de bien',
+  'est.adr.q_surface': 'Surface habitable (m²)',
+
+  // Mes estimations
+  'mes.est.titre': 'Mes estimations',
+  'mes.est.vide.titre': 'Aucune estimation pour le moment.',
+  'mes.est.vide.sous': 'Estimez votre premier bien depuis une opportunité.',
+  'mes.est.item_prix': '{v} €',
+  'mes.est.item_conf': 'Confiance {niveau}',
+};
+
+const EN = {
+  'est.home.titre': 'Estimate a property',
+  'est.home.sous': 'From an opportunity you swiped right, or from an address.',
+  'est.home.cta_opp': 'Pick an opportunity',
+  'est.home.cta_adr': 'Estimate from an address',
+  'est.home.lien_mes': 'My estimates',
+
+  'est.bien.type_appart': 'Apartment',
+  'est.bien.type_maison': 'House',
+  'est.bien.surface': '{n} sqm',
+  'est.bien.ajouter_photos': 'Add or edit information / photos',
+  'est.bien.cta_estimer': 'ESTIMATE',
+
+  'est.q.progress': 'Question {step} of {total}',
+  'est.q.suivant': 'Next',
+  'est.q.passer': 'Skip',
+
+  'est.q.etat.titre': 'What condition is the property in?',
+  'est.q.etat.a_rafraichir': 'Needs refresh',
+  'est.q.etat.bon_etat': 'Good condition',
+  'est.q.etat.renove': 'Renovated',
+  'est.q.etat.neuf': 'New',
+
+  'est.q.etage.titre': 'Which floor?',
+  'est.q.etage.rdc': 'Ground',
+  'est.q.etage.1': '1',
+  'est.q.etage.2': '2',
+  'est.q.etage.3': '3',
+  'est.q.etage.3plus': '3+',
+
+  'est.q.ascenseur.titre': 'Is there an elevator?',
+  'est.q.ascenseur.oui': 'Yes',
+  'est.q.ascenseur.non': 'No',
+
+  'est.q.exterieur.titre': 'Any outdoor space?',
+  'est.q.exterieur.aucun': 'None',
+  'est.q.exterieur.balcon': 'Balcony',
+  'est.q.exterieur.terrasse': 'Terrace',
+  'est.q.exterieur.jardin': 'Garden',
+  'est.q.exterieur.surface': 'Surface (sqm)',
+
+  'est.q.stationnement.titre': 'Any parking?',
+  'est.q.stationnement.aucun': 'None',
+  'est.q.stationnement.place': 'Parking spot',
+  'est.q.stationnement.garage': 'Garage',
+
+  'est.calc.titre': 'Looking for comparable properties…',
+
+  'est.res.bandeau': 'Estimated listing price',
+  'est.res.label_basse': 'Low estimate',
+  'est.res.label_reco': 'Recommended price',
+  'est.res.label_haute': 'High estimate',
+  'est.res.conf.elevee': 'High confidence',
+  'est.res.conf.moyenne': 'Medium confidence',
+  'est.res.conf.faible': 'Low confidence',
+  'est.res.toggle_net': 'Show net-to-seller',
+  'est.res.net_vendeur_titre': 'Net to seller',
+  'est.res.detail_titre': 'See calculation',
+  'est.res.detail_stats': '{n} comparables · Radius {rayon} m · {mois}-month window',
+  'est.res.detail_mediane': 'Local median price: €{v}/sqm',
+  'est.res.detail_surface': 'Weighted surface: {v} sqm',
+  'est.res.detail_ajust_titre': 'Adjustments applied',
+  'est.res.detail_total': 'Total',
+  'est.res.detail_plafond_note': '±25 % cap',
+  'est.res.action_enregistrer': 'Save',
+  'est.res.action_dossier': 'Generate a file',
+
+  'est.warn.faible': "Sales in this area are very heterogeneous — floor, view and condition weigh heavily here.",
+  'est.warn.plafond': "The comparables found differ too much from this property. Corrections were capped and confidence lowered. Check the address and inputs.",
+  'est.warn.peu_comparables': "Few recent sales around this property. Take this estimate with caution.",
+  'est.warn.dvf_exclu': "DVF does not cover this territory (land registry). Automated estimate is not available here.",
+  'est.warn.taux_manquant': "Fee rate not set. Add it in one tap to see the net-to-seller.",
+  'est.warn.taux_cta': 'Set my rate',
+
+  'est.adr.titre': 'Estimate from an address',
+  'est.adr.placeholder': 'E.g. 5 rue de Rivoli, 75004 Paris',
+  'est.adr.cta': 'Search',
+  'est.adr.err_introuvable': 'Address not found. Provide the street and postal code.',
+  'est.adr.dpe_manquant': "No EPC found for this address. Enter surface and property type to continue.",
+  'est.adr.q_type': 'Property type',
+  'est.adr.q_surface': 'Living area (sqm)',
+
+  'mes.est.titre': 'My estimates',
+  'mes.est.vide.titre': 'No estimates yet.',
+  'mes.est.vide.sous': 'Estimate your first property from an opportunity.',
+  'mes.est.item_prix': '€{v}',
+  'mes.est.item_conf': '{niveau} confidence',
+};
+
+const IT = {
+  'est.home.titre': 'Stima un immobile',
+  'est.home.sous': "Da un'opportunità scorsa a destra o da un indirizzo.",
+  'est.home.cta_opp': "Scegli un'opportunità",
+  'est.home.cta_adr': 'Stima da un indirizzo',
+  'est.home.lien_mes': 'Le mie stime',
+
+  'est.bien.type_appart': 'Appartamento',
+  'est.bien.type_maison': 'Casa',
+  'est.bien.surface': '{n} m²',
+  'est.bien.ajouter_photos': 'Aggiungi o modifica informazioni / foto',
+  'est.bien.cta_estimer': 'STIMARE',
+
+  'est.q.progress': 'Domanda {step} di {total}',
+  'est.q.suivant': 'Avanti',
+  'est.q.passer': 'Salta',
+
+  'est.q.etat.titre': 'In quali condizioni è il bene?',
+  'est.q.etat.a_rafraichir': 'Da rinfrescare',
+  'est.q.etat.bon_etat': 'Buono stato',
+  'est.q.etat.renove': 'Ristrutturato',
+  'est.q.etat.neuf': 'Nuovo',
+
+  'est.q.etage.titre': 'A quale piano?',
+  'est.q.etage.rdc': 'PT',
+  'est.q.etage.1': '1',
+  'est.q.etage.2': '2',
+  'est.q.etage.3': '3',
+  'est.q.etage.3plus': '3+',
+
+  'est.q.ascenseur.titre': "C'è un ascensore?",
+  'est.q.ascenseur.oui': 'Sì',
+  'est.q.ascenseur.non': 'No',
+
+  'est.q.exterieur.titre': 'Uno spazio esterno?',
+  'est.q.exterieur.aucun': 'Nessuno',
+  'est.q.exterieur.balcon': 'Balcone',
+  'est.q.exterieur.terrasse': 'Terrazza',
+  'est.q.exterieur.jardin': 'Giardino',
+  'est.q.exterieur.surface': 'Superficie (m²)',
+
+  'est.q.stationnement.titre': 'Un posto auto?',
+  'est.q.stationnement.aucun': 'Nessuno',
+  'est.q.stationnement.place': 'Posto auto',
+  'est.q.stationnement.garage': 'Garage',
+
+  'est.calc.titre': 'Cerchiamo i beni comparabili…',
+
+  'est.res.bandeau': 'Prezzo di listino stimato',
+  'est.res.label_basse': 'Stima bassa',
+  'est.res.label_reco': 'Prezzo consigliato',
+  'est.res.label_haute': 'Stima alta',
+  'est.res.conf.elevee': 'Affidabilità alta',
+  'est.res.conf.moyenne': 'Affidabilità media',
+  'est.res.conf.faible': 'Affidabilità bassa',
+  'est.res.toggle_net': 'Mostra netto venditore',
+  'est.res.net_vendeur_titre': 'Netto venditore',
+  'est.res.detail_titre': 'Vedi il calcolo',
+  'est.res.detail_stats': '{n} beni comparabili · Raggio {rayon} m · Finestra {mois} mesi',
+  'est.res.detail_mediane': 'Prezzo mediano della zona: {v} €/m²',
+  'est.res.detail_surface': 'Superficie ponderata: {v} m²',
+  'est.res.detail_ajust_titre': 'Aggiustamenti applicati',
+  'est.res.detail_total': 'Totale',
+  'est.res.detail_plafond_note': 'limite ±25 %',
+  'est.res.action_enregistrer': 'Salva',
+  'est.res.action_dossier': 'Genera pratica',
+
+  'est.warn.faible': "Le vendite in questa zona sono molto eterogenee — piano, vista e stato pesano molto qui.",
+  'est.warn.plafond': "I beni comparabili trovati sono troppo lontani da questo bene. Le correzioni sono state limitate e l'affidabilità abbassata. Verifica l'indirizzo e i dati inseriti.",
+  'est.warn.peu_comparables': "Poche vendite recenti attorno a questo bene. Stima da prendere con cautela.",
+  'est.warn.dvf_exclu': "DVF non copre questo territorio (registro fondiario). La stima automatica non è disponibile qui.",
+  'est.warn.taux_manquant': "Tasso di provvigione non impostato. Aggiungilo con un tap per vedere il netto venditore.",
+  'est.warn.taux_cta': 'Imposta il mio tasso',
+
+  'est.adr.titre': 'Stima da un indirizzo',
+  'est.adr.placeholder': 'Es. 5 rue de Rivoli, 75004 Parigi',
+  'est.adr.cta': 'Cerca',
+  'est.adr.err_introuvable': "Indirizzo non trovato. Precisa la via e il CAP.",
+  'est.adr.dpe_manquant': "Nessun APE trovato per questo indirizzo. Inserisci superficie e tipologia per continuare.",
+  'est.adr.q_type': 'Tipo di bene',
+  'est.adr.q_surface': 'Superficie abitabile (m²)',
+
+  'mes.est.titre': 'Le mie stime',
+  'mes.est.vide.titre': 'Nessuna stima al momento.',
+  'mes.est.vide.sous': "Stima il tuo primo bene da un'opportunità.",
+  'mes.est.item_prix': '{v} €',
+  'mes.est.item_conf': 'Affidabilità {niveau}',
+};
+
+const DE = {
+  'est.home.titre': 'Immobilie schätzen',
+  'est.home.sous': 'Aus einer nach rechts gewischten Chance oder aus einer Adresse.',
+  'est.home.cta_opp': 'Chance auswählen',
+  'est.home.cta_adr': 'Aus einer Adresse schätzen',
+  'est.home.lien_mes': 'Meine Schätzungen',
+
+  'est.bien.type_appart': 'Wohnung',
+  'est.bien.type_maison': 'Haus',
+  'est.bien.surface': '{n} m²',
+  'est.bien.ajouter_photos': 'Informationen / Fotos hinzufügen oder ändern',
+  'est.bien.cta_estimer': 'SCHÄTZEN',
+
+  'est.q.progress': 'Frage {step} von {total}',
+  'est.q.suivant': 'Weiter',
+  'est.q.passer': 'Überspringen',
+
+  'est.q.etat.titre': 'In welchem Zustand ist die Immobilie?',
+  'est.q.etat.a_rafraichir': 'Aufzufrischen',
+  'est.q.etat.bon_etat': 'Guter Zustand',
+  'est.q.etat.renove': 'Renoviert',
+  'est.q.etat.neuf': 'Neu',
+
+  'est.q.etage.titre': 'Welche Etage?',
+  'est.q.etage.rdc': 'EG',
+  'est.q.etage.1': '1',
+  'est.q.etage.2': '2',
+  'est.q.etage.3': '3',
+  'est.q.etage.3plus': '3+',
+
+  'est.q.ascenseur.titre': 'Gibt es einen Aufzug?',
+  'est.q.ascenseur.oui': 'Ja',
+  'est.q.ascenseur.non': 'Nein',
+
+  'est.q.exterieur.titre': 'Ein Außenbereich?',
+  'est.q.exterieur.aucun': 'Keiner',
+  'est.q.exterieur.balcon': 'Balkon',
+  'est.q.exterieur.terrasse': 'Terrasse',
+  'est.q.exterieur.jardin': 'Garten',
+  'est.q.exterieur.surface': 'Fläche (m²)',
+
+  'est.q.stationnement.titre': 'Ein Stellplatz?',
+  'est.q.stationnement.aucun': 'Keiner',
+  'est.q.stationnement.place': 'Stellplatz',
+  'est.q.stationnement.garage': 'Garage',
+
+  'est.calc.titre': 'Wir suchen vergleichbare Immobilien…',
+
+  'est.res.bandeau': 'Geschätzter Angebotspreis',
+  'est.res.label_basse': 'Untere Schätzung',
+  'est.res.label_reco': 'Empfohlener Preis',
+  'est.res.label_haute': 'Obere Schätzung',
+  'est.res.conf.elevee': 'Hohe Vertrauenswürdigkeit',
+  'est.res.conf.moyenne': 'Mittlere Vertrauenswürdigkeit',
+  'est.res.conf.faible': 'Niedrige Vertrauenswürdigkeit',
+  'est.res.toggle_net': 'Netto für den Verkäufer anzeigen',
+  'est.res.net_vendeur_titre': 'Netto für den Verkäufer',
+  'est.res.detail_titre': 'Berechnung anzeigen',
+  'est.res.detail_stats': '{n} Vergleichsobjekte · Radius {rayon} m · Fenster {mois} Monate',
+  'est.res.detail_mediane': 'Regionaler Medianpreis: {v} €/m²',
+  'est.res.detail_surface': 'Gewichtete Fläche: {v} m²',
+  'est.res.detail_ajust_titre': 'Angewendete Anpassungen',
+  'est.res.detail_total': 'Gesamt',
+  'est.res.detail_plafond_note': '±25 % Grenze',
+  'est.res.action_enregistrer': 'Speichern',
+  'est.res.action_dossier': 'Dossier erzeugen',
+
+  'est.warn.faible': "Verkäufe in dieser Gegend sind sehr heterogen — Etage, Aussicht und Zustand fallen hier stark ins Gewicht.",
+  'est.warn.plafond': "Die gefundenen Vergleichsobjekte weichen zu stark von dieser Immobilie ab. Korrekturen wurden gedeckelt, Vertrauensgrad reduziert. Prüfen Sie Adresse und Angaben.",
+  'est.warn.peu_comparables': "Wenige aktuelle Verkäufe rund um diese Immobilie. Schätzung mit Vorsicht zu genießen.",
+  'est.warn.dvf_exclu': "DVF deckt dieses Gebiet nicht ab (Grundbuch). Eine automatische Schätzung ist hier nicht verfügbar.",
+  'est.warn.taux_manquant': "Honorarsatz nicht gesetzt. Fügen Sie ihn mit einem Tipp hinzu, um den Netto-Betrag anzuzeigen.",
+  'est.warn.taux_cta': 'Meinen Satz eintragen',
+
+  'est.adr.titre': 'Aus einer Adresse schätzen',
+  'est.adr.placeholder': 'Z. B. 5 rue de Rivoli, 75004 Paris',
+  'est.adr.cta': 'Suchen',
+  'est.adr.err_introuvable': 'Adresse nicht gefunden. Bitte Straße und PLZ präzisieren.',
+  'est.adr.dpe_manquant': "Kein Energieausweis für diese Adresse gefunden. Geben Sie Fläche und Typ ein, um fortzufahren.",
+  'est.adr.q_type': 'Immobilientyp',
+  'est.adr.q_surface': 'Wohnfläche (m²)',
+
+  'mes.est.titre': 'Meine Schätzungen',
+  'mes.est.vide.titre': 'Noch keine Schätzungen.',
+  'mes.est.vide.sous': 'Schätzen Sie Ihre erste Immobilie aus einer Chance.',
+  'mes.est.item_prix': '{v} €',
+  'mes.est.item_conf': 'Vertrauen {niveau}',
+};
+
+export default { fr: FR, en: EN, it: IT, de: DE };

@@ -8521,6 +8521,17 @@ except Exception as _aw_err:
 
 
 # ============================================================================
+# C1 router — /api/estimations (moteur déterministe DVF)
+# ============================================================================
+try:
+    from c1.routes import router as c1_router
+    app.include_router(c1_router)
+    logger.info("KOLO C1 router mounted (/api/estimations)")
+except Exception as _c1_err:
+    logger.error(f"Failed to mount C1 router: {_c1_err}")
+
+
+# ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has
 # already been included above. Protected by X-Admin-Secret.

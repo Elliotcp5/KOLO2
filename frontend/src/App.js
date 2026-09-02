@@ -63,7 +63,6 @@ import V2SubscriptionPage from "./v2/pages/V2SubscriptionPage";
 import B1Onboarding from "./b1/B1Onboarding";
 import {
   OpportunitesPage as B1OpportunitesPage,
-  EstimationPage as B1EstimationPage,
   RapportPage as B1RapportPage,
   AssistantPage as B1AssistantPage,
   ProfilPage as B1ProfilPage,
@@ -73,6 +72,13 @@ import {
   ProfilDeletePage as B1ProfilDeletePage,
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
+import {
+  EstimationHomePage as C1EstimationHome,
+  EstimationFlowPage as C1EstimationFlow,
+  EstimationAdressePage as C1EstimationAdresse,
+  MesEstimationsPage as C1MesEstimations,
+  EstimationDetailPage as C1EstimationDetail,
+} from "./b1/B1Estimation";
 import {
   VeillePileDuJourPage as B1VeillePileDuJourPage,
   MesVeilleSuivisPage as B1MesVeilleSuivisPage,
@@ -226,7 +232,12 @@ const AppRouter = () => {
       {/* ============================================================== */}
       <Route path="/onboarding-b1" element={<B1Onboarding />} />
       <Route path="/app-b1" element={<B1OpportunitesPage />} />
-      <Route path="/app-b1/estimation" element={<B1EstimationPage />} />
+      {/* C1 — Estimation (moteur déterministe DVF) */}
+      <Route path="/app-b1/estimation" element={<C1EstimationHome />} />
+      <Route path="/app-b1/estimation/adresse" element={<C1EstimationAdresse />} />
+      <Route path="/app-b1/estimation/flow" element={<C1EstimationFlow />} />
+      <Route path="/app-b1/estimations" element={<C1MesEstimations />} />
+      <Route path="/app-b1/estimations/:id" element={<C1EstimationDetail />} />
       <Route path="/app-b1/rapport" element={<B1RapportPage />} />
       <Route path="/app-b1/assistant" element={<B1AssistantPage />} />
       <Route path="/app-b1/profil" element={<B1ProfilPage />} />
