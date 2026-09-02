@@ -1,7 +1,7 @@
 // KOLO — Assistant KOLO (chat conversationnel Pro)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Send, Trash2, X } from 'lucide-react';
+import { Bot, Send, Trash2, X, History, PenSquare } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
 
@@ -15,6 +15,7 @@ export function AssistantPage() {
   const [streaming, setStreaming] = useState(false);
   const [context, setContext] = useState(null);
   const [ctxOpen, setCtxOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [pickerItems, setPickerItems] = useState({ estimations: [], dossiers: [] });
   const [convs, setConvs] = useState([]);
   const [error, setError] = useState('');
@@ -70,8 +71,9 @@ export function AssistantPage() {
       onDone: () => setStreaming(false),
     });
     setStreaming(false);
-    // refresh conv list
+    // refresh conv list + status (quota utilisé)
     b1api.listConversations().then((l) => setConvs(l.conversations || [])).catch(() => {});
+    b1api.getAssistantStatus().then(setStatus).catch(() => {});
   }, [input, streaming, conversationId, context, navigate]);
 
   const deleteConv = async (cid) => {
@@ -113,6 +115,15 @@ export function AssistantPage() {
           <div style={{ fontWeight: 600 }}>{b1t('as.header.titre')}</div>
           <div style={{ fontSize: 12, color: 'var(--b1-text-muted)' }}>{b1t('as.header.sous')}</div>
         </div>
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label={b1t('as.hist.titre')}
+          data-testid="as-open-history"
+          style={{ border: 0, background: 'transparent', padding: 6, cursor: 'pointer' }}
+        >
+          <History size={20} color="var(--b1-text-secondary)" />
+        </button>
       </div>
 
       <div style={{ padding: '6px 16px', borderBottom: '1px solid var(--b1-border)' }}>
@@ -186,19 +197,71 @@ export function AssistantPage() {
         </button>
       </div>
 
-      {convs.length > 0 && messages.length === 0 && (
-        <div style={{ padding: '8px 16px', borderTop: '1px solid var(--b1-border)', maxHeight: 160, overflowY: 'auto' }}>
-          <div style={{ fontSize: 11, color: 'var(--b1-text-muted)', margin: '4px 0' }}>{b1t('as.hist.titre')}</div>
-          {convs.slice(0, 10).map((c) => (
-            <div key={c.conversation_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--b1-border)' }}>
-              <button type="button" onClick={() => openConv(c.conversation_id)} data-testid={`as-hist-${c.conversation_id}`} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', fontSize: 13, padding: 0 }}>
-                {c.title || '—'}
-              </button>
-              <button type="button" onClick={() => deleteConv(c.conversation_id)} data-testid={`as-del-${c.conversation_id}`} style={{ background: 'transparent', border: 0, cursor: 'pointer' }}>
-                <Trash2 size={14} color="var(--b1-text-muted)" />
+      {status?.quota?.used >= 80 && (
+        <div
+          style={{ fontSize: 11, textAlign: 'right', padding: '0 16px 8px', color: status.quota.used >= 100 ? 'var(--b1-danger)' : 'var(--b1-text-muted)' }}
+          data-testid="as-quota-count"
+        >
+          {b1t('as.quota.count', { n: status.quota.used })}
+        </div>
+      )}
+
+      {drawerOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 90 }}
+          onClick={() => setDrawerOpen(false)}
+          data-testid="as-drawer-backdrop"
+        >
+          <div
+            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '82%', maxWidth: 360, background: 'var(--b1-card)', padding: 20, overflowY: 'auto', boxShadow: '-8px 0 24px rgba(0,0,0,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+            data-testid="as-drawer"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ flex: 1, fontWeight: 600 }}>{b1t('as.hist.titre')}</div>
+              <button type="button" onClick={() => setDrawerOpen(false)} aria-label={b1t('sys.retour') || 'Close'} style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer' }} data-testid="as-drawer-close">
+                <X size={18} />
               </button>
             </div>
-          ))}
+            <button
+              type="button"
+              className="b1-pill b1-pill--primary"
+              style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}
+              onClick={() => {
+                setConversationId(null);
+                setMessages([]);
+                setContext(null);
+                setInput('');
+                setError('');
+                setDrawerOpen(false);
+              }}
+              data-testid="as-new-conversation"
+            >
+              <PenSquare size={16} /> {b1t('as.hist.nouvelle')}
+            </button>
+            {convs.length === 0 ? (
+              <div style={{ color: 'var(--b1-text-muted)', fontSize: 13 }} data-testid="as-hist-empty">{b1t('as.hist.vide')}</div>
+            ) : convs.map((c) => (
+              <div key={c.conversation_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--b1-border)' }}>
+                <button
+                  type="button"
+                  onClick={() => { openConv(c.conversation_id); setDrawerOpen(false); }}
+                  data-testid={`as-hist-${c.conversation_id}`}
+                  style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', fontSize: 13, padding: 0 }}
+                >
+                  {c.title || '—'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteConv(c.conversation_id)}
+                  data-testid={`as-del-${c.conversation_id}`}
+                  style={{ background: 'transparent', border: 0, cursor: 'pointer' }}
+                >
+                  <Trash2 size={14} color="var(--b1-text-muted)" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

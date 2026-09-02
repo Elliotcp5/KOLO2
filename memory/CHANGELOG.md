@@ -1,5 +1,27 @@
 # KOLO - Changelog
 
+## Assistant KOLO — Tiroir historique + compteur quota — 2 sept. 2026
+
+### Tiroir d'historique dans l'en-tête
+- Nouveau bouton `<History>` en haut à droite du panneau chat (`data-testid="as-open-history"`), à côté du titre `Assistant KOLO`.
+- Tiroir latéral droit (backdrop cliquable, 82 % largeur max 360 px, ombre à gauche) avec :
+  - Bouton primaire **« Nouvelle conversation »** en haut (icône `PenSquare`, rose primary) qui remet à zéro `conversationId`, `messages`, `context`, `input`, `error` puis ferme le tiroir.
+  - Liste complète des conversations (titre + `Ouvrir`/`Supprimer`).
+  - Empty state `Aucune conversation pour le moment.`
+- Retire l'ancien bloc d'historique en pied de page (redondant).
+
+### Compteur quota conditionnel
+- Sous le champ de saisie, affiché **uniquement à partir de 80 messages** utilisés (`status.quota.used >= 80`).
+- Format : `{n} sur 100 messages aujourd'hui`, petit texte à droite, `muted` avant 100, `danger` à 100.
+- Le `getAssistantStatus` est rappelé après chaque tour pour rafraîchir le compteur en temps réel.
+
+### i18n
+5 nouvelles clés × 4 langues (`as.hist.nouvelle`, `as.hist.vide`, `as.quota.count`). Parité i18n toujours verte (test coverage OK).
+
+### Tests
+57 tests i18n + C2 dossiers + C2 PDF verts. Zéro régression. Vérif screenshot : bouton présent, tiroir s'ouvre, empty state affiché, bouton `Nouvelle conversation` fonctionnel.
+
+
 ## BLOC C Partie C — Dictée vocale + Assistant KOLO — 2 sept. 2026
 
 ### Dictée vocale (4 sections)

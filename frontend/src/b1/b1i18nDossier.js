@@ -202,6 +202,9 @@ const dossier = {
     'as.hist.ouvrir': "Ouvrir",
     'as.hist.supprimer': "Supprimer",
     'as.hist.confirm': "Supprimer cette conversation ?",
+    'as.hist.nouvelle': "Nouvelle conversation",
+    'as.hist.vide': "Aucune conversation pour le moment.",
+    'as.quota.count': "{n} sur 100 messages aujourd'hui",
   },
 };
 
@@ -388,6 +391,9 @@ dossier.en = {
   "as.hist.ouvrir": "Open",
   "as.hist.supprimer": "Delete",
   "as.hist.confirm": "Delete this conversation?",
+  "as.hist.nouvelle": "New conversation",
+  "as.hist.vide": "No conversation yet.",
+  "as.quota.count": "{n} of 100 messages today",
 
 };
 
@@ -569,6 +575,9 @@ dossier.it = {
   "as.hist.ouvrir": "Apri",
   "as.hist.supprimer": "Elimina",
   "as.hist.confirm": "Eliminare questa conversazione?",
+  "as.hist.nouvelle": "Nuova conversazione",
+  "as.hist.vide": "Nessuna conversazione al momento.",
+  "as.quota.count": "{n} su 100 messaggi oggi",
 
 };
 
@@ -750,6 +759,9 @@ dossier.de = {
   "as.hist.ouvrir": "\u00d6ffnen",
   "as.hist.supprimer": "L\u00f6schen",
   "as.hist.confirm": "Diese Unterhaltung l\u00f6schen?",
+  "as.hist.nouvelle": "Neue Unterhaltung",
+  "as.hist.vide": "Noch keine Unterhaltung.",
+  "as.quota.count": "{n} von 100 Nachrichten heute",
 
 };
 
