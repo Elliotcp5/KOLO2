@@ -564,13 +564,14 @@ export function EstimationAdressePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [manual, setManual] = useState(null); // {lat,lng,adresse,cp}
+  const [dpe, setDpe] = useState(null);       // pré-remplissage DPE ADEME si trouvé
   const [type_bien, setType] = useState('Appartement');
   const [surface, setSurface] = useState('');
   useNoIndex();
 
   const search = async () => {
     if (!q || q.trim().length < 3) { setError(b1t('est.adr.err_introuvable')); return; }
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setDpe(null);
     try {
       const res = await b1api.geocoderAdresse(q, cp || undefined);
       if (!res.ok && res.code === 'dvf_exclu') {
@@ -584,6 +585,11 @@ export function EstimationAdressePage() {
           lat: res.resultat.lat,
           lng: res.resultat.lng,
         });
+        if (res.dpe && res.dpe.type_bien && res.dpe.surface_habitable) {
+          setDpe(res.dpe);
+          setType(res.dpe.type_bien);
+          setSurface(String(res.dpe.surface_habitable));
+        }
       }
     } catch (e) {
       setError(b1t('est.adr.err_introuvable'));
@@ -601,6 +607,9 @@ export function EstimationAdressePage() {
           ...manual,
           type_bien,
           surface_habitable: Number(surface),
+          classe_dpe: dpe?.classe_dpe,
+          annee_construction: dpe?.annee_construction,
+          caracteristiques: dpe?.caracteristiques || null,
         },
       },
     });
@@ -642,27 +651,41 @@ export function EstimationAdressePage() {
               <div className="b1-h2" style={{ fontSize: 16 }}>{manual.adresse}</div>
               <div className="b1-small" style={{ marginTop: 4 }}>{manual.code_postal}</div>
 
-              <div style={{ marginTop: 16 }}>
-                <label className="b1-small">{b1t('est.adr.q_type')}</label>
-                <OptGrid>
-                  {['Appartement', 'Maison'].map((t) => (
-                    <OptBtn key={t}
-                            label={t === 'Appartement' ? b1t('est.bien.type_appart') : b1t('est.bien.type_maison')}
-                            active={type_bien === t} onClick={() => setType(t)}
-                            testid={`est-adr-type-${t.toLowerCase()}`} />
-                  ))}
-                </OptGrid>
-              </div>
+              {dpe ? (
+                <div style={{ marginTop: 16, padding: 12, background: 'var(--b1-accent-light)', borderRadius: 8 }} data-testid="est-adr-dpe-found">
+                  <div className="b1-small" style={{ fontWeight: 600 }}>{b1t('est.adr.dpe_trouve')}</div>
+                  <div className="b1-small" style={{ marginTop: 6 }}>
+                    {b1t('est.adr.dpe_type')} : <strong>{dpe.type_bien === 'Maison' ? b1t('est.bien.type_maison') : b1t('est.bien.type_appart')}</strong>
+                    {' · '}{b1t('est.adr.dpe_surface')} : <strong>{dpe.surface_habitable} m²</strong>
+                    {dpe.classe_dpe && (<>{' · DPE '}<strong>{dpe.classe_dpe}</strong></>)}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 16 }}>
+                  <div className="est-warn" data-testid="est-adr-dpe-manquant" style={{ marginBottom: 16 }}>
+                    {b1t('est.adr.dpe_manquant')}
+                  </div>
+                  <label className="b1-small">{b1t('est.adr.q_type')}</label>
+                  <OptGrid>
+                    {['Appartement', 'Maison'].map((t) => (
+                      <OptBtn key={t}
+                              label={t === 'Appartement' ? b1t('est.bien.type_appart') : b1t('est.bien.type_maison')}
+                              active={type_bien === t} onClick={() => setType(t)}
+                              testid={`est-adr-type-${t.toLowerCase()}`} />
+                    ))}
+                  </OptGrid>
 
-              <div style={{ marginTop: 12 }}>
-                <label className="b1-small">{b1t('est.adr.q_surface')}</label>
-                <input
-                  className="b1-input"
-                  data-testid="est-adr-surface"
-                  type="number" min="5" max="5000" step="1"
-                  value={surface}
-                  onChange={(e) => setSurface(e.target.value)} />
-              </div>
+                  <div style={{ marginTop: 12 }}>
+                    <label className="b1-small">{b1t('est.adr.q_surface')}</label>
+                    <input
+                      className="b1-input"
+                      data-testid="est-adr-surface"
+                      type="number" min="5" max="5000" step="1"
+                      value={surface}
+                      onChange={(e) => setSurface(e.target.value)} />
+                  </div>
+                </div>
+              )}
 
               <button
                 className="b1-pill b1-pill--primary b1-pill--fullwidth"

@@ -1,4 +1,4 @@
-"""KOLO — BLOC C1 routes : POST/GET /api/estimations + géocodage BAN.
+"""KOLO — BLOC C1 routes : POST/GET /api/estimations + géocodage BAN + DPE ADEME.
 
 Toutes préfixées `/api`. Auth requise (via `get_user_from_session`).
 Quotas via `a2.quotas.verifier_quota` (jamais dupliqué).
@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import httpx
@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from a2.config import get_config
 from a2.quotas import verifier_quota
 from a2.tz import now_utc_iso
+from a3.sources.ademe import get_schema, _canonical_from_row
 
 from .engine import (
     is_dvf_exclu,
@@ -54,7 +55,7 @@ BAN_MIN_SCORE = 0.8
 
 
 async def _geocode_ban(adresse: str, code_postal: Optional[str] = None) -> Optional[dict]:
-    """Retourne {lat, lng, adresse_normalisee, code_postal, ville, score} ou None."""
+    """Retourne {lat, lng, adresse_normalisee, code_postal, ville, score, ban_id} ou None."""
     q = adresse.strip()
     params = {"q": q, "limit": "1", "autocomplete": "0"}
     if code_postal:
@@ -86,6 +87,105 @@ async def _geocode_ban(adresse: str, code_postal: Optional[str] = None) -> Optio
         "code_postal": props.get("postcode"),
         "ville": props.get("city"),
         "score": score,
+        "ban_id": props.get("id"),
+    }
+
+
+async def _fetch_dpe_at_address(
+    client: httpx.AsyncClient,
+    ban_id: Optional[str],
+    code_postal: Optional[str],
+    adresse: Optional[str],
+) -> Optional[dict]:
+    """Cherche le DPE ADEME le plus récent pour cette adresse.
+
+    Stratégie :
+      1. Si `ban_id` connu (BAN a matché avec score ≥ 0,8), requête ADEME avec
+         `identifiant_ban:"<ban_id>"` — 100 % fiable.
+      2. Sinon, cherche par CP + rue en full-text ADEME (fallback).
+
+    Retourne le DPE canonique le plus récent, ou None si rien trouvé.
+    Timeout court (5 s) — pas question de bloquer l'estimation si ADEME est lent.
+    """
+    schema = await get_schema(client)
+    if not schema.is_ready():
+        return None
+
+    lines_url = schema.lines_url()
+    select_fields = [schema.field(c) for c in schema.to_dict().keys() if schema.field(c)]
+    date_field = schema.field("date_etablissement")
+
+    # 1) Requête par BAN id
+    if ban_id and schema.has("ban_id"):
+        ban_field = schema.field("ban_id")
+        params = {
+            "size": "3",
+            "select": ",".join(select_fields),
+            "qs": f'{ban_field}:"{ban_id}"',
+            "sort": f"-{date_field}" if date_field else None,
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        try:
+            r = await client.get(lines_url, params=params, timeout=5)
+            if r.status_code == 200:
+                rows = (r.json() or {}).get("results") or []
+                if rows:
+                    return _canonical_from_row(rows[0], schema)
+        except Exception as e:
+            logger.info(f"ADEME lookup by ban_id failed: {e}")
+
+    # 2) Fallback CP + adresse
+    if code_postal and adresse and schema.has("code_postal") and schema.has("adresse"):
+        cp_field = schema.field("code_postal")
+        adr_field = schema.field("adresse")
+        # ADEME full-text : on tolère la casse, on garde les 3 premiers tokens de l'adresse
+        adr_hint = " ".join(adresse.replace(",", " ").split()[:3])
+        params = {
+            "size": "3",
+            "select": ",".join(select_fields),
+            "qs": f'{cp_field}:"{code_postal}" AND {adr_field}:({adr_hint})',
+            "sort": f"-{date_field}" if date_field else None,
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        try:
+            r = await client.get(lines_url, params=params, timeout=5)
+            if r.status_code == 200:
+                rows = (r.json() or {}).get("results") or []
+                if rows:
+                    return _canonical_from_row(rows[0], schema)
+        except Exception as e:
+            logger.info(f"ADEME lookup by CP+adresse failed: {e}")
+
+    return None
+
+
+def _dpe_to_prefill(dpe: dict) -> dict:
+    """Extrait les champs utiles au pré-remplissage depuis un DPE ADEME canonique.
+
+    Ajoute `etage_dpe` (int) extrait de `complement_adresse` via le parseur A3 —
+    le front `prefillFromBien` s'en sert pour skipper la question « étage ».
+    """
+    from a3.job_generer_opportunites import _etage_dpe_from_complement  # type: ignore
+    type_bat = (dpe.get("type_batiment") or "").lower()
+    type_bien = "Maison" if type_bat == "maison" else ("Appartement" if type_bat in ("appartement", "immeuble") else None)
+    etage = _etage_dpe_from_complement(dpe.get("complement_adresse"))
+    caracs = {k: v for k, v in dpe.items() if k != "_raw"}
+    if etage is not None:
+        caracs["etage_dpe"] = etage
+    return {
+        "type_bien": type_bien,
+        "surface_habitable": dpe.get("surface_habitable"),
+        "annee_construction": dpe.get("annee_construction"),
+        "classe_dpe": dpe.get("classe_dpe"),
+        "classe_ges": dpe.get("classe_ges"),
+        "nb_niveaux": dpe.get("nb_niveaux"),
+        "hauteur_sous_plafond": dpe.get("hauteur_sous_plafond"),
+        "numero_dpe": dpe.get("numero_dpe"),
+        "date_etablissement": dpe.get("date_etablissement"),
+        "etage_dpe": etage,
+        # Passe le DPE entier dans `caracteristiques` — c'est ce qui alimente
+        # `prefillFromBien` côté front pour skipper les questions étage/etc.
+        "caracteristiques": caracs,
     }
 
 
@@ -96,7 +196,13 @@ class GeocodePayload(BaseModel):
 
 @router.post("/api/estimations/geocoder")
 async def geocoder_adresse(payload: GeocodePayload, request: Request):
-    """Géocodage BAN utilisé par la page « Estimer depuis une adresse »."""
+    """Géocodage BAN + lookup DPE ADEME (best-effort) pour pré-remplir le bien.
+
+    Retourne :
+      { ok: true, resultat: {...BAN...}, dpe: {...si trouvé...}, dpe_manquant?: true }
+    Le front décide ensuite : DPE trouvé ⇒ file d'estimation sans demander type/surface ;
+    DPE absent ⇒ demande type + surface (message explicite).
+    """
     await _current_user_doc(request)  # auth requise
     if not payload.adresse or len(payload.adresse.strip()) < 3:
         raise HTTPException(status_code=400, detail="adresse_trop_courte")
@@ -110,7 +216,27 @@ async def geocoder_adresse(payload: GeocodePayload, request: Request):
             "code": "dvf_exclu",
             "resultat": result,
         }
-    return {"ok": True, "resultat": result}
+    # Lookup DPE ADEME — best-effort, ne bloque JAMAIS le géocodage
+    dpe_prefill: Optional[dict] = None
+    try:
+        async with httpx.AsyncClient() as client:
+            dpe = await _fetch_dpe_at_address(
+                client,
+                ban_id=result.get("ban_id"),
+                code_postal=result.get("code_postal"),
+                adresse=result.get("adresse_normalisee") or payload.adresse,
+            )
+        if dpe:
+            dpe_prefill = _dpe_to_prefill(dpe)
+    except Exception as e:
+        logger.info(f"ADEME lookup skipped (non-fatal): {e}")
+
+    return {
+        "ok": True,
+        "resultat": result,
+        "dpe": dpe_prefill,
+        "dpe_manquant": dpe_prefill is None,
+    }
 
 
 # ---------------------------------------------------------------------------

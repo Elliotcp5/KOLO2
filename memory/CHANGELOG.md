@@ -1,5 +1,31 @@
 # KOLO - Changelog
 
+## Partie 1 — 2e passe (ADEME DPE + diagnostic perf) — 2 sept. 2026
+
+### 1. ADEME DPE dans « Estimer depuis une adresse »
+- **Nouveau helper backend `_fetch_dpe_at_address()`** dans `c1/routes.py` :
+  - Requête ADEME par **`identifiant_ban`** (fiable 100 % quand BAN score ≥ 0,8).
+  - Fallback en full-text ADEME (`code_postal:"…" AND adresse:(3 premiers mots)`).
+  - Timeout 5 s, non bloquant en cas d'échec.
+- **`POST /api/estimations/geocoder`** renvoie maintenant `{ ok, resultat, dpe, dpe_manquant }`. Le DPE contient `type_bien`, `surface_habitable`, `annee_construction`, `classe_dpe`, `classe_ges`, `etage_dpe` (extrait via regex A3), `nb_niveaux`, `hauteur_sous_plafond`, et le DPE canonique complet dans `caracteristiques`.
+- **Regex `_ETAGE_COMPLEMENT_RE` corrigée** dans `a3/job_generer_opportunites.py` pour tolérer `Etage : 6` (avant, `\s*` bloquait sur les `:`). Fix rétroactif applicable à toute l'ingestion DPE — extrait bien l'étage sur les DPE au format ADEME courant.
+- **Frontend `EstimationAdressePage`** : quand `dpe` est présent, affiche un cartouche « Diagnostic trouvé, informations pré-remplies : Type · Surface · DPE » et supprime la saisie type/surface. Le bouton ESTIMER va directement au flow avec `caracteristiques` complet, ce qui déclenche `prefillFromBien()` en aval — au final zéro question redondante.
+- **Test manuel** : `5 rue de Rivoli 75004` renvoie DPE 5,3 m² · classe G · Étage 6 · type Appartement. Le flow saute type/surface. En combinaison avec `prefillFromBien`, seule la question « état général » reste à poser.
+- **Adresse sans DPE ADEME** : le front affiche le message figé « Aucun diagnostic trouvé à cette adresse. » et demande type + surface.
+
+### 2. Diagnostic performance — pas d'index posé au jugé
+- Documenté dans **`/app/memory/DIAGNOSTIC_MARSEILLE_500M.md`** :
+  - SQL exact envoyé à Supabase (bbox 500 m Marseille avec valeurs numériques).
+  - Trois blocs `EXPLAIN (ANALYZE, BUFFERS)` à lancer dans SQL Editor Supabase (Marseille 500 m + Marseille 3000 m + Paris 500 m comparaison).
+  - Requêtes `pg_indexes` + `pg_stat_user_tables` + `pg_get_viewdef` — précision que `mutations_propres` est une vue, les index vont sur `mutations`.
+  - Note explicite : GIST demande **PostGIS**, non activé. Une simple B-tree composite `(type_local, date_mutation, latitude, longitude)` suffit probablement.
+  - Hypothèses classiques à confirmer par les plans : (a) `last_analyze` ancien → `ANALYZE`, (b) index manquant sur `(latitude, longitude)`, (c) planificateur qui préfère seq scan sur petit range.
+- **PostgREST bloque `EXPLAIN` via API** (HTTP 406). Le user lancera dans SQL Editor.
+
+### Tests
+- **120 tests passent** (27 C1 + 24 B1 + 26 B3 + 33 A3 + 10 IAP). Regex étage `_etage_dpe_from_complement` retestée indirectement par les tests A3 (test_a3_verite_terrain, test_a3_matching).
+
+
 ## Partie 1 — Correctifs post-recette (shouldAskQuestion + perf) — 2 sept. 2026
 
 ### 1. `shouldAskQuestion()` branché sur les données réelles

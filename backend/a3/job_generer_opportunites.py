@@ -335,7 +335,7 @@ def _facteur_location(days_since_location: int, cfg: dict) -> float:
     return float(cfg.get("facteur_location_perime", 0.85))
 
 
-_ETAGE_COMPLEMENT_RE = re.compile(r"\b(?:etage|étage)\s*(\d{1,2})\b|\b(rdc|rez\s*-?\s*de\s*-?\s*chauss[eé]e)\b", re.I)
+_ETAGE_COMPLEMENT_RE = re.compile(r"\b(?:etage|étage)\s*[:\-]?\s*(\d{1,2})\b|\b(rdc|rez\s*-?\s*de\s*-?\s*chauss[eé]e)\b", re.I)
 
 
 def _etage_dpe_from_complement(complement: Optional[str]) -> Optional[int]:
