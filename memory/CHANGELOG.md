@@ -1,5 +1,38 @@
 # KOLO - Changelog
 
+## Backfill etage_dpe + analyse d'impact — 2 sept. 2026
+
+### Script `scripts/backfill_etage_dpe.py`
+- Passe la regex corrigée (`Etage : X` désormais reconnu) sur `caracteristiques.complement_adresse` de toutes les opportunités où `caracteristiques.etage_dpe` est absent.
+- Bulk update par lots de 500. Idempotent (le second passage ne modifie rien).
+- Mode `--dry-run` pour rapport sans écriture.
+
+### Résultats (exécution 2 sept. 2026)
+- **60 opportunités** ont un `complement_adresse` non vide
+- **`etage_dpe` rempli AVANT** : 31 / 60 = **51,7 %**
+- **`etage_dpe` rempli APRÈS** : 34 / 60 = **56,7 %**
+- **3 opportunités mises à jour** (étages : 1×3, 2×5)
+- Le taux de complétion final (56,7 %) reflète que ~43 % des DPE ADEME n'ont AUCUN étage dans leur `complement_adresse` — la regex n'y peut rien.
+
+### Impact sur les rapprochements — UPPER BOUND
+- **87 373 rapprochements** au total en base.
+- **1 572 rapprochements** ont `breakdown.etage=0.5` (= info manquante d'au moins un côté), soit 1,8 %.
+- Zone de bascule autour des seuils décision (score peut varier de ±0,025 avec un poids 0,05 sur ce sous-score) :
+  - **Vente flip_up (opportunité → deja_en_vente_signale)** : **189** rapprochements dans `[0,725 ; 0,75)` — bien candidats à la déclassification si score gagne 0,025.
+  - **Vente flip_down (deja_en_vente → opportunité)** : **5** rapprochements dans `[0,75 ; 0,775)` — annonces rapprochées qui auraient rebasculé en opportunité si score perdait 0,025.
+  - **Location flip_up / flip_down** : 0 / 0 (aucun score location dans la zone de bascule 0,80 ± 0,025).
+  - **Stables** (hors zone) : 1 378.
+- **194 décisions maximum** auraient changé si le moteur était rejoué avec le champ corrigé.
+- **Chiffre le plus important** : jusqu'à **189 opportunités écartées à tort** faute de ce signal (annonces rapprochées avec `has_floor` renseigné, DPE dont l'étage n'a pas pu être vérifié → sous-score 0,5 → score global juste sous 0,75 → décision « ne pas signaler comme déjà en vente », mais le vrai signal aurait probablement confirmé la vente).
+
+### Caveat honnête
+C'est un UPPER BOUND. Les 1 572 rapprochements ne sont pas tous des cas où le DPE avait un `complement_adresse` avec étage parsable — beaucoup sont des cas où l'annonce n'avait tout simplement pas de champ étage. Sans re-fetch ADEME sur les DPE historiques (dont le `complement_adresse` n'a pas été stocké dans `rapprochements`), impossible de distinguer. Le vrai chiffre est **quelque part entre 0 et 194**. Pour l'obtenir de façon exacte, il faudrait rejouer le moteur sur ces 1 572 rapprochements avec un DPE ré-ingéré.
+
+### Conséquence pour la suite
+- Le sous-score `etage` continuera à ne discriminer que sur les rapprochements où l'annonce a un étage ET le DPE a un `complement_adresse` avec le mot « Etage ». Le poids 0,05 reste modeste.
+- Recommandation à trancher : envisager un job de re-scoring des rapprochements récents (< 30 jours) pour capturer les 189 opportunités potentiellement mal classées — hors périmètre BLOC C1 mais candidat au backlog.
+
+
 ## Partie 1 — 2e passe (ADEME DPE + diagnostic perf) — 2 sept. 2026
 
 ### 1. ADEME DPE dans « Estimer depuis une adresse »
