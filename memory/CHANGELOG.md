@@ -1,5 +1,68 @@
 # KOLO - Changelog
 
+## BLOC C Partie B — Session 2 : Génération PDF WeasyPrint — 2 sept. 2026
+
+### Livrables backend (`/app/backend/c2/pdf/`)
+- **`template.html.j2`** — template Jinja2 complet (couverture · sommaire · L'essentiel · SWOT · Identification · Surfaces · Énergie · Marché · Comparables · Conclusion · Mentions légales). Charte du gabarit fourni conservée : accent `#EC8690`, League Spartan (titres), DM Sans (corps), DM Mono (chiffres). Mentions légales verbatim, avec ajout de la phrase cadastre (« Les contours cadastraux ont une valeur graphique et non juridique »).
+- **`style.css`** — feuille de style dédiée avec :
+  - `@page` running header (Avis de valeur — {{ref}}) + `@bottom-*` (nom d'agence, « document non contractuel », `Page X sur Y` via `counter(page) counter(pages)`).
+  - `@page cover` sans header ni pied de page.
+  - `page-break-inside: avoid` sur sections, KPI blocks et rows de tableau.
+  - `break-after: avoid-page` sur tous les titres — une section ne se coupe jamais après son titre.
+  - `<thead>` répété en cas de rupture (`display: table-header-group`).
+  - Tags `Acté` (violet) vs `En vente` (alert red) pour distinguer les comparables.
+- **`images.py`** — `optimize_image(source)` : télécharge (timeout 4 s si http), redimensionne à 1600 px de large, recompresse JPEG q80, cache disque en `/tmp/kolo_pdf_images/{sha1}.jpg`. Silencieux, aucun message utilisateur.
+- **`renderer.py`** — `build_context()` construit un dict Jinja2 depuis le doc Mongo `dossiers` (formatage € en `1 000\u202f€`, dates FR verbeuses, pourcentages, position du pin sur l'échelle de valeur), `build_filename()` retourne `Avis-de-valeur_{slug}_YYYYMMDD.pdf` avec filet de sécurité qui strip le mot « expertise » du slug. `render_pdf()` invoque WeasyPrint.
+- **`jobs.py`** — gestionnaire de jobs asynchrones : collection `dossier_pdf_jobs` (`{status: pending|running|done|error, progress, file_path, filename, size_bytes, duration_ms}`), WeasyPrint dans `asyncio.to_thread` pour ne pas bloquer la loop, fichiers stockés dans `/tmp/kolo_pdfs/{dossier_id}/{job_id}.pdf`.
+
+### 3 nouveaux endpoints (`/app/backend/c2/routes.py`)
+- `POST /api/dossiers/{id}/generer-pdf` → `{job_id, status:pending}`, lance le rendu en tâche de fond.
+- `GET /api/dossiers/{id}/generer-pdf/{job_id}` → statut (progress, done, error).
+- `GET /api/dossiers/{id}/pdf` → `FileResponse` du dernier PDF généré, `Content-Disposition: attachment; filename="Avis-de-valeur_...pdf"`.
+
+### Règle « expertise » (verbatim message)
+Autorisé **uniquement** dans le bloc mentions (mention 1 : « il ne constitue ni une expertise immobilière ») et sur la couverture (« à distinguer d'une expertise immobilière »). Interdit dans :
+- Le titre de la page (metadata PDF `/Title` = « Avis de valeur — {ref} », jamais le mot).
+- Le sous-titre / eyebrow (`Avis de valeur`).
+- Le nom de fichier — `_slugify()` supprime explicitement le mot même si l'adresse en contient.
+- Les libellés d'énumération de sections.
+
+Test unitaire strict `test_regle_expertise` : compte les occurrences dans le texte extrait, vérifie que chacune est bien l'une des deux phrases légitimes.
+
+### Performance et poids
+- Rendu d'un dossier complet réaliste (2 comparables actés + 2 en vente, 4 atouts, 3 faiblesses, KPIs, échelle de valeur, mentions complètes) : **1.2 s, 59 Ko**.
+- Test « 20 photos réalistes (bruit 2400×1800 q92) » : **< 10 Mo** garanti après compression 1600 px q80.
+- Aucun appel réseau pendant le rendu (photos déjà cachées ou en `file://`, polices en `file:///`, données rehydratées depuis Mongo). Le test `test_render_sans_httpx_externe` bloque `httpx.get` pour vérifier.
+- Cache Géorisques/cadastre : les enrichissements sont dans les sections du dossier (pré-remplies par C1 en amont), le renderer ne les recontacte jamais. Une seconde génération sur la même parcelle ne déclenche donc aucun appel externe.
+
+### Nom de fichier
+`Avis-de-valeur_18-rue-cortambert_20260902.pdf` (slug de la première ligne d'adresse + date du jour AAAAMMJJ).
+
+### Tests
+- **`tests/test_c2_pdf.py`** — 16 tests verts :
+  - Rendu HTML minimal, polices locales, pas de Google Fonts.
+  - Nom de fichier au format, slug sans accents, filet expertise.
+  - Compression image large → JPEG q80, source absente = None.
+  - Rendu PDF < 10 s, sommaire présent, `Page X sur Y` présent, 20 photos < 10 Mo, charte `#EC8690`.
+  - Règle expertise stricte (métadonnées, corps, nom de fichier).
+  - Cache : aucun `httpx.get` pendant le rendu.
+  - Workflow HTTP e2e : POST job → poll status → GET file 200 application/pdf.
+  - 401 sans auth, 404 si PDF pas encore généré.
+- **Non-régression** : 62/62 tests C1 + C2 verts.
+
+### PDF de démonstration
+Un rendu réel avec données Muette 3P 72 m² DPE D est disponible pour relecture :
+- Preview URL : `${REACT_APP_BACKEND_URL}/demo_avis_de_valeur.pdf`
+- Local : `/app/frontend/public/demo_avis_de_valeur.pdf`
+- 7 pages, 59 Ko, généré en 1.2 s.
+
+### Reste hors périmètre (décidé)
+- **Envoi par mail natif / partage iOS** : ces boutons côté UI viendront en Session 3 (ils appellent `GET /api/dossiers/{id}/pdf` puis délèguent au partage natif Capacitor / `mailto:` avec pièce jointe).
+- **Écran de progression + Annuler** : idem, Session 3. L'endpoint status est déjà là pour l'alimenter.
+- **Partage par lien signé public** : abandonné pour cause DVF/DGFiP (les données actées ne peuvent pas être exposées derrière un lien non authentifié).
+- **Statut complet automatique** : Session 3, adossé à l'indicateur de complétude.
+
+
 ## BLOC C Partie B — Session 1 : Copie figée + Mongo + CRUD Dossier — 2 sept. 2026
 
 ### Livrables backend (`/app/backend/c2/`)

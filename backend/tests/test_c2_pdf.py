@@ -1,0 +1,363 @@
+"""Tests C2 PDF — Session 2 (génération WeasyPrint).
+
+Périmètre :
+  - Rendu du template : 22 sections, sommaire, pas de crash sur données minimales.
+  - Règle « expertise » : autorisée UNIQUEMENT dans le bloc mentions et sur la
+    couverture. Interdite dans le titre PDF (métadonnées), les libellés
+    d'énumération et le nom de fichier.
+  - Nom de fichier : `Avis-de-valeur_<slug>_YYYYMMDD.pdf`.
+  - Compression images : redimensionnement 1600 px, JPEG q80.
+  - Poids et performance : PDF < 10 Mo avec 20 photos, temps < 10 s.
+  - Aucun accès Google Fonts pendant le rendu.
+  - Job async POST → GET status → GET file.
+"""
+from __future__ import annotations
+
+import asyncio
+import io
+import os
+import re
+import secrets
+import time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import httpx
+import pypdf
+import pytest
+from motor.motor_asyncio import AsyncIOMotorClient
+from PIL import Image
+
+from c2.pdf.images import MAX_WIDTH, optimize_image
+from c2.pdf.renderer import build_filename, render_html, render_pdf
+
+
+API = "http://localhost:8001"
+
+
+def _db():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    return client[os.environ["DB_NAME"]]
+
+
+def _minimal_dossier(ref: str = "AV-2026-TEST01") -> dict:
+    return {
+        "dossier_id": f"dos_{secrets.token_hex(4)}",
+        "user_id": "u_c2_pdf_test",
+        "estimation_id": "est_x",
+        "niveau": 1,
+        "statut": "brouillon",
+        "sections": {
+            "dossier": {"ref": ref, "date_edition": "2026-02-15", "validite_mois": 6},
+            "redacteur": {"agent_nom": "Elliot Cohen", "agent_email": "e@k.io", "agence_nom": "KOLO"},
+            "mission": {"demandeur_nom": "M. Test", "objet": "mise en vente"},
+            "identification": {
+                "type_bien": "appartement", "adresse": "12 rue de Test",
+                "code_postal": "75017", "commune": "Paris 17ᵉ", "regime": "copropriété",
+                "occupation": "libre",
+            },
+            "surfaces": {"surface_habitable": 50, "surface_ponderee_totale": 50, "origine_surface": "déclaratif propriétaire"},
+            "composition": {"nb_pieces": 2},
+            "energie": {"dpe_classe": "D"},
+            "marche": {}, "methode": {"methodes_retenues": ["comparaison"]}, "comparables": {"comparables": []},
+            "swot": {"atouts": ["Lumineux"], "faiblesses": ["Bruyant"]},
+            "conclusion": {"valeur_venale": 500000, "valeur_basse": 480000, "valeur_haute": 520000, "prix_m2_retenu": 10000, "prix_presentation": 519000, "indice_confiance": "moyen"},
+            "net_vendeur": {}, "mentions": {"mention_gratuite": "gracieux", "duree_conservation": "trois ans"},
+            "signature": {"lieu": "Paris", "date_signature": "2026-02-15"},
+            "technique": {}, "copropriete": {}, "charges_fiscalite": {}, "environnement": {},
+            "ajustements": {}, "strategie": {}, "annexes": {},
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# 1. Rendu HTML minimal — pas de crash
+# ---------------------------------------------------------------------------
+class TestRenderHtml:
+    def test_render_html_minimal(self):
+        html = render_html(_minimal_dossier())
+        assert "<html" in html
+        assert "AV-2026-TEST01" in html
+        assert "Sommaire" in html
+        assert "L'essentiel" in html
+        assert "Conditions et limites de cet avis" in html
+        assert "Google Fonts" not in html
+        assert "fonts.googleapis.com" not in html
+
+    def test_render_html_polices_locales(self):
+        html = render_html(_minimal_dossier())
+        # Le HTML doit référencer les fichiers CSS locaux, pas Google
+        assert "pdf_fonts.css" in html or "file://" in html
+        assert "fonts.gstatic.com" not in html
+
+
+# ---------------------------------------------------------------------------
+# 2. Nom de fichier
+# ---------------------------------------------------------------------------
+class TestBuildFilename:
+    def test_format(self):
+        name = build_filename(_minimal_dossier())
+        assert name.startswith("Avis-de-valeur_")
+        assert name.endswith(".pdf")
+        # Date au format AAAAMMJJ
+        stamp = datetime.now().strftime("%Y%m%d")
+        assert stamp in name
+
+    def test_slug_sans_accents_ni_espaces(self):
+        d = _minimal_dossier()
+        d["sections"]["identification"]["adresse"] = "12 rue de l'Élysée, Paris"
+        name = build_filename(d)
+        assert " " not in name
+        assert "é" not in name.lower()
+        assert "elysee" in name.lower() or "rue-de-l-elysee" in name.lower()
+
+    def test_expertise_pas_dans_le_nom(self):
+        # Même si un champ contient le mot, le nom de fichier ne doit jamais l'inclure
+        d = _minimal_dossier()
+        d["sections"]["identification"]["adresse"] = "10 rue de l'Expertise, Paris"
+        name = build_filename(d)
+        assert "expertise" not in name.lower()
+
+
+# ---------------------------------------------------------------------------
+# 3. Compression images (silencieuse)
+# ---------------------------------------------------------------------------
+class TestImageCompression:
+    def _make_test_image(self, path: Path, w: int = 4000, h: int = 3000) -> None:
+        # Bruit RGB → PNG lourd (les images unies compressent trop bien)
+        img = Image.effect_noise((w, h), 30).convert("RGB")
+        img.save(path, format="PNG")
+
+    def test_large_image_downsized(self, tmp_path):
+        src = tmp_path / "big.png"
+        self._make_test_image(src, 4000, 3000)
+        assert src.stat().st_size > 100_000  # PNG lourd
+        result = optimize_image(str(src))
+        assert result is not None
+        assert result.startswith("file://")
+        cached = Path(result.replace("file://", ""))
+        with Image.open(cached) as im:
+            assert im.width <= MAX_WIDTH
+            assert im.format == "JPEG"
+
+    def test_source_absente_retourne_none(self):
+        assert optimize_image(None) is None
+        assert optimize_image("") is None
+        assert optimize_image("/tmp/n_existe_pas.png") is None
+
+
+# ---------------------------------------------------------------------------
+# 4. Rendu PDF réel : nombre de pages, mot expertise, poids
+# ---------------------------------------------------------------------------
+class TestRenderPdf:
+    def test_pdf_produit_moins_10s(self, tmp_path):
+        out = tmp_path / "avis.pdf"
+        started = time.perf_counter()
+        render_pdf(_minimal_dossier(), out)
+        elapsed = time.perf_counter() - started
+        assert out.exists()
+        assert elapsed < 10.0, f"rendu trop lent : {elapsed:.2f}s"
+        assert out.stat().st_size < 10 * 1024 * 1024, "PDF > 10 Mo"
+
+    def test_pdf_a_bien_un_sommaire_et_page_x_sur_y(self, tmp_path):
+        out = tmp_path / "avis.pdf"
+        render_pdf(_minimal_dossier(), out)
+        text = ""
+        for p in pypdf.PdfReader(str(out)).pages:
+            text += (p.extract_text() or "") + "\n"
+        # Certaines polices sont extraites glyphe par glyphe avec des null bytes
+        # intercalés (« S\x00o\x00m\x00m\x00a\x00i\x00r\x00e »). On les retire
+        # pour tester la présence sémantique du texte.
+        clean = text.replace("\x00", "")
+        assert "Sommaire" in clean
+        assert re.search(r"Page\s*\d+\s*sur\s*\d+", clean), "footer Page X sur Y manquant"
+
+    def test_regle_expertise(self, tmp_path):
+        """Autorisé : couverture (« à distinguer d'une expertise immobilière »)
+        + bloc mentions (« ni une expertise immobilière »).
+        Interdit ailleurs — titre, sous-titre, métadonnées, énumérations, nom fichier."""
+        out = tmp_path / "avis.pdf"
+        render_pdf(_minimal_dossier(), out)
+
+        reader = pypdf.PdfReader(str(out))
+        # 1. Métadonnées PDF : jamais le mot
+        meta = reader.metadata or {}
+        title = (meta.get("/Title") or "").lower()
+        assert "expertise" not in title, f"Titre PDF contient expertise: {title!r}"
+
+        # 2. Nom de fichier : jamais le mot
+        assert "expertise" not in build_filename(_minimal_dossier()).lower()
+
+        # 3. Occurrences dans le corps : uniquement dans les 2 phrases légitimes
+        full = ""
+        for p in reader.pages:
+            full += (p.extract_text() or "") + "\n"
+        full = full.replace("\x00", "")  # cf. commentaire test_pdf_sommaire
+        occurrences = [
+            m.group(0) for m in re.finditer(r"(?i)[^.]*expertise[^.]*\.", full)
+        ]
+        # Les deux phrases légitimes du gabarit (couverture + mention 1)
+        assert len(occurrences) == 2, (
+            f"attendu 2 phrases exactement, trouvé {len(occurrences)} : {occurrences}"
+        )
+        # Chaque occurrence est bien dans une phrase où le document se distingue
+        # d'une expertise, jamais où il s'y assimile
+        for phrase in occurrences:
+            p = phrase.lower()
+            assert (
+                "à distinguer d'une expertise" in p
+                or "distinguer d'une expertise" in p
+                or "ne constitue ni une expertise" in p
+            ), f"phrase non conforme : {phrase!r}"
+
+    def test_20_photos_moins_10_mo(self, tmp_path):
+        """Un dossier avec 20 photos ne doit pas dépasser 10 Mo."""
+        # Fabrique 20 images "réalistes" (bruit RGB)
+        photos: list[str] = []
+        for i in range(20):
+            path = tmp_path / f"photo_{i:02d}.jpg"
+            img = Image.effect_noise((2400, 1800), 30).convert("RGB")
+            img.save(path, format="JPEG", quality=92)
+            photos.append(str(path))
+
+        d = _minimal_dossier()
+        d["sections"]["dossier"]["photo_couverture"] = photos[0]
+        d["sections"]["annexes"]["photos"] = photos
+
+        out = tmp_path / "avis_20photos.pdf"
+        render_pdf(d, out)
+        size_mo = out.stat().st_size / 1024 / 1024
+        assert size_mo < 10.0, f"PDF de {size_mo:.2f} Mo > 10 Mo"
+
+    def test_charte_accent_ec8690(self):
+        """La couleur accent #EC8690 doit apparaître dans le CSS."""
+        style = (Path("/app/backend/c2/pdf/style.css")).read_text()
+        assert "#EC8690" in style
+
+
+# ---------------------------------------------------------------------------
+# 5. Cache Géorisques / cadastre (pas d'appel réseau sur seconde génération)
+# ---------------------------------------------------------------------------
+class TestCacheEnrichissements:
+    """Le renderer ne doit JAMAIS appeler Géorisques ni cadastre pendant la
+    génération. Toutes les données du dossier viennent déjà de Mongo (pré-
+    remplies par C1 + saisie utilisateur)."""
+
+    def test_render_sans_httpx_externe(self, tmp_path, monkeypatch):
+        # On stub httpx.get pour lever si appelé (sauf images en file://)
+        import c2.pdf.images as imgmod
+        calls: list[str] = []
+        original = imgmod.httpx
+
+        class _Blocker:
+            @staticmethod
+            def get(url, *a, **kw):
+                calls.append(url)
+                raise RuntimeError(f"httpx.get called during render: {url}")
+
+        monkeypatch.setattr(imgmod, "httpx", _Blocker)
+        out = tmp_path / "avis.pdf"
+        render_pdf(_minimal_dossier(), out)
+        assert out.exists()
+        assert calls == [], f"appels réseau imprévus : {calls}"
+
+
+# ---------------------------------------------------------------------------
+# 6. Intégration HTTP : POST job → GET status → GET file
+# ---------------------------------------------------------------------------
+async def _seed_user_and_session(db, user_id: str) -> str:
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id, "email": "pdf@test.io", "prenom": "PDF", "nom": "Test",
+            "infos_pro": {"agence": "PDF Agence", "carte_t": "CPI-01-2024-000042"},
+        }},
+        upsert=True,
+    )
+    token = "test_" + secrets.token_urlsafe(16)
+    await db.user_sessions.insert_one({
+        "session_token": token,
+        "user_id": user_id,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+    })
+    return token
+
+
+async def _cleanup(db, user_id: str) -> None:
+    await db.dossier_pdf_jobs.delete_many({"user_id": user_id})
+    await db.dossiers.delete_many({"user_id": user_id})
+    await db.estimations.delete_many({"user_id": user_id})
+    await db.user_sessions.delete_many({"user_id": user_id})
+    await db.users.delete_one({"user_id": user_id})
+
+
+@pytest.mark.asyncio
+async def test_http_pdf_workflow_end_to_end():
+    db = _db()
+    user_id = f"u_c2_pdf_e2e_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        # Crée directement un dossier en base (pas d'estimation nécessaire ici)
+        dossier = _minimal_dossier()
+        dossier["user_id"] = user_id
+        await db.dossiers.insert_one(dict(dossier))
+        dossier_id = dossier["dossier_id"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        async with httpx.AsyncClient(base_url=API, timeout=15) as client:
+            # POST — lance le job
+            r = await client.post(f"/api/dossiers/{dossier_id}/generer-pdf", headers=headers)
+            assert r.status_code == 200
+            job_id = r.json()["job_id"]
+
+            # Poll jusqu'à `done`, cap 10 s
+            done = False
+            for _ in range(50):
+                await asyncio.sleep(0.2)
+                r = await client.get(
+                    f"/api/dossiers/{dossier_id}/generer-pdf/{job_id}", headers=headers,
+                )
+                assert r.status_code == 200
+                status = r.json()["job"]["status"]
+                if status == "done":
+                    done = True
+                    break
+                assert status in ("pending", "running"), status
+            assert done, "PDF non généré sous 10 s"
+
+            # GET fichier
+            r = await client.get(f"/api/dossiers/{dossier_id}/pdf", headers=headers)
+            assert r.status_code == 200
+            assert r.headers["content-type"] == "application/pdf"
+            assert r.content[:4] == b"%PDF"
+            cd = r.headers.get("content-disposition", "")
+            assert "Avis-de-valeur_" in cd
+    finally:
+        await _cleanup(db, user_id)
+
+
+@pytest.mark.asyncio
+async def test_http_pdf_401_sans_auth():
+    async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+        r = await client.post("/api/dossiers/x/generer-pdf")
+        assert r.status_code == 401
+        r = await client.get("/api/dossiers/x/pdf")
+        assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_http_pdf_pas_encore_genere():
+    db = _db()
+    user_id = f"u_c2_pdf_nope_{secrets.token_hex(3)}"
+    try:
+        token = await _seed_user_and_session(db, user_id)
+        d = _minimal_dossier()
+        d["user_id"] = user_id
+        await db.dossiers.insert_one(dict(d))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(base_url=API, timeout=5) as client:
+            r = await client.get(f"/api/dossiers/{d['dossier_id']}/pdf", headers=headers)
+            assert r.status_code == 404
+            assert "pdf_pas_encore_genere" in r.text
+    finally:
+        await _cleanup(db, user_id)

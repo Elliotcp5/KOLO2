@@ -1,0 +1,285 @@
+{#-
+  C2 — Template Jinja2 « Avis de valeur »
+  Adaptation du gabarit graphique fourni, syntaxe Jinja2 stricte.
+  Polices : `pdf_fonts.css` en `file:///` (pas de Google Fonts).
+  Sommaire avec numéros de page dynamiques via `target-counter(...)`.
+-#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Avis de valeur — {{ dossier.ref }}</title>
+<link rel="stylesheet" href="file://{{ fonts_css_path }}">
+<link rel="stylesheet" href="file://{{ style_css_path }}">
+</head>
+<body>
+
+{#-------- running elements pour @top-left/right ----------#}
+<div class="runheadL">Avis de valeur — {{ dossier.ref }}</div>
+<div class="runheadR">{{ agence_nom_short }}</div>
+<div class="string-agence">{{ agence_nom_short }} — Avis de valeur {{ dossier.ref }}</div>
+
+{#================ 1. COUVERTURE =====================#}
+<div class="cover cover-wrap">
+  <div class="cover-top">
+    <div class="brandmark">{{ agence_nom or "" }}</div>
+    <div class="eyebrow">Dossier {{ dossier.ref }}</div>
+  </div>
+
+  <div class="cover-title">
+    <div class="eyebrow">Avis de valeur</div>
+    <h1>{{ adresse_ligne1 or "—" }}<br>{{ code_postal or "" }} {{ commune or "" }}</h1>
+    <div class="sub">
+      {{ type_bien_label or "—" }}
+      {%- if nb_pieces %} — {{ nb_pieces }} pièces{% endif -%}
+      {%- if surface_habitable %} — {{ surface_habitable }} m²{% endif -%}
+      {%- if surface_terrain %} sur {{ surface_terrain }} m² de terrain{% endif -%}
+    </div>
+  </div>
+
+  {% if photo_couverture %}
+  <img class="cover-photo" src="{{ photo_couverture }}" alt="">
+  {% else %}
+  <div class="cover-photo-placeholder">Photo à ajouter</div>
+  {% endif %}
+
+  <div class="cover-meta">
+    <div><div class="k">Établi le</div><div class="v num">{{ date_edition_fr or "—" }}</div></div>
+    <div><div class="k">Visite du</div><div class="v num">{{ date_visite_fr or "—" }}</div></div>
+    <div><div class="k">À l'attention de</div><div class="v">{{ demandeur_nom or "—" }}</div></div>
+    <div><div class="k">Objet</div><div class="v">{{ objet or "—" }}</div></div>
+  </div>
+
+  <div class="cover-legal">
+    {%- if agent_nom %}Document établi par {{ agent_nom }}{% if agent_qualite %}, {{ agent_qualite }}{% endif %}
+      {%- if agent_tel %} — {{ agent_tel }}{% endif %}{% if agent_email %} — {{ agent_email }}{% endif %}<br>{% endif -%}
+    {%- if agence_nom %}{{ agence_nom }}{% if agence_forme %}, {{ agence_forme }}{% endif %}
+      {%- if agence_siren %} — SIREN {{ agence_siren }}{% endif %}{% if agence_adresse %} — {{ agence_adresse }}{% endif %}<br>{% endif -%}
+    {%- if carte_pro %}Carte professionnelle T n° {{ carte_pro }}{% if carte_pro_cci %} délivrée par la {{ carte_pro_cci }}{% endif %}
+      {%- if rcp_assureur %} — RCP {{ rcp_assureur }}{% if rcp_police %} n° {{ rcp_police }}{% endif %}{% endif %}<br>{% endif -%}
+    Avis de valeur, à distinguer d'une expertise immobilière. Valable {{ validite_mois }} mois à compter du {{ date_edition_fr }}.
+  </div>
+</div>
+
+{#================ 2. SOMMAIRE =====================#}
+<div class="toc-page">
+  <div class="toc">
+    <h1>Sommaire</h1>
+    <ol class="toc-list">
+      {% for entry in toc %}
+      <li>
+        <a href="#{{ entry.id }}">
+          <span class="n">{{ '%02d' % entry.num }}</span>
+          <span class="lbl">{{ entry.label }}</span>
+        </a>
+        <span class="p" href="#{{ entry.id }}"></span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
+
+{#================ 3. L'ESSENTIEL =====================#}
+<section id="sec-essentiel" class="sec page-break">
+  <div class="sec-head"><span class="sec-num">01</span><h2>L'essentiel</h2></div>
+
+  <div class="eyebrow">Valeur vénale retenue</div>
+  <div class="headline-value num">{{ valeur_venale_fr or "—" }}</div>
+  <div class="headline-sub">
+    {%- if prix_m2_retenu_fr %}soit {{ prix_m2_retenu_fr }} / m²{% endif -%}
+    {%- if surface_ponderee_totale %} sur une surface pondérée de {{ surface_ponderee_totale }} m²{% endif -%}
+    {%- if indice_confiance %} — indice de confiance {{ indice_confiance }}{% endif -%}
+  </div>
+
+  {% if valeur_basse_fr and valeur_haute_fr %}
+  <div class="scale">
+    <div class="scale-rail">
+      <div class="scale-tick" style="left:0"></div>
+      <div class="scale-tick" style="right:0"></div>
+      <div class="scale-pin" style="left:{{ position_valeur_pct or 50 }}%"><div class="dot"></div></div>
+    </div>
+    <div class="scale-labels">
+      <div style="text-align:left"><div class="k">Fourchette basse</div><div class="v num">{{ valeur_basse_fr }}</div></div>
+      <div class="center"><div class="k">Prix de présentation</div><div class="v num">{{ prix_presentation_fr or "—" }}</div></div>
+      <div style="text-align:right"><div class="k">Fourchette haute</div><div class="v num">{{ valeur_haute_fr }}</div></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="kpis">
+    <div class="kpi"><div class="k">Marché du quartier</div><div class="v num">{{ prix_m2_segment_fr or "—" }}</div><div class="s">prix médian au m²</div></div>
+    <div class="kpi"><div class="k">Délai de vente</div><div class="v num">{{ delai_vente_moyen or "—" }}{% if delai_vente_moyen %} j{% endif %}</div><div class="s">moyenne du segment</div></div>
+    <div class="kpi"><div class="k">Concurrence</div><div class="v num">{{ stock_concurrent or "—" }}</div><div class="s">biens comparables</div></div>
+    <div class="kpi"><div class="k">Étiquette</div><div class="v">{{ dpe_classe or "—" }}</div><div class="s">{{ dpe_conso or "" }}{% if dpe_conso %} kWh/m²/an{% endif %}</div></div>
+  </div>
+</section>
+
+{% if atouts or faiblesses %}
+<section id="sec-swot" class="sec">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Atouts et points de vigilance</h2></div>
+  <div class="two">
+    <div>
+      <div class="eyebrow" style="margin-bottom:2mm">Ce qui porte la valeur</div>
+      <ul class="plain">{% for a in atouts %}<li>{{ a }}</li>{% endfor %}</ul>
+    </div>
+    <div>
+      <div class="eyebrow" style="margin-bottom:2mm">Ce qui la freine</div>
+      <ul class="plain warn">{% for f in faiblesses %}<li>{{ f }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{#================ 4. LE BIEN =====================#}
+<section id="sec-identification" class="sec page-break">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Identification du bien</h2></div>
+  <div class="dl">
+    <div class="row"><span class="k">Type de bien</span><span class="v">{{ type_bien_label or "—" }}</span></div>
+    <div class="row"><span class="k">Année de construction</span><span class="v num">{{ annee_construction or "—" }}</span></div>
+    <div class="row"><span class="k">Régime</span><span class="v">{{ regime or "—" }}</span></div>
+    <div class="row"><span class="k">Occupation</span><span class="v">{{ occupation or "—" }}</span></div>
+    {% if etage is not none %}<div class="row"><span class="k">Étage</span><span class="v num">{{ etage }}{% if nb_etages_immeuble %} sur {{ nb_etages_immeuble }}{% endif %}</span></div>{% endif %}
+    {% if ascenseur is not none %}<div class="row"><span class="k">Ascenseur</span><span class="v">{{ "oui" if ascenseur else "non" }}</span></div>{% endif %}
+    {% if exposition_principale %}<div class="row"><span class="k">Exposition</span><span class="v">{{ exposition_principale }}</span></div>{% endif %}
+    {% if vue %}<div class="row"><span class="k">Vue</span><span class="v">{{ vue }}</span></div>{% endif %}
+    {% if cadastre_section or cadastre_numero %}<div class="row"><span class="k">Références cadastrales</span><span class="v num">{{ cadastre_section }} {{ cadastre_numero }}</span></div>{% endif %}
+    {% if nature_propriete %}<div class="row"><span class="k">Nature de la propriété</span><span class="v">{{ nature_propriete }}</span></div>{% endif %}
+  </div>
+</section>
+
+<section id="sec-surfaces" class="sec">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Surfaces</h2></div>
+  {% if origine_surface %}<p class="sec-note">Surfaces {{ origine_surface }}. Les annexes sont retenues après application des coefficients ci-dessous, seule base de comparaison valable avec les transactions du secteur.</p>{% endif %}
+  <table>
+    <thead><tr><th>Poste</th><th class="n">Surface</th><th class="n">Coefficient</th><th class="n">Surface retenue</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Surface habitable{% if surface_carrez %} (Carrez : {{ surface_carrez }} m²){% endif %}</td>
+        <td class="n num">{{ surface_habitable or "—" }}{% if surface_habitable %} m²{% endif %}</td>
+        <td class="n num">1,00</td>
+        <td class="n num">{{ surface_habitable or "—" }}{% if surface_habitable %} m²{% endif %}</td>
+      </tr>
+      {% for a in annexes_ponderees %}
+      <tr>
+        <td>{{ a.nature }}</td>
+        <td class="n num">{{ a.surface }} m²</td>
+        <td class="n num">{{ '%.2f'|format(a.coef|float) }}</td>
+        <td class="n num">{{ a.surface_ponderee }} m²</td>
+      </tr>
+      {% endfor %}
+      <tr class="total"><td>Surface pondérée totale</td><td class="n"></td><td class="n"></td><td class="n num">{{ surface_ponderee_totale or "—" }}{% if surface_ponderee_totale %} m²{% endif %}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+{#================ 5. ÉNERGIE =====================#}
+<section id="sec-energie" class="sec">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Performance énergétique</h2></div>
+  <div style="display:flex; gap:10mm; align-items:flex-start">
+    <div>
+      <div class="eyebrow" style="margin-bottom:2mm">DPE {% if dpe_conso %}— {{ dpe_conso }} kWh/m²/an{% endif %}</div>
+      <div class="dpe-bar">
+        {% for cls in ['A','B','C','D','E','F','G'] %}
+        <span class="g-{{ cls|lower }}{% if dpe_classe == cls %} on{% endif %}">{{ cls }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="dl" style="grid-template-columns:1fr">
+        {% if ges_classe %}<div class="row"><span class="k">Classe GES</span><span class="v">{{ ges_classe }}{% if dpe_emissions %} — {{ dpe_emissions }} kg CO2/m²/an{% endif %}</span></div>{% endif %}
+        {% if dpe_date_fr %}<div class="row"><span class="k">DPE réalisé le</span><span class="v num">{{ dpe_date_fr }}{% if dpe_validite_fr %}, valable jusqu'au {{ dpe_validite_fr }}{% endif %}</span></div>{% endif %}
+        {% if passoire %}
+        <div class="row"><span class="k" style="color:var(--alert)">Passoire énergétique</span><span class="v" style="color:var(--alert)">Location interdite à compter du {{ interdiction_location or "—" }}</span></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{#================ 6. MARCHÉ =====================#}
+<section id="sec-marche" class="sec page-break">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Marché local</h2></div>
+  {% if ecart_affiche_acte %}<p class="sec-note">Données issues des valeurs foncières publiées, c'est-à-dire des prix réellement actés chez le notaire, et non des prix affichés dans les annonces. Sur ce secteur, l'écart moyen entre les deux est de {{ ecart_affiche_acte }}.</p>{% endif %}
+  <div class="kpis">
+    <div class="kpi"><div class="k">Commune</div><div class="v num">{{ prix_m2_commune_fr or "—" }}</div><div class="s">médian au m²</div></div>
+    <div class="kpi"><div class="k">Quartier</div><div class="v num">{{ prix_m2_quartier_fr or "—" }}</div><div class="s">{{ quartier or "" }}</div></div>
+    <div class="kpi"><div class="k">Segment</div><div class="v num">{{ prix_m2_segment_fr or "—" }}</div><div class="s">{{ type_bien_label }}{% if nb_pieces %} {{ nb_pieces }} pièces{% endif %}</div></div>
+    <div class="kpi"><div class="k">Sur 12 mois</div><div class="v num">{{ evolution_12m or "—" }}</div><div class="s">{{ volume_transactions or "" }}{% if volume_transactions %} transactions{% endif %}</div></div>
+  </div>
+</section>
+
+{#================ 7. COMPARABLES =====================#}
+<section id="sec-comparables" class="sec">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Références comparables</h2></div>
+  {% if justification_methode %}<p class="sec-note">Méthode retenue : {{ (methodes_retenues or [])|join(', ') }}. {{ justification_methode }}</p>{% endif %}
+  <table>
+    <thead>
+      <tr>
+        <th>Nature</th><th>Adresse</th><th class="n">Surf.</th><th class="n">Étage</th>
+        <th class="n">DPE</th><th class="n">Prix</th><th class="n">€/m²</th>
+        <th class="n">Ajust.</th><th class="n">€/m² corrigé</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in comparables %}
+      <tr>
+        <td><span class="tag {% if c.nature == 'vente actée' %}acte{% else %}affiche{% endif %}">{% if c.nature == 'vente actée' %}Acté{% else %}En vente{% endif %}</span></td>
+        <td>{{ c.adresse or "—" }}{% if c.distance or c.date %}<div class="muted" style="font-size:7.6pt">{% if c.distance %}{{ c.distance }}{% endif %}{% if c.distance and c.date %} — {% endif %}{% if c.date %}{{ c.date }}{% endif %}</div>{% endif %}</td>
+        <td class="n num">{{ c.surface or "—" }}</td>
+        <td class="n num">{{ c.etage if c.etage is not none else "—" }}</td>
+        <td class="n">{{ c.dpe or "—" }}</td>
+        <td class="n num">{{ c.prix_fr or c.prix or "—" }}</td>
+        <td class="n num">{{ c.prix_m2_fr or c.prix_m2 or "—" }}</td>
+        <td class="n num">{{ c.ajustement_fr or "—" }}{% if c.justification %}<div class="muted" style="font-size:7.4pt">{{ c.justification }}</div>{% endif %}</td>
+        <td class="n num">{{ c.prix_m2_corrige_fr or c.prix_m2_corrige or "—" }}</td>
+      </tr>
+      {% endfor %}
+      {% if prix_m2_moyen_corrige_fr %}<tr class="total"><td colspan="8">Prix au m² moyen corrigé</td><td class="n num">{{ prix_m2_moyen_corrige_fr }}</td></tr>{% endif %}
+    </tbody>
+  </table>
+</section>
+
+{#================ 8. CONCLUSION =====================#}
+<section id="sec-conclusion" class="sec page-break">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Conclusion de valeur</h2></div>
+  <div class="dl">
+    <div class="row"><span class="k">Valeur vénale</span><span class="v num">{{ valeur_venale_fr or "—" }}</span></div>
+    <div class="row"><span class="k">Prix au m² retenu</span><span class="v num">{{ prix_m2_retenu_fr or "—" }}</span></div>
+    <div class="row"><span class="k">Fourchette</span><span class="v num">{{ valeur_basse_fr }} – {{ valeur_haute_fr }}</span></div>
+    <div class="row"><span class="k">Prix de présentation conseillé</span><span class="v num">{{ prix_presentation_fr or "—" }}</span></div>
+    {% if marge_negociation_fr %}<div class="row"><span class="k">Marge de négociation intégrée</span><span class="v num">{{ marge_negociation_fr }}</span></div>{% endif %}
+    {% if net_vendeur_fr %}<div class="row"><span class="k">Net vendeur estimé</span><span class="v num">{{ net_vendeur_fr }}</span></div>{% endif %}
+  </div>
+  {% if adjust_motif %}
+  <p class="sec-note" style="margin-top:4mm">Ajustement manuel — {{ adjust_motif }}.</p>
+  {% endif %}
+</section>
+
+{#================ 9. MENTIONS LÉGALES =====================#}
+<section id="sec-mentions" class="sec page-break">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Conditions et limites de cet avis</h2></div>
+  <div class="legal">
+    <p><b>Nature du document.</b> Le présent document constitue un avis de valeur établi par un professionnel de la transaction immobilière. Il ne constitue ni une expertise immobilière, ni une évaluation judiciaire, ni une certification de valeur.</p>
+    <p><b>Portée.</b> Cet avis n'a pas de caractère contractuel. Il n'est opposable ni aux tiers, ni à l'administration fiscale, ni à un établissement bancaire, et n'engage pas son auteur sur le prix auquel le bien sera effectivement cédé, le prix de vente résultant de la seule rencontre de l'offre et de la demande.</p>
+    <p><b>Validité.</b> Les valeurs indiquées s'apprécient à la date du {{ date_edition_fr }} et dans les conditions de marché constatées à cette date. Elles sont réputées valables {{ validite_mois }} mois. Au-delà, une réactualisation est nécessaire.</p>
+    <p><b>Informations retenues.</b> Cet avis a été établi à partir des éléments observés lors de la visite du {{ date_visite_fr or "—" }}, des documents communiqués par le demandeur et des bases de données publiques consultées (valeurs foncières, diagnostics de performance énergétique, cadastre). L'exactitude des éléments déclarés n'a pas été vérifiée.</p>
+    <p><b>Absence de contrôle technique et juridique.</b> Aucun sondage destructif, aucun contrôle de structure, de conformité aux règles d'urbanisme, de conformité des installations ni d'analyse du titre de propriété n'a été réalisé. Les surfaces retenues sont {{ origine_surface or "déclaratives" }} et ne se substituent pas à un mesurage certifié. La présence éventuelle de vices cachés, de pollution ou de non-conformités non apparentes n'est pas prise en compte. Les contours cadastraux figurant dans le présent document ont une valeur graphique et non juridique&nbsp;: seul un acte notarié ou un procès-verbal de bornage établit les limites de propriété.</p>
+    <p><b>Confidentialité.</b> Ce document est établi à l'attention exclusive de {{ demandeur_nom or "—" }} pour l'objet mentionné en couverture. Toute diffusion, reproduction ou utilisation à d'autres fins requiert l'accord écrit de son auteur.</p>
+    <p><b>Conditions financières.</b> {{ mention_gratuite }}</p>
+    <p><b>Données personnelles.</b> Les données recueillies sont traitées par {{ agence_nom or "l'agence" }} aux fins d'établissement du présent avis et, le cas échéant, de commercialisation du bien. Elles sont conservées {{ duree_conservation }} et ne font l'objet d'aucune cession à des tiers à des fins commerciales. Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition, exerçable auprès de {{ agent_email or agence_nom }}.</p>
+  </div>
+
+  <div class="sign">
+    <div class="box">
+      Fait à {{ lieu or "—" }}, le {{ date_signature_fr or date_edition_fr }}<br>
+      <b>{{ agent_nom or "—" }}</b>{% if agent_qualite %}, {{ agent_qualite }}{% endif %}<br>
+      {{ agence_nom or "" }}{% if carte_pro %} — Carte T n° {{ carte_pro }}{% endif %}
+    </div>
+    <div class="box" style="text-align:right; color:var(--muted); font-size:8pt;">
+      {% if signature_image %}<img src="{{ signature_image }}" alt="" style="max-height:18mm">{% else %}Signature du conseiller{% endif %}
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+/* ============================================================================
+ *  C2 — Feuille de style du PDF « Avis de valeur »
+ *  Charte identique au gabarit fourni : accent #EC8690, League Spartan (titres),
+ *  DM Sans (corps), DM Mono (chiffres et eyebrows).
+ *  Polices locales via `pdf_fonts.css` — aucune requête Google Fonts.
+ * ============================================================================ */
+
+:root{
+  --cream:#FFFFFF;
+  --navy:#1A1A1A;
+  --ink:#2A2536;
+  --muted:#6E6880;
+  --rule:#D8D3CB;
+  --accent:#EC8690;
+  --violet:#D9707B;
+  --grad:linear-gradient(90deg,#EC8690 0%,#D9707B 100%);
+  --alert:#B23A2E;
+  --gris-doux:#F0EEF8;
+}
+
+/* ---- @page : marges, en-tête et pied de page communs ---- */
+@page{
+  size:A4;
+  margin:22mm 15mm 20mm;
+  @top-left{
+    content: element(runheadL);
+    font-family:"DM Mono",ui-monospace,monospace;
+    font-size:7.2pt; letter-spacing:.14em; text-transform:uppercase;
+    color:#6E6880;
+  }
+  @top-right{
+    content: element(runheadR);
+    font-family:"DM Mono",ui-monospace,monospace;
+    font-size:7.2pt; letter-spacing:.14em; text-transform:uppercase;
+    color:#6E6880;
+  }
+  @bottom-left{
+    content: string(agence-mention);
+    font-family:"DM Sans",sans-serif;
+    font-size:7.6pt; color:#6E6880;
+  }
+  @bottom-center{
+    content: "Avis de valeur — document non contractuel";
+    font-family:"DM Sans",sans-serif;
+    font-size:7.6pt; color:#6E6880;
+  }
+  @bottom-right{
+    content: "Page " counter(page) " sur " counter(pages);
+    font-family:"DM Mono",ui-monospace,monospace;
+    font-size:7.6pt; color:#2A2536; font-variant-numeric:tabular-nums;
+  }
+}
+
+/* La couverture n'a ni en-tête ni pied de page */
+@page cover{
+  margin:16mm 15mm 16mm;
+  @top-left{ content: none; }
+  @top-right{ content: none; }
+  @bottom-left{ content: none; }
+  @bottom-center{ content: none; }
+  @bottom-right{ content: none; }
+}
+.cover{ page: cover; }
+
+/* Le sommaire n'affiche pas encore le running header */
+@page toc{
+  @top-left{ content: none; }
+  @top-right{ content: none; }
+}
+.toc-page{ page: toc; }
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family:"DM Sans",system-ui,sans-serif;
+  font-size:9.8pt; line-height:1.5; color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+
+h1,h2,h3,h4,.display{
+  font-family:"League Spartan",sans-serif;
+  color:var(--navy); margin:0; font-weight:700;
+  letter-spacing:-.01em;
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+
+.eyebrow{
+  font-family:"DM Mono",ui-monospace,monospace; font-size:7.2pt; font-weight:500;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+}
+.num{ font-family:"DM Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+.muted{ color:var(--muted); }
+.hair{ border:0; border-top:1px solid var(--rule); margin:3mm 0; }
+hr.rule{ border:0; border-top:1px solid var(--rule); margin:6mm 0; }
+
+.page-break{ page-break-before: always; break-before: page; }
+
+/* running elements : le back envoie ces valeurs, le CSS les projette dans @page */
+.runheadL{ position: running(runheadL); }
+.runheadR{ position: running(runheadR); }
+.string-agence{ string-set: agence-mention content(); display:none; }
+
+/* ---------- couverture ---------- */
+.cover-wrap{ min-height: 260mm; display:flex; flex-direction:column; }
+.cover-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+.brandmark{ font-family:"League Spartan",sans-serif; font-weight:700; font-size:14pt; letter-spacing:.02em; color:var(--navy); }
+.cover-title{ margin-top:22mm; }
+.cover-title .eyebrow{ margin-bottom:5mm; }
+.cover-title h1{ font-size:34pt; line-height:1.02; letter-spacing:-.02em; }
+.cover-title .sub{ font-size:13pt; font-weight:400; color:var(--ink); margin-top:5mm; font-family:"DM Sans",sans-serif; }
+.cover-photo{
+  margin:9mm 0 6mm; height:82mm; width:100%; object-fit:cover; display:block;
+  background:var(--gris-doux); border:1px solid var(--rule);
+}
+.cover-photo-placeholder{
+  margin:9mm 0 6mm; height:82mm; width:100%; background:var(--gris-doux);
+  border:1px solid var(--rule); display:flex; align-items:center; justify-content:center;
+  color:var(--muted); font-family:"DM Mono",monospace; font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+}
+.cover-meta{ display:grid; grid-template-columns:repeat(4,1fr); gap:5mm; margin-top:auto; padding-top:5mm; border-top:1px solid var(--rule); }
+.cover-meta .k{ font-size:7pt; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-family:"DM Mono",monospace; }
+.cover-meta .v{ font-size:10pt; color:var(--navy); font-weight:500; margin-top:1.5mm; }
+.cover-legal{ font-size:7.6pt; color:var(--muted); margin-top:6mm; line-height:1.5; }
+
+/* ---------- sommaire ---------- */
+.toc{ margin-top:8mm; }
+.toc h1{ font-size:24pt; margin-bottom:6mm; }
+.toc-list{ list-style:none; margin:0; padding:0; }
+.toc-list li{ display:flex; align-items:baseline; padding:2.8mm 0; border-bottom:1px dashed var(--rule); }
+.toc-list .n{ font-family:"DM Mono",monospace; font-size:8.5pt; color:var(--violet); width:12mm; }
+.toc-list .lbl{ flex:1; font-size:10.5pt; color:var(--navy); }
+.toc-list .p{ font-family:"DM Mono",monospace; font-size:9pt; color:var(--muted); }
+.toc-list .p::before{ content: target-counter(attr(href), page); }
+.toc-list a{ display:flex; flex:1; align-items:baseline; text-decoration:none; color:inherit; }
+
+/* ---------- sections ---------- */
+section.sec{ margin: 2mm 0 8mm; }
+.sec-head{ display:flex; align-items:baseline; gap:4mm; margin-bottom:3mm; break-after: avoid-page; page-break-after: avoid; }
+.sec-num{ font-family:"DM Mono",monospace; font-size:9pt; color:var(--violet); font-weight:500; }
+.sec-head h2{ font-size:15pt; }
+.sec-note{ font-size:8.6pt; color:var(--muted); margin:-1mm 0 4mm 0; }
+
+/* évite de couper juste après un titre — safety net */
+h1 + *, h2 + *, h3 + * { page-break-before: avoid; break-before: avoid; }
+
+/* ---------- l'essentiel ---------- */
+.headline-value{ font-family:"League Spartan",sans-serif; font-size:38pt; font-weight:700; color:var(--navy); line-height:1; letter-spacing:-.025em; }
+.headline-sub{ font-size:10pt; color:var(--muted); margin-top:2mm; }
+
+.scale{ margin:9mm 0 4mm; page-break-inside: avoid; break-inside: avoid; }
+.scale-rail{ position:relative; height:5px; background:var(--grad); border-radius:3px; }
+.scale-tick{ position:absolute; top:-4px; width:2px; height:13px; background:var(--navy); }
+.scale-pin{ position:absolute; top:-11px; transform:translateX(-50%); }
+.scale-pin .dot{ width:11px; height:11px; border-radius:50%; background:var(--cream); border:3px solid var(--navy); margin:0 auto; }
+.scale-labels{ display:flex; justify-content:space-between; margin-top:4mm; }
+.scale-labels div{ text-align:center; flex:1; }
+.scale-labels .k{ font-family:"DM Mono",monospace; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.scale-labels .v{ font-size:11pt; font-weight:700; color:var(--navy); font-family:"League Spartan",sans-serif; margin-top:1mm; }
+.scale-labels .center .v{ font-size:13pt; }
+
+.kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:5mm; margin-top:8mm; page-break-inside: avoid; break-inside: avoid; }
+.kpi{ padding:5mm 4mm; background:var(--gris-doux); border-radius:3mm; border:1px solid var(--rule); }
+.kpi .k{ font-family:"DM Mono",monospace; font-size:7pt; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.kpi .v{ font-family:"League Spartan",sans-serif; font-size:16pt; font-weight:700; color:var(--navy); margin-top:2mm; }
+.kpi .s{ font-size:8.4pt; color:var(--muted); margin-top:1.5mm; }
+
+.two{ display:grid; grid-template-columns:1fr 1fr; gap:8mm; }
+.plain{ padding-left:4mm; margin:0; }
+.plain li{ margin:0 0 2mm; }
+.plain.warn li::marker{ color:var(--alert); }
+
+.dl{ display:grid; grid-template-columns:1fr 1fr; gap:2mm 8mm; }
+.dl .row{ display:flex; justify-content:space-between; padding:2mm 0; border-bottom:1px solid var(--rule); font-size:9.6pt; }
+.dl .row .k{ color:var(--muted); }
+.dl .row .v{ color:var(--navy); font-weight:500; }
+
+/* ---------- tableaux ---------- */
+table{ width:100%; border-collapse:collapse; font-size:9.4pt; }
+table thead{ display: table-header-group; }
+table tfoot{ display: table-footer-group; }
+table tr{ page-break-inside: avoid; break-inside: avoid; }
+table th{
+  text-align:left; padding:2.5mm 2mm; font-weight:500;
+  font-family:"DM Mono",monospace; font-size:7.8pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+  border-bottom:1.5px solid var(--rule); background:var(--gris-doux);
+}
+table td{ padding:2.8mm 2mm; border-bottom:1px solid var(--rule); vertical-align: top; }
+table td.n, table th.n{ text-align:right; }
+table tr.total td{ font-weight:700; background:#FCFCFF; border-top:1.5px solid var(--rule); }
+.tag{ display:inline-block; padding:.6mm 1.8mm; font-family:"DM Mono",monospace; font-size:7.2pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; border-radius:1.5mm; }
+.tag.acte{ background:#F0EEF8; color:var(--violet); }
+.tag.affiche{ background:#FDECEE; color:var(--alert); }
+
+/* ---------- DPE bar ---------- */
+.dpe-bar{ display:flex; flex-direction:column; gap:.6mm; width:38mm; }
+.dpe-bar span{
+  font-family:"League Spartan",sans-serif; font-weight:700;
+  padding:1.4mm 2mm; color:#fff; font-size:9pt; letter-spacing:.02em;
+}
+.dpe-bar .on{ outline:2px solid var(--navy); outline-offset:1px; }
+.g-a{ background:#0A9F58; width:60%; }
+.g-b{ background:#38B04A; width:66%; }
+.g-c{ background:#8CC63F; width:72%; }
+.g-d{ background:#FFD200; width:78%; color:#333; }
+.g-e{ background:#F8A93C; width:84%; }
+.g-f{ background:#E96924; width:90%; }
+.g-g{ background:#D9291D; width:96%; }
+
+/* ---------- mentions légales ---------- */
+.legal p{ margin:0 0 3mm; font-size:8.6pt; line-height:1.55; color:var(--ink); text-align:justify; }
+.legal b{ font-weight:600; color:var(--navy); }
+
+.sign{ display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-top:8mm; page-break-inside: avoid; break-inside: avoid; }
+.sign .box{ padding:4mm; border:1px solid var(--rule); border-radius:2mm; min-height:24mm; font-size:9pt; }

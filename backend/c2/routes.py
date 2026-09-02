@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import logging
 import secrets
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 
 from a2.config import get_config
 from a2.tz import now_utc_iso
 
+from .pdf.jobs import enqueue as enqueue_pdf, latest_done_job
 from .prefill import build_prefill
 from .schemas import (
     SECTION_IDS,
@@ -226,3 +229,66 @@ async def patch_dossier(dossier_id: str, payload: DossierPatch, request: Request
         {"_id": 0},
     )
     return {"ok": True, "dossier": doc}
+
+
+
+# ---------------------------------------------------------------------------
+# POST /api/dossiers/{id}/generer-pdf — génération asynchrone
+# ---------------------------------------------------------------------------
+@router.post("/api/dossiers/{dossier_id}/generer-pdf")
+async def start_pdf_job(dossier_id: str, request: Request):
+    user = await _current_user_doc(request)
+    db = _db()
+    doc = await db.dossiers.find_one(
+        {"dossier_id": dossier_id, "user_id": user["user_id"]},
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="dossier_introuvable")
+
+    job_id = await enqueue_pdf(db, doc)
+    return {"ok": True, "job_id": job_id, "status": "pending"}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/dossiers/{id}/generer-pdf/{job_id} — statut d'un job
+# ---------------------------------------------------------------------------
+@router.get("/api/dossiers/{dossier_id}/generer-pdf/{job_id}")
+async def pdf_job_status(dossier_id: str, job_id: str, request: Request):
+    user = await _current_user_doc(request)
+    db = _db()
+    job = await db.dossier_pdf_jobs.find_one(
+        {"job_id": job_id, "dossier_id": dossier_id, "user_id": user["user_id"]},
+        {"_id": 0, "file_path": 0},
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="job_introuvable")
+    return {"ok": True, "job": job}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/dossiers/{id}/pdf — récupère le dernier PDF généré
+# ---------------------------------------------------------------------------
+@router.get("/api/dossiers/{dossier_id}/pdf")
+async def download_pdf(dossier_id: str, request: Request):
+    user = await _current_user_doc(request)
+    db = _db()
+    # Vérif que le dossier appartient bien au user (auth + owning)
+    dos = await db.dossiers.find_one(
+        {"dossier_id": dossier_id, "user_id": user["user_id"]},
+        {"_id": 0, "dossier_id": 1},
+    )
+    if not dos:
+        raise HTTPException(status_code=404, detail="dossier_introuvable")
+
+    job = await latest_done_job(db, dossier_id, user["user_id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="pdf_pas_encore_genere")
+    file_path = Path(job.get("file_path") or "")
+    if not file_path.exists():
+        raise HTTPException(status_code=410, detail="pdf_expire")
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=job.get("filename") or "avis-de-valeur.pdf",
+    )
