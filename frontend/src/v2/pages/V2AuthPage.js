@@ -80,30 +80,16 @@ export default function V2AuthPage({ mode = 'login' }) {
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
-          {/* Logo KOLO — SVG inline noir sur fond lilas B1 */}
+          {/* Logo K noir — asset fourni (kolo-mark-black-256.png) */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <svg
-              width="64"
-              height="64"
-              viewBox="0 0 100 100"
-              xmlns="http://www.w3.org/2000/svg"
+            <img
+              src="/kolo-mark-black-256.png"
+              alt="KOLO"
+              width={64}
+              height={64}
               style={{ display: 'block', margin: '0 auto 16px' }}
               data-testid="auth-logo"
-              aria-label="KOLO"
-            >
-              {/* barre verticale */}
-              <rect x="18" y="12" width="18" height="76" rx="9" fill="var(--b1-text)" />
-              {/* branche haute droite */}
-              <rect
-                x="50" y="12" width="18" height="52" rx="9" fill="var(--b1-text)"
-                transform="rotate(30 59 38)"
-              />
-              {/* branche basse droite */}
-              <rect
-                x="50" y="36" width="18" height="52" rx="9" fill="var(--b1-text)"
-                transform="rotate(-30 59 62)"
-              />
-            </svg>
+            />
             <div className="b1-lead" style={{ marginTop: 0 }}>
               {b1t('auth.tagline')}
             </div>
