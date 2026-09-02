@@ -63,7 +63,7 @@ import V2SubscriptionPage from "./v2/pages/V2SubscriptionPage";
 import B1Onboarding from "./b1/B1Onboarding";
 import {
   OpportunitesPage as B1OpportunitesPage,
-  AssistantPage as B1AssistantPage,
+  AssistantPage as B1AssistantPageOld,
   ProfilPage as B1ProfilPage,
   ProfilPersoPage as B1ProfilPersoPage,
   ProfilProPage as B1ProfilProPage,
@@ -72,6 +72,7 @@ import {
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
 import { DossierListPage as C2DossierList, DossierEditorPage as C2DossierEditor } from "./b1/B1Dossier";
+import { AssistantPage as B1AssistantPage } from "./b1/B1Assistant";
 import {
   EstimationHomePage as C1EstimationHome,
   EstimationFlowPage as C1EstimationFlow,

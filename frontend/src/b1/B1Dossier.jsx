@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ChevronRight, X, FileText, Loader2, Camera } from 'lu
 import b1t from './b1i18n';
 import b1api, { API } from './b1api';
 import { saveDraft, loadDraft, clearDraft } from './b3offline';
+import { DictationButton, DICTABLE } from './B1Dictation';
 import './b1dossier.css';
 
 const SECTIONS = [
@@ -483,6 +484,18 @@ function SectionEditor({ dossier, sectionId, ajustement, onBack, onSave }) {
       { id: 'atouts', labelKey: 'dos.f.atouts', type: 'lines', placeholderKey: 'dos.f.atouts.placeholder' },
       { id: 'faiblesses', labelKey: 'dos.f.faiblesses', type: 'lines', placeholderKey: 'dos.f.faiblesses.placeholder' },
     ],
+    technique: [
+      { id: 'etat_general', labelKey: 'dos.f.atouts', type: 'text' },
+      { id: 'travaux_recents', labelKey: 'dos.section.technique', type: 'text' },
+      { id: 'travaux_a_prevoir', labelKey: 'dos.section.technique', type: 'text' },
+      { id: 'type_chauffage', labelKey: 'dos.section.energie', type: 'text' },
+    ],
+    environnement: [
+      { id: 'commerces', labelKey: 'dos.section.environnement', type: 'text' },
+      { id: 'transports', labelKey: 'dos.section.environnement', type: 'text' },
+      { id: 'ecoles', labelKey: 'dos.section.environnement', type: 'text' },
+      { id: 'nuisances', labelKey: 'dos.section.environnement', type: 'text' },
+    ],
     ajustements: [
       { id: 'motif', labelKey: 'dos.ajust.motif', type: 'textarea', placeholderKey: 'dos.ajust.motif.placeholder' },
     ],
@@ -525,6 +538,15 @@ function SectionEditor({ dossier, sectionId, ajustement, onBack, onSave }) {
                   {b1t('dos.ajust.motif.obligatoire')}
                 </div>
               )}
+            </div>
+          )}
+          {DICTABLE.includes(sectionId) && (
+            <div style={{ margin: '4px 0 12px' }}>
+              <DictationButton
+                dossierId={dossier.dossier_id}
+                sectionId={sectionId}
+                onApplyValues={(vals) => setValues((s) => ({ ...s, ...vals }))}
+              />
             </div>
           )}
           {fields.map((f) => (

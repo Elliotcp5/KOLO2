@@ -8553,6 +8553,20 @@ try:
 except Exception as _c2u_err:
     logger.error(f"Failed to mount C2 uploads router: {_c2u_err}")
 
+try:
+    from c2.dictation import router as c2_dictation_router
+    app.include_router(c2_dictation_router)
+    logger.info("KOLO C2 dictation router mounted")
+except Exception as _e:
+    logger.error(f"Failed to mount C2 dictation router: {_e}")
+
+try:
+    from assistant.routes import router as assistant_router
+    app.include_router(assistant_router)
+    logger.info("KOLO Assistant router mounted")
+except Exception as _e:
+    logger.error(f"Failed to mount assistant router: {_e}")
+
 
 # ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)

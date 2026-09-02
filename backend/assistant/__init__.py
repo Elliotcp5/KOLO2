@@ -1,0 +1,1 @@
+"""Assistant KOLO — chat conversationnel."""

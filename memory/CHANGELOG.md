@@ -1,5 +1,75 @@
 # KOLO - Changelog
 
+## BLOC C Partie C — Dictée vocale + Assistant KOLO — 2 sept. 2026
+
+### Dictée vocale (4 sections)
+Sections dictables : `composition`, `technique`, `environnement`, `swot`. Choix (b) validé (dictée = lecture terrain physique).
+
+**Backend `c2/dictation.py`** :
+- `POST /api/dossiers/{id}/dictee/{section_id}` — accepte `multipart/form-data` (file + client_key).
+- Whisper `whisper-1` avec `language="fr"` forcé et `temperature=0`.
+- Bornes serveur : **10 Mo, 180 secondes** (via `ffprobe`), messages d'erreur clairs.
+- **Idempotence** : `client_key` par tentative — un retry après coupure réseau ne re-facture pas la transcription ni ne duplique les propositions.
+- **Audio jamais persisté** : écrit dans `tempfile.mkstemp`, effacé dans `finally` immédiatement après Whisper. Aucun object storage impliqué.
+- Extraction JSON structuré via Claude Sonnet 5 (system prompt strict français, vouvoiement, jamais inventer).
+- **Transcription empilée** dans `sections.{id}.transcriptions[]` avec `at` horodaté — jamais écrasée.
+
+**Frontend `B1Dictation.jsx`** :
+- Bouton `Dicter` inline dans les 4 sections, sous-titre court.
+- Modale plein écran : timer `mm:ss / 3:00` en DM Mono, bandeau rose à partir de 2:30, arrêt automatique à 3:00, boutons `Arrêter et transcrire` / `Annuler`.
+- Écran de traitement à 3 lignes (Transcription / Extraction / Presque prêt).
+- Écran de validation : **titre dynamique `Voici ce que j'ai compris — {n} propositions`**, chaque proposition éditable avec `Rejeter/Valider ce champ`, transcription brute repliable en bas. Rien n'est écrit avant clic sur `Enregistrer les champs validés`.
+- Erreurs : trop lourd / trop long / transcription échouée / extraction vide → boutons `Réessayer` ou `Remplir à la main`.
+- `MediaRecorder` API navigateur (audio/webm), `getUserMedia` — plus tard `@capacitor/voice-recorder` sur iOS si besoin natif fin.
+
+### Assistant KOLO
+**Backend `assistant/routes.py`** :
+- `POST /api/assistant/chat` — SSE, gate plan (`pro`/`pro_plus`, sinon **403** avec `plan_requis: pro`), plafond **100 messages/jour heure de Paris** (`Europe/Paris` via `zoneinfo`), quota côté serveur incrémenté après réponse OK. **429** sur dépassement.
+- **Contexte injectable** : `{type: opportunite|estimation|dossier, id}` — le backend charge le snippet depuis Mongo et le préfixe au message.
+- **Historique** tronqué à 20 tours **en gardant le premier message** (fonction `_truncate_history`).
+- Claude Sonnet 5 avec system prompt strict (vouvoiement, jamais « expertise », refus juridique → notaire/juriste, refus marché sans estimation → onglet Estimation, terminer par prochain pas concret, jamais promesse chiffrée commerciale, jamais mentionner d'autres utilisateurs).
+- `GET /api/conversations`, `GET /api/conversations/{id}`, `DELETE /api/conversations/{id}`, `GET /api/assistant/status` (plan + quota du jour).
+
+**Frontend `B1Assistant.jsx`** :
+- Écran mur pour compte Découverte : titre `L'assistant KOLO est réservé au plan Pro`, sous-titre, CTA `Passer Pro` → `/app-b1/profil`. Aucune mention de `Pro+`.
+- Chat : icône `Bot` rose, sous-titre positif `Prospection, négociation, dossiers — posez votre question.` (jamais annoncer une limite en premier).
+- Accueil personnalisé `Bonjour {prenom}, comment puis-je vous aider aujourd'hui ?`.
+- **3 suggestions** en bulles roses au premier lancement, disparaissent au premier envoi.
+- Sélecteur de contexte (chip) : `Sans contexte` par défaut, tap ouvre la liste estimation + dossier récents.
+- **Streaming côté client** : `fetch` + `body.getReader()`, affichage bulle par bulle au fur et à mesure des `delta`.
+- Bulles roses assistant, bulles bleues utilisateur, champ + flèche d'envoi en bas.
+- Historique en bas de page avec bouton `Ouvrir` / `Supprimer` (confirmation `window.confirm`).
+
+### i18n & test coverage
+- **123 clés** nouvelles pour dictée + assistant (FR + EN + IT + DE, parité complète).
+- `test_i18n_dossier_toutes_langues_couvrent_fr` reste vert — impossible d'oublier une langue.
+
+### Récap tests
+- **84 tests C1 + C2 + i18n verts**, zéro régression.
+- Vérification manuelle par curl : status/plan gate ✅, streaming Claude ✅, vouvoiement respecté ✅, redirection Estimation quand pas de contexte ✅, prochain pas concret ✅, jamais `expertise` ✅.
+
+### Critères de recette
+**Dictée** ✅
+- [x] Aucun champ modifié sans validation explicite
+- [x] Transcription brute conservée, horodatée, jamais écrasée
+- [x] Chiffres/champs éditables avant validation, rejet par champ
+- [x] 4 sections branchées (composition, technique, environnement, swot)
+- [x] 2 min sans troncature (limite serveur à 3 min)
+- [x] Erreur → message + `Réessayer`
+
+**Assistant** ✅
+- [x] Découverte → écran d'upgrade, jamais d'accès au chat
+- [x] Refus marché sans estimation (via system prompt + vérif comportementale curl)
+- [x] Refus juridique → notaire/juriste
+- [x] Plafond 100/j serveur (heure Paris)
+- [x] Vouvoiement dans le message d'accueil et prompt LLM
+- [x] Jamais « expertise » pour un avis de valeur
+- [x] Historique tronqué à 20 tours, premier message conservé
+
+**Transverse** ✅
+- [x] Test parité i18n vert sur les 4 langues
+
+
 ## BLOC C Partie B — Trois blocages levés avant la partie C — 2 sept. 2026
 
 ### 1. Capture photo native (débloque l'export)

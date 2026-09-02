@@ -96,6 +96,60 @@ export const cancelDossierPdfJob = (dossierId, jobId) =>
 export const dossierPdfUrl = (id) =>
   `${API}/api/dossiers/${encodeURIComponent(id)}/pdf`;
 
+// --- C2 Dictée (audio → transcription + propositions)
+export const postDictee = async (dossierId, sectionId, audioBlob, clientKey) => {
+  const fd = new FormData();
+  fd.append('file', audioBlob, `dictee.${(audioBlob.type || 'audio/webm').split('/')[1] || 'webm'}`);
+  fd.append('client_key', clientKey);
+  const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+  const r = await fetch(`${API}/api/dossiers/${encodeURIComponent(dossierId)}/dictee/${sectionId}`,
+    { method: 'POST', body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`HTTP ${r.status}: ${err}`);
+  }
+  return r.json();
+};
+
+// --- Assistant KOLO
+export const getAssistantStatus = () => req('/api/assistant/status');
+export const listConversations = () => req('/api/conversations');
+export const getConversation = (id) => req(`/api/conversations/${encodeURIComponent(id)}`);
+export const deleteConversation = (id) => req(`/api/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+export const streamChat = async ({ message, conversation_id, context, onDelta, onMeta, onError, onDone }) => {
+  const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+  const r = await fetch(`${API}/api/assistant/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ message, conversation_id, context }),
+  });
+  if (r.status === 403) { onError && onError({ code: 'plan_insuffisant', status: 403 }); return; }
+  if (r.status === 429) { onError && onError({ code: 'plafond_atteint', status: 429 }); return; }
+  if (!r.ok) { onError && onError({ status: r.status }); return; }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+      if (!chunk.startsWith('data:')) continue;
+      try {
+        const data = JSON.parse(chunk.slice(5).trim());
+        if (data.delta) onDelta && onDelta(data.delta);
+        else if (data.conversation_id) onMeta && onMeta(data);
+        else if (data.error) onError && onError(data);
+        else if (data.done) onDone && onDone();
+      } catch { /* ignore parse */ }
+    }
+  }
+  onDone && onDone();
+};
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
@@ -103,5 +157,7 @@ export const b1api = {
   postEstimation, getEstimations, getEstimation, geocoderAdresse,
   postDossier, getDossiers, getDossier, patchDossier,
   startDossierPdf, getDossierPdfJob, cancelDossierPdfJob, dossierPdfUrl,
+  postDictee,
+  getAssistantStatus, listConversations, getConversation, deleteConversation, streamChat,
 };
 export default b1api;
