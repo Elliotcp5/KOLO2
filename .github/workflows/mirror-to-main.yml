@@ -1,0 +1,52 @@
+name: Mirror to main (auto-merge Emergent pushes)
+
+# Objectif : régler définitivement le problème « Save to Github pousse sur une
+# branche que Codemagic ne surveille pas ». Chaque fois qu'un push arrive sur
+# n'importe quelle branche autre que `main`, ce workflow force-push le contenu
+# sur `main`. Codemagic verra alors immédiatement les nouveaux commits.
+#
+# Sécurité : le workflow ne se déclenche PAS sur push de `main` (pour éviter
+# les boucles) ni sur push contenant `[skip mirror]` dans le message de commit.
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+
+concurrency:
+  group: mirror-to-main
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip mirror]')"
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout la branche poussée
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Configure git
+        run: |
+          git config user.name  "emergent-mirror[bot]"
+          git config user.email "emergent-mirror@users.noreply.github.com"
+
+      - name: Force-push vers main
+        env:
+          SRC_REF: ${{ github.ref }}
+          SRC_SHA: ${{ github.sha }}
+        run: |
+          echo "Mirror ${SRC_REF} (${SRC_SHA:0:7}) → main"
+          # Push le SHA exact de la branche sur main, en force.
+          # Codemagic déclenchera un build main dès ce push.
+          git push --force origin "${SRC_SHA}:refs/heads/main"
+
+      - name: Résumé
+        run: |
+          echo "✅ main pointe maintenant sur ${GITHUB_SHA:0:7} (depuis ${GITHUB_REF#refs/heads/})"
+          echo "   Codemagic va build cette version."
