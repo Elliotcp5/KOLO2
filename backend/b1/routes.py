@@ -123,14 +123,17 @@ class ProfilPayload(BaseModel):
 @router.post("/api/onboarding/profil")
 async def onboarding_profil(payload: ProfilPayload, request: Request):
     user = await _current_user_doc(request)
-    role = "directeur" if payload.statut_declare == "directeur" else "independant"
-
+    # Conformité Apple : quel que soit le statut déclaré, le compte créé
+    # depuis l'app iOS est TOUJOURS `independant`. L'élévation en `directeur`
+    # (rattachement à une organisation) se fait exclusivement via le
+    # back-office administrateur, après vente et paiement.
+    # `statut_declare` reste posé comme donnée de segmentation.
     update = {
         "prenom": payload.prenom,
         "nom": payload.nom,
         "name": f"{payload.prenom} {payload.nom}".strip(),
         "statut_declare": payload.statut_declare,
-        "role": role,
+        "role": "independant",
         "updated_at": now_utc_iso(),
     }
     await _db().users.update_one({"user_id": user["user_id"]}, {"$set": update})

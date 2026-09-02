@@ -117,6 +117,39 @@ export const listConversations = () => req('/api/conversations');
 export const getConversation = (id) => req(`/api/conversations/${encodeURIComponent(id)}`);
 export const deleteConversation = (id) => req(`/api/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
+// --- D1 · Agences, invitations, écrans directeur ---------------------------
+// Conformité Apple : aucun de ces endpoints n'expose de montant ni d'URL
+// de paiement web. La création d'organisation n'est PAS exposée à l'iOS.
+export const getMyOrganisation = () => req('/api/d1/organisations/me');
+export const patchMyOrganisation = (payload) =>
+  req('/api/d1/organisations/me', { method: 'PATCH', body: payload });
+
+export const listInvitations = () => req('/api/d1/invitations');
+export const createInvitation = (email) =>
+  req('/api/d1/invitations', { method: 'POST', body: { email } });
+export const relancerInvitation = (id) =>
+  req(`/api/d1/invitations/${encodeURIComponent(id)}/relancer`, { method: 'POST' });
+export const annulerInvitation = (id) =>
+  req(`/api/d1/invitations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+export const checkInvitation = (email) =>
+  req(`/api/d1/invitations/check?email=${encodeURIComponent(email)}`, { auth: false });
+
+export const getEquipe = (periode = 'mois') =>
+  req(`/api/d1/equipe?periode=${encodeURIComponent(periode)}`);
+export const retirerConseiller = (userId) =>
+  req(`/api/d1/equipe/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+
+export const attribuerOpportunite = (oppId, userId) =>
+  req(`/api/d1/opportunites/${encodeURIComponent(oppId)}/attribuer`,
+    { method: 'POST', body: { user_id: userId } });
+export const attribuerLot = (opportuniteIds, userId) =>
+  req('/api/d1/opportunites/attribuer-lot',
+    { method: 'POST', body: { opportunite_ids: opportuniteIds, user_id: userId } });
+export const autoResteRepartir = () =>
+  req('/api/d1/opportunites/auto-reste', { method: 'POST' });
+export const retirerAttribution = (oppId) =>
+  req(`/api/d1/opportunites/${encodeURIComponent(oppId)}/retirer`, { method: 'POST' });
+
 export const streamChat = async ({ message, conversation_id, context, onDelta, onMeta, onError, onDone }) => {
   const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
   const r = await fetch(`${API}/api/assistant/chat`, {
@@ -159,5 +192,10 @@ export const b1api = {
   startDossierPdf, getDossierPdfJob, cancelDossierPdfJob, dossierPdfUrl,
   postDictee,
   getAssistantStatus, listConversations, getConversation, deleteConversation, streamChat,
+  // D1
+  getMyOrganisation, patchMyOrganisation,
+  listInvitations, createInvitation, relancerInvitation, annulerInvitation, checkInvitation,
+  getEquipe, retirerConseiller,
+  attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
 };
 export default b1api;

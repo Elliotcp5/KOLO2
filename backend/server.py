@@ -4335,6 +4335,14 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     logger.info(f"MongoDB: User document inserted for {email}")
     logger.info(f"Free trial account created for {register_data.email} with {trial_plan} plan, trial ends: {trial_ends_at}")
     
+    # D1 · Partie 1 — si un directeur a invité cet email, on rattache
+    # automatiquement le conseiller à l'organisation (rôle + plan + siège).
+    try:
+        from d1.invitations import attach_conseiller_if_invited
+        await attach_conseiller_if_invited(db, email, user_id)
+    except Exception as _e:
+        logger.error(f"attach_conseiller_if_invited failed: {_e}")
+    
     # Send welcome email (background)
     import asyncio
     user_locale = register_data.locale if hasattr(register_data, 'locale') and register_data.locale else "fr"
@@ -8566,6 +8574,13 @@ try:
     logger.info("KOLO Assistant router mounted")
 except Exception as _e:
     logger.error(f"Failed to mount assistant router: {_e}")
+
+try:
+    from d1.routes import router as d1_router
+    app.include_router(d1_router)
+    logger.info("KOLO D1 router mounted (agences, invitations, écrans directeur)")
+except Exception as _e:
+    logger.error(f"Failed to mount D1 router: {_e}")
 
 
 # ============================================================================

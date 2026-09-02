@@ -1,7 +1,7 @@
 // KOLO — BLOC B1 Shell (bottom nav + tour + opportunités + placeholders + profil)
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronRight, Home, MapPin, CreditCard, Compass, HeadphonesIcon, Trash2, User, LogOut, Crown, ArrowLeft, X, Heart } from 'lucide-react';
+import { ChevronRight, Home, MapPin, CreditCard, Compass, HeadphonesIcon, Trash2, User, Users, LogOut, Crown, ArrowLeft, X, Heart } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
 import { track, EVENTS } from './b3tracking';
@@ -352,7 +352,14 @@ export function ProfilPage() {
   const [me, setMe] = useState(null);
   useEffect(() => { b1api.getProfil().then((r) => setMe(r.user)).catch(() => {}); }, []);
   const isPro = (me?.plan || '') === 'pro';
+  const isDirecteur = me?.role === 'directeur' && !!me?.organisation_id;
   const menu = [
+    ...(isDirecteur ? [{
+      id: 'directeur',
+      to: '/app-b1/directeur/repartition',
+      icon: Users,
+      label: b1t('dir.repartition.titre'),
+    }] : []),
     { id: 'perso', to: '/app-b1/profil/perso', icon: User, label: b1t('profil.menu.perso') },
     { id: 'pro', to: '/app-b1/profil/pro', icon: HeadphonesIcon, label: b1t('profil.menu.pro') },
     { id: 'zones', to: '/app-b1/profil/zones', icon: MapPin, label: b1t('profil.menu.zones') },

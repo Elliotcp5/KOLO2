@@ -1,0 +1,50 @@
+{
+  "summary": "Régression BLOC D1 (KOLO) iteration_65 : 75 tests pytest verts / 0 échec (test_d1_http.py 45 dont les 2 TestSignupAttach précédemment rouges, test_d1.py 8, test_apple_compliance.py 2, test_d1_frontend_static.py 6, nouveau test_d1_regression_65.py 4, i18n + b1 onboarding). Les 2 CRITICAL d'iteration_64 sont CONFIRMÉS FIXÉS par HTTP réel : POST /api/auth/register et POST /api/v2/auth/verify-email-code rattachent bien l'email invité (role='conseiller', organisation_id set, plan='agence', siege_statut='actif', invitation.statut='acceptee', sieges_utilises +1). Nouveaux tests ajoutés et verts : GET /api/d1/invitations ne renvoie que 'envoyee'+'expiree' (annulee/acceptee masquées), DELETE invitation puis GET → disparue, DELETE /api/d1/equipe/{id} avec sieges_utilises=0 → reste 0 (plancher OK) et décrémente normalement sinon. Apple : POST /api/d1/organisations → 405, aucune mention Stripe/prix dans src/b1/. Frontend piloté en Playwright (390x844, session directeur seedée) : loading 'One moment…' + toast auto-reste OK, modal de confirmation de retrait OK (annuler ne retire pas, confirm retire), invitation annulée disparaît de la liste, états 403 (d1-forbidden / d1-agence-forbidden) affichés, table Mon équipe scrollable (scrollWidth 600 > clientWidth 350, overflow-x auto), alerte 48h au singulier, section 'Plan et facturation' masquée si prochaine_facturation null et affichée sinon. Restent 4 défauts non bloquants (toast auto-reste en dur en français, message 403 trompeur, écran Répartition toujours placeholder, contraste des toasts).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/d1/invitations", "issue": "Non régressé mais toujours ouvert depuis iter_64 : le contrôle 'deja_membre' ne vérifie que l'organisation courante ; un email déjà conseiller actif d'une AUTRE agence peut être invité et attach_conseiller_if_invited ne gère pas ce conflit multi-agences."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DirecteurRepartitionPage", "issue": "Le toast auto-reste est une chaîne codée en dur en français ('${attribuees} attribuée(s) · ${ignorees} ignorée(s)', B1Directeur.jsx:70) : affichée telle quelle en EN/IT/DE (constaté : UI en anglais → '0 attribuée(s) · 0 ignorée(s)'). Ajouter une clé i18n dans b1i18nD1.js pour les 4 langues.", "selector": "[data-testid='d1-repartition-toast']", "priority": "MEDIUM"},
+      {"component": "DirecteurEquipePage / DirecteurAgencePage (403)", "issue": "L'état forbidden s'affiche bien mais avec le libellé 'sys.connexion_perdue' → 'Connection lost. Try again in a moment.' alors qu'il s'agit d'un refus de permission (403). Message trompeur : prévoir une clé dédiée type 'dir.acces_refuse' (accès réservé au directeur). De plus, sur /directeur/equipe l'écran continue d'afficher le sélecteur de période, 'No advisors yet' et le CTA 'Inviter un conseiller' sous le bandeau d'erreur.", "selector": "[data-testid='d1-forbidden'], [data-testid='d1-agence-forbidden']", "priority": "MEDIUM"},
+      {"component": "DirecteurRepartitionPage", "issue": "Toujours non implémenté (HIGH d'iter_64 non traité) : aucune liste d'opportunités, l'écran affiche systématiquement 'Aucune opportunité à répartir' même quand 4 opportunités 'proposee' existent (l'auto-reste en a attribué 4 → preuve que les données existent). attribuerOpportunite/attribuerLot/retirerAttribution de b1api.js ne sont appelés par aucun composant.", "selector": "[data-testid='d1-repartition-vide']", "priority": "HIGH"},
+      {"component": "DirecteurEquipePage", "issue": "Warnings React persistants en console : 'In HTML, <span> cannot be a child of <tbody>' et '<span> child of <tr>' (2 erreurs). Aucun <span> dans B1Directeur.jsx : probablement injecté par l'instrumentation dev (attributs x-file-name) — à confirmer, sinon inoffensif en prod.", "selector": "[data-testid='d1-equipe-table']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Répartition / Mon équipe (toasts)", "issues": ["Texte des toasts (d1-repartition-toast, d1-toast) en gris très clair sur fond rose pâle : contraste insuffisant, quasi illisible en mobile 390px (voir captures)", "Écran Répartition quasi vide (une carte + un bouton) tant que la liste d'opportunités n'est pas implémentée"]},
+      {"screen": "Mon agence", "issues": ["Bouton 'Enregistrer' rose plein toujours actif même sans modification (pas de dirty-state) — inchangé depuis iter_64"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_d1_regression_65.py",
+    "/app/backend/tests/test_d1_http.py",
+    "/app/backend/tests/test_d1_frontend_static.py",
+    "/app/backend/tests/test_apple_compliance.py",
+    "/app/test_reports/pytest/pytest_results_d1_65.xml"
+  ],
+  "action_items": [
+    "Externaliser le texte du toast auto-reste dans b1i18nD1.js (FR/EN/IT/DE) — actuellement en dur en français",
+    "Remplacer le message 403 'Connexion perdue' par un vrai message 'accès réservé au directeur' et masquer le reste de l'écran équipe (période/table/CTA inviter) quand forbidden=true",
+    "Implémenter l'écran Répartition (liste des opportunités 'proposee' + attribution unitaire/lot + retrait) ou l'annoncer explicitement 'à venir'",
+    "Augmenter le contraste du texte des toasts (couleur de texte foncée sur fond accent-light)",
+    "Gérer le cas 'email déjà conseiller actif d'une autre agence' dans invitation + attach_conseiller_if_invited"
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/routes/auth.py contient toujours le hook attach_conseiller_if_invited alors que le module n'est inclus par aucun include_router : duplication de logique métier dans du code mort → risque de divergence future, à supprimer ou brancher.",
+    "Le rattachement conseiller est désormais dupliqué à 3 endroits (server.py:4341, v2_router.py:1341, routes/auth.py:184) avec try/except silencieux : une exception dans attach_conseiller_if_invited est seulement loggée, le signup réussit sans rattachement et sans trace côté client — prévoir une métrique/alerte ou un statut renvoyé dans la réponse d'auth.",
+    "B1Directeur.jsx a 562 lignes et concentre 3 écrans + modaux : envisager un découpage par écran.",
+    "tests/test_d1.py::test_retrait_conseiller_regles_metier reste tautologique (réimplémente les mutations) — la couverture réelle est dans test_d1_http.py."
+  ],
+  "updated_files": ["/app/backend/tests/test_d1_regression_65.py (nouveau)"],
+  "success_rate": {"backend": "100% (75/75 tests)", "frontend": "90% (tous les fixes UI demandés vérifiés OK ; restent i18n du toast, message 403 trompeur, écran Répartition non implémenté)"},
+  "seed_data_creation": "Seed via tests/seed_d1_ui.py (orga 'TEST_Agence UI' + directeur + 2 conseillers + 4 opportunités) et fixtures pytest (TEST_Agence D1 HTTP / REG65) ; toutes les données de test supprimées en fin de run (0 résidu vérifié : organisations TEST_* = 0).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Aucun credential fixe : sessions créées à la volée via POST /api/v2/auth/send-email-code (dev_code) + verify-email-code, puis promotion role='directeur' en Mongo (voir tests/seed_d1_ui.py qui imprime le token à injecter dans localStorage['kolo_v2_session']).",
+  "context_for_next_testing_agent": "Régression D1 = tests/test_d1_http.py (45) + tests/test_d1_regression_65.py (4, filtre invitations + plancher sièges) + test_apple_compliance.py + test_d1_frontend_static.py : tous verts au 02/09/2026. Les 2 CRITICAL signup-attach d'iter_64 sont fixés et couverts. Pour l'UI : `python tests/seed_d1_ui.py` puis injecter le token dans localStorage['kolo_v2_session'] avant /app-b1/directeur/{equipe,repartition,agence}. Pour tester l'état loading d'un bouton, ne pas se fier à un wait_for_timeout après le clic (requête trop rapide) : utiliser un setInterval JS de 20ms qui enregistre disabled+textContent (méthode utilisée ici pour valider 'One moment…').",
+  "rca_of_the_issue": "Aucun défaut bloquant restant. Les 2 CRITICAL précédents venaient d'un hook posé dans du code mort (routes/auth.py) ; ils sont maintenant branchés dans les deux endpoints réellement montés (server.py:4341 et v2_router.py:1341) et vérifiés par HTTP réel + lecture Mongo. Le seul faux négatif de ce run (bouton auto-reste 'jamais disabled') était un artefact de mesure : la requête se terminait avant l'échantillonnage ; confirmé OK avec un échantillonnage à 20ms."
+}

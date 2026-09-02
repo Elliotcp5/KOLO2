@@ -1,0 +1,68 @@
+{
+  "summary": "BLOC D1 (KOLO) testé end-to-end : 61 tests pytest (test_d1.py 8, test_apple_compliance.py 2, nouveaux test_d1_http.py 45 HTTP réels via URL publique, test_d1_frontend_static.py 6) → 59 passés / 2 échoués. Conformité Apple 100% verte (aucun POST /api/d1/organisations exposé → 405, aucune chaîne Stripe/prix/création d'agence dans /app/frontend/src/b1/, i18n D1 = 85 clés en parité FR/EN/IT/DE). RBAC directeur validé (403 non-directeur, 401 anonyme sur 6 endpoints). Invitations (create/list/relancer/annuler, 409 deja_invite/deja_membre, 402 plafond, 422 email invalide), organisation GET/PATCH + persistance, attribution unitaire/lot/auto-reste round-robin, retrait 409 sur 4 statuts, retrait conseiller (6 règles) validés via HTTP. Les 3 écrans directeur ont été pilotés en Playwright (mobile 390x844) avec une session directeur seedée : rendu OK, invitation envoyée, agence patchée, conseiller retiré. BLOQUANT : l'auto-rattachement conseiller au signup NE FONCTIONNE PAS en production (hook placé dans un fichier mort).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/register", "issue": "L'auto-rattachement conseiller ne s'exécute jamais : le hook attach_conseiller_if_invited a été ajouté dans /app/backend/routes/auth.py (L179-187), fichier qui n'est importé QUE par server_new.py et JAMAIS inclus dans l'app live (aucun include_router). L'endpoint réellement servi est server.py:4256 (@api_router.post('/auth/register')) et il ne contient pas le hook. Vérifié par test HTTP : après register avec un email invité, le user n'a même pas de champ 'role', organisation_id absent, invitation reste 'envoyee', sieges_utilises non incrémenté.", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/v2/auth/verify-email-code", "issue": "Chemin de signup RÉEL de l'app iOS (le front b1 lit le token 'kolo_v2_session' produit par cet endpoint) : la création de user (v2_router.py ~L1324) n'appelle pas attach_conseiller_if_invited → un email invité qui s'inscrit reste role='independant', plan free, aucun siège pris. La feature 'l'email = seule clé' est donc inopérante dans l'app.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/d1/invitations", "issue": "Renvoie toutes les invitations sans filtre de statut (annulee/expiree/acceptee inclus) et sans possibilité de filtrer → l'UI continue d'afficher une invitation annulée après un DELETE 200 (reproduit en Playwright). Prévoir un filtre par défaut sur statut in ['envoyee','expiree'] ou un paramètre ?statut=."},
+      {"endpoint": "DELETE /api/d1/equipe/{user_id}", "issue": "Aucun garde-fou d'idempotence : un second appel sur un membre déjà retiré renvoie 404 (OK) mais un appel sur un membre dont siege_statut est déjà 'desactive' décrémenterait à nouveau sieges_utilises si organisation_id n'avait pas été mis à null — dépendance implicite fragile. Aussi : $inc -1 sans plancher, sieges_utilises peut devenir négatif si la donnée est désynchronisée."},
+      {"endpoint": "POST /api/d1/invitations", "issue": "Le contrôle 'deja_membre' ne vérifie que siege_statut='actif' dans MON organisation : un email déjà conseiller actif d'une AUTRE agence peut être invité, et l'attach au signup ne gère pas ce conflit multi-agences (aucun contrôle 'déjà rattaché ailleurs' dans attach_conseiller_if_invited)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DirecteurRepartitionPage", "issue": "Écran 'Répartition' non fonctionnel (placeholder) : il n'appelle aucun endpoint de liste d'opportunités et affiche TOUJOURS 'Aucune opportunité à répartir' — même avec 3 opportunités 'proposee' non attribuées en base (vérifié). Aucune attribution manuelle (attribuerOpportunite / attribuerLot / retirerAttribution existent dans b1api.js mais ne sont utilisés nulle part dans l'UI).", "selector": "[data-testid='d1-repartition-vide']", "priority": "HIGH"},
+      {"component": "DirecteurRepartitionPage", "issue": "Le CTA 'Répartir automatiquement le reste' n'a ni état de chargement, ni toast de succès, ni message d'erreur (catch silencieux) : l'appel renvoie bien 200 et attribue les opportunités, mais l'écran reste identique — l'utilisateur ne voit aucun retour.", "selector": "[data-testid='d1-repartition-auto-reste']", "priority": "HIGH"},
+      {"component": "DirecteurEquipePage", "issue": "Le retrait d'un conseiller (action destructive : siège libéré, plan rétrogradé en Découverte, opportunités renvoyées au pool) s'exécute au premier clic sans aucune confirmation.", "selector": "[data-testid^='d1-retirer-']", "priority": "HIGH"},
+      {"component": "DirecteurEquipePage", "issue": "Une invitation annulée reste affichée dans le tableau après DELETE 200 (le back renvoie tous les statuts, le front n'exclut pas 'annulee').", "selector": "[data-testid^='d1-invit-row-']", "priority": "MEDIUM"},
+      {"component": "DirecteurAgencePage / EquipePage (compte non directeur)", "issue": "Sur un compte non directeur, les API renvoient 403 mais l'UI reste bloquée sur 'Un instant…' (agence) ou affiche un tableau vide 'Aucun conseiller' (équipe) : aucun état d'erreur/permission (tous les catch sont silencieux). Aucune redirection non plus.", "selector": "[data-testid='d1-agence-infos']", "priority": "MEDIUM"},
+      {"component": "DirecteurEquipePage", "issue": "Console React : 'In HTML, <span> cannot be a child of <tbody>' / '<span> child of <tr>' (2 erreurs) sur l'écran Mon équipe → structure de table invalide en rendu.", "selector": "[data-testid='d1-equipe-table']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Signup conseiller via invitation (email = seule clé)", "issue": "Flow impossible end-to-end : ni /api/auth/register (live, server.py) ni /api/v2/auth/verify-email-code (chemin app) n'appellent attach_conseiller_if_invited. L'écran de login peut afficher 'Invitation en cours' (check public OK) mais le compte créé n'est jamais rattaché à l'agence.", "affected_selectors": ["[data-testid='d1-invit-envoyer']"]},
+      {"flow": "Annulation d'invitation", "issue": "L'appel DELETE réussit mais la liste n'est pas nettoyée (statut 'annulee' toujours renvoyé/affiché).", "affected_selectors": ["[data-testid^='d1-annuler-invit-']"]}
+    ],
+    "design_issues": [
+      {"screen": "Mon équipe (mobile 390px)", "issues": ["Le tableau à 7 colonnes déborde horizontalement : l'en-tête 'Assigned/Ignored' est tronqué et la colonne nom du conseiller sort de l'écran au scroll ; pas d'indicateur de scroll horizontal", "Libellés d'en-tête collés ('AssignedIgnored') faute d'espacement/padding entre <th>", "Pluriel i18n non géré : '1 opportunities untouched for over 48 hours'"]},
+      {"screen": "Répartition", "issues": ["Écran quasi vide (une carte + un bouton) — aucun contenu utile tant que la liste d'opportunités n'est pas implémentée"]},
+      {"screen": "Mon agence", "issues": ["'Next billing on —' affiché même sans date (tiret nu, peu clair)", "Bouton 'Enregistrer' en rose plein toujours actif même sans modification"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_d1_http.py",
+    "/app/backend/tests/test_d1_frontend_static.py",
+    "/app/backend/tests/seed_d1_ui.py",
+    "/app/test_reports/pytest/pytest_results_d1.xml"
+  ],
+  "action_items": [
+    "CRITICAL : brancher attach_conseiller_if_invited dans l'endpoint /api/auth/register RÉELLEMENT servi (server.py:4256) — le code ajouté dans routes/auth.py est mort (fichier non inclus, seulement importé par server_new.py)",
+    "CRITICAL : brancher attach_conseiller_if_invited dans POST /api/v2/auth/verify-email-code (v2_router.py, branche 'Create new user') car c'est le vrai chemin de signup de l'app iOS ; renvoyer role/organisation_nom/plan à jour dans _build_a2_auth_response",
+    "Implémenter réellement l'écran Répartition (liste des opportunités 'proposee' de l'orga + attribution unitaire/lot + retrait) ou le marquer explicitement 'à venir'",
+    "Ajouter loading/success/error + toast au CTA auto-reste et un état 403 explicite sur les 3 écrans directeur (remplacer les catch silencieux)",
+    "Ajouter une confirmation avant le retrait d'un conseiller",
+    "Filtrer les invitations 'annulee' (back ou front) pour qu'une annulation disparaisse de la liste",
+    "Corriger le débordement horizontal du tableau Mon équipe en 390px + le pluriel de l'alerte 48h + la structure <span> dans <tbody>",
+    "Ajouter un plancher à $inc sieges_utilises (jamais < 0) et gérer le cas 'email déjà membre d'une autre agence' dans attach_conseiller_if_invited"
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/routes/auth.py est du code mort dans le runtime actuel (aucun include_router) : tout hook métier ajouté là ne s'exécute jamais. Soit supprimer/aligner ce fichier avec server.py, soit le brancher — le risque de régression silencieuse est élevé (déjà matérialisé ici).",
+    "tests/test_d1.py::test_retrait_conseiller_regles_metier ne teste pas l'endpoint : il réimplémente manuellement les 6 mutations puis les vérifie (test tautologique, il resterait vert même si retirer_conseiller était supprimé). Remplacé par un vrai test HTTP dans test_d1_http.py::TestEquipe::test_retirer_conseiller_6_regles.",
+    "Les tests test_d1.py couvrent les helpers mais aucun endpoint HTTP (pas de couverture RBAC/403, plafond 402, 409 retrait, attribution) — d'où l'ajout de test_d1_http.py (45 cas).",
+    "b1api.js expose attribuerOpportunite/attribuerLot/retirerAttribution qui ne sont appelés par aucun composant : code non utilisé côté UI (feature incomplète).",
+    "server.py:4256 /api/auth/register appelle stripe.Customer.create côté serveur — hors bundle iOS donc hors périmètre Apple, mais à surveiller si un jour appelé depuis l'app."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_d1_http.py (nouveau)",
+    "/app/backend/tests/test_d1_frontend_static.py (nouveau)",
+    "/app/backend/tests/seed_d1_ui.py (nouveau, seed UI)"
+  ],
+  "success_rate": {"backend": "96% (59/61 tests ; 2 échecs = auto-rattachement conseiller au signup)", "frontend": "75% (3 écrans rendus + invitation/agence/retrait OK ; Répartition non fonctionnelle, pas d'états d'erreur)"},
+  "seed_data_creation": "Créés puis supprimés : organisations 'TEST_Agence D1 HTTP' / 'TEST_Agence UI', users test_d1_*/test_ui_*/u_test_*, invitations test_*, opportunités liées. Base nettoyée en fin de run (0 résidu).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Aucun credential fixe utilisé : sessions créées à la volée via POST /api/v2/auth/send-email-code (dev_code) puis verify-email-code, puis promotion role='directeur' + organisation_id en Mongo (voir tests/seed_d1_ui.py).",
+  "context_for_next_testing_agent": "Utiliser /app/backend/tests/test_d1_http.py comme régression D1 (auth réelle via v2 email-code, le user_id est au niveau racine de la réponse verify-email-code, PAS sous 'user'). Pour l'UI : lancer `python tests/seed_d1_ui.py` (imprime token + orga + conseillers + opps), puis injecter le token dans localStorage['kolo_v2_session'] avant de visiter /app-b1/directeur/*. Les 2 tests rouges (TestSignupAttach) doivent passer au vert une fois le hook branché sur server.py:4256 ET v2_router verify-email-code. test_apple_compliance.py + test_d1_frontend_static.py sont verts : les revérifier à chaque itération (build Apple).",
+  "rca_of_the_issue": "Auto-rattachement conseiller KO : le hook attach_conseiller_if_invited a été inséré dans /app/backend/routes/auth.py:184, mais ce module n'est inclus par aucun include_router de server.py (il n'est importé que par server_new.py, non utilisé par supervisor). L'endpoint /api/auth/register effectivement servi est défini à server.py:4256 et ne contient pas le hook ; le chemin de signup de l'app iOS (POST /api/v2/auth/verify-email-code, v2_router.py branche 'Create new user') ne le contient pas non plus. Reproduction : insérer une invitation 'envoyee' pour un email, s'inscrire avec cet email via l'un des deux endpoints → le user reste role='independant'/absent, organisation_id absent, invitation toujours 'envoyee', sieges_utilises inchangé. Mitigation : appeler attach_conseiller_if_invited(db, email, user_id) juste après le insert_one du user dans server.py:4256 et dans v2_router.py, puis relire le user avant de construire la réponse d'auth (role/organisation_nom/plan)."
+}

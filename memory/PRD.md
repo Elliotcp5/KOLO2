@@ -29,6 +29,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Tests : **7 tests pytest B1 verts**, **97 tests Bloc A verts**, aucune régression.
 
 
+### BLOC D · Partie 1 — Rôles, invitations, écrans directeur (Sep 2, 2026) 🔥 LATEST
+- **Nouveau module `/app/backend/d1/`** : `routes.py` (10 endpoints), `invitations.py` (Resend + attach au signup), `distribution.py` (round-robin équilibré), `schemas.py`.
+- **3 rôles** : `independant` (défaut), `directeur`, `conseiller`. À l'onboarding iOS, le `role` est TOUJOURS `independant` — `statut_declare` sert uniquement à la segmentation. L'élévation en `directeur` se fait exclusivement via back-office (BLOC D · Partie 2).
+- **Endpoints D1 (iOS)** : `GET/PATCH /api/d1/organisations/me`, `POST/GET/DELETE /api/d1/invitations[/*]`, `GET /api/d1/invitations/check?email=…` (public), `GET /api/d1/equipe?periode=mois|semaine`, `DELETE /api/d1/equipe/{user_id}`, `POST /api/d1/opportunites/{id}/attribuer`, `POST /api/d1/opportunites/attribuer-lot`, `POST /api/d1/opportunites/auto-reste`, `POST /api/d1/opportunites/{id}/retirer`. **Aucun POST /api/d1/organisations n'est exposé** (conformité Apple).
+- **Flux invitation** : email = seule clé. Le directeur invite via email ; à l'inscription (register OU verify-email-code), le hook `attach_conseiller_if_invited` pose `role=conseiller`, `organisation_id`, `plan=agence`, `siege_statut=actif`, marque l'invitation `acceptee` et incrémente `sieges_utilises`. Aucun code d'invitation à saisir, aucun deep-link.
+- **Retrait d'un conseiller (6 règles atomiques)** : siège libéré (plancher 0), opps `proposee` → retour au pool (unset `assigne_a`), opps ≥ `a_demarcher` → conservées, user → `independant`/`decouverte`/`zones_deja_modifiees=false`, `siege_statut=desactive`, compte jamais supprimé.
+- **Refus de retrait d'attribution** si `statut ∈ {a_demarcher, demarchee, mandat_signe, abandon}` (HTTP 409 `retrait_refuse`).
+- **Frontend `/app-b1/directeur/{repartition,equipe,agence}`** — 3 écrans dans `B1Directeur.jsx` : bandeau mode (auto/mixte), tableau entonnoir (Attribuées · Ignorées · À démarcher · Démarchées · Mandats + taux de traitement + alerte 48h avec pluriel), invitations (modal + relance/annuler), infos agence + zones + sièges + mode répartition + « Je prospecte aussi ». Aucune mention de montant, aucun lien de paiement, aucun mot Stripe. Section « Plan et facturation » n'affiche QUE `Prochaine facturation le {date}` (masquée si vide).
+- **Email « Invitation conseiller »** (Resend, 4 langues) : version Option A — pas d'URL, texte redirige vers l'app pour se connecter avec l'email invité.
+- **i18n D1 (`b1i18nD1.js`)** — 90+ clés en parité stricte FR/EN/IT/DE (dir.*, role.*, login.invit.*, conseil.*, dir.acces_refuse.*).
+- **Test Apple compliance renforcé** : 2 tests (interdit Stripe/prix + interdit `POST /api/d1/organisations` et libellés « créer une agence » en 4 langues).
+- **Tests** : 75/75 pytest verts (test_d1.py 8, test_d1_http.py 45 HTTP réels, test_d1_regression_65.py 4, test_d1_frontend_static.py 6, test_apple_compliance.py 2, test_i18n_coverage.py 3, test_b1_onboarding.py 7). Auto-rattachement conseiller vérifié end-to-end sur `POST /api/auth/register` ET `POST /api/v2/auth/verify-email-code` (les 2 chemins de signup live).
+
+---
+
+
+
 ---
 
 ## 🔭 Feature à construire — Cartes « Biens en vente à surveiller »

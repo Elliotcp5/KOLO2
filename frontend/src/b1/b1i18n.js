@@ -713,6 +713,15 @@ try {
   }
 } catch (_e) { /* optional */ }
 
+// Merge D1 namespace (rôles, invitations, écrans directeur)
+try {
+  // eslint-disable-next-line global-require
+  const d1 = require('./b1i18nD1').default || {};
+  for (const l of SUPPORTED) {
+    if (d1[l]) Object.assign(STRINGS[l], d1[l]);
+  }
+} catch (_e) { /* optional */ }
+
 /**
  * Plural helper — chooses `{key}_one` / `{key}_other` / `{key}_zero` based on `count`.
  * Follows CLDR-lite: 0 → _zero if defined, 1 → _one, else _other.

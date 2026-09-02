@@ -178,6 +178,14 @@ async def register_free_trial(request: RegisterRequest, response: Response):
     }
     await db.users.insert_one(user_doc)
     
+    # D1 · Partie 1 — si un directeur a invité cet email, on rattache
+    # automatiquement le conseiller à l'organisation (rôle + plan + siège).
+    try:
+        from d1.invitations import attach_conseiller_if_invited
+        await attach_conseiller_if_invited(db, email_clean, user_id)
+    except Exception as _e:
+        logger.error(f"attach_conseiller_if_invited failed: {_e}")
+    
     session_token = f"sess_{uuid.uuid4().hex}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     session_doc = {

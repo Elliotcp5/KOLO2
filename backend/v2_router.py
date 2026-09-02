@@ -1334,6 +1334,14 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
         "subscription_status": "free",
     }
     await db.users.insert_one(user_doc)
+    # D1 · Partie 1 — auto-rattachement conseiller si invitation active pour cet email.
+    # Doit être exécuté AVANT `_build_a2_auth_response` pour que la réponse
+    # renvoie role='conseiller' et organisation_nom à jour.
+    try:
+        from d1.invitations import attach_conseiller_if_invited
+        await attach_conseiller_if_invited(db, email, user_id)
+    except Exception as _e:
+        logging.getLogger(__name__).error(f"attach_conseiller_if_invited failed: {_e}")
     # Auto-attribute referral if provided
     if payload.referral_code:
         try:

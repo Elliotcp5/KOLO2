@@ -86,6 +86,11 @@ import {
   VeillePaywall as B1VeillePaywall,
 } from "./b1/B1Veille";
 import { PerformancesPage as B3PerformancesPage, NotifPermissionScreen as B3NotifPerm } from "./b1/B3Perf";
+import {
+  DirecteurRepartitionPage as D1DirecteurRepartitionPage,
+  DirecteurEquipePage as D1DirecteurEquipePage,
+  DirecteurAgencePage as D1DirecteurAgencePage,
+} from "./b1/B1Directeur";
 
 // Analytics - track page views on route change
 const AnalyticsTracker = () => {
@@ -255,6 +260,11 @@ const AppRouter = () => {
       {/* B3 — Performances + demande d'autorisation notifications */}
       <Route path="/app-b1/performances" element={<B3PerformancesPage />} />
       <Route path="/app-b1/notifications/permission" element={<B3NotifPerm />} />
+
+      {/* D1 — Écrans du directeur (rôle 'directeur' requis côté API) */}
+      <Route path="/app-b1/directeur/repartition" element={<D1DirecteurRepartitionPage />} />
+      <Route path="/app-b1/directeur/equipe" element={<D1DirecteurEquipePage />} />
+      <Route path="/app-b1/directeur/agence" element={<D1DirecteurAgencePage />} />
 
       {/* Protected routes */}
       <Route 

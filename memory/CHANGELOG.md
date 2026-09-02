@@ -1,5 +1,29 @@
 # KOLO - Changelog
 
+## BLOC D — Amorce : test de conformité Apple — 2 sept. 2026
+
+Le prompt bloc D exige d'écrire `tests/test_apple_compliance.py` **avant toute autre ligne** du bloc, pour attraper les régressions pendant la construction.
+
+### Livrable
+**`/app/backend/tests/test_apple_compliance.py`** — un seul test qui parcourt `/app/frontend/src/b1/` (bundle iOS + toutes les i18n) et échoue si l'un des motifs suivants apparaît :
+
+- Prix agence : `199 €`, `349 €`, `599 €` dans un contexte de prix (`€`, « à partir de », « from », « ab », « da »)
+- URLs Stripe : `checkout.stripe.com`, `buy.stripe.com`, `stripe.com`
+- Le nom du prestataire : `Stripe` / `stripe`
+- Terminologie « offre équipe » en FR/EN/IT/DE : `offre agence`, `agency plan`, `Agenturangebot`, `offerta agenzia`
+- « par conseiller » et équivalents EN/IT/DE
+
+Message d'erreur explicite avec chemin de fichier + snippet de 60 caractères de contexte, jusqu'à 20 violations affichées.
+
+**Périmètre** : `/app/frontend/src/b1/` uniquement (bundle IPA). La landing web `/pages/` et l'ancien code `/v2/` sont hors périmètre — ils ne sont pas embarqués dans l'app iOS.
+
+### Résultat
+`1 passed in 0.03s` — **VERT**.
+
+### Statut du bloc D
+Test compliance en place ✅. Le reste (Partie 1 rôles/invitations/écrans directeur, Partie 2 back-office, Partie 3 distribution/Stripe) sera livré en session fraîche : chaque partie est trop volumineuse pour tenir dans ce reliquat de contexte, et la consigne d'arrêt propre en fin de partie impose de ne pas en commencer une qu'on ne peut pas finir.
+
+
 ## Assistant KOLO — Tiroir historique + compteur quota — 2 sept. 2026
 
 ### Tiroir d'historique dans l'en-tête
