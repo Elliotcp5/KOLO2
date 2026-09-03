@@ -1,12 +1,20 @@
-name: Mirror to main (auto-merge Emergent pushes)
+name: Mirror to main + Trigger Codemagic
 
-# Objectif : régler définitivement le problème « Save to Github pousse sur une
-# branche que Codemagic ne surveille pas ». Chaque fois qu'un push arrive sur
-# n'importe quelle branche autre que `main`, ce workflow force-push le contenu
-# sur `main`. Codemagic verra alors immédiatement les nouveaux commits.
+# Objectif final : régler définitivement le circuit Emergent → GitHub → Codemagic.
 #
-# Sécurité : le workflow ne se déclenche PAS sur push de `main` (pour éviter
-# les boucles) ni sur push contenant `[skip mirror]` dans le message de commit.
+# Flow :
+#   1. Emergent push sur une branche (emergent/xxx, feature/xxx, ...)
+#   2. Ce workflow force-push le SHA sur `main`
+#   3. Ce workflow appelle l'API Codemagic pour lancer un build sur `main`
+#      (bypass complet du webhook GitHub → Codemagic qui peut être cassé)
+#
+# Secrets requis (à ajouter dans GitHub → Settings → Secrets → Actions) :
+#   - CODEMAGIC_API_TOKEN : personal access token depuis
+#     https://codemagic.io/settings/personal-account/integrations
+#   - CM_APP_ID : ID de l'app Codemagic (dans l'URL du projet Codemagic,
+#     ex: https://codemagic.io/app/6XXXXXXXXX/...)
+#
+# Skip possible : `[skip mirror]` dans le message de commit.
 
 on:
   push:
@@ -19,7 +27,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  mirror:
+  mirror-and-trigger:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip mirror]')"
     permissions:
@@ -38,15 +46,46 @@ jobs:
 
       - name: Force-push vers main
         env:
-          SRC_REF: ${{ github.ref }}
           SRC_SHA: ${{ github.sha }}
+          SRC_REF: ${{ github.ref }}
         run: |
           echo "Mirror ${SRC_REF} (${SRC_SHA:0:7}) → main"
-          # Push le SHA exact de la branche sur main, en force.
-          # Codemagic déclenchera un build main dès ce push.
           git push --force origin "${SRC_SHA}:refs/heads/main"
 
-      - name: Résumé
+      - name: Trigger Codemagic build via API
+        if: env.CODEMAGIC_API_TOKEN != '' && env.CM_APP_ID != ''
+        env:
+          CODEMAGIC_API_TOKEN: ${{ secrets.CODEMAGIC_API_TOKEN }}
+          CM_APP_ID: ${{ secrets.CM_APP_ID }}
+          SRC_SHA: ${{ github.sha }}
         run: |
-          echo "✅ main pointe maintenant sur ${GITHUB_SHA:0:7} (depuis ${GITHUB_REF#refs/heads/})"
-          echo "   Codemagic va build cette version."
+          echo "Trigger Codemagic build on main (SHA ${SRC_SHA:0:7})"
+          RESPONSE=$(curl -sS -X POST "https://api.codemagic.io/builds" \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: $CODEMAGIC_API_TOKEN" \
+            -d "{\"appId\": \"$CM_APP_ID\", \"workflowId\": \"kolo-ios-android\", \"branch\": \"main\"}")
+          echo "Codemagic response: $RESPONSE"
+          BUILD_ID=$(echo "$RESPONSE" | grep -o '"buildId":"[^"]*"' | cut -d'"' -f4)
+          if [ -n "$BUILD_ID" ]; then
+            echo "✅ Codemagic build lancé : https://codemagic.io/app/$CM_APP_ID/build/$BUILD_ID"
+          else
+            echo "⚠️  Réponse Codemagic inattendue — vérifie CODEMAGIC_API_TOKEN et CM_APP_ID"
+            exit 1
+          fi
+
+      - name: Secrets absents — message d'aide
+        if: env.CODEMAGIC_API_TOKEN == '' || env.CM_APP_ID == ''
+        env:
+          CODEMAGIC_API_TOKEN: ${{ secrets.CODEMAGIC_API_TOKEN }}
+          CM_APP_ID: ${{ secrets.CM_APP_ID }}
+        run: |
+          echo "⚠️  Les secrets CODEMAGIC_API_TOKEN et/ou CM_APP_ID ne sont pas configurés."
+          echo ""
+          echo "→ main est bien à jour, mais Codemagic ne sera pas déclenché automatiquement."
+          echo ""
+          echo "Pour activer le trigger auto :"
+          echo "  1. https://codemagic.io/settings/personal-account/integrations → générer un token"
+          echo "  2. URL du projet Codemagic : le nombre après /app/ est ton CM_APP_ID"
+          echo "  3. GitHub → Settings → Secrets and variables → Actions → New repository secret :"
+          echo "     - CODEMAGIC_API_TOKEN = <ton token>"
+          echo "     - CM_APP_ID = <l'ID app Codemagic>"
