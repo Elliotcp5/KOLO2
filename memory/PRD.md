@@ -16,8 +16,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
+### BLOC D · Partie 1 — Hotfix scheduler (Sep 3, 2026) 🔥 LATEST
+- **Fix P0 #1** : `POST /api/d1/admin/generer-opportunites` (async avec `job_id` pour éviter les timeouts proxy) avait été **décapité** — le décorateur `@router.post` et la signature `async def admin_generer_opportunites(request)` avaient disparu, laissant le corps du runner en code mort à l'intérieur de `admin_force_zones_suggestions`. L'endpoint est restauré. Sans lui, seul `POST /api/jobs/generer-opportunites` (a3, synchrone) restait exposé et time-out en proxy sur les zones réelles.
+- **Fix P0 #2** : le scheduler a3 (03h00 Paris) ne persistait aucune trace dans `jobs_runs`. Conséquence : `/api/d1/admin/etat-jobs` retournait `last_run: null` en permanence pour `generer_opportunites_quotidien` et `extraire_rues_quotidien`, même après une exécution réussie. Ajout de `_log_run(db, ..., "done"|"failed")` dans `_run_cycle` (a3/scheduler.py) pour chaque phase (extraction + génération).
+- **Fix P0 #3** : `AsyncIOScheduler(timezone="Europe/Paris")` avec chaîne pure tombait en UTC (bug silencieux) — les jobs cron programmés à 06h00 tournaient à 08h00 Paris en été. Fix : passage à `pytz.timezone("Europe/Paris")` + `CronTrigger(..., timezone=TZ)` sur chaque trigger. Vérifié : `next_run: 2026-09-04T06:00:00+02:00` (CEST correct).
+- **Ajouts** : `extraire_rues_quotidien` est maintenant exposé dans `/api/d1/admin/etat-jobs` ET déclenchable via `/api/d1/admin/run-job` (wrapper avec log jobs_runs).
+- **Test de régression** : nouveau fichier `/app/backend/tests/test_d1_scheduler_endpoints.py` (6 assertions) qui verrouille les 3 fixes et empêche toute régression future. **24/24 tests critiques verts** (D1 + migration + Apple compliance + i18n + scheduler).
 
-### BLOC B1 — Onboarding + Paywall + Tour + Profil (Sep 1, 2026) 🔥 LATEST
+### BLOC D · Partie 1 — Rôles, invitations, écrans directeur (Sep 2, 2026)
 - **10 endpoints backend** sous `backend/b1/` : `/api/b1/ville/{cp}`, 4 endpoints `/api/onboarding/*`, 5 endpoints `/api/me/*` (dont `DELETE /api/me` Apple compliant avec variantes indep/conseiller/directeur).
 - **Frontend `/onboarding-b1`** — 7 écrans séquentiels bloquants (Identité → Statut → Zones → Traitement → Résultat → Plan → Bienvenue) avec progress bar, animations slide.
 - **Frontend `/app-b1/*`** — shell 4 onglets (Opportunités fonctionnelle + 3 placeholders Estimation/Rapport/Assistant), bottom nav pilule à bord rose, tour guidé 6 bulles (bulle 1 avec animation main swipe + définition opportunité).
@@ -29,7 +35,7 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Tests : **7 tests pytest B1 verts**, **97 tests Bloc A verts**, aucune régression.
 
 
-### BLOC D · Partie 1 — Rôles, invitations, écrans directeur (Sep 2, 2026) 🔥 LATEST
+### BLOC D · Partie 1 — Rôles, invitations, écrans directeur (Sep 2, 2026)
 - **Nouveau module `/app/backend/d1/`** : `routes.py` (10 endpoints), `invitations.py` (Resend + attach au signup), `distribution.py` (round-robin équilibré), `schemas.py`.
 - **3 rôles** : `independant` (défaut), `directeur`, `conseiller`. À l'onboarding iOS, le `role` est TOUJOURS `independant` — `statut_declare` sert uniquement à la segmentation. L'élévation en `directeur` se fait exclusivement via back-office (BLOC D · Partie 2).
 - **Endpoints D1 (iOS)** : `GET/PATCH /api/d1/organisations/me`, `POST/GET/DELETE /api/d1/invitations[/*]`, `GET /api/d1/invitations/check?email=…` (public), `GET /api/d1/equipe?periode=mois|semaine`, `DELETE /api/d1/equipe/{user_id}`, `POST /api/d1/opportunites/{id}/attribuer`, `POST /api/d1/opportunites/attribuer-lot`, `POST /api/d1/opportunites/auto-reste`, `POST /api/d1/opportunites/{id}/retirer`. **Aucun POST /api/d1/organisations n'est exposé** (conformité Apple).

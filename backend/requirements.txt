@@ -158,3 +158,4 @@ pycparser==3.0
 Brotli==1.2.0
 zopfli==0.4.3
 Pillow==12.1.0
+apscheduler==3.10.4

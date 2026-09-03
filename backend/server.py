@@ -8592,6 +8592,16 @@ except Exception as _e:
     logger.error(f"Failed to mount D1 router: {_e}")
 
 
+@app.on_event("startup")
+async def _start_d1_scheduler():
+    """Lance les 4 jobs planifiés (génération, distribution, recyclage, recharge)."""
+    try:
+        from d1.scheduler import start_scheduler
+        start_scheduler(db)
+    except Exception as _e:
+        logger.error(f"Failed to start D1 scheduler: {_e}")
+
+
 # ============================================================================
 # INGEST APIFY  →  Supabase  (POST /api/ingest/apify)
 # Registered directly on `app` (not `api_router`) because api_router has

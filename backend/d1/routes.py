@@ -238,6 +238,102 @@ async def admin_diagnostic(request: Request):
     }
 
 
+@router.get("/api/d1/admin/etat-jobs")
+async def admin_etat_jobs(request: Request):
+    """Retourne pour chaque job planifié : sa dernière exécution réussie,
+    sa durée, son résultat, et son statut courant."""
+    _check_admin(request)
+    jobs = ["extraire_rues_quotidien", "generer_opportunites_quotidien",
+            "distribuer_quotidien", "recycler_48h", "recharger_decouverte_hebdo"]
+    out = {}
+    for j in jobs:
+        last_run = await _db().jobs_runs.find_one(
+            {"job": j}, sort=[("start", -1)]
+        )
+        last_ok = await _db().jobs_runs.find_one(
+            {"job": j, "status": "done"}, sort=[("start", -1)]
+        )
+        def _serialize(r):
+            if not r:
+                return None
+            r.pop("_id", None)
+            return r
+        out[j] = {
+            "last_run": _serialize(last_run),
+            "last_success": _serialize(last_ok),
+        }
+    # Prochaine exécution APScheduler
+    try:
+        from d1.scheduler import _scheduler
+        if _scheduler:
+            for job in _scheduler.get_jobs():
+                if job.id in out:
+                    nrt = job.next_run_time
+                    out[job.id]["next_run"] = nrt.isoformat() if nrt else None
+    except Exception:
+        pass
+    return out
+
+
+@router.post("/api/d1/admin/run-job")
+async def admin_run_job(request: Request):
+    """Déclenche manuellement un job planifié. Body: {"job": "distribuer_quotidien"}."""
+    _check_admin(request)
+    body = await request.json()
+    job = (body or {}).get("job")
+    from d1.scheduler import (
+        _run_generer_opportunites, _run_distribuer_quotidien,
+        _run_recycler_48h, _run_recharger_decouverte,
+    )
+
+    async def _run_extraire_rues_wrapper(db):
+        """Log dans jobs_runs (utile pour /api/d1/admin/etat-jobs)."""
+        from a3.job_extract_rues import run_extraire_rues
+        from a3.scheduler import _log_run, _now_utc_iso
+        start = _now_utc_iso()
+        try:
+            r = await run_extraire_rues(db, code_postal=None)
+            await _log_run(db, "extraire_rues_quotidien", start, "done",
+                           summary={"totals": r.get("totals"),
+                                    "cps_processed": r.get("cps_processed")})
+        except Exception as e:
+            await _log_run(db, "extraire_rues_quotidien", start, "failed",
+                           error=f"{type(e).__name__}: {e}")
+
+    mapping = {
+        "extraire_rues_quotidien": _run_extraire_rues_wrapper,
+        "generer_opportunites_quotidien": _run_generer_opportunites,
+        "distribuer_quotidien": _run_distribuer_quotidien,
+        "recycler_48h": _run_recycler_48h,
+        "recharger_decouverte_hebdo": _run_recharger_decouverte,
+    }
+    if job not in mapping:
+        raise HTTPException(status_code=400, detail="job_inconnu")
+    import asyncio
+    asyncio.create_task(mapping[job](_db()))
+    return {"ok": True, "job": job, "status": "running_in_background"}
+
+
+@router.post("/api/d1/admin/force-zones-suggestions")
+async def admin_force_zones_suggestions(request: Request):
+    """Force `zones_suggestions` (et optionnellement `zones_perso`) sur un compte.
+    Body: {"email": "...", "zones": ["13008"], "aussi_zones_perso": false}."""
+    _check_admin(request)
+    body = await request.json()
+    email = (body or {}).get("email", "").strip().lower()
+    zones = (body or {}).get("zones") or []
+    aussi_perso = bool((body or {}).get("aussi_zones_perso"))
+    u = await _db().users.find_one({"email": email})
+    if not u:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    update = {"zones_suggestions": zones, "updated_at": now_utc_iso()}
+    if aussi_perso:
+        update["zones_perso"] = zones
+    await _db().users.update_one({"user_id": u["user_id"]}, {"$set": update})
+    return {"ok": True, "email": email, "zones_suggestions": zones,
+            "zones_perso": (zones if aussi_perso else u.get("zones_perso"))}
+
+
 @router.post("/api/d1/admin/generer-opportunites")
 async def admin_generer_opportunites(request: Request):
     """One-shot admin — lance le job en tâche de fond pour éviter le timeout proxy.
