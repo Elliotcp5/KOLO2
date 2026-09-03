@@ -240,17 +240,53 @@ async def admin_diagnostic(request: Request):
 
 @router.post("/api/d1/admin/generer-opportunites")
 async def admin_generer_opportunites(request: Request):
-    """One-shot admin : lance le job de génération d'opportunités sur un CP donné.
-    Body: {"code_postal": "13008"}  — utilise le moteur existant a3.job_generer_opportunites.
+    """One-shot admin — lance le job en tâche de fond pour éviter le timeout proxy.
+    Body: {"code_postal": "13008"}
+    Retour immédiat : {"job_id": "..."}. Interroger l'avancement via
+    GET /api/d1/admin/generer-opportunites/{job_id}
     """
     _check_admin(request)
+    import asyncio
+    from uuid import uuid4
     body = await request.json()
     cp = (body or {}).get("code_postal")
     if not cp or len(str(cp)) != 5:
         raise HTTPException(status_code=400, detail="code_postal_invalide")
-    from a3.job_generer_opportunites import run_generer_opportunites
-    report = await run_generer_opportunites(_db(), code_postal=str(cp))
-    return report
+
+    job_id = f"job_{uuid4().hex[:12]}"
+    now_iso = now_utc_iso()
+    await _db().jobs.insert_one({
+        "job_id": job_id, "type": "generer_opportunites",
+        "code_postal": str(cp), "status": "running",
+        "created_at": now_iso, "updated_at": now_iso,
+    })
+
+    async def _runner():
+        from a3.job_generer_opportunites import run_generer_opportunites
+        try:
+            report = await run_generer_opportunites(_db(), code_postal=str(cp))
+            await _db().jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "done", "report": report, "updated_at": now_utc_iso()}},
+            )
+        except Exception as e:
+            await _db().jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "failed", "error": f"{type(e).__name__}: {e}",
+                          "updated_at": now_utc_iso()}},
+            )
+
+    asyncio.create_task(_runner())
+    return {"job_id": job_id, "status": "running"}
+
+
+@router.get("/api/d1/admin/generer-opportunites/{job_id}")
+async def admin_get_generer_job(job_id: str, request: Request):
+    _check_admin(request)
+    job = await _db().jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="job_introuvable")
+    return job
 
 
 # ===========================================================================
