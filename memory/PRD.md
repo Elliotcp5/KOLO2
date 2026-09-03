@@ -16,7 +16,22 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### BLOC D · Pipeline Codemagic + estampille build (Sep 3, 2026) 🔥 LATEST
+### BLOC D · Refonte B1 EXCLUSIVE (Sep 3, 2026) 🔥 LATEST — Cause racine TestFlight vieux bundle
+- **Cause racine identifiée** : `App.js` avait **DEUX routes `/login`** (ligne 254 : `<LoginPage />` password, ligne 337 : `<V2AuthPage mode="login" />` code email). React Router prend TOUJOURS la première → `LoginPage` (vieux mot de passe) gagnait, `V2AuthPage` (le nouveau login par code) était du **code mort inatteignable**. C'est POURQUOI le user voyait le vieil écran sur TestFlight — le nouveau bundle avait bien été buildé, mais son routeur pointait toujours vers la vieille page.
+- **Réécriture complète de `App.js`** — l'ancien monde n'existe plus dans le routeur :
+  - `/login` unique → `V2AuthPage mode="login"` (code email 6 chiffres, aucun mot de passe)
+  - `/register`, `/forgot-password`, `/reset-password`, `/create-account`, `/subscribe` → `<Navigate to="/login" replace />` (pièges à vieux liens)
+  - `/app`, `/app/prospects*`, `/app/settings` → `<Navigate to="/app-b1" replace />` (vieux AppShell mort)
+  - `/app-v2`, `/app-v2/*` → `<Navigate to="/app-b1" replace />` (V2 obsolète)
+  - `/kolo-admin`, `/org*`, `/join-org*`, `/integrations` → redirigés vers `/` ou `/app-b1/profil`
+  - Catch-all `*` en natif → `RootRedirect` (login ou app-b1) ; en web → home
+- **`RootRedirect` simplifié** : ne mentionne plus `/app-v2`. Post-login → toujours `/app-b1` (ou `/app-b1/reprise` si zones non confirmées).
+- **Imports morts supprimés** : `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `CreateAccountPage`, `AppShell`, `NewProspectPage`, `FAQPage`, `PricingPage`, `SubscribePage`, `LandingPageNew`, `LegalPage`, `BusinessPage`, `AdminDashboard`, `OrgSpace`, `IntegrationsPage`, `JoinOrgPage`, `BlogIndex`, `BlogPost`, `V2HomePage`, `V2CasesPage`, `V2ContactsPage`, `V2AgendaPage`, `V2OnboardingPage`, `V2ProspectingPage`, `V2GuidePage`, `V2SettingsPage`, `V2ReferralPage`, `V2NotificationsPage`, `V2SubscriptionPage`. Le bundle iOS passe de ~150 imports à 25.
+- **Fichiers legacy neutralisés** : `LoginPage.js`, `RegisterPage.js`, `ForgotPasswordPage.js`, `CreateAccountPage.js` réduits à un stub `export default function DeprecatedPage() { return null; }` avec commentaire d'archéologie. Impossible qu'un futur agent les remonte accidentellement en pensant que c'est le "vrai" login.
+- **Tests de régression** — nouveau fichier `/app/backend/tests/test_refonte_b1_exclusive.py` (8 tests) qui verrouille : pas de route `<LoginPage />`, pas de `<AppShell />`, pas de double route `/login`, `V2AuthPage` sans password, vieilles URLs redirigent via `<Navigate>`, `RootRedirect` sans `/app-v2`. **41/41 tests critiques verts**.
+- **Vérifié en preview** : `/login` sert l'écran par code (0 champ password) ; `/register` redirige vers `/login` ; `/app-v2/dossiers` redirige vers `/app-b1` (opportunités du jour visibles).
+
+### BLOC D · Pipeline Codemagic + estampille build (Sep 3, 2026)
 - **3 bugs pipeline TestFlight identifiés et corrigés en même temps** :
   1. **`CI=false yarn build`** rendait les warnings ESLint silencieux → un vieux bundle avec imports/vars morts passait sans alerte. Passage à `CI=true yarn build` (warnings = fatal).
   2. **`CURRENT_PROJECT_VERSION = 79` hardcodé** dans `frontend/ios/App/App.xcodeproj/project.pbxproj` (Debug + Release). Info.plist utilise `$(CURRENT_PROJECT_VERSION)` → xcodebuild lisait la valeur du pbxproj, IGNORAIT `PlistBuddy` sur Info.plist. C'est ce qui a causé la régression TestFlight **78 → 69**. Correction : `sed -i -E "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g"` sur pbxproj (les 2 configs), avec un `grep` de vérification post-patch qui échoue le build si une valeur ≠ BUILD_NUMBER reste.
