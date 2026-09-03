@@ -10,6 +10,7 @@ import { DEMO_OPPORTUNITES } from './demoOpportunites';
 import { NetworkBanner } from './B3Perf';
 import B1BuildStamp from './B1BuildStamp';
 import { SwipeCard } from './B1Nav';
+import { FinDePileScreen } from './B1FinDePile';
 import './b1.css';
 
 // ============================================================================
@@ -205,8 +206,11 @@ export function OpportunitesPage() {
 
   const next = () => setIdx((i) => Math.min(i + 1, items.length));
 
+  const [swipeError, setSwipeError] = useState(null);
+
   const swipe = async (sens) => {
     if (pending) return;
+    setSwipeError(null);
     // premier_swipe distinct de swipe — clé métrique d'activation
     try {
       if (!localStorage.getItem('kolo_b1_first_swipe_done')) {
@@ -216,16 +220,20 @@ export function OpportunitesPage() {
     } catch {}
     track(EVENTS.SWIPE, { sens, type_carte: 'opportunite' });
 
-    // Persiste côté serveur si opp réelle. Right → `a_demarcher` (apparaîtra
-    // dans « Mes opportunités de mandats »). Left → `rejetee`. On NE
-    // redirige PAS vers l'estimation — on reste sur la pile et la carte
-    // suivante apparaît, comme le fait n'importe quelle app de swipe.
+    // Persiste côté serveur si opp réelle. Right → `a_demarcher` (visible dans
+    // "Mes opportunités de mandats"). Left → `ignoree`.
+    // **Aucun redirect vers un autre onglet** — on reste sur la pile,
+    // prochaine carte s'affiche. Comportement standard d'app de swipe.
     if (cur?.id && !cur.demo) {
       setPending(true);
       try {
-        if (sens === 'droite') await b1api.marquerADemarcher(cur.id);
-        else await b1api.rejeterOpportunite(cur.id);
-      } catch (_e) { /* silencieux : on avance quand même */ }
+        await b1api.swipeOpportunite(cur.id, sens);
+      } catch (e) {
+        // Affiche l'erreur au lieu d'avancer silencieusement
+        setSwipeError(e?.data?.detail || e?.message || 'Erreur enregistrement swipe');
+        setPending(false);
+        return;  // On n'avance PAS si le swipe échoue
+      }
       setPending(false);
     }
     next();
@@ -288,17 +296,26 @@ export function OpportunitesPage() {
                 <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
               </div>
             </SwipeCard>
-          ) : veilleDispo ? (
-            <React.Suspense fallback={null}>
-              <VeilleIntercalaireLazy
-                onOuvrir={() => navigate('/app-b1/veille')}
-                onPlusTard={() => setVeilleDispo(false)}
-              />
-            </React.Suspense>
           ) : (
-            <div className="b1-opp-empty" data-testid="b1-opp-empty">
-              <p>{b1t('opp.vide.titre')}</p>
-              <p className="b1-small" style={{ marginTop: 8 }}>{b1t('opp.vide.sous')}</p>
+            // Fin de pile : sablier + décompte 03h00 Paris + éventuellement
+            // les cartes de veille en dessous. Aucun cul-de-sac.
+            <FinDePileScreen
+              veilleSlot={veilleDispo ? (
+                <React.Suspense fallback={null}>
+                  <VeilleIntercalaireLazy
+                    onOuvrir={() => navigate('/app-b1/veille')}
+                    onPlusTard={() => setVeilleDispo(false)}
+                  />
+                </React.Suspense>
+              ) : null}
+            />
+          )}
+          {swipeError && (
+            <div data-testid="b1-swipe-error" style={{
+              marginTop: 12, padding: '10px 14px', borderRadius: 12,
+              background: '#FEE2E2', color: '#991B1B', fontSize: 13, textAlign: 'center',
+            }}>
+              {swipeError}
             </div>
           )}
         </div>

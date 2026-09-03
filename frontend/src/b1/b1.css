@@ -1077,19 +1077,28 @@
   box-shadow: 0 4px 12px -4px rgba(236, 134, 144, 0.5);
 }
 
-/* --- Bottom tab pill (point 5 : pastille rose sur onglet actif) --- */
+/* --- Bottom tab pill (point 5 : pastille rose sur onglet actif) ---
+   Le composant est UNIQUE et le style est UNIQUE — aucune variante par écran.
+   Fond blanc opaque, liseré rose franc (pas de transparence), ombre douce.
+   Onglet actif = pastille rose PLEINE avec icône BLANCHE.
+   Onglets inactifs = icône GRIS MOYEN sur fond BLANC. */
 .b1-tabbar {
-  bottom: 22px;                    /* détaché du bas de l'écran */
-  border: 2px solid rgba(236, 134, 144, 0.20); /* liseré rose subtil */
-  box-shadow: 0 16px 36px -12px rgba(20, 20, 30, 0.18),
-              0 4px 12px -4px rgba(20, 20, 30, 0.08);
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  background: #FFFFFF;                 /* opaque, jamais transparent */
+  border: 2px solid #EC8690;           /* liseré rose franc — 100% opacité */
+  box-shadow: 0 16px 36px -12px rgba(20, 20, 30, 0.22),
+              0 4px 12px -4px rgba(20, 20, 30, 0.10);
 }
+.b1-tab {
+  color: #6B7280;                      /* gris moyen — visible sur blanc */
+}
+.b1-tab svg { color: currentColor; }   /* propagation icônes lucide */
 .b1-tab[data-active="true"] {
-  background: var(--b1-accent, #EC8690);
-  color: #fff;
+  background: #EC8690;                 /* rose plein */
+  color: #FFFFFF;                      /* icône blanche */
   border-radius: 22px;
 }
-.b1-tab[data-active="true"] svg { color: #fff; }
+.b1-tab[data-active="true"] svg { color: #FFFFFF; }
 
 /* --- Cartes empty state --- */
 .b1-opp-empty {
@@ -1205,4 +1214,60 @@
   background: #C4D2E5;
   box-shadow: none;
   cursor: not-allowed;
+}
+
+/* ============================================================
+   Écran de fin de pile — sablier + décompte 03h00 Paris
+   ============================================================ */
+.b1-fin-pile {
+  padding: 40px 24px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 22px;
+}
+.b1-fin-pile-sablier {
+  filter: drop-shadow(0 8px 22px rgba(236, 134, 144, 0.28));
+}
+.b1-fin-pile-texte {
+  font-size: 16px;
+  color: #4B5563;
+  max-width: 300px;
+  line-height: 1.4;
+}
+.b1-fin-pile-decompte {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-family: "League Spartan", -apple-system, "SF Pro Display", sans-serif;
+  font-weight: 800;
+  font-size: 44px;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+.b1-fin-pile-decompte span {
+  min-width: 62px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: 0 6px 18px -4px rgba(20, 20, 30, 0.10);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.b1-fin-pile-decompte em {
+  font-style: normal;
+  color: #EC8690;
+  font-size: 32px;
+  font-weight: 700;
+}
+.b1-fin-pile-decompte-label {
+  font-size: 11px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.b1-fin-pile-veille {
+  width: 100%;
+  margin-top: 12px;
 }

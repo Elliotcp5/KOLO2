@@ -28,8 +28,9 @@ PARIS = ZoneInfo("Europe/Paris")
 SYSTEM_PROMPT = (
     "Vous êtes l'assistant du conseiller immobilier français utilisateur de KOLO. "
     "Vous répondez en français, exclusivement au vouvoiement. "
-    "Vos réponses font au maximum quatre phrases courtes, suivies du prochain pas "
-    "concret à faire. Vous n'énumérez jamais plus de trois points. "
+    "Vos réponses font trois à quatre phrases courtes maximum, suivies du "
+    "prochain pas concret. Vous n'énumérez jamais plus de trois points. "
+    "Vous ne faites jamais de titres ni de sections. "
     "Vous n'employez jamais le mot \"expertise\" pour désigner un avis de valeur : "
     "dites toujours \"avis de valeur\". "
     "Vous refusez de donner un chiffre de marché tant qu'aucune estimation n'est fournie "
@@ -38,8 +39,7 @@ SYSTEM_PROMPT = (
     "un juriste. "
     "Vous ne promettez jamais un résultat commercial chiffré. "
     "Vous ne mentionnez jamais d'autres utilisateurs, d'autres conseillers, ni de données "
-    "ne concernant pas le conseiller qui vous interroge. "
-    "Vos réponses sont brèves, concrètes, et respectent le vocabulaire métier français."
+    "ne concernant pas le conseiller qui vous interroge."
 )
 
 
@@ -158,11 +158,10 @@ async def chat(payload: ChatIn, request: Request):
     chat = (LlmChat(api_key=EMERGENT_KEY, session_id=f"assistant-{conv_id}-{len(messages)}",
                     system_message=SYSTEM_PROMPT)
             .with_model("anthropic", "claude-sonnet-5"))
-    # Contrainte de longueur — le prompt système demande 4 phrases max, on cap
-    # le budget tokens en dur pour être sûr que le modèle ne dépasse pas.
-    # 300 tokens ≈ 220 mots ≈ 4-5 phrases courtes en français.
+    # Contrainte de longueur — 400 tokens ≈ 300 mots ≈ 4-5 phrases FR.
+    # Le prompt système impose 3-4 phrases ; on cap en dur pour être sûr.
     try:
-        chat = chat.with_max_tokens(300)
+        chat = chat.with_max_tokens(400)
     except Exception:
         pass  # méthode absente sur cette version — le prompt reste la garde
     # Injecte l'historique en un seul message pour préserver le fil sans multiplier les appels

@@ -191,6 +191,9 @@ export const confirmerZones = (codes_postaux) =>
 // --- Opportunités du jour (swipe) ---
 export const getOpportunitesDuJour = (limit = 5) =>
   req(`/api/opportunites/du-jour?limit=${limit}`);
+// Swipe unifié — POST /api/opportunites/{id}/swipe {sens: "droite"|"gauche"}
+export const swipeOpportunite = (id, sens) =>
+  req(`/api/opportunites/${encodeURIComponent(id)}/swipe`, { method: 'POST', body: { sens } });
 // Swipe droite → statut `a_demarcher` (apparaît dans « Mes opportunités de mandats »)
 export const marquerADemarcher = (id) =>
   req(`/api/opportunites/${encodeURIComponent(id)}/marquer-a-demarcher`, { method: 'POST' });
@@ -215,6 +218,6 @@ export const b1api = {
   attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
   getSuggestionsZones, confirmerZones,
   // Opportunités
-  getOpportunitesDuJour, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
+  getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
 };
 export default b1api;

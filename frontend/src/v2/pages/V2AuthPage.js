@@ -83,26 +83,36 @@ export default function V2AuthPage({ mode = 'login' }) {
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
-          {/* Logo K noir — asset fourni (kolo-mark-black-256.png, 256×256).
-              object-fit: contain protège l'aspect au cas où le parent limite
-              une seule dimension. width/height explicites empêchent le
-              layout shift. */}
+          {/* Logo KOLO — rendu SVG inline en League Spartan noir.
+              Choix motivé : le PNG fourni (kolo-mark-black-256.png) a un
+              centre transparent qui, sur le fond violet clair de la page,
+              rend un aspect « carré vide » sur iOS (constaté TestFlight 3e
+              passe). Le SVG inline élimine tout risque de chemin cassé,
+              CSP, ou aspect déformé au packaging Capacitor.
+              L'aspect (largeur/hauteur) est fixé, jamais étiré. */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <img
-              src="/kolo-mark-black-256.png"
-              alt="KOLO"
-              width={72}
+            <svg
+              width={180}
               height={72}
-              style={{
-                display: 'block',
-                margin: '0 auto 20px',
-                width: 72,
-                height: 72,
-                objectFit: 'contain',
-                objectPosition: 'center',
-              }}
+              viewBox="0 0 220 88"
+              role="img"
+              aria-label="KOLO"
               data-testid="auth-logo"
-            />
+              style={{ display: 'block', margin: '0 auto 20px' }}
+            >
+              <text
+                x="110"
+                y="66"
+                textAnchor="middle"
+                fontFamily='"League Spartan", -apple-system, "SF Pro Display", sans-serif'
+                fontWeight={800}
+                fontSize={68}
+                letterSpacing="-2"
+                fill="#111827"
+              >
+                KOLO
+              </text>
+            </svg>
             <div className="b1-lead" style={{ marginTop: 0, fontSize: 15, color: 'rgba(0,0,0,0.55)' }}>
               {b1t('auth.tagline')}
             </div>

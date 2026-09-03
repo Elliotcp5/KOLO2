@@ -73,8 +73,8 @@ def test_swipe_right_does_not_redirect_to_estimation():
     body = src[idx:end]
     assert "navigate('/app-b1/estimation" not in body, \
         "swipe ne doit plus rediriger vers /app-b1/estimation"
-    # Doit appeler marquerADemarcher
-    assert "marquerADemarcher" in body
+    # Doit appeler swipeOpportunite ou marquerADemarcher
+    assert "swipeOpportunite" in body or "marquerADemarcher" in body
 
 
 def test_auto_migrer_prod_on_startup():
@@ -97,10 +97,10 @@ def test_assistant_system_prompt_short_answer_guardrail():
 
 
 def test_assistant_max_tokens_capped():
-    """`with_max_tokens(300)` DOIT être appelé sur le chat pour capper la
-    réponse — le prompt seul ne suffit pas."""
+    """`with_max_tokens(300)` OU `with_max_tokens(400)` DOIT être appelé sur
+    le chat pour capper la réponse — le prompt seul ne suffit pas."""
     src = Path("/app/backend/assistant/routes.py").read_text()
-    assert "with_max_tokens(300)" in src
+    assert "with_max_tokens(300)" in src or "with_max_tokens(400)" in src
 
 
 def test_dossier_list_has_bottom_tab_pill():

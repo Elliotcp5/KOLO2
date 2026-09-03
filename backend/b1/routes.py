@@ -728,6 +728,36 @@ def _oid_or_400(raw: str):
         raise HTTPException(status_code=400, detail="opportunite_id_invalide")
 
 
+@router.post("/api/opportunites/{opportunite_id}/swipe")
+async def swipe_opportunite(opportunite_id: str, request: Request):
+    """Endpoint unique swipe droite / gauche.
+    Body: {"sens": "droite" | "gauche"}
+      • droite → statut `a_demarcher` (apparaît dans "Mes opportunités de mandats")
+      • gauche → statut `ignoree`
+    On NE redirige JAMAIS vers un autre onglet côté serveur (le front reste
+    sur la pile après swipe, prochaine carte).
+    """
+    body = await request.json()
+    sens = (body or {}).get("sens", "").strip().lower()
+    if sens not in ("droite", "gauche"):
+        raise HTTPException(status_code=400, detail="sens_invalide (droite|gauche)")
+    user = await _current_user_doc(request)
+    _id = _oid_or_400(opportunite_id)
+    now_iso = now_utc_iso()
+    nouveau_statut = "a_demarcher" if sens == "droite" else "ignoree"
+    date_field = "date_a_demarcher" if sens == "droite" else "date_ignoree"
+    res = await _db().opportunites.update_one(
+        {"_id": _id, "assigne_a": user["user_id"], "statut": "proposee"},
+        {"$set": {"statut": nouveau_statut,
+                  date_field: now_iso,
+                  "date_dernier_statut": now_iso,
+                  "updated_at": now_iso}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="opportunite_introuvable_ou_deja_traitee")
+    return {"ok": True, "opportunite_id": opportunite_id, "statut": nouveau_statut, "sens": sens}
+
+
 @router.post("/api/opportunites/{opportunite_id}/marquer-a-demarcher")
 @router.post("/api/opportunites/{opportunite_id}/accepter")  # alias historique
 async def marquer_opportunite_a_demarcher(opportunite_id: str, request: Request):
