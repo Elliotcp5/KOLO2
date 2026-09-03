@@ -223,11 +223,34 @@ async def admin_diagnostic(request: Request):
     for p in routes:
         prefix = "/".join(p.split("/")[:3]) or p  # ex /api/dossiers
         prefixes[prefix] = prefixes.get(prefix, 0) + 1
+    # Contexte env
+    import os as _os
+    env_info = {
+        "supabase_url": (_os.environ.get("SUPABASE_URL") or "").split("/")[2] if _os.environ.get("SUPABASE_URL") else None,
+        "mongo_db_name": _os.environ.get("DB_NAME"),
+        "has_supabase_key": bool(_os.environ.get("SUPABASE_SECRET_KEY") or _os.environ.get("SUPABASE_KEY")),
+    }
     return {
         "total_routes": len(routes),
         "prefixes": prefixes,
+        "env": env_info,
         "sample": routes[:80],
     }
+
+
+@router.post("/api/d1/admin/generer-opportunites")
+async def admin_generer_opportunites(request: Request):
+    """One-shot admin : lance le job de génération d'opportunités sur un CP donné.
+    Body: {"code_postal": "13008"}  — utilise le moteur existant a3.job_generer_opportunites.
+    """
+    _check_admin(request)
+    body = await request.json()
+    cp = (body or {}).get("code_postal")
+    if not cp or len(str(cp)) != 5:
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+    from a3.job_generer_opportunites import run_generer_opportunites
+    report = await run_generer_opportunites(_db(), code_postal=str(cp))
+    return report
 
 
 # ===========================================================================

@@ -23,7 +23,7 @@ async def test_compute_suggested_zones_fallback():
     uid = f"test_uid_{uuid.uuid4().hex[:8]}"
     await db.users.insert_one({"user_id": uid, "email": f"{uid}@t.io"})
     z = await compute_suggested_zones(db, uid)
-    assert z == ["75017"]
+    assert z == ["13008"]  # fallback = zone à fort volume Marseille
     await db.users.delete_one({"user_id": uid})
 
 

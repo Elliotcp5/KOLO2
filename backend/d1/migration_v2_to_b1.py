@@ -85,8 +85,10 @@ async def compute_suggested_zones(db, user_id: str, max_zones: int = 2) -> list[
         if cp:
             return [cp]
 
-    # Fallback zone démo Apple + Paris 17e
-    return ["75017"]
+    # Fallback : Marseille 13008 (volume élevé — 65 opps sur 477 DPE ≈ 14%) plutôt que
+    # Paris 75017 (4 opps sur 1124 DPE ≈ 0.4%). Le premier écran de reprise doit
+    # proposer une zone où le prospect verra des cartes immédiatement.
+    return ["13008"]
 
 
 async def bascule_to_b1(db, user_id: str) -> dict:
