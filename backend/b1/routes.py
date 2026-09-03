@@ -728,23 +728,29 @@ def _oid_or_400(raw: str):
         raise HTTPException(status_code=400, detail="opportunite_id_invalide")
 
 
-@router.post("/api/opportunites/{opportunite_id}/accepter")
-async def accepter_opportunite(opportunite_id: str, request: Request):
-    """Swipe droite : l'utilisateur accepte, on marque `acceptee`. Le front
-    ouvre ensuite l'estimation avec le bien pré-rempli."""
+@router.post("/api/opportunites/{opportunite_id}/marquer-a-demarcher")
+@router.post("/api/opportunites/{opportunite_id}/accepter")  # alias historique
+async def marquer_opportunite_a_demarcher(opportunite_id: str, request: Request):
+    """Swipe droite : l'opportunité passe en `a_demarcher` — elle apparaîtra
+    ensuite dans « Mes opportunités de mandats » (statut actif de démarchage).
+
+    NOTE : on NE redirige plus vers l'estimation. Le front reste sur la pile
+    de swipe et affiche la carte suivante — comportement standard d'une app
+    de swipe.
+    """
     user = await _current_user_doc(request)
     _id = _oid_or_400(opportunite_id)
     now_iso = now_utc_iso()
     res = await _db().opportunites.update_one(
         {"_id": _id, "assigne_a": user["user_id"], "statut": "proposee"},
-        {"$set": {"statut": "acceptee",
-                  "date_acceptation": now_iso,
+        {"$set": {"statut": "a_demarcher",
+                  "date_a_demarcher": now_iso,
                   "date_dernier_statut": now_iso,
                   "updated_at": now_iso}},
     )
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="opportunite_introuvable_ou_deja_traitee")
-    return {"ok": True, "opportunite_id": opportunite_id, "statut": "acceptee"}
+    return {"ok": True, "opportunite_id": opportunite_id, "statut": "a_demarcher"}
 
 
 @router.post("/api/opportunites/{opportunite_id}/rejeter")

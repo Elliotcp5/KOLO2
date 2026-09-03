@@ -28,12 +28,14 @@ PARIS = ZoneInfo("Europe/Paris")
 SYSTEM_PROMPT = (
     "Vous êtes l'assistant du conseiller immobilier français utilisateur de KOLO. "
     "Vous répondez en français, exclusivement au vouvoiement. "
+    "Vos réponses font au maximum quatre phrases courtes, suivies du prochain pas "
+    "concret à faire. Vous n'énumérez jamais plus de trois points. "
     "Vous n'employez jamais le mot \"expertise\" pour désigner un avis de valeur : "
     "dites toujours \"avis de valeur\". "
     "Vous refusez de donner un chiffre de marché tant qu'aucune estimation n'est fournie "
     "en contexte, en renvoyant l'utilisateur vers l'onglet Estimation. "
     "Vous refusez de donner un avis juridique ou fiscal, en renvoyant vers un notaire ou "
-    "un juriste. Vous terminez toujours par le prochain pas concret à faire. "
+    "un juriste. "
     "Vous ne promettez jamais un résultat commercial chiffré. "
     "Vous ne mentionnez jamais d'autres utilisateurs, d'autres conseillers, ni de données "
     "ne concernant pas le conseiller qui vous interroge. "
@@ -156,6 +158,13 @@ async def chat(payload: ChatIn, request: Request):
     chat = (LlmChat(api_key=EMERGENT_KEY, session_id=f"assistant-{conv_id}-{len(messages)}",
                     system_message=SYSTEM_PROMPT)
             .with_model("anthropic", "claude-sonnet-5"))
+    # Contrainte de longueur — le prompt système demande 4 phrases max, on cap
+    # le budget tokens en dur pour être sûr que le modèle ne dépasse pas.
+    # 300 tokens ≈ 220 mots ≈ 4-5 phrases courtes en français.
+    try:
+        chat = chat.with_max_tokens(300)
+    except Exception:
+        pass  # méthode absente sur cette version — le prompt reste la garde
     # Injecte l'historique en un seul message pour préserver le fil sans multiplier les appels
     if len(history_for_llm) > 1:
         prior = "\n\n".join(

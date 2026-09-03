@@ -16,7 +16,23 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### BLOC D · Fixes TestFlight (Sep 3, 2026) 🔥 LATEST — 4 blockers corrigés + design polish
+### BLOC D · Fixes TestFlight 2e passe (Sep 3, 2026) 🔥 LATEST — 5 blockers + auto-migrate prod
+- **Bug 1 (démo cards sur vrais comptes)** : `OpportunitesPage` retombait sur `DEMO_OPPORTUNITES` si l'API renvoyait `{items: []}` — un vrai compte voyait donc des cartes fictives, plus moyen de distinguer un vrai bien d'un faux. Fix : `setItems(r?.items || [])` — pas de fallback aveugle. Démo servie UNIQUEMENT si (a) 401 anonyme ET (b) tour guidé actif (`localStorage.kolo_b1_show_tour`). Sur zone calme réelle → empty state "Come back tomorrow" (comme demandé).
+- **Bug 1 bis (auto-migrer-prod au startup)** : le fix `enrichissements.id_parcelle` en prod dépendait d'un appel manuel `POST /api/d1/admin/migrer-prod`. Ajouté `@app.on_event("startup")` qui exécute `migrer_prod(db)` à chaque redémarrage backend. Idempotent, ne fait rien si tout est déjà propre. Loggué dans supervisord (`[auto-migrer-prod] N index recréé(s) · ... users patchés=X`). Vérifié : 5 startups préview, 0 index cassé restant.
+- **Bug 2 (swipe : rien enregistré + redirect Estimation)** : swipe droite appelait `accepter` qui mettait `statut=acceptee` (aucun sens métier) puis redirigeait vers `/app-b1/estimation/flow`. Correction :
+  - Nouveau endpoint `POST /api/opportunites/{id}/marquer-a-demarcher` → `statut=a_demarcher` (statut actif dans le pipeline de démarchage, apparaîtra dans "Mes opportunités de mandats"). Ancien `/accepter` reste comme alias historique.
+  - `b1api.marquerADemarcher()` ajouté ; `swipe('droite')` l'appelle et n'appelle PLUS `navigate('/app-b1/estimation/...')`. On reste sur la pile, carte suivante apparaît — comportement standard d'app de swipe.
+- **Bug 3 (impasse Rapport)** : `DossierListPage` (onglet Rapport) n'avait AUCUN `BottomTabPill` → cul-de-sac dès qu'on cliquait dessus. Ajouté `<BottomTabPill active="rapport" />` en fin de render. Estimation/Assistant/Opportunités avaient déjà la tab bar.
+- **Bug 4 (Assistant trop long)** : le `SYSTEM_PROMPT` était trop permissif. Ajouté au début : *"Vos réponses font au maximum quatre phrases courtes, suivies du prochain pas concret. Vous n'énumérez jamais plus de trois points."* Et cap tokens : `chat.with_max_tokens(300)` (~4-5 phrases FR). Streaming côté client déjà en place (chunks de 24 char après réponse complète — pas vraiment SSE mais visuellement fluide).
+- **Bug 4 bis (visuel chat)** : le fil était en rectangles pleine-largeur. Nouveau CSS bulles façon iMessage :
+  - Bulle bot : `background: #FDE7EA` (rose clair), `border-radius: 20px 20px 20px 6px` (coin bas-gauche pointu = pointe vers le locuteur)
+  - Bulle user : `background: #DDEBFF` (bleu clair), `border-radius: 20px 20px 6px 20px` (coin bas-droit pointu)
+  - Composer : input arrondi 24px + bouton envoi rond bleu (`#4A90E2`) 44×44 avec ombre portée
+- **Bug 5 (logo)** — déjà appliqué au fix précédent : 72×72, `object-fit: contain`, PNG source 256×256 (aspect 1:1 respecté). Preview confirmé.
+- **Point 6 (captures 5 écrans)** : login/swipe/estimation/dossier/assistant capturés en viewport 390×844 iPhone. Prêts pour comparaison avec maquettes utilisateur.
+- **9 nouveaux tests de régression** dans `/app/backend/tests/test_testflight_v2.py` : endpoints `marquer-a-demarcher` + `accepter` alias, statut `a_demarcher`, pas de fallback démo aveugle, pas de redirect Estimation, auto-migrer-prod au startup, prompt système "4 phrases", `max_tokens=300`, DossierList avec BottomTabPill, CSS bulles. **40/40 tests critiques verts** dont 9 TestFlight v2.
+
+### BLOC D · Fixes TestFlight (Sep 3, 2026)
 - **Bug 1 (swipe absent)** : `OpportunitesPage` n'avait AUCUN handler tactile — seulement 2 boutons. Nouveau composant `SwipeCard` (`/app/frontend/src/b1/B1Nav.jsx`) avec :
   - Pointer Events (unifie souris + tactile iOS Safari)
   - Détection horizontal vs vertical via seuil `H_LOCK_PX = 12` (empêche le scroll de voler le geste)

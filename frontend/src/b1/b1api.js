@@ -191,8 +191,11 @@ export const confirmerZones = (codes_postaux) =>
 // --- Opportunités du jour (swipe) ---
 export const getOpportunitesDuJour = (limit = 5) =>
   req(`/api/opportunites/du-jour?limit=${limit}`);
-export const accepterOpportunite = (id) =>
-  req(`/api/opportunites/${encodeURIComponent(id)}/accepter`, { method: 'POST' });
+// Swipe droite → statut `a_demarcher` (apparaît dans « Mes opportunités de mandats »)
+export const marquerADemarcher = (id) =>
+  req(`/api/opportunites/${encodeURIComponent(id)}/marquer-a-demarcher`, { method: 'POST' });
+// Legacy — même endpoint. À garder pour compat.
+export const accepterOpportunite = marquerADemarcher;
 export const rejeterOpportunite = (id) =>
   req(`/api/opportunites/${encodeURIComponent(id)}/rejeter`, { method: 'POST' });
 
@@ -212,6 +215,6 @@ export const b1api = {
   attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
   getSuggestionsZones, confirmerZones,
   // Opportunités
-  getOpportunitesDuJour, accepterOpportunite, rejeterOpportunite,
+  getOpportunitesDuJour, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
 };
 export default b1api;

@@ -161,19 +161,28 @@ export function OpportunitesPage() {
   const cur = items[idx];
 
   // Charge les opportunités attribuées à l'utilisateur (GET /api/opportunites/du-jour).
-  // Fallback vers `DEMO_OPPORTUNITES` uniquement si (a) 401 (mode aperçu web
-  // anonyme) ou (b) l'utilisateur n'a AUCUNE opp. La démo permet au tour guidé
-  // d'avoir toujours une carte à montrer.
+  //
+  // **Aucun fallback vers `DEMO_OPPORTUNITES`** — un vrai compte ne DOIT
+  // jamais voir de carte fictive, sinon impossible de distinguer un vrai bien
+  // d'un faux. La démo n'apparaît QUE si l'utilisateur est en preview web
+  // anonyme (401) ET a explicitement demandé le tour guidé (localStorage
+  // `kolo_b1_show_tour`).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const r = await b1api.getOpportunitesDuJour(5);
         if (cancelled) return;
-        if (r?.items?.length) setItems(r.items);
-        else setItems(DEMO_OPPORTUNITES);
+        setItems(r?.items || []);
       } catch (e) {
-        if (!cancelled) setItems(DEMO_OPPORTUNITES);
+        if (cancelled) return;
+        // 401 web anonyme + tour guidé actif → démo pédagogique.
+        // Sinon on assume une liste vide (zone calme, quota atteint, …).
+        if (e.status === 401 && localStorage.getItem('kolo_b1_show_tour') === '1') {
+          setItems(DEMO_OPPORTUNITES);
+        } else {
+          setItems([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -207,40 +216,17 @@ export function OpportunitesPage() {
     } catch {}
     track(EVENTS.SWIPE, { sens, type_carte: 'opportunite' });
 
-    // Persiste côté serveur si opp réelle (id présent, pas démo).
+    // Persiste côté serveur si opp réelle. Right → `a_demarcher` (apparaîtra
+    // dans « Mes opportunités de mandats »). Left → `rejetee`. On NE
+    // redirige PAS vers l'estimation — on reste sur la pile et la carte
+    // suivante apparaît, comme le fait n'importe quelle app de swipe.
     if (cur?.id && !cur.demo) {
       setPending(true);
       try {
-        if (sens === 'droite') await b1api.accepterOpportunite(cur.id);
+        if (sens === 'droite') await b1api.marquerADemarcher(cur.id);
         else await b1api.rejeterOpportunite(cur.id);
       } catch (_e) { /* silencieux : on avance quand même */ }
       setPending(false);
-    }
-
-    // Droite = j'accepte → on ouvre l'estimation avec le bien pré-rempli.
-    if (sens === 'droite' && cur) {
-      const caracs = cur.caracteristiques || {};
-      const bien = {
-        adresse: cur.adresse,
-        code_postal: cur.code_postal || caracs.code_postal,
-        lat: cur.lat || caracs.latitude,
-        lng: cur.lng || caracs.longitude,
-        type_bien: caracs.type_batiment === 'maison' ? 'Maison' : 'Appartement',
-        surface_habitable: caracs.surface_habitable || cur.superficie,
-        classe_dpe: caracs.classe_dpe || cur.dpe,
-        annee_construction: caracs.annee_construction,
-        caracteristiques: caracs,
-        listing: cur.listing || null,
-      };
-      if (bien.lat == null || bien.lng == null) {
-        next();
-        navigate('/app-b1/estimation/adresse');
-        return;
-      }
-      navigate('/app-b1/estimation/flow', {
-        state: { bien, opportunite_id: cur.id || cur._id },
-      });
-      return;
     }
     next();
   };

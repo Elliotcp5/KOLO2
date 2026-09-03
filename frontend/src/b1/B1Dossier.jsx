@@ -7,6 +7,7 @@ import b1t from './b1i18n';
 import b1api, { API } from './b1api';
 import { saveDraft, loadDraft, clearDraft } from './b3offline';
 import { DictationButton, DICTABLE } from './B1Dictation';
+import { BottomTabPill } from './B1Shell';
 import './b1dossier.css';
 
 const SECTIONS = [
@@ -123,6 +124,7 @@ export function DossierListPage() {
           )}
         </div>
       )}
+      <BottomTabPill active="rapport" />
     </div>
   );
 }

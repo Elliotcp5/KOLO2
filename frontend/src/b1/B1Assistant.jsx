@@ -171,31 +171,34 @@ export function AssistantPage() {
           </div>
         )}
         {messages.map((m, idx) => (
-          <div key={idx} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 8 }} data-testid={`as-msg-${m.role}`}>
-            <div style={{
-              maxWidth: '82%', padding: '10px 14px', borderRadius: 14,
-              background: m.role === 'user' ? '#DDEBFF' : 'var(--b1-accent-light)',
-              color: m.role === 'user' ? '#0F2C55' : 'var(--b1-text-primary)',
-              whiteSpace: 'pre-wrap', fontSize: 14,
-            }}>{m.content || (streaming && idx === messages.length - 1 ? '…' : '')}</div>
+          <div key={idx} className={`as-row ${m.role === 'user' ? 'as-row--user' : 'as-row--bot'}`} data-testid={`as-msg-${m.role}`}>
+            <div className={`as-bubble ${m.role === 'user' ? 'as-bubble--user' : 'as-bubble--bot'}`}>
+              {m.content || (streaming && idx === messages.length - 1 ? '…' : '')}
+            </div>
           </div>
         ))}
         {error && <div style={{ color: 'var(--b1-danger)', fontSize: 13, padding: 8 }} data-testid="as-error">{error}</div>}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid var(--b1-border)' }}>
+      <div className="as-composer">
         <input
-          className="b1-input"
+          className="as-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
           placeholder={b1t('as.saisir')}
           data-testid="as-input"
-          style={{ flex: 1, margin: 0 }}
           disabled={streaming}
         />
-        <button type="button" className="b1-pill b1-pill--primary" onClick={() => send()} disabled={!input.trim() || streaming} data-testid="as-send" aria-label={b1t('as.envoyer')} style={{ padding: '10px 14px' }}>
-          <Send size={16} />
+        <button
+          type="button"
+          className="as-send"
+          onClick={() => send()}
+          disabled={!input.trim() || streaming}
+          data-testid="as-send"
+          aria-label={b1t('as.envoyer')}
+        >
+          <Send size={18} />
         </button>
       </div>
 

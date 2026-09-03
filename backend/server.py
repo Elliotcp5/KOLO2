@@ -8593,6 +8593,23 @@ except Exception as _e:
 
 
 @app.on_event("startup")
+async def _auto_migrer_prod():
+    """Auto-migre prod à chaque démarrage (idempotent) — corrige silencieusement
+    les index cassés (`enrichissements.id_parcelle` unique sans partialFilter)
+    qui font échouer la génération d'opportunités avec `DuplicateKeyError`.
+
+    Le rapport est loggé dans les logs supervisord. Le démarrage n'échoue
+    JAMAIS même si la migration échoue partiellement.
+    """
+    try:
+        from d1.migration_prod import migrer_prod
+        report = await migrer_prod(db)
+        logger.warning(f"[auto-migrer-prod] {report.get('summary')}")
+    except Exception as _e:
+        logger.error(f"[auto-migrer-prod] failed: {_e}")
+
+
+@app.on_event("startup")
 async def _start_d1_scheduler():
     """Lance les 4 jobs planifiés (génération, distribution, recyclage, recharge)."""
     try:
