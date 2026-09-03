@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import v2api from '../v2api';
 import b1t from '../../b1/b1i18n';
+import B1BuildStamp from '../../b1/B1BuildStamp';
 import '../../b1/b1.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
@@ -74,9 +75,11 @@ export default function V2AuthPage({ mode = 'login' }) {
         style={{
           minHeight: '100vh',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           padding: 24,
+          position: 'relative',
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
@@ -193,6 +196,9 @@ export default function V2AuthPage({ mode = 'login' }) {
               </button>
             </>
           )}
+        </div>
+        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+          <B1BuildStamp inline />
         </div>
       </div>
     </div>

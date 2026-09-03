@@ -46,36 +46,87 @@ workflows:
           cd frontend
           yarn install --frozen-lockfile || yarn install
 
-      - name: Build React app
+      - name: Compute App Store build number
         script: |
-          cd frontend
-          # Force the production API URL at build time. CRA inlines this into
-          # the JS bundle, so the iOS WebView always talks to the real backend.
-          export REACT_APP_BACKEND_URL="${REACT_APP_BACKEND_URL:-https://trykolo.io}"
-          echo "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
-          CI=false yarn build
+          # On calcule AVANT `yarn build` pour l'estampiller dans le JS bundle.
+          # Sans ça, le numéro affiché dans l'app ne correspond pas au build
+          # TestFlight (Codemagic donne CM_BUILD_NUMBER = son propre compteur
+          # interne, mais App Store veut le max entre AppStore et TestFlight
+          # + 1).
+          APP_STORE_NUM=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          TESTFLIGHT_NUM=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          MAX_NUM=$(( APP_STORE_NUM > TESTFLIGHT_NUM ? APP_STORE_NUM : TESTFLIGHT_NUM ))
+          BUILD_NUMBER=$((MAX_NUM + 1))
+          echo "App Store latest: $APP_STORE_NUM · TestFlight latest: $TESTFLIGHT_NUM · new: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> $CM_ENV
+          # Estampille lisible dans l'app : "<build>-<sha7>-<UTC>"
+          SHORT_SHA=$(echo "${CM_COMMIT:-nogit}" | cut -c1-7)
+          BUILD_STAMP="${BUILD_NUMBER}-${SHORT_SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
+          echo "BUILD_STAMP=${BUILD_STAMP}" >> $CM_ENV
+          echo "Estampille bundle : ${BUILD_STAMP}"
 
-      - name: Sync Capacitor (preserves custom iOS config)
+      - name: Build React app (CI=true, avec estampille)
         script: |
           cd frontend
+          export REACT_APP_BACKEND_URL="${REACT_APP_BACKEND_URL:-https://trykolo.io}"
+          export REACT_APP_BUILD_ID="${BUILD_STAMP}"
+          echo "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
+          echo "REACT_APP_BUILD_ID=$REACT_APP_BUILD_ID"
+          # `CI=true` : les warnings ESLint deviennent fatal — force à ne pas
+          # laisser passer un bundle avec des variables inutilisées, imports
+          # cassés, etc. C'est ce qui a masqué que le vieux bundle traînait.
+          CI=true yarn build
+
+      - name: Sync Capacitor iOS
+        script: |
+          cd frontend
+          # Ordre strict imposé par le brief : yarn install → CI=true yarn build
+          # → npx cap sync ios → xcodebuild. `cap sync` copie build/ vers
+          # ios/App/App/public/ (public/ est gitignoré, jamais commit).
           npx cap sync ios
+
+      - name: Sanity — cap sync a bien écrasé public/
+        script: |
+          cd frontend
+          SRC=$(md5sum build/index.html | cut -d' ' -f1)
+          DST=$(md5sum ios/App/App/public/index.html | cut -d' ' -f1)
+          echo "build/index.html         md5=$SRC"
+          echo "ios/public/index.html    md5=$DST"
+          if [ "$SRC" != "$DST" ]; then
+            echo "❌ ios/public/index.html différent de build/index.html — cap sync a échoué"
+            exit 1
+          fi
+          echo "✅ Bundle web synchronisé (md5 identique)"
+          # Vérifie que l'estampille est bien inlinée dans les JS
+          if grep -R "$BUILD_STAMP" ios/App/App/public/static/js/ >/dev/null 2>&1; then
+            echo "✅ Estampille $BUILD_STAMP présente dans le bundle JS"
+          else
+            echo "⚠️  Estampille $BUILD_STAMP absente du bundle JS (à vérifier)"
+          fi
+
+      - name: Patch pbxproj (CURRENT_PROJECT_VERSION = $BUILD_NUMBER)
+        script: |
+          cd frontend/ios/App
+          # Info.plist utilise $(CURRENT_PROJECT_VERSION) et $(MARKETING_VERSION)
+          # → xcodebuild lit la valeur du pbxproj, pas d'Info.plist. Sans ce
+          # patch, la valeur hardcodée du pbxproj (79) écrasait le PlistBuddy
+          # → régression 78 → 69 en TestFlight.
+          PBX="App.xcodeproj/project.pbxproj"
+          cp "$PBX" "$PBX.bak"
+          sed -i.tmp -E "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g" "$PBX"
+          rm -f "$PBX.tmp"
+          echo "--- valeurs après patch (attendues : ${BUILD_NUMBER}) ---"
+          grep -E "CURRENT_PROJECT_VERSION|MARKETING_VERSION" "$PBX" | sort -u
+          # Fail si une valeur ≠ BUILD_NUMBER reste
+          if grep -E "CURRENT_PROJECT_VERSION = [0-9]+;" "$PBX" | grep -v "= ${BUILD_NUMBER};" ; then
+            echo "❌ Il reste une CURRENT_PROJECT_VERSION ≠ ${BUILD_NUMBER} dans pbxproj"
+            exit 1
+          fi
 
       - name: CocoaPods install
         script: |
           cd frontend/ios/App
           pod install --repo-update
-
-      - name: Increment build number
-        script: |
-          cd frontend/ios/App
-          # Récupère le plus grand build number entre App Store et TestFlight, +1
-          APP_STORE_NUM=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
-          TESTFLIGHT_NUM=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
-          MAX_NUM=$(( APP_STORE_NUM > TESTFLIGHT_NUM ? APP_STORE_NUM : TESTFLIGHT_NUM ))
-          BUILD_NUMBER=$((MAX_NUM + 1))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
-          echo "App Store latest: $APP_STORE_NUM, TestFlight latest: $TESTFLIGHT_NUM"
-          echo "Set build number to $BUILD_NUMBER"
 
       - name: iOS code signing setup
         script: |

@@ -8,6 +8,7 @@ import { track, EVENTS } from './b3tracking';
 import { IconSwipe, IconCalc, IconReport, IconRobot, IconStats, IconUser } from './B1Icons';
 import { DEMO_OPPORTUNITES } from './demoOpportunites';
 import { NetworkBanner } from './B3Perf';
+import B1BuildStamp from './B1BuildStamp';
 import './b1.css';
 
 // ============================================================================
@@ -417,6 +418,7 @@ export function ProfilPage() {
         <button className="b1-logout" data-testid="b1-profil-logout" onClick={logout}>
           {b1t('profil.menu.logout')}
         </button>
+        <B1BuildStamp />
       </div>
     </div>
   );

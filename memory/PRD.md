@@ -16,7 +16,20 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### BLOC D · Migration prod idempotente `POST /api/d1/admin/migrer-prod` (Sep 3, 2026) 🔥 LATEST
+### BLOC D · Pipeline Codemagic + estampille build (Sep 3, 2026) 🔥 LATEST
+- **3 bugs pipeline TestFlight identifiés et corrigés en même temps** :
+  1. **`CI=false yarn build`** rendait les warnings ESLint silencieux → un vieux bundle avec imports/vars morts passait sans alerte. Passage à `CI=true yarn build` (warnings = fatal).
+  2. **`CURRENT_PROJECT_VERSION = 79` hardcodé** dans `frontend/ios/App/App.xcodeproj/project.pbxproj` (Debug + Release). Info.plist utilise `$(CURRENT_PROJECT_VERSION)` → xcodebuild lisait la valeur du pbxproj, IGNORAIT `PlistBuddy` sur Info.plist. C'est ce qui a causé la régression TestFlight **78 → 69**. Correction : `sed -i -E "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g"` sur pbxproj (les 2 configs), avec un `grep` de vérification post-patch qui échoue le build si une valeur ≠ BUILD_NUMBER reste.
+  3. **Numéro de build calculé APRÈS `yarn build`** → l'estampille inlinée dans le JS bundle ne correspondait pas au build TestFlight. Restructuration de l'ordre : `install` → `compute BUILD_NUMBER` (query App Store Connect) → `CI=true yarn build` (avec `REACT_APP_BUILD_ID=${BUILD_NUMBER}-${SHORT_SHA}-${UTC}` injecté) → `npx cap sync ios` → `sanity md5(build/index.html) == md5(public/index.html)` → `sed pbxproj` → `pod install` → `signing` → `xcodebuild`.
+- **Estampille visible dans l'app** : nouveau composant `/app/frontend/src/b1/B1BuildStamp.jsx` qui affiche `build <BUILD_NUMBER>-<sha7>-<UTC>` en bas de :
+  - L'écran de connexion (V2AuthPage) — position `absolute; bottom: 16px`
+  - La page profil (ProfilPage dans B1Shell) — sous le bouton "Se déconnecter"
+  - Testé en preview (`build dev-40407053`) : lisible, discret, `data-testid="kolo-build-stamp"`.
+- **Sanity check anti-stale** : le script Codemagic compare `md5(frontend/build/index.html)` à `md5(frontend/ios/App/App/public/index.html)` après `cap sync`. Si différent → `exit 1`. Empêche définitivement le "vieux bundle web embarqué".
+- **`public/` déjà gitignoré** (`frontend/ios/.gitignore:3`) — vérifié par `test_capacitor_public_gitignored`.
+- **7 tests de régression** dans `/app/backend/tests/test_codemagic_pipeline.py` : `CI=true`, ordre strict des étapes, sed sur pbxproj (pas PlistBuddy sur Info.plist), BUILD_NUMBER calculé AVANT yarn build, public/ gitignoré, composant stamp existe, stamp monté sur login + profil. **37/37 tests critiques verts**.
+
+### BLOC D · Migration prod idempotente `POST /api/d1/admin/migrer-prod` (Sep 3, 2026)
 - **Problème** : `DuplicateKeyError E11000` sur `enrichissements.id_parcelle_1 dup key: id_parcelle: null` en prod → 3e fix appliqué en preview mais jamais rejoué en prod (weasyprint, html5lib, index cadastre). Symptôme : la génération d'opportunités échoue dès qu'un DPE n'a pas de parcelle cadastrale résolue.
 - **Racine** : `a2/indexes.py` créait l'index `id_parcelle` en `unique=True` sec — un seul doc `id_parcelle=null` autorisé. En preview, le fix `partialFilterExpression: {id_parcelle: {$type: "string"}}` avait été appliqué à la main mais **JAMAIS committé** dans le code, donc chaque startup FastAPI en prod le recréait cassé.
 - **Fix racine** : `a2/indexes.py` recréé avec `partialFilterExpression={"id_parcelle": {"$type": "string"}}, name="id_parcelle_unique_partial"`. Verrouillé par `test_a2_indexes_source_uses_partial_filter`.
