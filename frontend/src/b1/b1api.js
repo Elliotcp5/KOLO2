@@ -188,6 +188,14 @@ export const getSuggestionsZones = () => req('/api/d1/onboarding-b1/suggestions'
 export const confirmerZones = (codes_postaux) =>
   req('/api/d1/onboarding-b1/confirmer-zones', { method: 'POST', body: { codes_postaux } });
 
+// --- Opportunités du jour (swipe) ---
+export const getOpportunitesDuJour = (limit = 5) =>
+  req(`/api/opportunites/du-jour?limit=${limit}`);
+export const accepterOpportunite = (id) =>
+  req(`/api/opportunites/${encodeURIComponent(id)}/accepter`, { method: 'POST' });
+export const rejeterOpportunite = (id) =>
+  req(`/api/opportunites/${encodeURIComponent(id)}/rejeter`, { method: 'POST' });
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
@@ -203,5 +211,7 @@ export const b1api = {
   getEquipe, retirerConseiller,
   attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
   getSuggestionsZones, confirmerZones,
+  // Opportunités
+  getOpportunitesDuJour, accepterOpportunite, rejeterOpportunite,
 };
 export default b1api;

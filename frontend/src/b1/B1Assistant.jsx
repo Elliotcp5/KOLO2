@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bot, Send, Trash2, X, History, PenSquare } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
+import { BottomTabPill } from './B1Shell';
 
 export function AssistantPage() {
   const navigate = useNavigate();
@@ -100,6 +101,7 @@ export function AssistantPage() {
           <p style={{ color: 'var(--b1-text-secondary)', marginBottom: 24 }}>{b1t('as.wall.sous')}</p>
           <button type="button" className="b1-pill b1-pill--primary" onClick={() => navigate('/app-b1/profil')} data-testid="as-upgrade">{b1t('as.wall.cta')}</button>
         </div>
+        <BottomTabPill active="assistant" />
       </div>
     );
   }
@@ -264,6 +266,7 @@ export function AssistantPage() {
           </div>
         </div>
       )}
+      <BottomTabPill active="assistant" />
     </div>
   );
 }

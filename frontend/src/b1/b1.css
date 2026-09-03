@@ -79,7 +79,7 @@
 .b1-screen {
   max-width: 480px;
   margin: 0 auto;
-  padding: 24px 20px 32px;
+  padding: 24px 20px 140px;   /* padding-bottom garantit que rien ne passe sous la tab bar fixe */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -727,7 +727,7 @@
   user-select: none;
 }
 .b1-opp-illus {
-  aspect-ratio: 1 / 0.9;
+  aspect-ratio: 1 / 0.55;         /* moins haut pour laisser voir ✕/♥ au-dessus de la tab bar */
   background: var(--b1-accent);
   border-radius: 20px;
   display: flex;
@@ -973,4 +973,151 @@
   margin-top: 4px; padding-top: 12px;
   border-top: 1px solid var(--b1-border);
   font-weight: 700;
+}
+
+/* ============================================================
+   BLOC B1 — Refonte post-TestFlight (2026-09-03)
+   Corrige : swipe absent, back nav manquant, cartes trop plates.
+   ============================================================ */
+
+/* --- SwipeCard wrapper ------------------------------------- */
+.b1-swipe-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  padding: 0 4px;
+}
+.b1-swipe-card {
+  position: relative;
+  border-radius: 28px;               /* coins très arrondis — maquette */
+  box-shadow: 0 12px 32px -8px rgba(20, 20, 30, 0.12),
+              0 4px 12px -4px rgba(20, 20, 30, 0.08);
+  border: none;
+  padding: 20px 20px 24px;
+  cursor: grab;
+  will-change: transform;
+  background: #fff;
+}
+.b1-swipe-card:active { cursor: grabbing; }
+
+/* Overlays de geste : cœur vert à droite, croix rouge à gauche */
+.b1-swipe-hint {
+  position: absolute;
+  top: 40px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  transform: rotate(-8deg);
+  transition: opacity 120ms linear;
+}
+.b1-swipe-hint--accept { right: 24px; color: #16A34A; transform: rotate(-12deg); }
+.b1-swipe-hint--reject { left: 24px;  color: #E11D48; transform: rotate(12deg); }
+
+/* --- BackHeader -------------------------------------------- */
+.b1-back-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 6px;
+  min-height: 52px;
+}
+.b1-back-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--b1-text-primary, #111827);
+  box-shadow: 0 2px 8px -2px rgba(20, 20, 30, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms cubic-bezier(.22,.9,.3,1), background 120ms;
+}
+.b1-back-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 1);
+}
+.b1-back-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--b1-text-primary, #111827);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.b1-back-right {
+  min-width: 40px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Boutons principaux (points 5 : plus généreux, plus ronds) --- */
+.b1-pill--primary {
+  min-height: 52px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  box-shadow: 0 8px 20px -6px rgba(236, 134, 144, 0.55),
+              0 2px 6px -1px rgba(236, 134, 144, 0.35);
+  transition: transform 140ms cubic-bezier(.22,.9,.3,1),
+              box-shadow 140ms, background 120ms;
+}
+.b1-pill--primary:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: 0 4px 12px -4px rgba(236, 134, 144, 0.5);
+}
+
+/* --- Bottom tab pill (point 5 : pastille rose sur onglet actif) --- */
+.b1-tabbar {
+  bottom: 22px;                    /* détaché du bas de l'écran */
+  border: 2px solid rgba(236, 134, 144, 0.20); /* liseré rose subtil */
+  box-shadow: 0 16px 36px -12px rgba(20, 20, 30, 0.18),
+              0 4px 12px -4px rgba(20, 20, 30, 0.08);
+}
+.b1-tab[data-active="true"] {
+  background: var(--b1-accent, #EC8690);
+  color: #fff;
+  border-radius: 22px;
+}
+.b1-tab[data-active="true"] svg { color: #fff; }
+
+/* --- Cartes empty state --- */
+.b1-opp-empty {
+  padding: 60px 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.b1-opp-empty p:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--b1-text-primary, #111827);
+  margin: 0;
+}
+
+/* --- Espacements (point 5 : plus de respiration) --- */
+.b1-opp-header {
+  padding: 8px 8px 20px;
+}
+.b1-opp-title {
+  padding-top: 10px;
+}
+
+/* --- Loader (fetch opportunités) --- */
+.b1-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: var(--b1-text-secondary, #6B7280);
+  font-size: 14px;
 }

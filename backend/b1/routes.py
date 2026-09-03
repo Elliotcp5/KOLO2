@@ -670,3 +670,96 @@ async def get_my_veille_suivis(request: Request):
         card["marque_a_surveiller_at"] = a.get("updated_at")
         suivis.append(card)
     return {"ok": True, "suivis": suivis}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/opportunites/du-jour — les 5 cartes attribuées à l'utilisateur
+# POST /api/opportunites/{id}/accepter — swipe droite (ouvre estimation)
+# POST /api/opportunites/{id}/rejeter  — swipe gauche
+#
+# Sans ces endpoints, le frontend `OpportunitesPage` retombait sur
+# `DEMO_OPPORTUNITES` et n'affichait JAMAIS les vraies opportunités de la
+# base — c'est le bug numéro 2 remonté depuis TestFlight.
+# ---------------------------------------------------------------------------
+@router.get("/api/opportunites/du-jour")
+async def get_opportunites_du_jour(request: Request, limit: int = 5):
+    """Retourne les opportunités attribuées à l'utilisateur, en statut
+    `proposee`, triées par date_attribution DESC (les plus récentes d'abord).
+    Limite à `limit` (par défaut 5).
+    """
+    user = await _current_user_doc(request)
+    uid = user["user_id"]
+    cur = _db().opportunites.find(
+        {"assigne_a": uid, "statut": "proposee"},
+        {"_id": 1, "adresse": 1, "code_postal": 1, "complement_adresse": 1,
+         "lat": 1, "lng": 1, "caracteristiques": 1, "score_confiance": 1,
+         "motif_opportunite": 1, "date_attribution": 1, "id_parcelle": 1},
+    ).sort("date_attribution", -1).limit(max(1, min(limit, 20)))
+    items = []
+    async for opp in cur:
+        caracs = opp.get("caracteristiques") or {}
+        items.append({
+            "id": str(opp["_id"]),
+            "adresse": opp.get("adresse") or "",
+            "code_postal": opp.get("code_postal"),
+            "complement_adresse": opp.get("complement_adresse"),
+            "lat": opp.get("lat"),
+            "lng": opp.get("lng"),
+            "dpe": caracs.get("classe_dpe") or "N/A",
+            "superficie": caracs.get("surface_habitable"),
+            "annee_construction": caracs.get("annee_construction"),
+            "type_bien": caracs.get("type_batiment"),
+            "source": "DPE",
+            "note": opp.get("motif_opportunite") or "",
+            "score_confiance": opp.get("score_confiance"),
+            "date_attribution": opp.get("date_attribution"),
+            "caracteristiques": caracs,
+            "id_parcelle": opp.get("id_parcelle"),
+        })
+    return {"ok": True, "items": items, "count": len(items)}
+
+
+def _oid_or_400(raw: str):
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    try:
+        return ObjectId(raw)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail="opportunite_id_invalide")
+
+
+@router.post("/api/opportunites/{opportunite_id}/accepter")
+async def accepter_opportunite(opportunite_id: str, request: Request):
+    """Swipe droite : l'utilisateur accepte, on marque `acceptee`. Le front
+    ouvre ensuite l'estimation avec le bien pré-rempli."""
+    user = await _current_user_doc(request)
+    _id = _oid_or_400(opportunite_id)
+    now_iso = now_utc_iso()
+    res = await _db().opportunites.update_one(
+        {"_id": _id, "assigne_a": user["user_id"], "statut": "proposee"},
+        {"$set": {"statut": "acceptee",
+                  "date_acceptation": now_iso,
+                  "date_dernier_statut": now_iso,
+                  "updated_at": now_iso}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="opportunite_introuvable_ou_deja_traitee")
+    return {"ok": True, "opportunite_id": opportunite_id, "statut": "acceptee"}
+
+
+@router.post("/api/opportunites/{opportunite_id}/rejeter")
+async def rejeter_opportunite(opportunite_id: str, request: Request):
+    """Swipe gauche : l'utilisateur ignore, on marque `rejetee`."""
+    user = await _current_user_doc(request)
+    _id = _oid_or_400(opportunite_id)
+    now_iso = now_utc_iso()
+    res = await _db().opportunites.update_one(
+        {"_id": _id, "assigne_a": user["user_id"], "statut": "proposee"},
+        {"$set": {"statut": "rejetee",
+                  "date_rejet": now_iso,
+                  "date_dernier_statut": now_iso,
+                  "updated_at": now_iso}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="opportunite_introuvable_ou_deja_traitee")
+    return {"ok": True, "opportunite_id": opportunite_id, "statut": "rejetee"}

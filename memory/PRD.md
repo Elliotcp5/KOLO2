@@ -16,7 +16,34 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### BLOC D · Refonte B1 EXCLUSIVE (Sep 3, 2026) 🔥 LATEST — Cause racine TestFlight vieux bundle
+### BLOC D · Fixes TestFlight (Sep 3, 2026) 🔥 LATEST — 4 blockers corrigés + design polish
+- **Bug 1 (swipe absent)** : `OpportunitesPage` n'avait AUCUN handler tactile — seulement 2 boutons. Nouveau composant `SwipeCard` (`/app/frontend/src/b1/B1Nav.jsx`) avec :
+  - Pointer Events (unifie souris + tactile iOS Safari)
+  - Détection horizontal vs vertical via seuil `H_LOCK_PX = 12` (empêche le scroll de voler le geste)
+  - Seuil de swipe : ≥ 60 px OU vélocité ≥ 0.35 px/ms
+  - `touch-action: pan-y` sur la carte pour permettre le scroll vertical natif
+  - Rotation légère + translation pendant le drag, snap-back animé
+  - Overlays visuels ✕/♥ pendant le geste
+  - Boutons fallback ✕/♥ toujours présents (l'écran reste utilisable même si le geste échoue)
+- **Bug 2 (aucune opportunité)** : `OpportunitesPage` utilisait `DEMO_OPPORTUNITES` en dur, l'API n'était JAMAIS appelée. Créé **3 nouveaux endpoints** dans `/app/backend/b1/routes.py` :
+  - `GET /api/opportunites/du-jour?limit=5` — retourne les opps `statut=proposee` `assigne_a=uid` triées par `date_attribution DESC`
+  - `POST /api/opportunites/{id}/accepter` — `proposee → acceptee`
+  - `POST /api/opportunites/{id}/rejeter` — `proposee → rejetee`
+  - Ajoutés à `b1api.js` : `getOpportunitesDuJour`, `accepterOpportunite`, `rejeterOpportunite`
+  - Frontend fait maintenant fetch réel + fallback démo uniquement en 401 (web anonyme)
+- **Bug 3 (nav retour manquante)** : `AssistantPage` (B1Assistant) n'avait AUCUN BottomTabPill — écran cul-de-sac. Ajouté sur les 2 variants (paywall + chat). Nouveau composant `BackHeader` dans `B1Nav.jsx` avec fallback si historique vide (deep link) → `navigate(fallbackTo)`.
+- **Bug 4 (logo déformé)** : `V2AuthPage` logo passe de 64×64 à **72×72** avec `object-fit: contain` + `objectPosition: center` explicites. Le PNG source est 256×256 (aspect 1:1 conservé).
+- **Design polish (point 5)** appliqué :
+  - Cartes `border-radius: 28px` (coins très arrondis maquette)
+  - Ombres douces diffuses `0 12px 32px -8px rgba(20,20,30,0.12)` (pas de bordure franche)
+  - Boutons pilule primaires `min-height: 52px`, ombre portée rose, état pressed avec `translateY(1px)` + scale
+  - Bottom tab bar détachée du bas (20px + safe-area), liseré rose subtil, onglet actif pastille pleine rose
+  - Illus opp aspect-ratio réduit à 1/0.55 (plus horizontal, laisse ✕/♥ visibles au-dessus de la tab bar)
+  - Espacements + padding-bottom 140px sur `.b1-screen` (garantit que rien ne passe sous la tab bar fixe)
+- **Vérifié en preview** (viewport 390×844 iPhone 12) : swipe fonctionne (drag + touch pointer), `1/4 → 2/4` après swipe programmatique, boutons ✕/♥ cliquables et visibles, logo aspect 1:1, stamp `build dev-52537491` visible en bas du login.
+- **8 nouveaux tests de régression** dans `/app/backend/tests/test_opportunites_du_jour.py` : endpoints existent, filtrage `assigne_a` + `statut=proposee`, tri DESC, b1api expose les 3 fonctions, `OpportunitesPage` appelle bien l'API, `SwipeCard` a Pointer handlers + touch-action + boutons fallback, `BackHeader` a fallback deep link. **40/40 tests critiques verts**.
+
+### BLOC D · Refonte B1 EXCLUSIVE (Sep 3, 2026)
 - **Cause racine identifiée** : `App.js` avait **DEUX routes `/login`** (ligne 254 : `<LoginPage />` password, ligne 337 : `<V2AuthPage mode="login" />` code email). React Router prend TOUJOURS la première → `LoginPage` (vieux mot de passe) gagnait, `V2AuthPage` (le nouveau login par code) était du **code mort inatteignable**. C'est POURQUOI le user voyait le vieil écran sur TestFlight — le nouveau bundle avait bien été buildé, mais son routeur pointait toujours vers la vieille page.
 - **Réécriture complète de `App.js`** — l'ancien monde n'existe plus dans le routeur :
   - `/login` unique → `V2AuthPage mode="login"` (code email 6 chiffres, aucun mot de passe)

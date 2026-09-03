@@ -9,6 +9,7 @@ import { IconSwipe, IconCalc, IconReport, IconRobot, IconStats, IconUser } from 
 import { DEMO_OPPORTUNITES } from './demoOpportunites';
 import { NetworkBanner } from './B3Perf';
 import B1BuildStamp from './B1BuildStamp';
+import { SwipeCard } from './B1Nav';
 import './b1.css';
 
 // ============================================================================
@@ -147,15 +148,39 @@ export function GuidedTour({ onDone }) {
 }
 
 // ============================================================================
-// Page — Opportunités (swipe simple)
+// Page — Opportunités (swipe réel + fetch API + fallback démo)
 // ============================================================================
 export function OpportunitesPage() {
   const navigate = useNavigate();
   const [showTour, setShowTour] = useState(() => localStorage.getItem('kolo_b1_show_tour') === '1');
   const [idx, setIdx] = useState(0);
-  const [items] = useState(() => DEMO_OPPORTUNITES);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [veilleDispo, setVeilleDispo] = useState(false);
+  const [pending, setPending] = useState(false);
   const cur = items[idx];
+
+  // Charge les opportunités attribuées à l'utilisateur (GET /api/opportunites/du-jour).
+  // Fallback vers `DEMO_OPPORTUNITES` uniquement si (a) 401 (mode aperçu web
+  // anonyme) ou (b) l'utilisateur n'a AUCUNE opp. La démo permet au tour guidé
+  // d'avoir toujours une carte à montrer.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await b1api.getOpportunitesDuJour(5);
+        if (cancelled) return;
+        if (r?.items?.length) setItems(r.items);
+        else setItems(DEMO_OPPORTUNITES);
+      } catch (e) {
+        if (!cancelled) setItems(DEMO_OPPORTUNITES);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const closeTour = useCallback(() => {
     localStorage.removeItem('kolo_b1_show_tour');
     localStorage.setItem('kolo_b1_tour_seen', '1');
@@ -168,8 +193,11 @@ export function OpportunitesPage() {
       }
     } catch { /* localStorage indisponible */ }
   }, [navigate]);
+
   const next = () => setIdx((i) => Math.min(i + 1, items.length));
-  const swipe = (sens) => {
+
+  const swipe = async (sens) => {
+    if (pending) return;
     // premier_swipe distinct de swipe — clé métrique d'activation
     try {
       if (!localStorage.getItem('kolo_b1_first_swipe_done')) {
@@ -178,8 +206,18 @@ export function OpportunitesPage() {
       }
     } catch {}
     track(EVENTS.SWIPE, { sens, type_carte: 'opportunite' });
+
+    // Persiste côté serveur si opp réelle (id présent, pas démo).
+    if (cur?.id && !cur.demo) {
+      setPending(true);
+      try {
+        if (sens === 'droite') await b1api.accepterOpportunite(cur.id);
+        else await b1api.rejeterOpportunite(cur.id);
+      } catch (_e) { /* silencieux : on avance quand même */ }
+      setPending(false);
+    }
+
     // Droite = j'accepte → on ouvre l'estimation avec le bien pré-rempli.
-    // Gauche = j'ignore → carte suivante.
     if (sens === 'droite' && cur) {
       const caracs = cur.caracteristiques || {};
       const bien = {
@@ -191,11 +229,9 @@ export function OpportunitesPage() {
         surface_habitable: caracs.surface_habitable || cur.superficie,
         classe_dpe: caracs.classe_dpe || cur.dpe,
         annee_construction: caracs.annee_construction,
-        // Passe le DPE complet pour le pré-remplissage (etage_dpe, nb_niveaux, etc.)
         caracteristiques: caracs,
         listing: cur.listing || null,
       };
-      // Démo : pas de lat/lng → on retombe sur l'estimation depuis adresse.
       if (bien.lat == null || bien.lng == null) {
         next();
         navigate('/app-b1/estimation/adresse');
@@ -209,9 +245,7 @@ export function OpportunitesPage() {
     next();
   };
 
-  // Fin de pile atteinte → vérifie si une pile de veille est disponible pour cet
-  // utilisateur (Pro + quota_du_jour < seuil + zones couvertes ayant des cartes).
-  // 402 pour Découverte → on n'affiche jamais l'intercalaire.
+  // Fin de pile atteinte → vérifie si une pile de veille est disponible.
   useEffect(() => {
     if (idx < items.length) return;
     let cancelled = false;
@@ -236,14 +270,21 @@ export function OpportunitesPage() {
             onStats={() => navigate('/app-b1/performances')}
           />
           <div className="b1-opp-header">
-            <div className="b1-opp-count" data-testid="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length}</div>
+            <div className="b1-opp-count" data-testid="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length || 5}</div>
             <div className="b1-progress-track" style={{ margin: '8px 40px' }}>
               <div className="b1-progress-fill" style={{ width: `${(Math.min(idx + 1, items.length) / Math.max(items.length, 1)) * 100}%` }} />
             </div>
             <div className="b1-opp-title">{b1t('opp.titre_quotidien')}</div>
           </div>
-          {cur ? (
-            <div className="b1-opp-card" data-testid="b1-opp-card">
+          {loading ? (
+            <div className="b1-loading" data-testid="b1-opp-loading">…</div>
+          ) : cur ? (
+            <SwipeCard
+              onSwipeLeft={() => swipe('gauche')}
+              onSwipeRight={() => swipe('droite')}
+              disabled={pending}
+              testid="b1-opp-swipe"
+            >
               <div className="b1-opp-illus">
                 <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 12l9-9 9 9" />
@@ -260,17 +301,8 @@ export function OpportunitesPage() {
               <div>
                 <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
               </div>
-              <div className="b1-opp-actions">
-                <button className="b1-opp-action-btn b1-opp-action-btn--reject" onClick={() => swipe('gauche')} data-testid="b1-opp-reject" aria-label={b1t('opp.rejeter') || 'Rejeter'}>
-                  <X size={26} strokeWidth={2.5} />
-                </button>
-                <button className="b1-opp-action-btn b1-opp-action-btn--accept" onClick={() => swipe('droite')} data-testid="b1-opp-accept" aria-label={b1t('opp.accepter') || 'Accepter'}>
-                  <Heart size={26} strokeWidth={2.5} fill="currentColor" />
-                </button>
-              </div>
-            </div>
+            </SwipeCard>
           ) : veilleDispo ? (
-            // Intercalaire — ambre franc, jamais rose, jamais dans la pile d'opps.
             <React.Suspense fallback={null}>
               <VeilleIntercalaireLazy
                 onOuvrir={() => navigate('/app-b1/veille')}

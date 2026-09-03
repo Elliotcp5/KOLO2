@@ -83,17 +83,27 @@ export default function V2AuthPage({ mode = 'login' }) {
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
-          {/* Logo K noir — asset fourni (kolo-mark-black-256.png) */}
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          {/* Logo K noir — asset fourni (kolo-mark-black-256.png, 256×256).
+              object-fit: contain protège l'aspect au cas où le parent limite
+              une seule dimension. width/height explicites empêchent le
+              layout shift. */}
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <img
               src="/kolo-mark-black-256.png"
               alt="KOLO"
-              width={64}
-              height={64}
-              style={{ display: 'block', margin: '0 auto 16px' }}
+              width={72}
+              height={72}
+              style={{
+                display: 'block',
+                margin: '0 auto 20px',
+                width: 72,
+                height: 72,
+                objectFit: 'contain',
+                objectPosition: 'center',
+              }}
               data-testid="auth-logo"
             />
-            <div className="b1-lead" style={{ marginTop: 0 }}>
+            <div className="b1-lead" style={{ marginTop: 0, fontSize: 15, color: 'rgba(0,0,0,0.55)' }}>
               {b1t('auth.tagline')}
             </div>
           </div>
