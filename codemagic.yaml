@@ -29,10 +29,14 @@ workflows:
       events:
         - push
         - pull_request
+      # IMPORTANT : on accepte TOUTE branche (y compris `emergent/*` créées par
+      # "Save to Github"). Sans ça, Codemagic ne buildait que `main` — qui
+      # restait figé à l'ancienne version car "Save to Github" ne pousse pas
+      # forcément sur main. Combiné au workflow .github/workflows/mirror-to-main.yml
+      # (qui force `main` à chaque push), on garantit que tout push déclenche
+      # un build de la BONNE version.
       branch_patterns:
-        - pattern: main
-          include: true
-        - pattern: release/*
+        - pattern: '*'
           include: true
       cancel_previous_builds: true
 
