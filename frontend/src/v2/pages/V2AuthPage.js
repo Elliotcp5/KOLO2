@@ -135,7 +135,7 @@ export default function V2AuthPage({ mode = 'login' }) {
                 {mode === 'login' ? (
                   <>{b1t('auth.no_account_q')}{' '}
                     <a
-                      onClick={() => navigate('/app-v2/signup')}
+                      onClick={() => navigate('/signup')}
                       style={{ color: 'var(--b1-accent)', cursor: 'pointer', fontWeight: 600 }}
                       data-testid="auth-goto-signup"
                     >
@@ -145,7 +145,7 @@ export default function V2AuthPage({ mode = 'login' }) {
                 ) : (
                   <>{b1t('auth.have_account_q')}{' '}
                     <a
-                      onClick={() => navigate('/app-v2/login')}
+                      onClick={() => navigate('/login')}
                       style={{ color: 'var(--b1-accent)', cursor: 'pointer', fontWeight: 600 }}
                       data-testid="auth-goto-login"
                     >

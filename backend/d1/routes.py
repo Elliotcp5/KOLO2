@@ -135,6 +135,101 @@ async def admin_bascule_v2(payload: BasculePayload, request: Request):
     return {"total": len(results), "results": results}
 
 
+# ---------------------------------------------------------------------------
+# ADMIN one-shot : diagnostic + état compte + seed prod
+# ---------------------------------------------------------------------------
+@router.get("/api/d1/admin/etat-compte")
+async def admin_etat_compte(email: str, request: Request):
+    """Lecture seule — permet de vérifier depuis prod qu'une bascule a pris."""
+    _check_admin(request)
+    e = (email or "").strip().lower()
+    u = await _db().users.find_one({"email": e})
+    if not u:
+        return {"found": False, "email": e}
+    uid = u.get("user_id")
+    n_opps = await _db().opportunites.count_documents({"assigne_a": uid, "statut": "proposee"})
+    n_zc = await _db().zones_couvertes.count_documents({})
+    return {
+        "found": True,
+        "email": e,
+        "user_id": uid,
+        "app_version": u.get("app_version"),
+        "zones_confirmees": bool(u.get("zones_confirmees", False)),
+        "zones_perso": u.get("zones_perso") or [],
+        "zones_suggestions": u.get("zones_suggestions") or [],
+        "tour_guide_vu": bool(u.get("tour_guide_vu", False)),
+        "role": u.get("role"),
+        "plan": u.get("plan"),
+        "opps_proposees_attribuees": n_opps,
+        "zones_couvertes_total": n_zc,
+    }
+
+
+@router.post("/api/d1/admin/seed-zones-couvertes")
+async def admin_seed_zones(request: Request):
+    _check_admin(request)
+    volumes = {"75017": 1300, "13008": 800, "69003": 700, "99999": 4}
+    now_iso = now_utc_iso()
+    upserts = []
+    for cp, vol in volumes.items():
+        r = await _db().zones_couvertes.update_one(
+            {"code_postal": cp},
+            {"$set": {
+                "code_postal": cp, "actif": True, "volume_attendu": vol,
+                "demo": cp == "99999", "updated_at": now_iso,
+            }},
+            upsert=True,
+        )
+        upserts.append({"cp": cp, "modified": r.modified_count, "upserted": r.upserted_id is not None})
+    return {"seeded": upserts, "total_zones_couvertes": await _db().zones_couvertes.count_documents({})}
+
+
+@router.post("/api/d1/admin/seed-opps-13008")
+async def admin_seed_opps_13008(payload: BasculePayload, request: Request):
+    """Attribue 5 opps 13008 (statut proposee) à `payload.email`."""
+    _check_admin(request)
+    if not payload.email:
+        raise HTTPException(status_code=400, detail="email_required")
+    u = await _db().users.find_one({"email": payload.email.strip().lower()})
+    if not u:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    uid = u["user_id"]
+    now_iso = now_utc_iso()
+    # Cible : 5 opps 13008 non attribuées OU en pool
+    ops = await _db().opportunites.find(
+        {"code_postal": "13008", "$or": [{"statut": "pool"}, {"statut": {"$exists": False}}]}
+    ).limit(5).to_list(length=5)
+    for opp in ops:
+        await _db().opportunites.update_one(
+            {"_id": opp["_id"]},
+            {"$set": {
+                "user_id": uid, "assigne_a": uid, "statut": "proposee",
+                "date_attribution": now_iso, "updated_at": now_iso,
+            }},
+        )
+    n_after = await _db().opportunites.count_documents(
+        {"assigne_a": uid, "statut": "proposee"}
+    )
+    return {"attribuees_maintenant": len(ops), "total_proposees_attribuees": n_after}
+
+
+@router.get("/api/d1/admin/diagnostic")
+async def admin_diagnostic(request: Request):
+    """Liste les routers montés — permet de diagnostiquer un module absent en prod."""
+    _check_admin(request)
+    from server import app  # type: ignore
+    routes = sorted({getattr(r, "path", "") for r in app.routes if getattr(r, "path", "").startswith("/api")})
+    prefixes = {}
+    for p in routes:
+        prefix = "/".join(p.split("/")[:3]) or p  # ex /api/dossiers
+        prefixes[prefix] = prefixes.get(prefix, 0) + 1
+    return {
+        "total_routes": len(routes),
+        "prefixes": prefixes,
+        "sample": routes[:80],
+    }
+
+
 # ===========================================================================
 # ONBOARDING B1 — reprise post-migration
 # ===========================================================================

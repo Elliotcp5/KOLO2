@@ -139,20 +139,42 @@ const ThemedToaster = () => {
 };
 
 // Router component that checks for session_id in URL
-// RootRedirect — aiguille / vers /app-b1 ou /app-v2 selon app_version stockée.
-// Utilisé en natif (Capacitor) où / est la racine du build.
+// RootRedirect — décide QUI voit quoi au lancement de l'app.
+// Règle : la décision vient TOUJOURS du serveur, jamais d'une valeur locale.
+//   • Pas de session_token → écran de connexion (/login)
+//   • Session présente → GET /api/v2/me pour lire app_version + zones_confirmees
+//       - 401 → /login
+//       - app_version === 'b1' && !zones_confirmees → /app-b1/reprise
+//       - app_version === 'b1' → /app-b1
+//       - défaut (app_version 'v2' ou absent) → /app-v2
 const RootRedirect = () => {
-  let appVersion = 'v2';
-  let zonesConfirmees = true;
-  try {
-    appVersion = localStorage.getItem('kolo_app_version') || 'v2';
-    zonesConfirmees = localStorage.getItem('kolo_zones_confirmees') === '1';
-  } catch (_) { /* localStorage absent */ }
-  if (appVersion === 'b1') {
-    if (!zonesConfirmees) return <Navigate to="/app-b1/reprise" replace />;
-    return <Navigate to="/app-b1" replace />;
-  }
-  return <Navigate to="/app-v2" replace />;
+  const [target, setTarget] = React.useState(null);
+  React.useEffect(() => {
+    let token = null;
+    try { token = localStorage.getItem('kolo_v2_session'); } catch (_) {}
+    if (!token) { setTarget('/login'); return; }
+    const backend = process.env.REACT_APP_BACKEND_URL || '';
+    fetch(`${backend}/api/v2/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    })
+      .then((r) => {
+        if (r.status === 401) { setTarget('/login'); return null; }
+        return r.json();
+      })
+      .then((user) => {
+        if (!user) return;
+        try { localStorage.setItem('kolo_app_version', user.app_version || 'v2'); } catch (_) {}
+        if (user.app_version === 'b1') {
+          setTarget(user.zones_confirmees ? '/app-b1' : '/app-b1/reprise');
+        } else {
+          setTarget('/app-v2');
+        }
+      })
+      .catch(() => setTarget('/login'));
+  }, []);
+  if (!target) return null;  // affiche rien pendant le check (splash Capacitor gère)
+  return <Navigate to={target} replace />;
 };
 
 const AppRouter = () => {
@@ -309,6 +331,11 @@ const AppRouter = () => {
 
       {/* D1 — Reprise post-migration V2 → B1 */}
       <Route path="/app-b1/reprise" element={<B1RepriseZones />} />
+
+      {/* Écran de connexion partagé B1/V2 — /login est la route canonique,
+          /app-v2/login reste comme alias historique */}
+      <Route path="/login" element={<V2AuthPage mode="login" />} />
+      <Route path="/signup" element={<V2AuthPage mode="signup" />} />
 
       {/* Protected routes */}
       <Route 

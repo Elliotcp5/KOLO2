@@ -8542,12 +8542,21 @@ except Exception as _c1_err:
 # ============================================================================
 # C2 router — /api/dossiers (Avis de valeur)
 # ============================================================================
+_c2_mount_error = None
 try:
     from c2.routes import router as c2_router
     app.include_router(c2_router)
     logger.info("KOLO C2 router mounted (/api/dossiers)")
 except Exception as _c2_err:
-    logger.error(f"Failed to mount C2 router: {_c2_err}")
+    _c2_mount_error = f"{type(_c2_err).__name__}: {_c2_err}"
+    logger.error(f"Failed to mount C2 router: {_c2_mount_error}")
+
+
+@app.get("/api/_diag/c2")
+async def _diag_c2():
+    """Expose l'erreur de mount C2 pour diagnostiquer en prod sans accès aux logs."""
+    return {"c2_router_mounted": _c2_mount_error is None, "error": _c2_mount_error}
+
 
 try:
     from c2.uploads import router as c2_uploads_router, init_storage as _init_storage
