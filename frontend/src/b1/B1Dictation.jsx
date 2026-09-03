@@ -66,6 +66,7 @@ function DictationModal({ dossierId, sectionId, onClose, onApply }) {
     } catch (e) {
       setError(String(e.message || e)); setPhase('error');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stopRecordingAndSend = useCallback(async () => {

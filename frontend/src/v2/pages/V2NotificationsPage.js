@@ -8,20 +8,6 @@ import V2Layout from '../V2Layout';
 import v2api, { getApiBase } from '../v2api';
 import '../../styles/v2.css';
 
-const formatRelative = (dateStr) => {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-    if (diffMin < 1) return "À l'instant";
-    if (diffMin < 60) return `Il y a ${diffMin} min`;
-    if (diffMin < 60 * 24) return `Il y a ${Math.round(diffMin / 60)} h`;
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-  } catch {
-    return '';
-  }
-};
-
 export default function V2NotificationsPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);

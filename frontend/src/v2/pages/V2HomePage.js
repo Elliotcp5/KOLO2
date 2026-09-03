@@ -104,6 +104,7 @@ const NotesModal = ({ open, onClose }) => {
   const [tab, setTab] = useState('pending');
   const [notes, setNotes] = useState([]);
   const reload = () => v2api.listNotes(tab === 'all' ? undefined : tab).then(r => setNotes(r.items)).catch(() => setNotes([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (open) reload(); }, [open, tab]);
   if (!open) return null;
   return (
@@ -158,7 +159,7 @@ export default function V2HomePage() {
     v2api.listCases({ recent: true }).then(r => setRecentCases(r.items)).catch(() => {});
     v2api.dailyTip().then(setTip).catch(() => {});
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onLogout = () => {
     v2api.clearSession();

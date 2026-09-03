@@ -163,7 +163,7 @@ export function EstimationFlowPage() {
   const location = useLocation();
   useNoIndex();
 
-  const bien = location.state?.bien || {};
+  const bien = useMemo(() => location.state?.bien || {}, [location.state]);
   const oppId = location.state?.opportunite_id || null;
 
   const prefilled = useMemo(() => prefillFromBien(bien), [bien]);
@@ -240,7 +240,7 @@ export function EstimationFlowPage() {
     } finally {
       setCalc(false);
     }
-  }, [answers, ext_surface, bien, oppId, draftKey, navigate]);
+  }, [answers, ext_surface, bien, oppId, draftKey, navigate, activeQs.length]);
 
   if (result) {
     return <EstimationResultPage result={result} bien={bien} />;

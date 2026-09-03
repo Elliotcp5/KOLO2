@@ -136,6 +136,7 @@ export function InteractionTimeline({
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInteractionHistory, prospectId]);
   
   const fetchInteractions = async () => {

@@ -3,7 +3,7 @@
 // =============================================================
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ExternalLink, Plus, BookOpen, LogOut, Trash2, X as XIcon } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Plus, BookOpen, LogOut, X as XIcon } from 'lucide-react';
 import V2Layout from '../V2Layout';
 import v2api from '../v2api';
 import v2t from '../v2i18n';

@@ -3,7 +3,7 @@
 // Add Case, Add Contact). Bottom-sheet style, iOS feel.
 // =============================================================
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Mic, Send, MicOff, Plus, Phone, Mail, Clock, Brain } from 'lucide-react';
+import { Mic, Send, MicOff, Phone, Mail, Clock } from 'lucide-react';
 import v2api from './v2api';
 import v2t from './v2i18n';
 

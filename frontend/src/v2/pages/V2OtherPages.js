@@ -34,7 +34,7 @@ export const V2CasesPage = () => {
     if (search) params.search = search;
     v2api.listCases(params).then(r => setItems(r.items)).catch(() => setItems([]));
   };
-  useEffect(() => { reload(); }, [filter, search]);
+  useEffect(() => { reload(); }, [filter, search]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!user) return <div className="v2-app" />;
 
   return (
@@ -97,7 +97,7 @@ export const V2ContactsPage = () => {
   const [showAdd, setShowAdd] = useState(false);
 
   const reload = () => v2api.listContacts(search || undefined).then(r => setItems(r.items)).catch(() => setItems([]));
-  useEffect(() => { reload(); }, [search]);
+  useEffect(() => { reload(); }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!user) return <div className="v2-app" />;
 
   // Group by initial
@@ -175,7 +175,7 @@ export const V2AgendaPage = () => {
   const dateStr = selected.toISOString().slice(0, 10);
 
   const reload = () => v2api.listReminders(dateStr).then(r => setItems(r.items)).catch(() => setItems([]));
-  useEffect(() => { reload(); }, [dateStr]);
+  useEffect(() => { reload(); }, [dateStr]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!user) return <div className="v2-app" />;
 
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });

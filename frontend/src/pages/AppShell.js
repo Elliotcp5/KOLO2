@@ -7586,6 +7586,7 @@ const AppShell = () => {
       setUserPrefsLoaded(true);
     };
     loadUserPrefs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initializeFromUser, fetchPlanData, locale]);
 
   useEffect(() => {
