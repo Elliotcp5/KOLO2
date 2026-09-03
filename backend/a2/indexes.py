@@ -96,8 +96,19 @@ async def ensure_a2_indexes(db) -> dict[str, list[str]]:
     ]
 
     # ---- enrichissements ---------------------------------------------------
+    # Index unique PARTIEL — un enrichissement peut avoir `id_parcelle=null`
+    # (échec de résolution cadastre) ; on ne veut pas que le 2e doc null
+    # échoue avec DuplicateKeyError. L'unicité ne s'applique qu'aux vrais
+    # id_parcelle (strings). En prod, si un ancien index `id_parcelle_1`
+    # sans partialFilter existe, `migrer-prod` (POST /api/d1/admin/migrer-prod)
+    # se charge de le drop + recréer proprement.
     created["enrichissements"] = [
-        await db.enrichissements.create_index("id_parcelle", unique=True),
+        await db.enrichissements.create_index(
+            "id_parcelle",
+            unique=True,
+            partialFilterExpression={"id_parcelle": {"$type": "string"}},
+            name="id_parcelle_unique_partial",
+        ),
         await db.enrichissements.create_index("date_maj"),
     ]
 

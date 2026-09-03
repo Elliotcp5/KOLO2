@@ -334,6 +334,28 @@ async def admin_force_zones_suggestions(request: Request):
             "zones_perso": (zones if aussi_perso else u.get("zones_perso"))}
 
 
+@router.post("/api/d1/admin/migrer-prod")
+async def admin_migrer_prod(request: Request):
+    """Applique en une passe idempotente TOUTES les migrations manquantes en
+    production : indexes MongoDB cassés, seeds essentiels (`config_matching`,
+    `zones_couvertes`), migration users A2, et diagnostic dépendances.
+
+    Auth : `X-Admin-Secret`. Body : `{}` (rien attendu).
+
+    Retour : rapport détaillé de ce qui a été corrigé, ce qui était déjà OK,
+    et ce qui reste cassé. Strictement idempotent — la 2e exécution rapporte
+    `already_ok` sur tout.
+
+    Corrige notamment `enrichissements.id_parcelle` (index unique sans
+    partialFilterExpression → recréé en `{$type: "string"}`).
+    """
+    _check_admin(request)
+    from d1.migration_prod import migrer_prod
+    report = await migrer_prod(_db())
+    return report
+
+
+
 @router.post("/api/d1/admin/generer-opportunites")
 async def admin_generer_opportunites(request: Request):
     """One-shot admin — lance le job en tâche de fond pour éviter le timeout proxy.

@@ -40,25 +40,26 @@ def test_etat_jobs_lists_extraire_rues():
 
 
 def test_apscheduler_uses_pytz_paris():
-    """Sanity : APScheduler + timezone chaîne 'Europe/Paris' tombe en UTC.
-    On doit passer une instance pytz.timezone pour que le cron 06h00 corresponde
-    à 06h00 Paris (et non 06h00 UTC = 08h00 Paris en été)."""
-    # Cas 1 — chaîne : bug reproductible (timezone silent-cast en UTC)
-    sched = AsyncIOScheduler(timezone="Europe/Paris")
-    sched.add_job(lambda: None, CronTrigger(hour=6, minute=0), id="bad")
-    sched.start()
-    tzname_bad = sched.get_job("bad").next_run_time.tzname()
-    sched.shutdown(wait=False)
-    # Cas 2 — pytz.timezone injecté partout : correct.
+    """Sanity : APScheduler + `pytz.timezone("Europe/Paris")` + `CronTrigger(...,
+    timezone=tz)` DOIT produire CET/CEST. Invariant aussi verrouillé au niveau
+    du code source par `test_d1_scheduler_config_uses_pytz_and_trigger_tz`.
+    """
+    import asyncio
     tz = pytz.timezone("Europe/Paris")
-    sched_ok = AsyncIOScheduler(timezone=tz)
-    sched_ok.add_job(lambda: None, CronTrigger(hour=6, minute=0, timezone=tz), id="ok")
-    sched_ok.start()
-    tzname_ok = sched_ok.get_job("ok").next_run_time.tzname()
-    sched_ok.shutdown(wait=False)
+    # APScheduler AsyncIO nécessite un event loop pour `start()` — on en fournit un.
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        sched_ok = AsyncIOScheduler(timezone=tz)
+        sched_ok.add_job(lambda: None, CronTrigger(hour=6, minute=0, timezone=tz),
+                         id="ok_pytz_check")
+        sched_ok.start()
+        tzname_ok = sched_ok.get_job("ok_pytz_check").next_run_time.tzname()
+        sched_ok.shutdown(wait=False)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
     assert tzname_ok in ("CET", "CEST"), f"attendu CET/CEST, obtenu {tzname_ok}"
-    # On ne cast pas d'assertion sur `tzname_bad` (dépend de l'env) — le test
-    # dit surtout : le cas propre DOIT être CET/CEST.
 
 
 def test_d1_scheduler_config_uses_pytz_and_trigger_tz():

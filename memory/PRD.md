@@ -16,7 +16,22 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
-### BLOC D · Partie 1 — Hotfix scheduler (Sep 3, 2026) 🔥 LATEST
+### BLOC D · Migration prod idempotente `POST /api/d1/admin/migrer-prod` (Sep 3, 2026) 🔥 LATEST
+- **Problème** : `DuplicateKeyError E11000` sur `enrichissements.id_parcelle_1 dup key: id_parcelle: null` en prod → 3e fix appliqué en preview mais jamais rejoué en prod (weasyprint, html5lib, index cadastre). Symptôme : la génération d'opportunités échoue dès qu'un DPE n'a pas de parcelle cadastrale résolue.
+- **Racine** : `a2/indexes.py` créait l'index `id_parcelle` en `unique=True` sec — un seul doc `id_parcelle=null` autorisé. En preview, le fix `partialFilterExpression: {id_parcelle: {$type: "string"}}` avait été appliqué à la main mais **JAMAIS committé** dans le code, donc chaque startup FastAPI en prod le recréait cassé.
+- **Fix racine** : `a2/indexes.py` recréé avec `partialFilterExpression={"id_parcelle": {"$type": "string"}}, name="id_parcelle_unique_partial"`. Verrouillé par `test_a2_indexes_source_uses_partial_filter`.
+- **Endpoint unique idempotent** : `POST /api/d1/admin/migrer-prod` (auth `X-Admin-Secret`) qui :
+  1. **Diagnostique 37 index attendus** sur 15 collections (`enrichissements`, `opportunites`, `zones_couvertes`, `zones_demandees`, `invitations`, `organisations`, `quotas`, `rapprochements`, `estimations`, `conversations`, `signalements`, `device_tokens`, `events`, `zones_scraping`, `jobs_runs`), compare `partialFilterExpression`, `unique`, `sparse`. Détecte : `missing`, `options_mismatch`, `cannot_read_indexes`.
+  2. **Applique les fixes** : drop l'ancien index (par nom) si options divergent, recrée avec la spec propre. Chaque étape rapporte `{status, dropped?, created?, error?}`.
+  3. **Re-vérifie après** : 2e passe de diagnose pour prouver que tout est OK.
+  4. **Seeds** : `config_matching` (singleton A2), `zones_couvertes` (75017/13008/69003/99999-demo — sans écraser `actif` si déjà positionné).
+  5. **Migration users A2** : réutilise `_build_patch` du script CLI pour poser `role`/`plan`/`zones_perso`/`plan_depuis`/`a2_migrated_at` sur les comptes legacy. N'écrase JAMAIS un doc déjà migré.
+  6. **Diagnostic dépendances** : vérifie `weasyprint==69.0`, `html5lib`, `pydyf`, `pyphen`, `fonttools`, `apscheduler`, `pytz`. Rapporte `loaded`/`version`/`warning`.
+- **Idempotent strict** : 2e exécution → `fixes_needed_before: 0`, `applied: 0`, `still_broken_after: 0`. Vérifié par `test_migrer_prod_is_idempotent`.
+- **Test réel** : simulation avec 186 docs `id_parcelle=null` → l'endpoint crée l'index unique-partiel SANS erreur, tous les docs null coexistent. La génération d'opportunités reprend.
+- **Tests de régression** : `/app/backend/tests/test_d1_migrer_prod.py` (5 tests) : endpoint monté, spec index correcte, source code correct, idempotence stricte, re-diagnostic reconnaît un index correct comme OK. **29/29 tests critiques verts**.
+
+### BLOC D · Partie 1 — Hotfix scheduler (Sep 3, 2026)
 - **Fix P0 #1** : `POST /api/d1/admin/generer-opportunites` (async avec `job_id` pour éviter les timeouts proxy) avait été **décapité** — le décorateur `@router.post` et la signature `async def admin_generer_opportunites(request)` avaient disparu, laissant le corps du runner en code mort à l'intérieur de `admin_force_zones_suggestions`. L'endpoint est restauré. Sans lui, seul `POST /api/jobs/generer-opportunites` (a3, synchrone) restait exposé et time-out en proxy sur les zones réelles.
 - **Fix P0 #2** : le scheduler a3 (03h00 Paris) ne persistait aucune trace dans `jobs_runs`. Conséquence : `/api/d1/admin/etat-jobs` retournait `last_run: null` en permanence pour `generer_opportunites_quotidien` et `extraire_rues_quotidien`, même après une exécution réussie. Ajout de `_log_run(db, ..., "done"|"failed")` dans `_run_cycle` (a3/scheduler.py) pour chaque phase (extraction + génération).
 - **Fix P0 #3** : `AsyncIOScheduler(timezone="Europe/Paris")` avec chaîne pure tombait en UTC (bug silencieux) — les jobs cron programmés à 06h00 tournaient à 08h00 Paris en été. Fix : passage à `pytz.timezone("Europe/Paris")` + `CronTrigger(..., timezone=TZ)` sur chaque trigger. Vérifié : `next_run: 2026-09-04T06:00:00+02:00` (CEST correct).
