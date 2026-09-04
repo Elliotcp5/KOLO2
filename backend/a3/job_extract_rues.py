@@ -155,4 +155,25 @@ async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
         stats["totals"]["rue_pct"] = round(
             stats["totals"]["rue_written"] / stats["totals"]["scanned"] * 100, 1
         )
+    # Statut final — un job qui scanne des lignes sans rien écrire ne peut PAS
+    # se déclarer `done` : c'est le signe d'une régression silencieuse (BAN
+    # non chargé, extraction cassée, `nom_voie_ban` toujours vide côté source).
+    scanned = stats["totals"]["scanned"]
+    rue_ok = stats["totals"]["rue_written"]
+    if scanned > 0 and rue_ok == 0:
+        stats["status"] = "warning"
+        stats["warning"] = (
+            f"scanned={scanned} listings mais rue_written=0 — "
+            "vérifier voies BAN chargées, `title/description` non vides, "
+            "et fallback `nom_voie_ban` côté ingestion"
+        )
+    elif scanned > 0 and rue_ok / scanned < 0.10:
+        # < 10% de taux d'extraction : sans doute une régression partielle
+        stats["status"] = "warning"
+        stats["warning"] = (
+            f"taux rue_pct={stats['totals']['rue_pct']}% < 10% — "
+            "extraction peu fiable"
+        )
+    else:
+        stats["status"] = "ok"
     return stats

@@ -48,9 +48,14 @@ async def _run_cycle(db) -> None:
     logger.info("a3.cron: DÉBUT extraction rues")
     try:
         r1 = await run_extraire_rues(db, code_postal=None)
-        logger.info(f"a3.cron: extraction rues OK — {r1.get('totals')}")
-        await _log_run(db, "extraire_rues_quotidien", start_extract, "done",
-                       summary={"totals": r1.get("totals"), "cps_processed": r1.get("cps_processed")})
+        # Un job qui scanne sans écrire n'est pas un succès — statut `warning`
+        # remonté fidèlement à `jobs_runs` pour être visible dans etat-jobs.
+        status = r1.get("status") or "done"
+        logger.info(f"a3.cron: extraction rues {status} — {r1.get('totals')}")
+        await _log_run(db, "extraire_rues_quotidien", start_extract, status,
+                       summary={"totals": r1.get("totals"),
+                                "cps_processed": r1.get("cps_processed"),
+                                "warning": r1.get("warning")})
     except Exception as e:
         logger.error(f"a3.cron: extraction rues FAILED — {e}")
         await _log_run(db, "extraire_rues_quotidien", start_extract, "failed",

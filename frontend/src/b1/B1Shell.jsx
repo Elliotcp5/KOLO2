@@ -6,7 +6,6 @@ import b1t from './b1i18n';
 import b1api from './b1api';
 import { track, EVENTS } from './b3tracking';
 import { IconSwipe, IconCalc, IconReport, IconRobot, IconStats, IconUser } from './B1Icons';
-import { DEMO_OPPORTUNITES } from './demoOpportunites';
 import { NetworkBanner } from './B3Perf';
 import B1BuildStamp from './B1BuildStamp';
 import { SwipeCard } from './B1Nav';
@@ -163,11 +162,10 @@ export function OpportunitesPage() {
 
   // Charge les opportunités attribuées à l'utilisateur (GET /api/opportunites/du-jour).
   //
-  // **Aucun fallback vers `DEMO_OPPORTUNITES`** — un vrai compte ne DOIT
-  // jamais voir de carte fictive, sinon impossible de distinguer un vrai bien
-  // d'un faux. La démo n'apparaît QUE si l'utilisateur est en preview web
-  // anonyme (401) ET a explicitement demandé le tour guidé (localStorage
-  // `kolo_b1_show_tour`).
+  // **Aucun fallback vers des cartes de démo** — un vrai compte ne DOIT
+  // JAMAIS voir de carte fictive, sinon impossible de distinguer un vrai bien
+  // d'un faux. Si l'appel échoue ou renvoie 0 items, on affiche `FinDePileScreen`
+  // (« Votre zone est calme en ce moment »).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -177,13 +175,9 @@ export function OpportunitesPage() {
         setItems(r?.items || []);
       } catch (e) {
         if (cancelled) return;
-        // 401 web anonyme + tour guidé actif → démo pédagogique.
-        // Sinon on assume une liste vide (zone calme, quota atteint, …).
-        if (e.status === 401 && localStorage.getItem('kolo_b1_show_tour') === '1') {
-          setItems(DEMO_OPPORTUNITES);
-        } else {
-          setItems([]);
-        }
+        // Erreur réseau ou 401 anonyme → liste vide + zone calme.
+        // La démo n'est disponible QUE via la zone 99999 (opts serveur).
+        setItems([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

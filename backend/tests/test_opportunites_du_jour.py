@@ -60,15 +60,21 @@ def test_frontend_b1api_calls_real_endpoint_not_demo():
 
 
 def test_opportunites_page_uses_real_api():
-    """B1Shell::OpportunitesPage NE DOIT PLUS être bloqué sur
-    DEMO_OPPORTUNITES en dur. Il DOIT fetch b1api.getOpportunitesDuJour(),
-    et retomber sur la démo SEULEMENT en fallback (401 web anonyme)."""
+    """B1Shell::OpportunitesPage DOIT fetch b1api.getOpportunitesDuJour() et
+    NE JAMAIS fallback vers des cartes de démonstration.
+
+    Règle métier (Partie 1 § 1.4) : les cartes démo sont réservées à la
+    zone 99999 et au compte de revue Apple. Sur un compte réel dont la
+    liste est vide, on affiche `FinDePileScreen` (« zone calme »)."""
     src = open("/app/frontend/src/b1/B1Shell.jsx").read()
     assert "b1api.getOpportunitesDuJour" in src, \
         "OpportunitesPage doit appeler b1api.getOpportunitesDuJour()"
-    # Reste OK d'avoir DEMO_OPPORTUNITES en fallback dans le catch
-    assert "setItems(DEMO_OPPORTUNITES)" in src, \
-        "fallback démo attendu si API vide/401"
+    # Aucun fallback DEMO n'est autorisé — un compte réel doit voir la
+    # zone calme, jamais une carte fictive.
+    assert "DEMO_OPPORTUNITES" not in src, \
+        "aucun fallback DEMO_OPPORTUNITES autorisé dans B1Shell"
+    assert "setItems([])" in src, \
+        "OpportunitesPage doit fallback sur liste vide en cas d'erreur"
 
 
 def test_swipe_card_has_pointer_handlers():

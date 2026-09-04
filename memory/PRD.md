@@ -16,6 +16,22 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 - Stripe (billing individuel + crypto + B2B per-seat), Resend (emails), Twilio + WhatsApp (calls), Emergent Universal LLM Key (Whisper STT + GPT-4.1-mini), Google Calendar OAuth, Microsoft Outlook OAuth, Emergent-managed Google Auth.
 
 
+
+### BLOC D · Partie 1 — Correctifs prod (Fév 4, 2026) 🔥 LATEST
+**Contexte** : les opportunités ne remontent pas en prod. Index cassé + extraction rues stérile + fraîcheur inconnue.
+
+**Nouveaux endpoints admin (X-Admin-Secret)** :
+- `POST /api/d1/admin/fix-index-enrichissements` — force drop + recreate de TOUS les index portant sur `id_parcelle`, puis recrée `id_parcelle_unique_partial` avec `partialFilterExpression: { id_parcelle: {$type:"string"} }`. Retourne before/after + docs_with_null pour audit.
+- `GET  /api/d1/admin/audit-indexes` — compare l'état réel MongoDB à `EXPECTED_INDEXES`. Lecture seule, pour audit sans modification.
+- `GET  /api/d1/admin/diagnostic-zone?code_postal=13008` — retourne verdict complet : zone_couverte, listings.active_count, days_since_scrape, facteur_fraicheur, opportunites_par_statut. Diagnostic "fraicheur=0 → aucun opp possible" ou OK.
+- `POST /api/d1/admin/ouvrir-zone` `{code_postal, commune, volume_attendu}` — upsert dans `zones_couvertes` (actif=true) + notifie tous les users de `zones_demandees` sur ce CP (email + `notifie=true`). Le scheduler détecte automatiquement les nouvelles zones (pas de liste en dur).
+
+**extraire_rues_quotidien** — status `warning` si scanned>0 et rue_written=0, ou si taux <10%. Propagé dans `jobs_runs` (visible via `etat-jobs`). Plus jamais "done" sur un job stérile.
+
+**Frontend** — Suppression complète du fallback `DEMO_OPPORTUNITES` dans `OpportunitesPage`. Sur compte réel avec liste vide → `FinDePileScreen` (« zone calme »), jamais de carte fictive. Cartes démo réservées à la zone 99999 côté serveur.
+
+**Tests** : `tests/test_partie1_prod_fixes.py` — 6 tests verrouillent les 4 endpoints + statut warning. `test_opportunites_page_uses_real_api` inversé : DEMO_OPPORTUNITES INTERDIT. **116 tests critiques verts**.
+
 ### BLOC D · Fixes TestFlight 3e passe (Sep 3, 2026) 🔥 LATEST — Diagnostics + 6 fixes
 - **Point 1 (swipe cassé)** — Diagnostic : le code AVAIT déjà été corrigé (2e passe) mais l'endpoint s'appelait `/marquer-a-demarcher`. L'utilisateur demandait explicitement `/swipe`. **Fix** : nouveau endpoint unifié `POST /api/opportunites/{id}/swipe` `{sens: "droite"|"gauche"}` → droite = `a_demarcher`, gauche = `ignoree`. Le front (`swipeOpportunite`) l'utilise, plus AUCUN `navigate('/app-b1/estimation/...)` dans la fonction swipe. Sur échec, l'erreur est affichée dans la carte (`data-testid="b1-swipe-error"`) et **on n'avance PAS** (early return). Vérifiable en preview par curl `POST /api/opportunites/abc/swipe -d '{"sens":"droite"}'` → 401 (auth requise, endpoint bien monté).
 - **Point 2 (tab bar invisible)** — Cause racine : la re-définition CSS de `.b1-tabbar` que j'avais ajoutée pour le polish avait un liseré `rgba(236,134,144,0.20)` à 20% d'opacité → sur fond blanc la pilule devenait quasi invisible. **Fix** : `background: #FFFFFF` opaque + `border: 2px solid #EC8690` (rose franc 100%). `.b1-tab { color: #6B7280 }` (gris moyen), `.b1-tab[data-active="true"] { background: #EC8690; color: #FFFFFF }` (rose plein + icône blanche). Composant unique, style unique, aucune variante par écran (vérifié : Login, Swipe, Rapport, Estimation).

@@ -293,9 +293,11 @@ async def admin_run_job(request: Request):
         start = _now_utc_iso()
         try:
             r = await run_extraire_rues(db, code_postal=None)
-            await _log_run(db, "extraire_rues_quotidien", start, "done",
+            status = r.get("status") or "done"
+            await _log_run(db, "extraire_rues_quotidien", start, status,
                            summary={"totals": r.get("totals"),
-                                    "cps_processed": r.get("cps_processed")})
+                                    "cps_processed": r.get("cps_processed"),
+                                    "warning": r.get("warning")})
         except Exception as e:
             await _log_run(db, "extraire_rues_quotidien", start, "failed",
                            error=f"{type(e).__name__}: {e}")
@@ -405,6 +407,304 @@ async def admin_get_generer_job(job_id: str, request: Request):
     if not job:
         raise HTTPException(status_code=404, detail="job_introuvable")
     return job
+
+
+# ===========================================================================
+# PARTIE 1 — Correctifs prod (Février 2026)
+#
+# Ces endpoints existent parce que `migrer-prod` ne suffit pas à réparer un
+# état déjà cassé en production (l'index unique refuse d'être écrit tant que
+# les doublons null existent). Ils sont **forceurs** : ils ne demandent pas
+# poliment, ils reconstruisent.
+# ===========================================================================
+@router.post("/api/d1/admin/fix-index-enrichissements")
+async def admin_fix_index_enrichissements(request: Request):
+    """Fix FORCÉ de l'index `enrichissements.id_parcelle` en production.
+
+    Étapes :
+      1. Lit et retourne la définition ACTUELLE de tous les indexes de la
+         collection (utile pour comprendre ce qui bloque).
+      2. Compte les documents avec `id_parcelle: null` OU champ absent.
+      3. Drop TOUS les indexes existants sur `id_parcelle` (peu importe leur
+         nom).
+      4. Recrée l'index unique en `partialFilterExpression: { id_parcelle:
+         { $type: "string" } }`. Cette expression garantit que l'unicité ne
+         s'applique QUE quand la parcelle est une string non-vide.
+      5. Relit la définition finale et la retourne pour confirmation.
+
+    Retour :
+    ```
+    {
+      "before": [ ... indexes actuels ... ],
+      "docs_with_null_parcelle": N,
+      "docs_with_missing_parcelle": M,
+      "drop_actions": [ ... ],
+      "create_action": {...},
+      "after": [ ... indexes finaux ... ],
+      "success": bool
+    }
+    ```
+    """
+    _check_admin(request)
+    db = _db()
+    target_name = "id_parcelle_unique_partial"
+    target_options = {
+        "unique": True,
+        "partialFilterExpression": {"id_parcelle": {"$type": "string"}},
+    }
+
+    # 1) État initial
+    try:
+        before = await db.enrichissements.index_information()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"cannot_read_indexes: {type(e).__name__}: {e}")
+
+    # 2) Compte des documents à problème (pour info)
+    n_null = await db.enrichissements.count_documents({"id_parcelle": None})
+    n_missing = await db.enrichissements.count_documents({"id_parcelle": {"$exists": False}})
+
+    # 3) Drop TOUS les indexes qui portent sur `id_parcelle` (y compris
+    # l'ancien `id_parcelle_1` cassé sans partialFilter).
+    drop_actions = []
+    for name, info in before.items():
+        if name == "_id_":
+            continue
+        keys = info.get("key") or []
+        if any(k == "id_parcelle" for k, _ in keys):
+            try:
+                await db.enrichissements.drop_index(name)
+                drop_actions.append({"name": name, "status": "dropped"})
+            except Exception as e:
+                drop_actions.append({
+                    "name": name, "status": "drop_failed",
+                    "error": f"{type(e).__name__}: {e}",
+                })
+
+    # 4) Recréation de l'index cible
+    create_action: dict = {"name": target_name, "options": target_options}
+    try:
+        created = await db.enrichissements.create_index(
+            [("id_parcelle", 1)],
+            name=target_name,
+            **target_options,
+        )
+        create_action["status"] = "created"
+        create_action["created_name"] = created
+    except Exception as e:
+        create_action["status"] = "create_failed"
+        create_action["error"] = f"{type(e).__name__}: {e}"
+
+    # 5) État final
+    try:
+        after = await db.enrichissements.index_information()
+    except Exception as e:
+        after = {"__error__": f"{type(e).__name__}: {e}"}
+
+    success = (
+        create_action.get("status") == "created"
+        and any(
+            n == target_name for n in after.keys()
+        )
+    )
+
+    return {
+        "before": before,
+        "docs_with_null_parcelle": n_null,
+        "docs_with_missing_parcelle": n_missing,
+        "drop_actions": drop_actions,
+        "create_action": create_action,
+        "after": after,
+        "success": success,
+    }
+
+
+@router.get("/api/d1/admin/audit-indexes")
+async def admin_audit_indexes(request: Request):
+    """Compare l'état RÉEL des indexes en base avec la spec `EXPECTED_INDEXES`
+    déclarée dans `d1.migration_prod`. Retourne la liste précise des écarts.
+
+    Complète `migrer-prod` en lecture seule : on peut voir sans réparer.
+    """
+    _check_admin(request)
+    from d1.migration_prod import _diagnose_indexes
+    fixes, ok = await _diagnose_indexes(_db())
+    return {
+        "ecarts": fixes,
+        "conformes": ok,
+        "resume": {
+            "total_attendus": len(fixes) + len(ok),
+            "conformes": len(ok),
+            "ecarts": len(fixes),
+        },
+    }
+
+
+@router.get("/api/d1/admin/diagnostic-zone")
+async def admin_diagnostic_zone(code_postal: str, request: Request):
+    """Diagnostic complet pour une zone donnée (défaut 13008).
+
+    Retour :
+      - `zones_couvertes` : présence, actif, volume_attendu
+      - `listings` (Supabase) : total_active, max_scraped_at, max_last_seen_at
+      - `days_since_scrape` : nombre de jours depuis dernier scraping
+      - `facteur_fraicheur` : valeur calculée par le moteur
+      - `dpe_recents` : nombre de DPE ADEME <62j pour ce CP
+      - `opportunites` : compte par statut
+      - `verdict` : phrase claire — « fraîcheur=0 → aucun opp possible » ou OK
+    """
+    _check_admin(request)
+    cp = (code_postal or "").strip()
+    if len(cp) != 5 or not cp.isdigit():
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+
+    db = _db()
+    import httpx
+    from a2.config import get_config
+    from a3.job_generer_opportunites import (
+        _get_zone_scraping_state, _facteur_fraicheur,
+    )
+
+    # 1) Zone couverte
+    zc = await db.zones_couvertes.find_one({"code_postal": cp})
+    zc_serialized = None
+    if zc:
+        zc.pop("_id", None)
+        zc_serialized = zc
+
+    # 2) Freshness via Supabase (source de vérité)
+    async with httpx.AsyncClient() as client:
+        state = await _get_zone_scraping_state(db, cp, client)
+
+    # 3) Facteur fraicheur
+    cfg = await get_config(db)
+    f_frais = _facteur_fraicheur(state["days_since_scrape"], cfg)
+
+    # 4) Opportunités par statut
+    opps_pipeline = [
+        {"$match": {"code_postal": cp}},
+        {"$group": {"_id": "$statut", "n": {"$sum": 1}}},
+    ]
+    opps_by_statut = {row["_id"] or "?": int(row["n"])
+                      async for row in db.opportunites.aggregate(opps_pipeline)}
+
+    # 5) Verdict
+    if not zc:
+        verdict = f"zone {cp} absente de zones_couvertes"
+    elif not zc.get("actif"):
+        verdict = f"zone {cp} présente mais inactive (actif=false)"
+    elif state["active_count"] == 0:
+        verdict = "aucun listing actif — Apify n'a jamais scrapé cette zone"
+    elif f_frais == 0.0:
+        verdict = (
+            f"fraicheur=0 — dernier scraping il y a {state['days_since_scrape']}j "
+            f"(>7j) — le moteur ne produit AUCUN opportunité tant qu'un nouveau "
+            f"run Apify n'a pas alimenté cette zone"
+        )
+    elif f_frais == 0.7:
+        verdict = f"fraicheur=0.7 (dégradée) — {state['days_since_scrape']}j"
+    else:
+        verdict = f"fraicheur=1.0 (pleine) — {state['days_since_scrape']}j"
+
+    return {
+        "code_postal": cp,
+        "zone_couverte": zc_serialized,
+        "listings": {
+            "active_count": state["active_count"],
+            "days_since_scrape": state["days_since_scrape"],
+        },
+        "facteur_fraicheur": f_frais,
+        "config_fraicheur": cfg.get("fraicheur"),
+        "opportunites_par_statut": opps_by_statut,
+        "verdict": verdict,
+    }
+
+
+class OuvrirZonePayload(BaseModel):
+    code_postal: str
+    commune: str | None = None
+    volume_attendu: int = 1000
+
+
+@router.post("/api/d1/admin/ouvrir-zone")
+async def admin_ouvrir_zone(payload: OuvrirZonePayload, request: Request):
+    """Ouvre une nouvelle zone en 1 appel.
+
+    Étapes :
+      1. Upsert dans `zones_couvertes` avec `actif=True`.
+      2. Notifie tous les users de `zones_demandees` sur ce CP (email + flag
+         `notifie=True`) — best-effort, l'échec email ne fait pas échouer la
+         création de la zone.
+      3. Retourne un rapport détaillé.
+
+    Le planificateur détecte automatiquement les nouvelles zones (voir
+    `d1.scheduler._run_generer_opportunites` qui interroge `zones_couvertes`
+    à chaque tick 03h00 — aucune liste en dur).
+    """
+    _check_admin(request)
+    cp = (payload.code_postal or "").strip()
+    if len(cp) != 5 or not cp.isdigit():
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+
+    db = _db()
+    now_iso = now_utc_iso()
+
+    # 1) Upsert zone
+    existing = await db.zones_couvertes.find_one({"code_postal": cp})
+    patch = {
+        "code_postal": cp,
+        "actif": True,
+        "volume_attendu": int(payload.volume_attendu or 1000),
+        "demo": False,
+        "updated_at": now_iso,
+    }
+    if payload.commune:
+        patch["commune"] = payload.commune.strip()
+    if not existing:
+        patch["created_at"] = now_iso
+        await db.zones_couvertes.insert_one(patch)
+        zone_action = "created"
+    else:
+        await db.zones_couvertes.update_one({"code_postal": cp}, {"$set": patch})
+        zone_action = "updated" if not existing.get("actif") else "already_active"
+
+    # 2) Notifie users en attente
+    demandes = await db.zones_demandees.find(
+        {"code_postal": cp, "notifie": False}
+    ).to_list(length=None)
+    notified = 0
+    errors: list[str] = []
+    for d in demandes:
+        try:
+            from email_service import send_email
+            email = d.get("email")
+            if email:
+                await send_email(
+                    to=email,
+                    subject=f"KOLO — Votre zone {cp} vient d'ouvrir",
+                    body=(
+                        f"Bonjour,\n\n"
+                        f"La zone {cp} que vous aviez demandée est maintenant "
+                        f"couverte par KOLO. Vos premières opportunités "
+                        f"arrivent demain matin.\n\n— L'équipe KOLO"
+                    ),
+                )
+            await db.zones_demandees.update_one(
+                {"_id": d["_id"]},
+                {"$set": {"notifie": True, "notifie_at": now_iso}},
+            )
+            notified += 1
+        except Exception as e:
+            errors.append(f"{d.get('email')}: {type(e).__name__}")
+
+    return {
+        "ok": True,
+        "code_postal": cp,
+        "zone_action": zone_action,
+        "volume_attendu": patch["volume_attendu"],
+        "users_notifies": notified,
+        "users_en_attente_total": len(demandes),
+        "erreurs_notification": errors,
+    }
 
 
 # ===========================================================================
