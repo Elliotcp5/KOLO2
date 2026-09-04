@@ -97,29 +97,26 @@ def test_tab_bar_is_opaque_with_solid_pink_border():
     assert "border: 2px solid rgba(236, 134, 144, 0.20)" not in src
 
 
-def test_login_logo_is_inline_svg_not_png():
-    """Le logo login DOIT être un SVG texte (fiable partout) et NON une
-    balise <img src="/kolo-mark-black-256.png"> — le PNG fourni a un centre
-    transparent qui rend un aspect « carré vide » sur iOS."""
+def test_login_logo_uses_asset_import_not_svg_text():
+    """Le user demande la MARQUE (K graphique), pas du texte SVG. Le PNG
+    doit être importé depuis src/assets/ (URL hashée webpack, chemin garanti
+    après cap sync ios)."""
     src = Path("/app/frontend/src/v2/pages/V2AuthPage.js").read_text()
-    # Le fichier peut mentionner le PNG en commentaire (traçabilité) mais
-    # NE DOIT PLUS être référencé dans `src=`.
-    assert 'src="/kolo-mark-black-256.png"' not in src, \
-        "ne plus utiliser le PNG à centre transparent"
-    assert "<svg" in src
-    assert "</text>" in src and "KOLO" in src, "logo texte KOLO en SVG inline"
+    assert 'import koloLogoUrl' in src, "logo doit être importé depuis src/assets/"
+    assert 'kolo-mark-black' in src
+    assert '<img' in src and 'auth-logo' in src
 
 
-def test_assistant_prompt_3_4_phrases_no_titles():
+def test_assistant_prompt_3_4_phrases_no_lists():
     src = Path("/app/backend/assistant/routes.py").read_text()
     assert "trois à quatre phrases courtes" in src
-    assert "jamais de titres" in src
+    assert "ni listes à puces" in src
     assert "trois points" in src
 
 
-def test_assistant_max_tokens_400():
+def test_assistant_max_tokens_350():
     src = Path("/app/backend/assistant/routes.py").read_text()
-    assert "with_max_tokens(400)" in src
+    assert "with_max_tokens(350)" in src
 
 
 def test_auto_migrer_prod_still_on_startup():

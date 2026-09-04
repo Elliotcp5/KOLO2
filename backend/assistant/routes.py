@@ -30,7 +30,8 @@ SYSTEM_PROMPT = (
     "Vous répondez en français, exclusivement au vouvoiement. "
     "Vos réponses font trois à quatre phrases courtes maximum, suivies du "
     "prochain pas concret. Vous n'énumérez jamais plus de trois points. "
-    "Vous ne faites jamais de titres ni de sections. "
+    "Vous n'utilisez ni titres, ni sections, ni listes à puces. "
+    "Vous écrivez comme dans une conversation, pas comme dans un document. "
     "Vous n'employez jamais le mot \"expertise\" pour désigner un avis de valeur : "
     "dites toujours \"avis de valeur\". "
     "Vous refusez de donner un chiffre de marché tant qu'aucune estimation n'est fournie "
@@ -158,10 +159,9 @@ async def chat(payload: ChatIn, request: Request):
     chat = (LlmChat(api_key=EMERGENT_KEY, session_id=f"assistant-{conv_id}-{len(messages)}",
                     system_message=SYSTEM_PROMPT)
             .with_model("anthropic", "claude-sonnet-5"))
-    # Contrainte de longueur — 400 tokens ≈ 300 mots ≈ 4-5 phrases FR.
-    # Le prompt système impose 3-4 phrases ; on cap en dur pour être sûr.
+    # Contrainte de longueur — 350 tokens ≈ 260 mots ≈ 3-4 phrases FR.
     try:
-        chat = chat.with_max_tokens(400)
+        chat = chat.with_max_tokens(350)
     except Exception:
         pass  # méthode absente sur cette version — le prompt reste la garde
     # Injecte l'historique en un seul message pour préserver le fil sans multiplier les appels

@@ -9,6 +9,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import v2api from '../v2api';
 import b1t from '../../b1/b1i18n';
 import B1BuildStamp from '../../b1/B1BuildStamp';
+// Import webpack — URL hashée dans le bundle, chemin garanti après `cap sync ios`.
+// L'asset vit dans src/assets/ pour être traité par webpack (CRA refuse les
+// imports hors du dossier src/). Le PNG source est kolo-mark-black-256.png.
+import koloLogoUrl from '../../assets/kolo-mark-black.png';
 import '../../b1/b1.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
@@ -83,36 +87,28 @@ export default function V2AuthPage({ mode = 'login' }) {
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
-          {/* Logo KOLO — rendu SVG inline en League Spartan noir.
-              Choix motivé : le PNG fourni (kolo-mark-black-256.png) a un
-              centre transparent qui, sur le fond violet clair de la page,
-              rend un aspect « carré vide » sur iOS (constaté TestFlight 3e
-              passe). Le SVG inline élimine tout risque de chemin cassé,
-              CSP, ou aspect déformé au packaging Capacitor.
-              L'aspect (largeur/hauteur) est fixé, jamais étiré. */}
+          {/* Logo K KOLO — marque graphique.
+              Import webpack : URL hashée dans le bundle final, chemin garanti
+              après `cap sync ios` (les chemins absolus type `/xxx.png`
+              cassent dans certains packagings Capacitor).
+              Hauteur fixe 72, largeur automatique, `object-fit: contain`,
+              `object-position: center`. Aspect natif 1:1 préservé. */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <svg
-              width={180}
+            <img
+              src={koloLogoUrl}
+              alt="KOLO"
               height={72}
-              viewBox="0 0 220 88"
-              role="img"
-              aria-label="KOLO"
+              style={{
+                display: 'block',
+                margin: '0 auto 20px',
+                height: 72,
+                width: 'auto',
+                maxWidth: 180,
+                objectFit: 'contain',
+                objectPosition: 'center',
+              }}
               data-testid="auth-logo"
-              style={{ display: 'block', margin: '0 auto 20px' }}
-            >
-              <text
-                x="110"
-                y="66"
-                textAnchor="middle"
-                fontFamily='"League Spartan", -apple-system, "SF Pro Display", sans-serif'
-                fontWeight={800}
-                fontSize={68}
-                letterSpacing="-2"
-                fill="#111827"
-              >
-                KOLO
-              </text>
-            </svg>
+            />
             <div className="b1-lead" style={{ marginTop: 0, fontSize: 15, color: 'rgba(0,0,0,0.55)' }}>
               {b1t('auth.tagline')}
             </div>

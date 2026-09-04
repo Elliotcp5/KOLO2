@@ -97,10 +97,12 @@ def test_assistant_system_prompt_short_answer_guardrail():
 
 
 def test_assistant_max_tokens_capped():
-    """`with_max_tokens(300)` OU `with_max_tokens(400)` DOIT être appelé sur
-    le chat pour capper la réponse — le prompt seul ne suffit pas."""
+    """`with_max_tokens(N)` DOIT être appelé sur le chat pour capper la
+    réponse — le prompt seul ne suffit pas."""
     src = Path("/app/backend/assistant/routes.py").read_text()
-    assert "with_max_tokens(300)" in src or "with_max_tokens(400)" in src
+    import re
+    assert re.search(r"with_max_tokens\((300|350|400)\)", src), \
+        "with_max_tokens doit être appelé avec 300/350/400"
 
 
 def test_dossier_list_has_bottom_tab_pill():
