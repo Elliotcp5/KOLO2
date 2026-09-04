@@ -1089,16 +1089,18 @@
   box-shadow: 0 16px 36px -12px rgba(20, 20, 30, 0.22),
               0 4px 12px -4px rgba(20, 20, 30, 0.10);
 }
-.b1-tab {
+/* Bump de spécificité — sinon `.b1-root button:not(.b1-pill)` écrase
+   le background rose du tab actif (bug TestFlight 4e passe). */
+.b1-tabbar .b1-tab {
   color: #6B7280;                      /* gris moyen — visible sur blanc */
 }
-.b1-tab svg { color: currentColor; }   /* propagation icônes lucide */
-.b1-tab[data-active="true"] {
-  background: #EC8690;                 /* rose plein */
-  color: #FFFFFF;                      /* icône blanche */
+.b1-tabbar .b1-tab svg { color: currentColor; }
+.b1-tabbar .b1-tab[data-active="true"] {
+  background: #EC8690 !important;      /* rose plein */
+  color: #FFFFFF !important;           /* icône blanche */
   border-radius: 22px;
 }
-.b1-tab[data-active="true"] svg { color: #FFFFFF; }
+.b1-tabbar .b1-tab[data-active="true"] svg { color: #FFFFFF !important; }
 
 /* --- Cartes empty state --- */
 .b1-opp-empty {

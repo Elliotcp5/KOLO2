@@ -2252,7 +2252,11 @@ async def admin_grant_plan_by_email(request: Request):
 
     email = (body.get("email") or "").strip().lower()
     plan = (body.get("plan") or "pro").strip().lower()
-    months = max(1, min(36, int(body.get("months") or 2)))
+    # months = 0 → à vie (aucune date d'expiration, jamais rétrogradé par le
+    # webhook Apple car plan_source restera "manuel"). Sinon 1..36 mois.
+    raw_months = body.get("months")
+    lifetime = (raw_months == 0 or str(raw_months).lower() == "lifetime")
+    months = 0 if lifetime else max(1, min(36, int(raw_months or 2)))
     note = (body.get("note") or "").strip() or None
 
     if not email:
@@ -2265,27 +2269,23 @@ async def admin_grant_plan_by_email(request: Request):
         raise HTTPException(status_code=404, detail=f"User not found: {email}")
 
     now = datetime.now(timezone.utc)
-    expires_at_dt = now + timedelta(days=30 * months)
-    expires_at = expires_at_dt.isoformat()
+    expires_at = None if lifetime else (now + timedelta(days=30 * months)).isoformat()
 
-    await db.users.update_one(
-        {"email": email},
-        {"$set": {
-            "subscription_plan": plan,
-            "subscription_expires_at": expires_at,
-            "subscription_granted_by": "admin-secret",
-            "subscription_note": note,
-            "subscription_updated_at": now.isoformat(),
-        }},
-    )
+    set_fields = {
+        "subscription_plan": plan,
+        "subscription_expires_at": expires_at,
+        "subscription_granted_by": "admin-secret",
+        "subscription_note": note,
+        "subscription_updated_at": now.isoformat(),
+        "plan_source": "manuel",           # verrouille contre Apple/Stripe webhooks
+    }
+    await db.users.update_one({"email": email}, {"$set": set_fields})
     updated = await db.users.find_one({"email": email}, {"_id": 0, "password": 0})
     return {
-        "ok": True,
-        "email": email,
-        "plan": plan,
+        "ok": True, "email": email, "plan": plan,
         "granted_from": now.isoformat(),
-        "expires_at": expires_at,
-        "months": months,
+        "expires_at": expires_at,           # None = à vie
+        "months": months, "lifetime": lifetime,
         "user_id": updated.get("user_id") if updated else None,
     }
 
