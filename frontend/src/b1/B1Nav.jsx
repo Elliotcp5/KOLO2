@@ -11,14 +11,19 @@
 // via `touch-action: pan-y` sur le conteneur (React) + surtout on annule
 // preventDefault SEULEMENT si le geste est clairement horizontal.
 // =============================================================
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { ArrowLeft, X, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import b1t from './b1i18n';
 
 
 // ============================================================
-// SwipeCard — carte swipeable avec fallback boutons croix/cœur
+// SwipeCard — carte swipeable (pilotage DOM direct, aucun re-render pendant le drag)
+//
+// Le pilotage de la transformation CSS via `ref.current.style` évite un
+// re-render React à chaque `pointermove` — c'était la cause du jank sur
+// appareil réel signalée en TestFlight.
+//
 // props:
 //   • children     — contenu de la carte
 //   • onSwipeLeft  — callback rejet
@@ -27,29 +32,90 @@ import b1t from './b1i18n';
 //   • testid       — data-testid racine
 // ============================================================
 export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = false, testid = 'b1-swipe-card' }) {
-  const [drag, setDrag] = useState({ dx: 0, angle: 0, released: false });
-  const ref = useRef(null);
+  const cardRef = useRef(null);
+  const heartRef = useRef(null);
+  const crossRef = useRef(null);
   const startRef = useRef({ x: 0, y: 0, t: 0, active: false, decidedH: false });
+  const rafRef = useRef(null);
+  const pendingDeltaRef = useRef({ dx: 0, dy: 0 });
 
-  const SWIPE_THRESHOLD_PX = 60;
-  const SWIPE_VELOCITY = 0.35; // px/ms
-  const H_LOCK_PX = 12;        // seuil de « c'est horizontal »
+  // Seuil : 30% de la largeur d'écran (à minima 90 px pour être sûr sur small phones)
+  const thresholdPx = () => {
+    const w = (typeof window !== 'undefined' ? window.innerWidth : 390);
+    return Math.max(90, Math.round(w * 0.30));
+  };
+
+  // Retour haptique (best-effort, iOS Capacitor)
+  const hapticLight = () => {
+    try {
+      // Cap 5+ Haptics plugin (si chargé)
+      if (window.Capacitor?.Plugins?.Haptics?.impact) {
+        window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' });
+      } else if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+    } catch { /* silence */ }
+  };
+
+  // Applique une transformation directement sur le DOM (0 setState).
+  const applyTransform = (dx, dy) => {
+    const card = cardRef.current;
+    if (!card) return;
+    // rotation proportionnelle, clampée -18°..+18°
+    const angle = Math.max(-18, Math.min(18, dx / 15));
+    card.style.transform = `translate3d(${dx}px, ${dy * 0.15}px, 0) rotate(${angle}deg)`;
+    card.style.transition = 'none';
+
+    // Indicateurs — opacité proportionnelle à la distance (0 à 1 sur 30% width)
+    const thr = thresholdPx();
+    const opacity = Math.min(1, Math.abs(dx) / thr);
+    if (heartRef.current) heartRef.current.style.opacity = dx > 20 ? String(opacity) : '0';
+    if (crossRef.current) crossRef.current.style.opacity = dx < -20 ? String(opacity) : '0';
+  };
+
+  const scheduleFrame = () => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const { dx, dy } = pendingDeltaRef.current;
+      applyTransform(dx, dy);
+    });
+  };
+
+  const resetVisuals = (animated = true) => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transition = animated
+      ? 'transform 220ms cubic-bezier(.22,.9,.3,1)'
+      : 'none';
+    card.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
+    if (heartRef.current) heartRef.current.style.opacity = '0';
+    if (crossRef.current) crossRef.current.style.opacity = '0';
+  };
 
   const finish = useCallback((direction) => {
-    // Anime la carte hors écran, puis appelle le callback.
-    const dx = direction === 'right' ? 500 : -500;
-    setDrag({ dx, angle: direction === 'right' ? 18 : -18, released: true });
+    const card = cardRef.current;
+    if (card) {
+      card.style.transition = 'transform 260ms cubic-bezier(.22,.9,.3,1)';
+      const off = direction === 'right' ? 600 : -600;
+      const angle = direction === 'right' ? 22 : -22;
+      card.style.transform = `translate3d(${off}px, 0, 0) rotate(${angle}deg)`;
+    }
+    hapticLight();
     setTimeout(() => {
-      setDrag({ dx: 0, angle: 0, released: false });
+      // reset immédiat sans animation (la prochaine carte est déjà rendue en dessous)
+      resetVisuals(false);
       if (direction === 'right') onSwipeRight?.();
       else onSwipeLeft?.();
-    }, 220);
+    }, 240);
   }, [onSwipeLeft, onSwipeRight]);
 
   const onPointerDown = (e) => {
     if (disabled) return;
-    startRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), active: true, decidedH: false };
-    // capture — indispensable pour que le pointer up soit reçu même hors carte
+    startRef.current = {
+      x: e.clientX, y: e.clientY, t: Date.now(),
+      active: true, decidedH: false,
+    };
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
   };
 
@@ -57,25 +123,23 @@ export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = fals
     if (!startRef.current.active) return;
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
-    // Bloque le geste si l'utilisateur veut clairement scroller verticalement
+    const H_LOCK_PX = 12;
     if (!startRef.current.decidedH) {
-      if (Math.abs(dx) < H_LOCK_PX && Math.abs(dy) < H_LOCK_PX) return; // encore indécis
+      if (Math.abs(dx) < H_LOCK_PX && Math.abs(dy) < H_LOCK_PX) return;
       if (Math.abs(dy) > Math.abs(dx)) {
-        // Vertical → abandonner le swipe, laisser le scroll natif
+        // Scroll vertical : on abandonne le swipe
         startRef.current.active = false;
         return;
       }
       startRef.current.decidedH = true;
     }
-    // Rotation légère + translation
-    const angle = Math.max(-18, Math.min(18, dx / 15));
-    setDrag({ dx, angle, released: false });
+    pendingDeltaRef.current = { dx, dy };
+    scheduleFrame();
   };
 
   const onPointerUp = (e) => {
     if (!startRef.current.active) {
-      // Vertical/annulé — reset visuel
-      setDrag({ dx: 0, angle: 0, released: false });
+      resetVisuals(false);
       return;
     }
     const dx = e.clientX - startRef.current.x;
@@ -83,49 +147,55 @@ export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = fals
     const vel = Math.abs(dx) / elapsed;
     startRef.current.active = false;
 
-    if (dx > SWIPE_THRESHOLD_PX || (dx > 20 && vel > SWIPE_VELOCITY)) {
+    const thr = thresholdPx();
+    // Validation : ≥30% width OU vélocité rapide (>0.4 px/ms) sur >20px
+    if (dx > thr || (dx > 20 && vel > 0.4)) {
       finish('right');
-    } else if (dx < -SWIPE_THRESHOLD_PX || (dx < -20 && vel > SWIPE_VELOCITY)) {
+    } else if (dx < -thr || (dx < -20 && vel > 0.4)) {
       finish('left');
     } else {
-      // Snap back
-      setDrag({ dx: 0, angle: 0, released: true });
-      setTimeout(() => setDrag({ dx: 0, angle: 0, released: false }), 200);
+      // Retour élastique
+      resetVisuals(true);
     }
-  };
-
-  const style = {
-    transform: `translateX(${drag.dx}px) rotate(${drag.angle}deg)`,
-    transition: drag.released ? 'transform 220ms cubic-bezier(.22,.9,.3,1)' : 'none',
-    touchAction: 'pan-y',
-    cursor: disabled ? 'default' : 'grab',
-    userSelect: 'none',
   };
 
   return (
     <div className="b1-swipe-wrap" data-testid={testid}>
       <div
-        ref={ref}
+        ref={cardRef}
         className="b1-opp-card b1-swipe-card"
-        style={style}
+        style={{
+          transform: 'translate3d(0, 0, 0) rotate(0deg)',
+          transition: 'none',
+          touchAction: 'pan-y',
+          cursor: disabled ? 'default' : 'grab',
+          userSelect: 'none',
+          willChange: 'transform',
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
         {children}
-        {/* Indicateurs visuels du geste */}
-        {drag.dx > 30 && (
-          <div className="b1-swipe-hint b1-swipe-hint--accept" data-testid="b1-swipe-hint-right">
-            <Heart size={44} fill="currentColor" />
-          </div>
-        )}
-        {drag.dx < -30 && (
-          <div className="b1-swipe-hint b1-swipe-hint--reject" data-testid="b1-swipe-hint-left">
-            <X size={44} strokeWidth={3} />
-          </div>
-        )}
-        {/* Boutons fallback DANS la carte (fixe l'overlap tab bar) */}
+        {/* Indicateurs visuels du geste — opacité pilotée en direct */}
+        <div
+          ref={heartRef}
+          className="b1-swipe-hint b1-swipe-hint--accept"
+          data-testid="b1-swipe-hint-right"
+          style={{ opacity: 0, transition: 'opacity 60ms linear' }}
+        >
+          <Heart size={44} fill="currentColor" />
+        </div>
+        <div
+          ref={crossRef}
+          className="b1-swipe-hint b1-swipe-hint--reject"
+          data-testid="b1-swipe-hint-left"
+          style={{ opacity: 0, transition: 'opacity 60ms linear' }}
+        >
+          <X size={44} strokeWidth={3} />
+        </div>
+        {/* Boutons fallback DANS la carte (accessibilité clavier + confort) */}
         <div className="b1-opp-actions">
           <button
             className="b1-opp-action-btn b1-opp-action-btn--reject"

@@ -17,6 +17,36 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC D · Partie 1 (Anomalies backend) + Partie 2 (Swipe + Mes mandats) — Fév 4, 2026 🔥 LATEST
+**Contexte** : la prod produit enfin des opportunités (13008 saine : 663 annonces, fraîcheur 1.0). Restaient 3 anomalies backend + toute la partie mandats.
+
+**Partie 1 — 3 anomalies backend** :
+- **Anomalie 1.1 (etat-jobs périmé)** — CAUSE : `POST /api/d1/admin/generer-opportunites` (endpoint one-shot par CP) écrivait uniquement dans la collection `jobs` (uuid), pas dans `jobs_runs`. `etat-jobs` continuait à afficher le vieux DuplicateKeyError. FIX : le runner appelle maintenant `_log_run(db, "generer_opportunites_quotidien", start, "done", summary={triggered_via: "admin_one_shot", ...})` en miroir. VÉRIF : run 13008 puis 99999 → jobs_runs contient 2 nouvelles entrées `done`. `etat-jobs.last_success` daté d'aujourd'hui.
+- **Anomalie 1.2 (extraire_rues stérile)** — CAUSE : les statistiques comptaient uniquement les rues **nouvellement écrites**. Si `rue_extraite` était déjà à la bonne valeur d'un run précédent, `rue_ok++` n'incrémentait pas. D'où l'illusion de "0 rue écrite" sur 1001 listings scannés. FIX : nouvelles stats distinguent `rue_written` (patch neuf), `rue_deja_ok` (déjà correcte), `rue_absente` (pas trouvée). Warning seulement si couverture < 10%. Nouveau endpoint `GET /api/d1/admin/diagnostic-extraction-rues?code_postal=13008` retourne 3 exemples bruts pour comprendre à l'œil. VÉRIF preview 13008 : `scanned=713, rue_written=5, rue_deja_ok=195, rue_absente=510, couverture=28.1%, status=ok`. Les 510 sans rue n'ont juste pas de voie identifiable dans title/description (limitation intrinsèque des données Apify).
+- **Anomalie 1.3 (plan pro alterne pro_plus)** — CAUSE : `server.get_user_effective_plan()` retournait `"pro"` via ligne 2915 (granted_plan normalisé) OU `stored_plan` brut (`pro_plus`) via ligne 2925. Selon le path, alternance. FIX : `etat-compte` normalise à `pro`/`decouverte` en sortie + expose `plan_raw` pour debug. Nouveau endpoint `POST /api/d1/admin/normaliser-plans` migre en masse les users `pro_plus`/`pro_lifetime` → `pro` et `free` → `decouverte`. VÉRIF preview : 1 user migré, `etat-compte` retourne `plan: pro, plan_raw: pro`.
+
+**Partie 2 — Swipe + Mes opportunités de mandats** :
+- **2.1 Swipe** — La régression `navigate('/app-b1/estimation')` a été purgée dès le fix TestFlight v3. `swipe()` reste sur la pile, affiche l'erreur en cas d'échec (`data-testid="b1-swipe-error"`) et **n'avance pas** si le POST rate. Verrouillé par `test_swipe_endpoint_reste_intact`.
+- **2.2 Fluidité** — `SwipeCard` **complètement réécrit** avec pilotage DOM direct : `useRef` + `requestAnimationFrame` + `cardRef.current.style.transform = ...`. AUCUN `setState` pendant le drag → 0 re-render. Seuil validation = **30% de la largeur viewport** (min 90px). Retour haptique via Capacitor Haptics (fallback `navigator.vibrate(10)`). Vitesse rotation clampée -18°/+18°. Indicateurs cœur/croix pilotés en opacité proportionnelle.
+- **2.3 Mes opportunités de mandats** — Nouveau module `B1MesMandats.jsx` :
+  - **`MesMandatsButton`** : bouton PERMANENT `position: fixed` toujours 12px au-dessus de la tab bar, avec badge count des opps actives (à démarcher + démarché + mandat signé)
+  - **`MesMandatsPage`** : liste triée par `date_dernier_statut` desc, groupée par statut (À démarcher / Démarché / Mandat signé / Déjà en vente / Abandon)
+  - Chaque carte : adresse + type + surface + DPE + pastille statut + toggle œil pour déplier détail complet
+  - Segment control 3 statuts (À démarcher ↔ Démarché ↔ Mandat signé) — 1 tap change
+  - Bouton **« Ce bien est déjà en vente »** — 1 tap sans confirmation
+  - Bouton **« Abandon »** — double confirmation (modal sheet)
+  - Route `/app-b1/mes-mandats` montée dans `App.js`
+- **2.4 Fin de pile** — Sablier + décompte 03h00 Paris déjà en place depuis v3. Cartes veille brancheront dans un P1 backlog.
+
+**Nouveaux endpoints backend** :
+- `GET  /api/opportunites/mes-mandats?limit=100`  → items + counts par statut
+- `PATCH /api/opportunites/{id}/statut-mandat`    body `{statut: "a_demarcher"|"demarche"|"mandat_signe"|"abandon"|"deja_en_vente"}`
+- `POST /api/d1/admin/normaliser-plans` (X-Admin-Secret) — `pro_plus/pro_lifetime → pro`, `free → decouverte`
+- `GET  /api/d1/admin/diagnostic-extraction-rues?code_postal=13008` — 3 exemples bruts + compteurs
+
+**Tests** : `tests/test_partie2_mes_mandats.py` — 9 tests (endpoints montés, page composant, bouton permanent, SwipeCard sans setState pendant drag, haptic, i18n 4 langues, swipe pas de redirect). **65 tests critiques verts** (compliance Apple + i18n coverage + refonte + partie1 + partie2 + testflight v3 + migrer-prod + opportunites-du-jour + onboarding + scheduler-endpoints).
+
+
 ### BLOC D · Partie 1 — Correctifs prod (Fév 4, 2026) 🔥 LATEST
 **Contexte** : les opportunités ne remontent pas en prod. Index cassé + extraction rues stérile + fraîcheur inconnue.
 

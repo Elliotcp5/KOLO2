@@ -10,6 +10,7 @@ import { NetworkBanner } from './B3Perf';
 import B1BuildStamp from './B1BuildStamp';
 import { SwipeCard } from './B1Nav';
 import { FinDePileScreen } from './B1FinDePile';
+import { MesMandatsButton } from './B1MesMandats';
 import './b1.css';
 
 // ============================================================================
@@ -313,6 +314,10 @@ export function OpportunitesPage() {
             </div>
           )}
         </div>
+        {/* Bouton PERMANENT « Mes opportunités de mandats » — visible même
+            quand la pile est vide (c'est justement là qu'on va bosser).
+            Placé au-dessus de la tab bar, jamais dessous. */}
+        <MesMandatsButton />
         <BottomTabPill active="opportunites" />
         {showTour && <GuidedTour onDone={closeTour} />}
       </div>

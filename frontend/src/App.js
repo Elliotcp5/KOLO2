@@ -68,6 +68,7 @@ import {
   ProfilDeletePage as B1ProfilDeletePage,
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
+import { MesMandatsPage as B1MesMandatsPage } from "./b1/B1MesMandats";
 import { DossierListPage as C2DossierList, DossierEditorPage as C2DossierEditor } from "./b1/B1Dossier";
 import { AssistantPage as B1AssistantPage } from "./b1/B1Assistant";
 import {
@@ -217,6 +218,7 @@ const AppRouter = () => {
       {/* ============================================================== */}
       <Route path="/onboarding-b1" element={<B1Onboarding />} />
       <Route path="/app-b1" element={<B1OpportunitesPage />} />
+      <Route path="/app-b1/mes-mandats" element={<B1MesMandatsPage />} />
       {/* Reprise post-migration zones */}
       <Route path="/app-b1/reprise" element={<B1RepriseZones />} />
 

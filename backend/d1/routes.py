@@ -140,7 +140,12 @@ async def admin_bascule_v2(payload: BasculePayload, request: Request):
 # ---------------------------------------------------------------------------
 @router.get("/api/d1/admin/etat-compte")
 async def admin_etat_compte(email: str, request: Request):
-    """Lecture seule — permet de vérifier depuis prod qu'une bascule a pris."""
+    """Lecture seule — permet de vérifier depuis prod qu'une bascule a pris.
+
+    **Normalisation du plan** — la valeur `pro_plus` est un vestige de
+    l'ancienne app. Ici on remonte l'état effectif normalisé (`pro` ou
+    `decouverte`) pour éviter toute alternance selon le chemin de lecture.
+    """
     _check_admin(request)
     e = (email or "").strip().lower()
     u = await _db().users.find_one({"email": e})
@@ -149,6 +154,13 @@ async def admin_etat_compte(email: str, request: Request):
     uid = u.get("user_id")
     n_opps = await _db().opportunites.count_documents({"assigne_a": uid, "statut": "proposee"})
     n_zc = await _db().zones_couvertes.count_documents({})
+    # Normalisation stricte : seules deux valeurs sortent d'ici — `pro` ou
+    # `decouverte`. `pro_plus`/`pro_lifetime` sont des vestiges → `pro`.
+    raw_plan = (u.get("plan") or "").lower()
+    if raw_plan in ("pro", "pro_plus", "pro_lifetime"):
+        plan_normalise = "pro"
+    else:
+        plan_normalise = "decouverte"
     return {
         "found": True,
         "email": e,
@@ -159,7 +171,8 @@ async def admin_etat_compte(email: str, request: Request):
         "zones_suggestions": u.get("zones_suggestions") or [],
         "tour_guide_vu": bool(u.get("tour_guide_vu", False)),
         "role": u.get("role"),
-        "plan": u.get("plan"),
+        "plan": plan_normalise,
+        "plan_raw": raw_plan or None,
         "opps_proposees_attribuees": n_opps,
         "zones_couvertes_total": n_zc,
     }
@@ -364,6 +377,10 @@ async def admin_generer_opportunites(request: Request):
     Body: {"code_postal": "13008"}
     Retour immédiat : {"job_id": "..."}. Interroger l'avancement via
     GET /api/d1/admin/generer-opportunites/{job_id}
+
+    **Écrit dans `jobs_runs` en plus de `jobs`** — sinon `etat-jobs` continue
+    à afficher un vieil échec périmé pendant qu'en réalité le job produit
+    (bug remonté 2026-02).
     """
     _check_admin(request)
     import asyncio
@@ -383,17 +400,31 @@ async def admin_generer_opportunites(request: Request):
 
     async def _runner():
         from a3.job_generer_opportunites import run_generer_opportunites
+        from d1.scheduler import _log_run, _now_iso as _sched_now
+        start_iso = _sched_now()
         try:
             report = await run_generer_opportunites(_db(), code_postal=str(cp))
             await _db().jobs.update_one(
                 {"job_id": job_id},
                 {"$set": {"status": "done", "report": report, "updated_at": now_utc_iso()}},
             )
+            # Miroir dans jobs_runs pour que etat-jobs remonte cette exécution.
+            await _log_run(
+                _db(), "generer_opportunites_quotidien", start_iso, "done",
+                summary={"zones": 1, "code_postal": str(cp), "report": report,
+                         "triggered_via": "admin_one_shot"},
+            )
         except Exception as e:
+            err = f"{type(e).__name__}: {e}"
             await _db().jobs.update_one(
                 {"job_id": job_id},
-                {"$set": {"status": "failed", "error": f"{type(e).__name__}: {e}",
+                {"$set": {"status": "failed", "error": err,
                           "updated_at": now_utc_iso()}},
+            )
+            await _log_run(
+                _db(), "generer_opportunites_quotidien", start_iso, "failed",
+                error=err, summary={"code_postal": str(cp),
+                                    "triggered_via": "admin_one_shot"},
             )
 
     asyncio.create_task(_runner())
@@ -704,6 +735,137 @@ async def admin_ouvrir_zone(payload: OuvrirZonePayload, request: Request):
         "users_notifies": notified,
         "users_en_attente_total": len(demandes),
         "erreurs_notification": errors,
+    }
+
+
+@router.post("/api/d1/admin/normaliser-plans")
+async def admin_normaliser_plans(request: Request):
+    """Normalise en base tous les users `pro_plus`/`pro_lifetime` → `pro`.
+
+    B1 ne connaît que deux valeurs : `decouverte` et `pro`. Toute autre valeur
+    est un vestige de l'ancienne app qui peut faire prendre un mauvais chemin
+    aux vérifications de quota et d'accès à l'assistant.
+    """
+    _check_admin(request)
+    db = _db()
+    # Comptage avant
+    n_pro_plus = await db.users.count_documents({"plan": "pro_plus"})
+    n_pro_lifetime = await db.users.count_documents({"plan": "pro_lifetime"})
+    n_other = await db.users.count_documents({
+        "plan": {"$nin": ["pro", "pro_plus", "pro_lifetime", "decouverte",
+                          "free", None]},
+    })
+    # Migration
+    r_pp = await db.users.update_many(
+        {"plan": "pro_plus"}, {"$set": {"plan": "pro"}}
+    )
+    r_pl = await db.users.update_many(
+        {"plan": "pro_lifetime"}, {"$set": {"plan": "pro"}}
+    )
+    r_free = await db.users.update_many(
+        {"plan": "free"}, {"$set": {"plan": "decouverte"}}
+    )
+    return {
+        "before": {
+            "pro_plus": n_pro_plus,
+            "pro_lifetime": n_pro_lifetime,
+            "autres_non_normalises": n_other,
+        },
+        "migrated": {
+            "pro_plus_to_pro": r_pp.modified_count,
+            "pro_lifetime_to_pro": r_pl.modified_count,
+            "free_to_decouverte": r_free.modified_count,
+        },
+    }
+
+
+@router.get("/api/d1/admin/diagnostic-extraction-rues")
+async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
+                                            limit: int = 3):
+    """Diagnostic profond de l'extraction de rues pour un CP donné.
+
+    Retourne :
+      - `voies_ban_count` : nombre de voies BAN chargées pour ce CP
+      - `listings_scannes` : total listings actifs
+      - `rue_deja_extraite` : combien ont `rue_extraite` non-null
+      - `rue_manquante` : combien ont `rue_extraite` null/absent
+      - `exemples_bruts` : `limit` listings avec title/description/rue_extraite
+        pour comprendre à l'œil pourquoi l'extraction échoue
+
+    C'est le diagnostic à faire AVANT de relancer le job — si les listings
+    n'ont ni title ni description, aucun run ne pourra extraire quoi que ce soit.
+    """
+    _check_admin(request)
+    cp = (code_postal or "").strip()
+    if len(cp) != 5 or not cp.isdigit():
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+
+    import httpx
+    from a3.sources.ban import voies_by_postcode
+    from a3.job_extract_rues import SUPABASE_URL, SUPABASE_KEY, _sb_headers
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="supabase_env_missing")
+
+    db = _db()
+    async with httpx.AsyncClient() as client:
+        voies = await voies_by_postcode(client, cp, db=db)
+
+        # Compte total actifs
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select": "id", "postal_code": f"eq.{cp}",
+                    "is_active": "eq.true", "limit": "1"},
+            headers={**_sb_headers(), "Prefer": "count=exact"},
+            timeout=15,
+        )
+        total_actifs = int(r.headers.get("content-range", "0/0").split("/")[-1] or 0)
+
+        # Compte ceux qui ont rue_extraite déjà
+        r2 = await client.get(
+            f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select": "id", "postal_code": f"eq.{cp}",
+                    "is_active": "eq.true",
+                    "rue_extraite": "not.is.null", "limit": "1"},
+            headers={**_sb_headers(), "Prefer": "count=exact"},
+            timeout=15,
+        )
+        avec_rue = int(r2.headers.get("content-range", "0/0").split("/")[-1] or 0)
+
+        # Exemples bruts
+        r3 = await client.get(
+            f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select": "id,portal,title,description,floor,rue_extraite,"
+                              "etage_extrait,scraped_at",
+                    "postal_code": f"eq.{cp}", "is_active": "eq.true",
+                    "order": "scraped_at.desc",
+                    "limit": str(max(1, min(int(limit or 3), 10)))},
+            headers=_sb_headers(), timeout=15,
+        )
+        r3.raise_for_status()
+        exemples = r3.json() or []
+
+    return {
+        "code_postal": cp,
+        "voies_ban_count": len(voies),
+        "listings_actifs_total": total_actifs,
+        "listings_avec_rue_extraite": avec_rue,
+        "listings_sans_rue": total_actifs - avec_rue,
+        "couverture_actuelle_pct": round(avec_rue / total_actifs * 100, 1)
+            if total_actifs else 0.0,
+        "exemples_bruts": [
+            {
+                "id": e.get("id"),
+                "portal": e.get("portal"),
+                "title": (e.get("title") or "")[:200],
+                "description_preview": (e.get("description") or "")[:200],
+                "floor": e.get("floor"),
+                "rue_extraite": e.get("rue_extraite"),
+                "etage_extrait": e.get("etage_extrait"),
+                "scraped_at": e.get("scraped_at"),
+            }
+            for e in exemples
+        ],
     }
 
 

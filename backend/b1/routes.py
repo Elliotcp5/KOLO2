@@ -799,3 +799,121 @@ async def rejeter_opportunite(opportunite_id: str, request: Request):
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="opportunite_introuvable_ou_deja_traitee")
     return {"ok": True, "opportunite_id": opportunite_id, "statut": "rejetee"}
+
+
+# ---------------------------------------------------------------------------
+# Mes opportunités de mandats — la liste de travail réelle
+# ---------------------------------------------------------------------------
+# Statuts métier après swipe droite :
+#   a_demarcher     → tap 1 : nouveau, à contacter (statut par défaut)
+#   demarche        → tap 2 : premier contact effectué
+#   mandat_signe    → tap 3 : mandat obtenu (SUCCÈS)
+#   abandon         → sortie de la pile (avec double confirmation côté UI)
+#   deja_en_vente   → sortie rapide (le bien est déjà chez un autre agent)
+_STATUTS_MANDAT_VALIDES = {
+    "a_demarcher", "demarche", "mandat_signe", "abandon", "deja_en_vente",
+}
+
+
+class StatutMandatPayload(BaseModel):
+    statut: str
+
+
+@router.get("/api/opportunites/mes-mandats")
+async def get_mes_mandats(request: Request, limit: int = 100):
+    """Retourne toutes les opportunités swipées à droite par l'utilisateur,
+    triées par date de swipe descendante (les plus récentes d'abord).
+
+    Utilisé par la page « Mes opportunités de mandats ».
+    """
+    user = await _current_user_doc(request)
+    uid = user["user_id"]
+    cur = _db().opportunites.find(
+        {
+            "assigne_a": uid,
+            "statut": {"$in": list(_STATUTS_MANDAT_VALIDES)},
+        },
+        {"_id": 1, "adresse": 1, "code_postal": 1, "complement_adresse": 1,
+         "lat": 1, "lng": 1, "caracteristiques": 1, "score_confiance": 1,
+         "motif_opportunite": 1, "statut": 1,
+         "date_a_demarcher": 1, "date_demarche": 1, "date_mandat_signe": 1,
+         "date_abandon": 1, "date_deja_en_vente": 1, "date_dernier_statut": 1,
+         "id_parcelle": 1},
+    ).sort("date_dernier_statut", -1).limit(max(1, min(limit, 500)))
+    items = []
+    async for opp in cur:
+        caracs = opp.get("caracteristiques") or {}
+        items.append({
+            "id": str(opp["_id"]),
+            "adresse": opp.get("adresse") or "",
+            "code_postal": opp.get("code_postal"),
+            "complement_adresse": opp.get("complement_adresse"),
+            "lat": opp.get("lat"),
+            "lng": opp.get("lng"),
+            "dpe": caracs.get("classe_dpe") or "N/A",
+            "superficie": caracs.get("surface_habitable"),
+            "annee_construction": caracs.get("annee_construction"),
+            "type_bien": caracs.get("type_batiment"),
+            "note": opp.get("motif_opportunite") or "",
+            "score_confiance": opp.get("score_confiance"),
+            "statut": opp.get("statut"),
+            "date_a_demarcher": opp.get("date_a_demarcher"),
+            "date_demarche": opp.get("date_demarche"),
+            "date_mandat_signe": opp.get("date_mandat_signe"),
+            "date_abandon": opp.get("date_abandon"),
+            "date_deja_en_vente": opp.get("date_deja_en_vente"),
+            "date_dernier_statut": opp.get("date_dernier_statut"),
+            "caracteristiques": caracs,
+            "id_parcelle": opp.get("id_parcelle"),
+        })
+    # Compteurs par statut pour l'UI
+    counts = {"a_demarcher": 0, "demarche": 0, "mandat_signe": 0,
+              "abandon": 0, "deja_en_vente": 0}
+    for it in items:
+        s = it.get("statut")
+        if s in counts:
+            counts[s] += 1
+    return {"ok": True, "items": items, "count": len(items), "counts": counts}
+
+
+@router.patch("/api/opportunites/{opportunite_id}/statut-mandat")
+async def patch_statut_mandat(opportunite_id: str,
+                               payload: StatutMandatPayload,
+                               request: Request):
+    """Change le statut de démarchage d'une opp swipée à droite.
+
+    Body: `{"statut": "a_demarcher" | "demarche" | "mandat_signe" | "abandon"
+                     | "deja_en_vente"}`
+
+    L'opp DOIT être déjà attribuée à l'utilisateur ET dans l'un des statuts
+    de démarchage — on n'accepte pas de changer une opp `proposee` par ce
+    biais (elle passe d'abord par `/swipe`).
+    """
+    new_statut = (payload.statut or "").strip().lower()
+    if new_statut not in _STATUTS_MANDAT_VALIDES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"statut_invalide (valeurs: {sorted(_STATUTS_MANDAT_VALIDES)})",
+        )
+    user = await _current_user_doc(request)
+    _id = _oid_or_400(opportunite_id)
+    now_iso = now_utc_iso()
+    date_field = f"date_{new_statut}"
+    res = await _db().opportunites.update_one(
+        {
+            "_id": _id, "assigne_a": user["user_id"],
+            "statut": {"$in": list(_STATUTS_MANDAT_VALIDES)},
+        },
+        {"$set": {
+            "statut": new_statut,
+            date_field: now_iso,
+            "date_dernier_statut": now_iso,
+            "updated_at": now_iso,
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="opportunite_introuvable_ou_pas_dans_pile_mandats",
+        )
+    return {"ok": True, "opportunite_id": opportunite_id, "statut": new_statut}

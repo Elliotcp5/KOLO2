@@ -79,11 +79,30 @@ async def _patch_listing(client: httpx.AsyncClient, listing_id: int, patch: dict
 
 
 async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
-    """Retourne un rapport avec taux de remplissage."""
+    """Retourne un rapport avec taux de remplissage.
+
+    **Distinction fine** — un listing peut :
+      - déjà avoir `rue_extraite` posé (aucun patch nécessaire) → `rue_deja_ok`
+      - être neuf et matcher → `rue_written`
+      - être neuf et ne pas matcher (BAN vide, titre pauvre) → `rue_absente`
+
+    Un job qui trouve 900 rues déjà présentes sur 1000 scannés est un succès,
+    pas un échec silencieux. Le statut warning ne se déclenche que si le taux
+    total (déjà présentes + nouvellement écrites) est vraiment faible.
+    """
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"error": "supabase_env_missing"}
 
-    stats: dict = {"cps": {}, "totals": {"scanned": 0, "rue_written": 0, "etage_written": 0}}
+    stats: dict = {
+        "cps": {},
+        "totals": {
+            "scanned": 0,
+            "rue_written": 0,      # nouvelle valeur patchée dans Supabase
+            "rue_deja_ok": 0,      # rue_extraite déjà correcte, pas de patch
+            "rue_absente": 0,      # extract_rue_and_etage a renvoyé None
+            "etage_written": 0,
+        },
+    }
     by_source_total: dict[str, dict[str, int]] = {}
 
     async with httpx.AsyncClient() as client:
@@ -94,7 +113,9 @@ async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
             logger.info(f"a3.extraire-rues[{cp}] voies BAN chargées: {len(voies)}")
 
             scanned = 0
-            rue_ok = 0
+            rue_ok = 0            # patched now
+            rue_deja = 0          # already had value
+            rue_none = 0          # extraction failed
             etage_ok = 0
             by_source: dict[str, dict[str, int]] = {}
             offset = 0
@@ -105,7 +126,8 @@ async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
                 for row in batch:
                     scanned += 1
                     src = (row.get("portal") or "unknown").lower()
-                    by_source.setdefault(src, {"scanned": 0, "rue": 0, "etage": 0})
+                    by_source.setdefault(src, {"scanned": 0, "rue": 0,
+                                               "rue_deja": 0, "etage": 0})
                     by_source[src]["scanned"] += 1
 
                     rue, etage = extract_rue_and_etage(
@@ -113,66 +135,90 @@ async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
                         voies_norm=voies,
                         listing_floor=row.get("floor"),
                     )
-                    patch = {}
-                    if rue and rue != row.get("rue_extraite"):
-                        patch["rue_extraite"] = rue
-                    if etage is not None and etage != row.get("etage_extrait"):
-                        patch["etage_extrait"] = int(etage)
-                    if patch:
+                    already = row.get("rue_extraite")
+                    if rue is None:
+                        # Aucune rue trouvée pour ce listing
+                        if not already:
+                            rue_none += 1
+                    elif rue == already:
+                        # Déjà écrit à cette valeur — compte comme couvert
+                        rue_deja += 1
+                        by_source[src]["rue_deja"] += 1
+                    else:
+                        # Nouvelle valeur → patch
+                        patch = {"rue_extraite": rue}
+                        if etage is not None and etage != row.get("etage_extrait"):
+                            patch["etage_extrait"] = int(etage)
                         ok = await _patch_listing(client, row["id"], patch)
                         if ok:
-                            if "rue_extraite" in patch:
-                                rue_ok += 1
-                                by_source[src]["rue"] += 1
+                            rue_ok += 1
+                            by_source[src]["rue"] += 1
                             if "etage_extrait" in patch:
                                 etage_ok += 1
                                 by_source[src]["etage"] += 1
+                        continue  # patch déjà géré ci-dessus
+                    # Etage seul (rue déjà là ou None)
+                    if etage is not None and etage != row.get("etage_extrait"):
+                        ok = await _patch_listing(
+                            client, row["id"], {"etage_extrait": int(etage)}
+                        )
+                        if ok:
+                            etage_ok += 1
+                            by_source[src]["etage"] += 1
                 offset += len(batch)
                 if len(batch) < 500:
                     break
 
+            couvert = rue_ok + rue_deja
             stats["cps"][cp] = {
                 "scanned": scanned,
                 "rue_ecrites": rue_ok,
+                "rue_deja_ok": rue_deja,
+                "rue_absente": rue_none,
+                "couverture_rue": couvert,
+                "couverture_pct": round(couvert / scanned * 100, 1) if scanned else 0.0,
                 "etage_ecrites": etage_ok,
-                "rue_pct": round(rue_ok / scanned * 100, 1) if scanned else 0.0,
                 "voies_ban_count": len(voies),
                 "by_source": by_source,
             }
             stats["totals"]["scanned"] += scanned
             stats["totals"]["rue_written"] += rue_ok
+            stats["totals"]["rue_deja_ok"] += rue_deja
+            stats["totals"]["rue_absente"] += rue_none
             stats["totals"]["etage_written"] += etage_ok
             # Global by_source
             for src, d in by_source.items():
                 if src not in by_source_total:
-                    by_source_total[src] = {"scanned": 0, "rue": 0, "etage": 0}
+                    by_source_total[src] = {"scanned": 0, "rue": 0,
+                                            "rue_deja": 0, "etage": 0}
                 by_source_total[src]["scanned"] += d["scanned"]
                 by_source_total[src]["rue"] += d["rue"]
+                by_source_total[src]["rue_deja"] += d["rue_deja"]
                 by_source_total[src]["etage"] += d["etage"]
 
     stats["by_source"] = by_source_total
-    if stats["totals"]["scanned"]:
-        stats["totals"]["rue_pct"] = round(
-            stats["totals"]["rue_written"] / stats["totals"]["scanned"] * 100, 1
-        )
-    # Statut final — un job qui scanne des lignes sans rien écrire ne peut PAS
-    # se déclarer `done` : c'est le signe d'une régression silencieuse (BAN
-    # non chargé, extraction cassée, `nom_voie_ban` toujours vide côté source).
     scanned = stats["totals"]["scanned"]
-    rue_ok = stats["totals"]["rue_written"]
-    if scanned > 0 and rue_ok == 0:
+    written = stats["totals"]["rue_written"]
+    deja = stats["totals"]["rue_deja_ok"]
+    couvert = written + deja
+    if scanned:
+        stats["totals"]["couverture_pct"] = round(couvert / scanned * 100, 1)
+        # Rétrocompatibilité — rue_pct = ratio de rues extraites (déjà + nouv.)
+        stats["totals"]["rue_pct"] = stats["totals"]["couverture_pct"]
+
+    # Statut final — seuls les cas RÉELLEMENT anormaux remontent en warning :
+    #   - 0 scanné : le job n'a rien lu (Supabase down ou tous CPs vides)
+    #   - scanned>0 ET couverture (nouvelle + déjà) < 10% : régression réelle
+    if scanned == 0:
+        stats["status"] = "warning"
+        stats["warning"] = "scanned=0 — aucun listing actif lu, vérifier Supabase"
+    elif couvert / scanned < 0.10:
         stats["status"] = "warning"
         stats["warning"] = (
-            f"scanned={scanned} listings mais rue_written=0 — "
-            "vérifier voies BAN chargées, `title/description` non vides, "
-            "et fallback `nom_voie_ban` côté ingestion"
-        )
-    elif scanned > 0 and rue_ok / scanned < 0.10:
-        # < 10% de taux d'extraction : sans doute une régression partielle
-        stats["status"] = "warning"
-        stats["warning"] = (
-            f"taux rue_pct={stats['totals']['rue_pct']}% < 10% — "
-            "extraction peu fiable"
+            f"couverture={stats['totals']['couverture_pct']}% < 10% — "
+            f"scanned={scanned}, rue_written={written}, rue_deja_ok={deja}, "
+            f"rue_absente={stats['totals']['rue_absente']}. "
+            "Vérifier voies BAN chargées et `title/description` non vides."
         )
     else:
         stats["status"] = "ok"

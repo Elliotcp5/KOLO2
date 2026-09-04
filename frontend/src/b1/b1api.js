@@ -202,6 +202,16 @@ export const accepterOpportunite = marquerADemarcher;
 export const rejeterOpportunite = (id) =>
   req(`/api/opportunites/${encodeURIComponent(id)}/rejeter`, { method: 'POST' });
 
+// --- Mes opportunités de mandats ---
+// Liste tous les biens swipés à droite, groupables par statut.
+export const getMesMandats = (limit = 100) =>
+  req(`/api/opportunites/mes-mandats?limit=${limit}`);
+// Change le statut de démarchage : a_demarcher | demarche | mandat_signe
+// | abandon | deja_en_vente
+export const patchStatutMandat = (id, statut) =>
+  req(`/api/opportunites/${encodeURIComponent(id)}/statut-mandat`,
+      { method: 'PATCH', body: { statut } });
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
@@ -219,5 +229,6 @@ export const b1api = {
   getSuggestionsZones, confirmerZones,
   // Opportunités
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
+  getMesMandats, patchStatutMandat,
 };
 export default b1api;
