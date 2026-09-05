@@ -9,10 +9,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import v2api from '../v2api';
 import b1t from '../../b1/b1i18n';
 import B1BuildStamp from '../../b1/B1BuildStamp';
-// Import webpack — URL hashée dans le bundle, chemin garanti après `cap sync ios`.
-// L'asset vit dans src/assets/ pour être traité par webpack (CRA refuse les
-// imports hors du dossier src/). Le PNG source est kolo-mark-black-256.png.
-import koloLogoUrl from '../../assets/kolo-mark-black.png';
+// Logo texte KOLO — le PNG ne s'affichait plus au packaging Capacitor
+// (retour build 2.20 (75)). L'utilisateur a accepté le repli logotype
+// texte : cf. rendu dans le JSX plus bas (League Spartan, 68px, gras).
+// L'ancien import PNG a été supprimé pour éviter `no-unused-vars` en CI.
 import '../../b1/b1.css';
 
 export default function V2AuthPage({ mode = 'login' }) {
