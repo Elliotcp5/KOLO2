@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import v2api from '../v2api';
 import b1t from '../../b1/b1i18n';
 import B1BuildStamp from '../../b1/B1BuildStamp';
+import B1FixesMarker from '../../b1/B1FixesMarker';
 // Logo texte KOLO — le PNG ne s'affichait plus au packaging Capacitor
 // (retour build 2.20 (75)). L'utilisateur a accepté le repli logotype
 // texte : cf. rendu dans le JSX plus bas (League Spartan, 68px, gras).
@@ -215,6 +216,7 @@ export default function V2AuthPage({ mode = 'login' }) {
         </div>
         <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
           <B1BuildStamp inline />
+          <B1FixesMarker />
         </div>
       </div>
     </div>
