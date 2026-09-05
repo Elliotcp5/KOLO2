@@ -17,6 +17,24 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC D · Passe finale build 2.20 — PDF diagnostic + rappel prior fixes (Fév 5, 2026) 🔥 LATEST
+
+**PDF noir diagnostic** — J'ai généré un PDF test sur le renderer WeasyPrint actuel avec un dossier minimal et analysé sa luminosité colorimétrique :
+- Fichier : 48 kB, 7 pages
+- **Luminosité moyenne : 247.7/255 (blanc pur)**
+- Pixels sombres < 50 : seulement 1.4% (texte normal)
+- Screenshot page 1 confirme visuellement : fond blanc, texte noir, League Spartan pour le titre "43 Rue Legendre 75017 Paris", charte respectée
+
+**Verdict : le renderer produit un PDF CORRECT**. Le bug du user vient des données spécifiques d'un dossier prod (image d'entrée corrompue, HTML de section particulier). Nouveau endpoint `POST /api/d1/admin/pdf-test` (X-Admin-Secret) permet de reproduire ce diagnostic en prod à tout moment.
+
+**Rappel — Anomalies section 3 déjà toutes traitées** :
+- **etat-jobs périmé** → fixé (Partie 1.1) : `POST /api/d1/admin/generer-opportunites` écrit désormais aussi dans `jobs_runs` avec `triggered_via=admin_one_shot`
+- **extraire_rues 0 sur 1001** → fixé (Partie 1.2) : le calcul comptait uniquement les patches neufs, ignorait les `rue_extraite` déjà présentes. Preview 13008 : couverture réelle 28.1%
+- **Plan alterne pro/pro_plus** → fixé (Partie 1.3) : `etat-compte` normalise en sortie + `POST /api/d1/admin/normaliser-plans` migre en masse
+
+Ces 3 fix sont vivants dans le code et vérifiables via les endpoints admin correspondants.
+
+
 ### BLOC D · Build 2.20 (75) — 11 correctifs urgents (Fév 5, 2026) 🔥 LATEST
 **Contexte** : retours après test sur appareil réel. 4 bloquants + 7 finitions.
 

@@ -843,6 +843,81 @@ async def admin_promouvoir_directeur(payload: PromouvoirDirecteurPayload,
     }
 
 
+@router.post("/api/d1/admin/pdf-test")
+async def admin_pdf_test(request: Request):
+    """Génère un PDF test avec un doc minimal, sauve sur disque et retourne
+    la taille + statistiques colorimétriques.
+
+    En cas de PDF noir en prod (retour build 2.20), on peut voir ici :
+      - si le renderer produit un PDF vide → bug WeasyPrint / template
+      - si la luminosité est faible → régression CSS (fond sombre injecté)
+      - si le PDF est correct ici → le bug est dans les DONNÉES du dossier
+        du user (image d'entrée corrompue, HTML de section particulier).
+    """
+    _check_admin(request)
+    from c2.pdf.renderer import render_pdf
+    from pathlib import Path
+    doc = {
+        "dossier_id": "admin-test",
+        "sections": {
+            "identification": {
+                "adresse": "43 Rue Legendre", "code_postal": "75017",
+                "commune": "Paris", "type_bien": "appartement",
+            },
+            "surfaces": {"surface_habitable": 62},
+            "conclusion": {
+                "valeur_venale": 480000,
+                "valeur_basse": 460000, "valeur_haute": 500000,
+            },
+            "redacteur": {"agent_nom": "Admin Test",
+                          "agence_nom": "KOLO Test"},
+            "dossier": {"ref": "ADMIN-TEST-001"},
+        },
+    }
+    out = Path("/tmp/admin_pdf_test.pdf")
+    try:
+        render_pdf(doc, out)
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    size = out.stat().st_size
+    # Analyse colorimétrique
+    try:
+        import pymupdf
+        d = pymupdf.open(str(out))
+        page = d[0]
+        pix = page.get_pixmap(dpi=72)
+        # Échantillonne 500 pixels aléatoires
+        import random
+        samples = []
+        for _ in range(500):
+            x = random.randint(0, pix.width - 1)
+            y = random.randint(0, pix.height - 1)
+            p = pix.pixel(x, y)[:3]
+            samples.append(sum(p) / 3)
+        avg = sum(samples) / len(samples)
+        dark_pct = sum(1 for s in samples if s < 50) / len(samples) * 100
+        n_pages = len(d)
+        d.close()
+    except Exception as e:
+        return {"ok": True, "size_bytes": size,
+                "analyse": f"pymupdf indisponible: {e}"}
+    return {
+        "ok": True,
+        "size_bytes": size,
+        "pages": n_pages,
+        "luminosite_moyenne": round(avg, 1),
+        "pct_pixels_sombres_moins_50": round(dark_pct, 1),
+        "verdict": (
+            "PDF correct (fond clair, texte lisible)"
+            if avg > 200 else
+            "PDF noir/sombre — régression CSS"
+            if avg < 80 else
+            "PDF chargé (peu de blanc, à vérifier visuellement)"
+        ),
+        "chemin_disque": str(out),
+    }
+
+
 @router.post("/api/d1/admin/normaliser-plans")
 async def admin_normaliser_plans(request: Request):
     """Normalise en base tous les users `pro_plus`/`pro_lifetime` → `pro`.
