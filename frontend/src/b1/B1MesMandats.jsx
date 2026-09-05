@@ -95,9 +95,9 @@ function StatutPastille({ statut }) {
 // ============================================================================
 function StatutToggle({ current, onChange }) {
   const options = [
-    { key: 'a_demarcher', color: '#EC8690' },
-    { key: 'demarche',    color: '#F59E0B' },
-    { key: 'mandat_signe', color: '#10B981' },
+    { key: 'a_demarcher' },
+    { key: 'demarche' },
+    { key: 'mandat_signe' },
   ];
   return (
     <div className="b1-mm-toggle" data-testid="b1-mm-toggle">
@@ -106,11 +106,9 @@ function StatutToggle({ current, onChange }) {
           key={o.key}
           className="b1-mm-toggle-btn"
           data-active={current === o.key}
+          data-key={o.key}
           data-testid={`b1-mm-toggle-${o.key}`}
           onClick={() => onChange(o.key)}
-          style={{
-            '--b1-mm-toggle-color': o.color,
-          }}
         >
           {b1t(`opp.statut.${o.key}`)}
         </button>
@@ -122,7 +120,7 @@ function StatutToggle({ current, onChange }) {
 // ============================================================================
 // MandatCard — ligne dépliable
 // ============================================================================
-function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente }) {
+function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer }) {
   const [open, setOpen] = useState(false);
   const caracs = opp.caracteristiques || {};
   return (
@@ -176,6 +174,20 @@ function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente }) {
           {opp.note && (
             <div className="b1-mm-note">{opp.note}</div>
           )}
+          {/* Bouton « Estimer ce bien » — pré-remplit l'onglet Estimation avec
+              tout ce que le DPE fournit (type, surface, DPE, adresse, étage).
+              Nav via location.state, jamais via redirect vers accueil. */}
+          <button
+            className="b1-pill b1-pill--primary b1-pill--fullwidth"
+            data-testid={`b1-mm-estimer-${opp.id}`}
+            style={{ marginBottom: 10 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEstimer(opp);
+            }}
+          >
+            {b1t('opp.mes_mandats.estimer')}
+          </button>
           {/* Actions rapides : ne s'affichent QUE si la carte n'est pas déjà
               sortie du pipeline (abandon / déjà en vente). */}
           {(opp.statut === 'a_demarcher'
@@ -358,6 +370,21 @@ export function MesMandatsPage() {
                       onStatutChange={doPatch}
                       onAbandon={setAbandonId}
                       onDejaEnVente={(id) => doPatch(id, 'deja_en_vente')}
+                      onEstimer={(o) => navigate('/app-b1/estimation/flow', {
+                        state: {
+                          bien: {
+                            adresse: o.adresse,
+                            code_postal: o.code_postal,
+                            complement_adresse: o.complement_adresse,
+                            type_bien: o.type_bien,
+                            superficie: o.superficie,
+                            annee_construction: o.annee_construction,
+                            caracteristiques: o.caracteristiques || {},
+                            listing: o.listing || null,
+                          },
+                          opportunite_id: o.id,
+                        },
+                      })}
                     />
                   ))}
                 </div>

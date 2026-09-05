@@ -14,7 +14,7 @@
 // + V2AuthPage code). React Router prenait la 1re → l'utilisateur voyait le vieil
 // écran malgré la refonte. Correction : LoginPage supprimé du router.
 // =============================================================
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -69,27 +69,24 @@ import {
   ProfilPaiementPage as B1ProfilPaiementPage,
 } from "./b1/B1Shell";
 import { MesMandatsPage as B1MesMandatsPage } from "./b1/B1MesMandats";
-import { DossierListPage as C2DossierList, DossierEditorPage as C2DossierEditor } from "./b1/B1Dossier";
-import { AssistantPage as B1AssistantPage } from "./b1/B1Assistant";
-import {
-  EstimationHomePage as C1EstimationHome,
-  EstimationFlowPage as C1EstimationFlow,
-  EstimationAdressePage as C1EstimationAdresse,
-  MesEstimationsPage as C1MesEstimations,
-  EstimationDetailPage as C1EstimationDetail,
-} from "./b1/B1Estimation";
-import {
-  VeillePileDuJourPage as B1VeillePileDuJourPage,
-  MesVeilleSuivisPage as B1MesVeilleSuivisPage,
-  VeillePaywall as B1VeillePaywall,
-} from "./b1/B1Veille";
 import { PerformancesPage as B3PerformancesPage, NotifPermissionScreen as B3NotifPerm } from "./b1/B3Perf";
-import {
-  DirecteurRepartitionPage as D1DirecteurRepartitionPage,
-  DirecteurEquipePage as D1DirecteurEquipePage,
-  DirecteurAgencePage as D1DirecteurAgencePage,
-} from "./b1/B1Directeur";
 import B1RepriseZones from "./b1/B1RepriseZones";
+// Lazy-loading des routes lourdes — améliore le boot & le bundle initial.
+// Le chemin critique (login, opportunités, mes mandats, profil) reste sync.
+const C2DossierList = lazy(() => import("./b1/B1Dossier").then((m) => ({ default: m.DossierListPage })));
+const C2DossierEditor = lazy(() => import("./b1/B1Dossier").then((m) => ({ default: m.DossierEditorPage })));
+const B1AssistantPage = lazy(() => import("./b1/B1Assistant").then((m) => ({ default: m.AssistantPage })));
+const C1EstimationHome = lazy(() => import("./b1/B1Estimation").then((m) => ({ default: m.EstimationHomePage })));
+const C1EstimationFlow = lazy(() => import("./b1/B1Estimation").then((m) => ({ default: m.EstimationFlowPage })));
+const C1EstimationAdresse = lazy(() => import("./b1/B1Estimation").then((m) => ({ default: m.EstimationAdressePage })));
+const C1MesEstimations = lazy(() => import("./b1/B1Estimation").then((m) => ({ default: m.MesEstimationsPage })));
+const C1EstimationDetail = lazy(() => import("./b1/B1Estimation").then((m) => ({ default: m.EstimationDetailPage })));
+const B1VeillePileDuJourPage = lazy(() => import("./b1/B1Veille").then((m) => ({ default: m.VeillePileDuJourPage })));
+const B1MesVeilleSuivisPage = lazy(() => import("./b1/B1Veille").then((m) => ({ default: m.MesVeilleSuivisPage })));
+const B1VeillePaywall = lazy(() => import("./b1/B1Veille").then((m) => ({ default: m.VeillePaywall })));
+const D1DirecteurRepartitionPage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurRepartitionPage })));
+const D1DirecteurEquipePage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurEquipePage })));
+const D1DirecteurAgencePage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurAgencePage })));
 
 
 // ------------------------------------------------------------
@@ -179,6 +176,11 @@ const AppRouter = () => {
   }
 
   return (
+    <Suspense fallback={
+      <div className="b1-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="b1-loading">…</div>
+      </div>
+    }>
     <Routes>
       {/* ============================================================== */}
       {/* SITE VITRINE — trykolo.io. Native app ne voit JAMAIS ça.       */}
@@ -290,6 +292,7 @@ const AppRouter = () => {
         element={Capacitor.isNativePlatform() ? <RootRedirect /> : <Navigate to="/" replace />}
       />
     </Routes>
+    </Suspense>
   );
 };
 

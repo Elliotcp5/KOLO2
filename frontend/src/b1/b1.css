@@ -79,7 +79,12 @@
 .b1-screen {
   max-width: 480px;
   margin: 0 auto;
-  padding: 24px 20px 140px;   /* padding-bottom garantit que rien ne passe sous la tab bar fixe */
+  /* Marges CRITIQUES : 20px horizontales + safe-area iOS haut (encoche /
+     Dynamic Island) + safe-area bas (barre navigation iOS) + 140px pour
+     laisser passer la tab bar fixe.
+     Retour build 2.20 : les textes touchaient les bords sur pages 3/4. */
+  padding: max(24px, calc(env(safe-area-inset-top) + 24px)) 20px
+           calc(140px + env(safe-area-inset-bottom));
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -1155,23 +1160,50 @@
   word-wrap: break-word;
 }
 
-/* Bulle bot — rose, arrondie côté gauche, pointe à gauche */
+/* Bulle bot — rose franc #EC8690 alignée à gauche, texte blanc */
 .as-bubble--bot {
-  background: #FDE7EA;
-  color: #4B1D22;
-  border-radius: 20px 20px 20px 6px;
-  box-shadow: 0 2px 8px -3px rgba(236, 134, 144, 0.18);
+  background: #EC8690;
+  color: #FFFFFF;
+  border-radius: 22px 22px 22px 6px;
+  box-shadow: 0 4px 14px -4px rgba(236, 134, 144, 0.35);
 }
 
-/* Bulle user — bleu, arrondie côté droit, pointe à droite */
+/* Bulle user — bleu franc alignée à droite, texte blanc */
 .as-bubble--user {
-  background: #DDEBFF;
-  color: #0F2C55;
-  border-radius: 20px 20px 6px 20px;
-  box-shadow: 0 2px 8px -3px rgba(15, 44, 85, 0.18);
+  background: #3B82F6;
+  color: #FFFFFF;
+  border-radius: 22px 22px 6px 22px;
+  box-shadow: 0 4px 14px -4px rgba(59, 130, 246, 0.35);
 }
 
-/* Composer — champ arrondi + bouton envoi cercle bleu */
+/* Horodatage discret sous chaque bulle */
+.as-timestamp {
+  display: block;
+  margin: 4px 8px 0;
+  color: #9CA3AF;
+  font: 500 11px/1 'DM Sans', sans-serif;
+}
+
+/* Indicateur de frappe : 3 points qui pulsent — quand l'assistant compose */
+.as-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 16px;
+}
+.as-typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: as-typing-bounce 1.2s infinite ease-in-out;
+}
+.as-typing span:nth-child(2) { animation-delay: 0.15s; }
+.as-typing span:nth-child(3) { animation-delay: 0.30s; }
+@keyframes as-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Composer — position sticky au-dessus de la tab bar */
 .as-composer {
   display: flex;
   gap: 10px;
@@ -1179,6 +1211,10 @@
   padding: 12px 16px 14px;
   background: #FFFFFF;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
+  /* CRITIQUE : marge basse pour laisser passer la tab bar fixed (76px) +
+     safe-area iOS (env). Sans ça, la barre du bas masque le champ de saisie
+     et le chat devient inutilisable. Retesté build 2.20. */
+  margin-bottom: calc(76px + env(safe-area-inset-bottom) + 20px);
 }
 
 .as-input {
@@ -1465,30 +1501,46 @@
   font: 400 13px/1.4 'DM Sans', sans-serif;
 }
 
-/* Segment control statut */
+/* Segment control statut — pastilles pleines colorées, non un menu caché */
 .b1-mm-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0;
+  gap: 8px;
   margin-bottom: 10px;
-  padding: 4px;
-  border-radius: 12px;
-  background: #F0EEF8;
 }
 .b1-mm-toggle-btn {
-  padding: 10px 8px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #6B7280;
-  font: 600 12px/1 'DM Sans', sans-serif;
+  padding: 12px 8px;
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: #F3F4F6;
+  color: #4B5563;
+  font: 700 12px/1.15 'DM Sans', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: transform 120ms ease, background 160ms ease, color 160ms ease,
+              box-shadow 160ms ease;
+  box-shadow: 0 1px 2px rgba(17,17,17,0.04);
 }
-.b1-mm-toggle-btn[data-active="true"] {
-  background: #FFFFFF;
-  color: var(--b1-mm-toggle-color, var(--b1-accent, #EC8690));
-  box-shadow: 0 2px 6px rgba(17, 17, 17, 0.06);
+.b1-mm-toggle-btn:active {
+  transform: scale(0.96);
+}
+/* Actif — pastille pleine dans la couleur du statut */
+.b1-mm-toggle-btn[data-active="true"][data-key="a_demarcher"] {
+  background: #E5E7EB;
+  color: #1F2937;
+  box-shadow: 0 4px 12px rgba(31, 41, 55, 0.12);
+}
+.b1-mm-toggle-btn[data-active="true"][data-key="demarche"] {
+  background: #EC8690;
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(236, 134, 144, 0.35);
+}
+.b1-mm-toggle-btn[data-active="true"][data-key="mandat_signe"] {
+  background: #10B981;
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .b1-mm-card-actions {
@@ -1500,23 +1552,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(17, 17, 17, 0.08);
+  padding: 12px 14px;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 2px solid;
   background: #FFFFFF;
-  color: var(--b1-text, #111);
-  font: 500 12px/1 'DM Sans', sans-serif;
+  font: 600 13px/1.1 'DM Sans', sans-serif;
   cursor: pointer;
-  min-height: 40px;
+  transition: transform 120ms ease, background 160ms ease;
 }
+.b1-mm-quick-btn:active { transform: scale(0.97); }
 .b1-mm-quick-btn--vente {
-  color: #3B82F6;
-  border-color: rgba(59, 130, 246, 0.28);
+  color: #2563EB;
+  border-color: #93C5FD;
+  background: rgba(59, 130, 246, 0.04);
 }
+.b1-mm-quick-btn--vente:hover { background: rgba(59, 130, 246, 0.08); }
 .b1-mm-quick-btn--abandon {
   color: #DC2626;
-  border-color: rgba(220, 38, 38, 0.28);
+  border-color: #FCA5A5;
+  background: rgba(220, 38, 38, 0.04);
 }
+.b1-mm-quick-btn--abandon:hover { background: rgba(220, 38, 38, 0.08); }
 
 /* Pastilles statut */
 .b1-mm-pastille {
@@ -1542,4 +1599,21 @@
 }
 .b1-mm-pastille--deja-en-vente {
   background: rgba(59, 130, 246, 0.14); color: #2563EB;
+}
+
+/* Récap journée sur l'écran fin de pile — sentiment d'accomplissement */
+.b1-fin-pile-recap {
+  margin-top: 24px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(236, 134, 144, 0.08);
+  border: 1px solid rgba(236, 134, 144, 0.24);
+  color: #6B2E37;
+  font: 400 14px/1.5 'DM Sans', sans-serif;
+  text-align: center;
+  max-width: 340px;
+}
+.b1-fin-pile-recap strong {
+  color: #EC8690;
+  font-weight: 700;
 }

@@ -87,28 +87,28 @@ export default function V2AuthPage({ mode = 'login' }) {
         }}
       >
         <div style={{ width: '100%', maxWidth: 380 }}>
-          {/* Logo K KOLO — marque graphique.
-              Import webpack : URL hashée dans le bundle final, chemin garanti
-              après `cap sync ios` (les chemins absolus type `/xxx.png`
-              cassent dans certains packagings Capacitor).
-              Hauteur fixe 72, largeur automatique, `object-fit: contain`,
-              `object-position: center`. Aspect natif 1:1 préservé. */}
+          {/* Logotype KOLO — texte stylé (le PNG ne s'affichait pas au
+              packaging Capacitor malgré plusieurs tentatives). Retour build
+              2.20 : l'utilisateur accepte le repli texte. League Spartan,
+              gras, noir, interlettrage resserré, centré. Ça doit ressembler
+              à un logotype, pas à un titre de page. */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <img
-              src={koloLogoUrl}
-              alt="KOLO"
-              height={72}
-              style={{
-                display: 'block',
-                margin: '0 auto 20px',
-                height: 72,
-                width: 'auto',
-                maxWidth: 180,
-                objectFit: 'contain',
-                objectPosition: 'center',
-              }}
+            <div
               data-testid="auth-logo"
-            />
+              style={{
+                fontFamily: '"League Spartan", "DM Sans", system-ui, -apple-system, sans-serif',
+                fontWeight: 900,
+                fontSize: 68,
+                lineHeight: 1,
+                color: '#0B0B0F',
+                letterSpacing: '-0.045em',
+                textAlign: 'center',
+                userSelect: 'none',
+                margin: '0 auto 22px',
+              }}
+            >
+              KOLO
+            </div>
             <div className="b1-lead" style={{ marginTop: 0, fontSize: 15, color: 'rgba(0,0,0,0.55)' }}>
               {b1t('auth.tagline')}
             </div>

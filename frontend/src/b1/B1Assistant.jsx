@@ -170,13 +170,21 @@ export function AssistantPage() {
             ))}
           </div>
         )}
-        {messages.map((m, idx) => (
-          <div key={idx} className={`as-row ${m.role === 'user' ? 'as-row--user' : 'as-row--bot'}`} data-testid={`as-msg-${m.role}`}>
-            <div className={`as-bubble ${m.role === 'user' ? 'as-bubble--user' : 'as-bubble--bot'}`}>
-              {m.content || (streaming && idx === messages.length - 1 ? '…' : '')}
+        {messages.map((m, idx) => {
+          const isLast = idx === messages.length - 1;
+          const isEmptyBot = m.role === 'assistant' && !m.content && streaming && isLast;
+          return (
+            <div key={idx} className={`as-row ${m.role === 'user' ? 'as-row--user' : 'as-row--bot'}`} data-testid={`as-msg-${m.role}`}>
+              <div className={`as-bubble ${m.role === 'user' ? 'as-bubble--user' : 'as-bubble--bot'}`}>
+                {isEmptyBot ? (
+                  <div className="as-typing" data-testid="as-typing-indicator">
+                    <span /><span /><span />
+                  </div>
+                ) : m.content}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {error && <div style={{ color: 'var(--b1-danger)', fontSize: 13, padding: 8 }} data-testid="as-error">{error}</div>}
       </div>
 

@@ -21,7 +21,7 @@ import './b1.css';
 // ============================================================================
 const _veilleBadgeCache = { count: null, at: 0 };
 
-export function BottomTabPill({ active }) {
+function _BottomTabPill({ active }) {
   const navigate = useNavigate();
   const [badge, setBadge] = useState(_veilleBadgeCache.count || 0);
   useEffect(() => {
@@ -82,6 +82,10 @@ export function BottomTabPill({ active }) {
     </nav>
   );
 }
+
+// Memo : la tab bar ne se re-render QUE si `active` change. Économie sur
+// tous les screens qui ré-affichent (streaming assistant, animation swipe…).
+export const BottomTabPill = React.memo(_BottomTabPill);
 
 // ============================================================================
 // Header (stats + profile)

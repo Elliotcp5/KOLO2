@@ -17,6 +17,51 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC D · Build 2.20 (75) — 11 correctifs urgents (Fév 5, 2026) 🔥 LATEST
+**Contexte** : retours après test sur appareil réel. 4 bloquants + 7 finitions.
+
+**Bloquants** :
+- **1. Assistant : composer sous tab bar** — CAUSE : `.as-composer` n'avait aucune marge basse, la tab bar `position:fixed z-index:40` l'occultait. FIX : `margin-bottom: calc(76px + env(safe-area-inset-bottom) + 20px)` sur `.as-composer`. Chat de nouveau utilisable.
+- **2. Estimation impossible depuis Mes mandats** — CAUSE : aucun bouton d'action dans les cartes du pipeline. Cliquer sur l'onglet Estimation renvoyait à `est-home-cta-opp` qui `navigate('/app-b1')` (page 1). FIX : ajout d'un bouton `b1-mm-estimer-{id}` DANS chaque `MandatCard` qui `navigate('/app-b1/estimation/flow', { state: { bien, opportunite_id }})` — le flow `prefillFromBien()` reçoit type/surface/DPE/adresse/étage/etc.
+- **3. Boutons statut illisibles** — FIX : `.b1-mm-toggle-btn` refonte : pastilles pleines, min-height 44px, couleurs par statut : `a_demarcher` gris clair, `demarche` rose #EC8690 plein, `mandat_signe` vert #10B981 plein. Actif = ombre franche + texte blanc. `data-key` attribué à chaque bouton pour ciblage CSS.
+- **4. Performance** — 3 axes : 
+  - **SwipeCard** déjà réécrit (Partie 2) : `useRef` + `requestAnimationFrame`, 0 setState pendant drag
+  - **Lazy-load** de 12 routes lourdes (Dossier, Assistant, Estimation×5, Veille×3, Directeur×3) via `React.lazy` + `<Suspense>`. Le chemin critique (login, opportunités, mes-mandats, profil) reste sync
+  - **BottomTabPill memoized** via `React.memo(_BottomTabPill)` — évite le re-render à chaque changement d'onglet ou streaming assistant
+
+**Finitions** :
+- **5. Marges globales + safe-area haute** — `.b1-screen` padding-top passe à `max(24px, calc(env(safe-area-inset-top) + 24px))` — respecte l'encoche / Dynamic Island. 20px horizontales confirmées.
+- **7. Assistant chat** :
+  - Bulles couleurs FRANCHES : bot #EC8690 texte blanc, user #3B82F6 texte blanc (au lieu des anciens beige/bleu clair)
+  - Coins 22px avec pointe côté locuteur (6px)
+  - Indicateur de frappe animé — 3 points qui pulsent (`@keyframes as-typing-bounce`) tant que l'assistant compose
+  - Max largeur 78%
+- **8. Fin de pile enrichie** :
+  - Récap journée : « Vous avez traité N opportunités aujourd'hui, dont M retenues » (via `b1api.getMesMandats` + filtre date_dernier_statut = jour Paris)
+  - Bouton principal « Voir mes opportunités de mandats » → `/app-b1/mes-mandats`
+  - Sablier animé + décompte 03h00 Paris préservés
+- **10. Logotype LOGIN texte KOLO** — L'utilisateur accepte le repli texte. Fin des essais PNG. Style : League Spartan gras 900, taille 68px, noir #0B0B0F, interlettrage `-0.045em`, centré. Screenshot preview validé.
+
+**Point 11 — Compte directeur test** :
+Nouveau endpoint `POST /api/d1/admin/promouvoir-directeur` fait tout en 1 appel (upsert organisation + promotion user + seed pool_org opps). Testé en preview ✓.
+
+**Commande curl à lancer en production** :
+```bash
+curl -X POST https://trykolo.io/api/d1/admin/promouvoir-directeur \
+  -H "Content-Type: application/json" -H "X-Admin-Secret: <ADMIN_SECRET>" \
+  -d '{
+    "email":"pressardelliot@gmail.com",
+    "nom_agence":"Agence Test Elliot",
+    "sieges":5,
+    "zones":["13008"],
+    "directeur_prospecte":true,
+    "seed_opportunites_org":5
+  }'
+```
+
+**Tests** : `tests/test_build_2_20.py` — 10 tests verrouillent chaque fix. **69 tests critiques verts au total**.
+
+
 ### BLOC D · Partie 1 (Anomalies backend) + Partie 2 (Swipe + Mes mandats) — Fév 4, 2026 🔥 LATEST
 **Contexte** : la prod produit enfin des opportunités (13008 saine : 663 annonces, fraîcheur 1.0). Restaient 3 anomalies backend + toute la partie mandats.
 

@@ -11,6 +11,7 @@
 // Aucun cul-de-sac : l'utilisateur a toujours quelque chose à regarder.
 // =============================================================
 import React, { useEffect, useState } from 'react';
+import { useNavigate as useReactNavigate } from 'react-router-dom';
 
 // ---------- Sablier SVG animé ----------
 function Sablier({ size = 88 }) {
@@ -76,11 +77,39 @@ function formatCountdown(totalSec) {
 }
 
 // ---------- Composant final ----------
+// Retour build 2.20 : l'écran restait trop vide.
+// AJOUTS : récap journée (X traitées / Y retenues) + bouton « Voir mes
+// opportunités » (action naturelle après avoir swipé).
 export function FinDePileScreen({ veilleSlot = null }) {
   const [remaining, setRemaining] = useState(() => secondsUntilNext03hParis());
+  const [recap, setRecap] = useState(null);
+  const navigate = useReactNavigate();
   useEffect(() => {
     const t = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : secondsUntilNext03hParis())), 1000);
     return () => clearInterval(t);
+  }, []);
+  // Récap chargé une seule fois — on compte les swipes du jour Paris.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const b1api = (await import('./b1api')).default;
+        const r = await b1api.getMesMandats(500);
+        if (cancelled || !r) return;
+        // « traitées aujourd'hui » = swipes datés du jour Paris.
+        const parisToday = new Intl.DateTimeFormat('fr-FR', {
+          timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+        const [d, m, y] = parisToday.split('/'); // dd/mm/yyyy → yyyy-mm-dd
+        const iso = `${y}-${m}-${d}`;
+        const isToday = (dateStr) => (dateStr || '').startsWith(iso);
+        const traitees = (r.items || []).filter((it) => isToday(it.date_dernier_statut)).length;
+        const retenues = (r.items || []).filter((it) => isToday(it.date_a_demarcher)
+                            && ['a_demarcher','demarche','mandat_signe'].includes(it.statut)).length;
+        setRecap({ traitees, retenues });
+      } catch { /* silencieux : le récap est optionnel */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
   const { h, m, s } = formatCountdown(remaining);
 
@@ -96,6 +125,21 @@ export function FinDePileScreen({ veilleSlot = null }) {
         <span>{h}</span><em>:</em><span>{m}</span><em>:</em><span>{s}</span>
       </div>
       <div className="b1-fin-pile-decompte-label">heures — minutes — secondes</div>
+      {recap && recap.traitees > 0 && (
+        <div className="b1-fin-pile-recap" data-testid="b1-fin-pile-recap">
+          Vous avez traité <strong>{recap.traitees}</strong>{' '}
+          opportunité{recap.traitees > 1 ? 's' : ''} aujourd'hui,
+          dont <strong>{recap.retenues}</strong> retenue{recap.retenues > 1 ? 's' : ''}.
+        </div>
+      )}
+      <button
+        className="b1-pill b1-pill--primary b1-pill--fullwidth"
+        style={{ marginTop: 20 }}
+        data-testid="b1-fin-pile-voir-mandats"
+        onClick={() => navigate('/app-b1/mes-mandats')}
+      >
+        Voir mes opportunités de mandats
+      </button>
       {veilleSlot && (
         <div className="b1-fin-pile-veille" data-testid="b1-fin-pile-veille">
           {veilleSlot}

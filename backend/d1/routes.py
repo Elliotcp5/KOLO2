@@ -738,6 +738,111 @@ async def admin_ouvrir_zone(payload: OuvrirZonePayload, request: Request):
     }
 
 
+class PromouvoirDirecteurPayload(BaseModel):
+    email: str
+    nom_agence: str = "Agence Test KOLO"
+    sieges: int = 5
+    zones: list[str] = ["13008"]
+    directeur_prospecte: bool = True
+    seed_opportunites_org: int = 5
+
+
+@router.post("/api/d1/admin/promouvoir-directeur")
+async def admin_promouvoir_directeur(payload: PromouvoirDirecteurPayload,
+                                       request: Request):
+    """Crée une organisation de test + promeut un compte en directeur en 1 appel.
+
+    Étapes idempotentes :
+      1. Cherche l'user par email → 404 si absent
+      2. Upsert organisation `{nom_agence, sieges, zones, directeur_prospecte}`
+      3. Patche user : `role="directeur"`, `organisation_id`, `plan="pro"`
+      4. Optionnel — alimente le pool org avec N opps `pool` de la zone
+         principale attribuées à l'org (statut `pool_org`)
+
+    Ne crée AUCUN écran de tarif, aucun montant. Compatible test Apple Review.
+    """
+    _check_admin(request)
+    db = _db()
+    email = (payload.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="email_required")
+    u = await db.users.find_one({"email": email})
+    if not u:
+        raise HTTPException(status_code=404, detail="user_not_found")
+
+    now_iso = now_utc_iso()
+    # 1) Upsert organisation
+    from bson import ObjectId
+    existing_org = await db.organisations.find_one({"nom": payload.nom_agence})
+    if existing_org:
+        org_id = existing_org["_id"]
+        await db.organisations.update_one(
+            {"_id": org_id},
+            {"$set": {
+                "nom": payload.nom_agence,
+                "sieges": payload.sieges,
+                "zones": payload.zones,
+                "directeur_prospecte": bool(payload.directeur_prospecte),
+                "updated_at": now_iso,
+            }},
+        )
+        org_action = "updated"
+    else:
+        org_id = ObjectId()
+        await db.organisations.insert_one({
+            "_id": org_id,
+            "nom": payload.nom_agence,
+            "sieges": int(payload.sieges),
+            "zones": list(payload.zones),
+            "directeur_prospecte": bool(payload.directeur_prospecte),
+            "created_at": now_iso,
+            "updated_at": now_iso,
+        })
+        org_action = "created"
+
+    # 2) Promeut l'user
+    await db.users.update_one(
+        {"user_id": u["user_id"]},
+        {"$set": {
+            "role": "directeur",
+            "organisation_id": org_id,
+            "plan": "pro",
+            "zones_perso": u.get("zones_perso") or payload.zones,
+            "updated_at": now_iso,
+        }},
+    )
+
+    # 3) Alimente le pool org (opps en `pool_org`, non encore distribuées)
+    n_seed = int(payload.seed_opportunites_org or 0)
+    seeded = 0
+    if n_seed > 0 and payload.zones:
+        cp = payload.zones[0]
+        cur = db.opportunites.find(
+            {"code_postal": cp, "statut": "pool"},
+            {"_id": 1},
+        ).limit(n_seed)
+        ids = [d["_id"] async for d in cur]
+        if ids:
+            r = await db.opportunites.update_many(
+                {"_id": {"$in": ids}},
+                {"$set": {"statut": "pool_org", "organisation_id": org_id,
+                          "date_pool_org": now_iso, "updated_at": now_iso}},
+            )
+            seeded = r.modified_count
+
+    return {
+        "ok": True,
+        "email": email,
+        "organisation_id": str(org_id),
+        "organisation_action": org_action,
+        "nom_agence": payload.nom_agence,
+        "sieges": payload.sieges,
+        "zones": payload.zones,
+        "directeur_prospecte": payload.directeur_prospecte,
+        "opportunites_pool_org_seeded": seeded,
+    }
+
+
 @router.post("/api/d1/admin/normaliser-plans")
 async def admin_normaliser_plans(request: Request):
     """Normalise en base tous les users `pro_plus`/`pro_lifetime` → `pro`.

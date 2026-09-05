@@ -98,13 +98,17 @@ def test_tab_bar_is_opaque_with_solid_pink_border():
 
 
 def test_login_logo_uses_asset_import_not_svg_text():
-    """Le user demande la MARQUE (K graphique), pas du texte SVG. Le PNG
-    doit être importé depuis src/assets/ (URL hashée webpack, chemin garanti
-    après cap sync ios)."""
+    """Retour build 2.20 (75) : le PNG ne s'affichait pas après cap sync.
+    L'utilisateur accepte explicitement le repli en LOGOTYPE TEXTE
+    stylisé (League Spartan, gras, noir). Ce test verrouille le repli."""
     src = Path("/app/frontend/src/v2/pages/V2AuthPage.js").read_text()
-    assert 'import koloLogoUrl' in src, "logo doit être importé depuis src/assets/"
-    assert 'kolo-mark-black' in src
-    assert '<img' in src and 'auth-logo' in src
+    # Le PNG n'est plus utilisé
+    assert '<img' not in src or 'auth-logo' not in src.split('<img')[0], \
+        "le PNG kolo-mark ne doit plus être rendu comme <img>"
+    # Logotype texte présent
+    assert 'League Spartan' in src, "logotype doit utiliser League Spartan"
+    assert 'auth-logo' in src, "test-id auth-logo présent"
+    assert 'KOLO' in src
 
 
 def test_assistant_prompt_3_4_phrases_no_lists():
