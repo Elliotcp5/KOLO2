@@ -118,9 +118,20 @@ def extract_rue_and_etage(
     # « quartier » (prado, pointe rouge sans préfixe) sont écartés.
     rue = found[0] if found else None
 
-    if listing_floor is not None:
-        etage = int(listing_floor) if isinstance(listing_floor, (int, float)) else None
+    # Étage — priorité au texte de la description (« 6ème étage » est
+    # plus fiable que le champ structuré `floor` remonté par Apify, qui
+    # peut être 0-indexé sur certaines sources). On récupère les deux :
+    # si la regex trouve quelque chose, elle gagne. Sinon fallback sur
+    # `listing_floor` s'il est renseigné. build 2.22.2.
+    etage_regex = extract_etage(text)
+    if etage_regex is not None:
+        etage = etage_regex
+    elif listing_floor is not None:
+        try:
+            etage = int(listing_floor)
+        except (TypeError, ValueError):
+            etage = None
     else:
-        etage = extract_etage(text)
+        etage = None
 
     return rue, etage

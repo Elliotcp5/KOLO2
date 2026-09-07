@@ -406,7 +406,32 @@ def enrich_from_apify_row(listing: dict, row: dict) -> dict:
     row = row or {}
 
     # --- Contenu brut ---
-    listing["description"] = _first(row.get("description"), row.get("desc"), row.get("descriptionText"))
+    # Le mapping était limité à 3 champs (description/desc/descriptionText),
+    # ce qui laissait leboncoin et seloger avec `description=None` sur la
+    # quasi-totalité de leurs items (le rue_extraite tombait à 0/j pour ces
+    # deux portails alors qu'ils représentent >60% du dataset).
+    # Élargi (build 2.22.2) à tous les alias remontés par les 5 actors
+    # Apify utilisés : bienici, pap, seloger, leboncoin, orpi.
+    def _clean_html(s):
+        if not s:
+            return s
+        # strip minimalist : <br>, <p>, </p>, <span>, entités &nbsp;
+        import re as _re
+        return _re.sub(r"<[^>]+>", " ", str(s)).replace("&nbsp;", " ").strip()
+    listing["description"] = _clean_html(_first(
+        row.get("description"), row.get("desc"), row.get("descriptionText"),
+        row.get("descriptionHtml"), row.get("description_annonce"),
+        row.get("descriptionCourte"), row.get("descriptionLongue"),
+        row.get("longDescription"), row.get("fullDescription"),
+        row.get("body"), row.get("content"), row.get("contents"),
+        row.get("commentaire"), row.get("annonce"),
+        # bienici : parfois `descriptionEnFrancais`
+        row.get("descriptionEnFrancais"),
+        # pap : `description_bien`
+        row.get("description_bien"),
+        # seloger : `content_text` ou `descriptionFormatted`
+        row.get("content_text"), row.get("descriptionFormatted"),
+    ))
     listing["property_type"] = _first(
         row.get("propertyType"), row.get("property_type"),
         row.get("type"), row.get("type_bien"), row.get("bien"),

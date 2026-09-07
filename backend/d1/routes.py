@@ -221,6 +221,182 @@ async def admin_etat_compte(email: str, request: Request):
     }
 
 
+@router.get("/api/d1/admin/diagnostic-doublons-users")
+async def admin_diagnostic_doublons_users(email: str, request: Request):
+    """DIAGNOSE la présence de plusieurs documents `users` pour le même email.
+
+    Cause du bug production (build 2.22.2) : `etat-compte` retournait 0 opps
+    alors que 10 étaient assignées à un UUID inconnu. Explication : deux
+    documents `users` existaient pour le même email (seed super admin qui
+    crée un `user_id: str(uuid4())` + login V2 email-code qui crée un
+    `user_id: u_{hex[:16]}`). Distribution utilisait un ID, session l'autre.
+
+    Sortie :
+      - `docs` : liste de tous les user docs pour cet email, avec `_id`,
+        `user_id`, `created_at`, `role`, `plan`, `zones_perso`, `session_count`
+      - `opps_par_assigne` : compte des opps `proposee` regroupé par
+        `assigne_a` sur toutes les zones_perso trouvées (top 10)
+      - `sessions_actives` : nombre de sessions non-expirées par `user_id`
+      - `verdict` : recommandation de consolidation
+    """
+    _check_admin(request)
+    e = (email or "").strip().lower()
+    if not e:
+        raise HTTPException(status_code=400, detail="email_requis")
+    from datetime import datetime, timezone as _tz
+    docs = []
+    all_uids = set()
+    all_zones = set()
+    async for d in _db().users.find({"email": e}):
+        uid = d.get("user_id")
+        all_uids.add(uid)
+        for z in (d.get("zones_perso") or []):
+            all_zones.add(z)
+        now_iso = datetime.now(_tz.utc).isoformat()
+        n_sessions = await _db().user_sessions.count_documents({
+            "user_id": uid,
+            "expires_at": {"$gt": now_iso},
+        })
+        docs.append({
+            "_id": str(d.get("_id")),
+            "user_id": uid,
+            "email": d.get("email"),
+            "created_at": d.get("created_at"),
+            "role": d.get("role"),
+            "plan": d.get("plan"),
+            "app_version": d.get("app_version"),
+            "is_super_admin": d.get("is_super_admin"),
+            "zones_perso": d.get("zones_perso") or [],
+            "auth_provider": d.get("auth_provider"),
+            "sessions_actives": n_sessions,
+        })
+    opps_par_assigne = []
+    if all_zones:
+        pipe = [
+            {"$match": {"code_postal": {"$in": list(all_zones)}, "statut": "proposee"}},
+            {"$group": {"_id": "$assigne_a", "n": {"$sum": 1}}},
+            {"$sort": {"n": -1}},
+            {"$limit": 10},
+        ]
+        async for row in _db().opportunites.aggregate(pipe):
+            opps_par_assigne.append({
+                "assigne_a": str(row["_id"]) if row["_id"] is not None else None,
+                "n": int(row["n"]),
+                "matche_un_doc_users": row["_id"] in all_uids,
+            })
+    if len(docs) == 0:
+        verdict = f"aucun_document_users_pour_{e}"
+        canonical_recommendation = None
+    elif len(docs) == 1:
+        verdict = "un_seul_document → pas de doublon, checker autre cause"
+        canonical_recommendation = docs[0]["user_id"]
+    else:
+        docs_sorted = sorted(docs, key=lambda d: (-d["sessions_actives"],
+                                                  d.get("created_at") or ""))
+        canonical_recommendation = docs_sorted[0]["user_id"]
+        verdict = (f"{len(docs)}_documents_users_pour_meme_email → "
+                    f"consolidation requise vers {canonical_recommendation}")
+    return {
+        "email": e,
+        "n_documents": len(docs),
+        "docs": docs,
+        "opps_par_assigne_dans_zones": opps_par_assigne,
+        "canonical_user_id_recommande": canonical_recommendation,
+        "verdict": verdict,
+    }
+
+
+@router.post("/api/d1/admin/consolider-users")
+async def admin_consolider_users(payload: dict, request: Request):
+    """Consolide les doublons de `users` pour un email vers un `user_id`
+    canonique. Migre `opportunites.assigne_a`, `opportunites.user_id`,
+    `user_sessions.user_id`, `dossiers.user_id`, `device_tokens.user_id`
+    et supprime les docs dupliqués.
+
+    Body :
+      - `email` (required) : email cible
+      - `canonical_user_id` (optional) : le user_id à conserver. Si absent,
+        utilise celui recommandé par le diagnostic (le plus de sessions).
+      - `dry_run` (bool, default true) : simule sans écrire
+
+    Réponse : compte des mutations par collection.
+    """
+    _check_admin(request)
+    e = (payload.get("email") or "").strip().lower()
+    dry_run = bool(payload.get("dry_run", True))
+    canonical = payload.get("canonical_user_id")
+    if not e:
+        raise HTTPException(status_code=400, detail="email_requis")
+    docs = [d async for d in _db().users.find({"email": e})]
+    if len(docs) < 2:
+        return {"ok": True, "no_op": True,
+                "raison": f"{len(docs)} document(s) — rien à consolider"}
+    all_uids = [d.get("user_id") for d in docs if d.get("user_id")]
+    if not canonical:
+        from datetime import datetime, timezone as _tz
+        now_iso = datetime.now(_tz.utc).isoformat()
+        best = None
+        best_n = -1
+        for uid in all_uids:
+            n = await _db().user_sessions.count_documents({
+                "user_id": uid, "expires_at": {"$gt": now_iso}})
+            if n > best_n:
+                best_n = n
+                best = uid
+        canonical = best or all_uids[0]
+    if canonical not in all_uids:
+        raise HTTPException(status_code=400,
+            detail=f"canonical_user_id inconnu — connus: {all_uids}")
+    others = [uid for uid in all_uids if uid != canonical]
+
+    plan = {
+        "opportunites.assigne_a": 0,
+        "opportunites.user_id": 0,
+        "user_sessions.user_id": 0,
+        "dossiers.user_id": 0,
+        "device_tokens.user_id": 0,
+        "users.deleted": 0,
+    }
+    for uid in others:
+        r = await _db().opportunites.count_documents({"assigne_a": uid})
+        plan["opportunites.assigne_a"] += r
+        if not dry_run and r:
+            await _db().opportunites.update_many(
+                {"assigne_a": uid}, {"$set": {"assigne_a": canonical}})
+        r = await _db().opportunites.count_documents({"user_id": uid})
+        plan["opportunites.user_id"] += r
+        if not dry_run and r:
+            await _db().opportunites.update_many(
+                {"user_id": uid}, {"$set": {"user_id": canonical}})
+        r = await _db().user_sessions.count_documents({"user_id": uid})
+        plan["user_sessions.user_id"] += r
+        if not dry_run and r:
+            await _db().user_sessions.update_many(
+                {"user_id": uid}, {"$set": {"user_id": canonical}})
+        r = await _db().dossiers.count_documents({"user_id": uid})
+        plan["dossiers.user_id"] += r
+        if not dry_run and r:
+            await _db().dossiers.update_many(
+                {"user_id": uid}, {"$set": {"user_id": canonical}})
+        r = await _db().device_tokens.count_documents({"user_id": uid})
+        plan["device_tokens.user_id"] += r
+        if not dry_run and r:
+            await _db().device_tokens.update_many(
+                {"user_id": uid}, {"$set": {"user_id": canonical}})
+    plan["users.deleted"] = len(others)
+    if not dry_run:
+        for uid in others:
+            await _db().users.delete_one({"user_id": uid, "email": e})
+    return {
+        "ok": True,
+        "dry_run": dry_run,
+        "email": e,
+        "canonical_user_id": canonical,
+        "supprimes": others,
+        "mutations": plan,
+    }
+
+
 @router.post("/api/d1/admin/seed-zones-couvertes")
 async def admin_seed_zones(request: Request):
     _check_admin(request)
@@ -1144,7 +1320,77 @@ async def admin_push_test(payload: dict, request: Request):
     }
 
 
+@router.get("/api/d1/admin/diagnostic-apify-fields")
+async def admin_diagnostic_apify_fields(request: Request, run_id: str = ""):
+    """Dump les CLÉS présentes dans les items du dernier run Apify (ou run_id
+    donné), groupées par portail. Permet d'identifier quel champ contient la
+    description réelle pour chaque source.
 
+    Sortie :
+      - `run_id`
+      - `by_portal` : {portal: {keys: [str], samples: [dict1, dict2]}}
+      - `verdict` : quels portails ont un champ description non-vide
+    """
+    _check_admin(request)
+    from scripts.ingest_apify import _fetch_run, _fetch_last_succeeded_run, _fetch_dataset_items
+    import httpx
+    async with httpx.AsyncClient() as client:
+        if run_id:
+            run = await _fetch_run(client, run_id)
+        else:
+            run = await _fetch_last_succeeded_run(client)
+        if not run:
+            raise HTTPException(status_code=404, detail="aucun_run_trouve")
+        rid = run.get("id")
+        dataset_id = run.get("defaultDatasetId")
+        items = await _fetch_dataset_items(client, dataset_id) or []
+    by_portal: dict = {}
+    for it in items:
+        p = (it.get("source") or it.get("portal") or "unknown").lower()
+        if p not in by_portal:
+            by_portal[p] = {"keys": set(), "samples": [], "with_desc": 0, "without_desc": 0, "total": 0}
+        by_portal[p]["total"] += 1
+        by_portal[p]["keys"].update(it.keys())
+        # Test tous les alias description connus
+        desc_val = None
+        for k in ("description", "desc", "descriptionText", "descriptionHtml",
+                  "description_annonce", "descriptionCourte", "descriptionLongue",
+                  "longDescription", "fullDescription", "body", "content",
+                  "contents", "commentaire", "annonce", "descriptionEnFrancais",
+                  "description_bien", "content_text", "descriptionFormatted"):
+            v = it.get(k)
+            if v and isinstance(v, str) and len(v.strip()) > 20:
+                desc_val = k
+                break
+        if desc_val:
+            by_portal[p]["with_desc"] += 1
+        else:
+            by_portal[p]["without_desc"] += 1
+        # Garde 2 échantillons complets par portal
+        if len(by_portal[p]["samples"]) < 2:
+            sample = {k: (v if isinstance(v, (int, float, bool, str, type(None)))
+                          else str(type(v).__name__)) for k, v in list(it.items())[:40]}
+            by_portal[p]["samples"].append({"desc_field_utilise": desc_val, **sample})
+    # Sérialisation
+    out = {}
+    for p, d in by_portal.items():
+        out[p] = {
+            "keys": sorted(d["keys"]),
+            "samples": d["samples"],
+            "total": d["total"],
+            "with_desc": d["with_desc"],
+            "without_desc": d["without_desc"],
+            "pct_avec_desc": round(100 * d["with_desc"] / max(d["total"], 1), 1),
+        }
+    verdict = []
+    for p, d in out.items():
+        if d["pct_avec_desc"] < 20:
+            verdict.append(f"{p} : SEULEMENT {d['pct_avec_desc']}% avec description → à retirer du scrape")
+        elif d["pct_avec_desc"] < 60:
+            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → dégradé")
+        else:
+            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → OK")
+    return {"run_id": rid, "n_items": len(items), "by_portal": out, "verdict": verdict}
 
 
 @router.get("/api/d1/admin/diagnostic-extraction-rues")
