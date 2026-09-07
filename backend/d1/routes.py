@@ -1403,12 +1403,15 @@ async def admin_diagnostic_apify_fields(request: Request, run_id: str = ""):
         }
     verdict = []
     for p, d in out.items():
+        # Un portail sans description reste PRÉCIEUX pour prix/DPE/photos/
+        # étage/coordonnées — on ne le retire jamais. On l'exclut simplement
+        # de l'extraction rues (voir _run_extraire_rues portal filter).
         if d["pct_avec_desc"] < 20:
-            verdict.append(f"{p} : SEULEMENT {d['pct_avec_desc']}% avec description → à retirer du scrape")
+            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → sans texte exploitable (garde pour prix/DPE/photos, exclu extraction rues)")
         elif d["pct_avec_desc"] < 60:
-            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → dégradé")
+            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → texte dégradé")
         else:
-            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → OK")
+            verdict.append(f"{p} : {d['pct_avec_desc']}% avec description → texte OK")
     return {"run_id": rid, "n_items": len(items), "by_portal": out, "verdict": verdict}
 
 
@@ -1428,6 +1431,73 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
     C'est le diagnostic à faire AVANT de relancer le job — si les listings
     n'ont ni title ni description, aucun run ne pourra extraire quoi que ce soit.
     """
+
+
+@router.get("/api/d1/admin/diagnostic-score-rejetes")
+async def admin_diagnostic_score_rejetes(code_postal: str, request: Request,
+                                          limit: int = 3):
+    """Retourne les DERNIERS biens rejetés par la génération avec le
+    calcul détaillé du score. Utile quand `created=0` : montre pourquoi
+    chaque bien est filtré. build 2.22.4.
+
+    Sortie par bien :
+      - `dpe_id`, `adresse`, `surface`, `classe_dpe`, `rue_dpe`
+      - `f_couverture`, `f_fraicheur`, `f_location`, `best_v_score`
+      - `score_confiance` = (1 - best_v) * f_couv * f_frais * f_loc
+      - `seuil_pub` (config)
+      - `verdict` : quel facteur tire vers le bas
+    """
+    _check_admin(request)
+    cp = (code_postal or "").strip()
+    if len(cp) != 5 or not cp.isdigit():
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+    from a2.config import get_config
+    cfg = await get_config(_db())
+    seuil = float(cfg.get("seuil_pub") or 0.7)
+    limit = max(1, min(int(limit or 3), 20))
+    cur = _db().rapprochements.find(
+        {"code_postal": cp, "decision": "filtre"}
+    ).sort("date_traitement", -1).limit(limit)
+    rejetes = []
+    async for r in cur:
+        breakdown = r.get("breakdown") or {}
+        score = r.get("score_confiance") or 0.0
+        f_couv = breakdown.get("couverture") or 0.83
+        f_frais = breakdown.get("fraicheur") or 1.0
+        f_loc = breakdown.get("location") or 1.0
+        v_score = breakdown.get("v_score") or r.get("meilleur_score_vente") or 0.0
+        # Verdict
+        facteurs = {"couverture": f_couv, "fraicheur": f_frais,
+                    "location": f_loc, "similarite": (1.0 - v_score)}
+        pire = min(facteurs, key=facteurs.get)
+        rejetes.append({
+            "dpe_id": r.get("dpe_id"),
+            "adresse_dpe": r.get("adresse_dpe"),
+            "surface": r.get("surface_dpe"),
+            "classe_dpe": r.get("classe_dpe"),
+            "rue_dpe": r.get("rue_dpe"),
+            "motif": r.get("motif_filtre"),
+            "date_traitement": r.get("date_traitement"),
+            "calcul": {
+                "score_confiance": score,
+                "seuil_pub": seuil,
+                "delta": round(score - seuil, 4),
+                "1_moins_best_v_score": round(1.0 - v_score, 4),
+                "f_couverture": f_couv,
+                "f_fraicheur": f_frais,
+                "f_location": f_loc,
+                "formule": "score = (1 - best_v) × f_couv × f_frais × f_loc",
+            },
+            "meilleur_score_vente": v_score,
+            "meilleur_score_location": r.get("meilleur_score_location"),
+            "rue_annonce_retenue": r.get("rue_annonce_retenue"),
+            "verdict": f"facteur limitant : {pire}",
+        })
+    return {"code_postal": cp, "seuil_pub_config": seuil, "n_rejetes": len(rejetes),
+            "rejetes": rejetes}
+
+
+
     _check_admin(request)
     cp = (code_postal or "").strip()
     if len(cp) != 5 or not cp.isdigit():

@@ -90,6 +90,10 @@ def _chunks(seq: list, n: int) -> Iterable[list]:
 
 
 def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str = "leboncoin") -> Optional[dict]:
+    # Skip meta/promo items posés par l'acteur (ex: `_meta` = "Thanks for
+    # using Pige Immo FR!"). Sans URL réelle → dropés en base sinon.
+    if isinstance(row, dict) and ("_meta" in row or row.get("__promo__")):
+        return None
     external_id = _stable_external_id(row.get("external_id") or row.get("id") or row.get("url") or "")
     if not external_id:
         return None

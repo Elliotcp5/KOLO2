@@ -123,8 +123,18 @@ async def _run_distribuer_quotidien(db):
     """
     start = _now_iso()
     try:
+        # Filtre users à servir. Historiquement `{"app_version": "b1"}` était
+        # ajouté, mais tous les users V2 (auth email-code) ne posent pas ce
+        # champ à la création. Résultat prod : le compte directeur
+        # pressardelliot@gmail.com (user_bacf0ba33818) était EXCLU de la
+        # distribution alors qu'il avait `zones_perso: ["13008"]`. Le log
+        # disait `{"users": 1, "attribuees": 5}` — seul l'agent était servi.
+        # Un directeur d'agence prospecte AUSSI en propre (produit), donc
+        # il DOIT recevoir ses opps quotidiennes de zones_perso comme tout
+        # user. La distribution d'équipe (routes.attribuer-lot) est un
+        # canal séparé. build 2.22.4.
         users = await db.users.find(
-            {"app_version": "b1", "zones_perso": {"$exists": True, "$ne": []}}
+            {"zones_perso": {"$exists": True, "$ne": []}}
         ).to_list(length=None)
         total_attrib = 0
         for u in users:

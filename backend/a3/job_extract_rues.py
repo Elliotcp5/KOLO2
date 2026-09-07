@@ -130,6 +130,24 @@ async def run_extraire_rues(db, code_postal: Optional[str] = None) -> dict:
                                                "rue_deja": 0, "etage": 0})
                     by_source[src]["scanned"] += 1
 
+                    # Portails SANS texte exploitable — on saute l'extraction
+                    # de rue (leboncoin publie « Appartement 4 pièces », seloger
+                    # remonte title="Annonce" description=""). On garde l'étage
+                    # via le champ `floor` structuré s'il existe. build 2.22.4.
+                    if src in ("leboncoin", "seloger"):
+                        etage_only = row.get("floor")
+                        if (etage_only is not None
+                            and etage_only != row.get("etage_extrait")):
+                            try:
+                                ok = await _patch_listing(client, row["id"],
+                                                          {"etage_extrait": int(etage_only)})
+                                if ok:
+                                    etage_ok += 1
+                                    by_source[src]["etage"] += 1
+                            except (TypeError, ValueError):
+                                pass
+                        continue
+
                     rue, etage = extract_rue_and_etage(
                         row.get("title"), row.get("description"),
                         voies_norm=voies,
