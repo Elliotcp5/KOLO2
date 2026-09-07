@@ -8888,11 +8888,13 @@ async def startup_event():
         logger.error(f"A2 startup init failed: {e}")
 
     # === Session A3 — scheduler 03h00 Europe/Paris ===
+    # Utilise start_a3_scheduler pour tracer le task global `_a3_task` — sans
+    # ça, /api/d1/admin/reload-scheduler ne saurait pas si la boucle est vivante
+    # (retournait state="never_started" bien que la boucle tournait).
     try:
-        import asyncio as _asyncio
-        from a3.scheduler import scheduler_loop
-        _asyncio.create_task(scheduler_loop(db))
-        logger.info("A3 scheduler task launched (03h00 Europe/Paris)")
+        from a3.scheduler import start_a3_scheduler
+        start_a3_scheduler(db, force=False)
+        logger.info("A3 scheduler task launched via start_a3_scheduler (03h00 Europe/Paris)")
     except Exception as e:
         logger.error(f"A3 scheduler start failed: {e}")
 

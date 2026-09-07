@@ -91,3 +91,44 @@ async def scheduler_loop(db) -> None:
         await _run_cycle(db)
         # Petite pause pour ne pas boucler si run_cycle finit vite
         await asyncio.sleep(5)
+
+
+# --- Gestionnaire de tâche globale --------------------------------------
+# Bug prod (build 81) : la tâche `scheduler_loop` était démarrée UNE fois au
+# boot puis perdue silencieusement après un redémarrage de pod ou un crash
+# non journalisé. Ce global permet à /api/d1/admin/reload-scheduler de
+# vérifier l'état et relancer.
+_a3_task: asyncio.Task | None = None
+
+
+def start_a3_scheduler(db, force: bool = False):
+    """Démarre (ou redémarre si force=True) la boucle a3."""
+    global _a3_task
+    if _a3_task is not None and not _a3_task.done() and not force:
+        return _a3_task
+    if _a3_task is not None:
+        try:
+            _a3_task.cancel()
+        except Exception:
+            pass
+    _a3_task = asyncio.create_task(scheduler_loop(db))
+    return _a3_task
+
+
+def a3_scheduler_status() -> dict:
+    """Retourne l'état de la boucle a3 pour reload-scheduler."""
+    if _a3_task is None:
+        return {"running": False, "state": "never_started"}
+    if _a3_task.done():
+        exc = _a3_task.exception() if not _a3_task.cancelled() else None
+        return {
+            "running": False,
+            "state": "dead",
+            "cancelled": _a3_task.cancelled(),
+            "exception": f"{type(exc).__name__}: {exc}" if exc else None,
+        }
+    return {
+        "running": True,
+        "state": "running",
+        "jobs": ["generer_opportunites_quotidien", "extraire_rues_quotidien"],
+    }

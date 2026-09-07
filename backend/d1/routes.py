@@ -152,7 +152,35 @@ async def admin_etat_compte(email: str, request: Request):
     if not u:
         return {"found": False, "email": e}
     uid = u.get("user_id")
-    n_opps = await _db().opportunites.count_documents({"assigne_a": uid, "statut": "proposee"})
+    # Bug build 81 : etat-compte comptait 0 opps alors que la distribution
+    # venait d'en attribuer 5. Certains users prod ont un `_id` string (UUID)
+    # utilisé comme `assigne_a` par le job, d'autres ont un `user_id` séparé.
+    # On matche donc sur toutes les formes possibles + on remonte le détail
+    # pour permettre au directeur de diagnostiquer un éventuel décalage.
+    candidate_ids = {uid, u.get("id"), str(u.get("_id"))} - {None, ""}
+    # Ajout : ObjectId brut (au cas où assigne_a serait stocké en ObjectId)
+    try:
+        candidate_ids.add(u.get("_id"))
+    except Exception:
+        pass
+    n_opps = await _db().opportunites.count_documents({
+        "assigne_a": {"$in": list(candidate_ids)},
+        "statut": "proposee",
+    })
+    # Debug : liste des valeurs distinctes de `assigne_a` pour ce CP côté prod
+    # (utile pour repérer une désynchro user_id vs. ce qui est stocké).
+    zones_perso = u.get("zones_perso") or []
+    debug_assignes = []
+    if zones_perso:
+        pipe = [
+            {"$match": {"code_postal": {"$in": zones_perso}, "statut": "proposee"}},
+            {"$group": {"_id": "$assigne_a", "n": {"$sum": 1}}},
+            {"$sort": {"n": -1}},
+            {"$limit": 10},
+        ]
+        async for row in _db().opportunites.aggregate(pipe):
+            debug_assignes.append({"assigne_a": str(row["_id"]) if row["_id"] is not None else None,
+                                   "n": int(row["n"])})
     n_zc = await _db().zones_couvertes.count_documents({})
     # Normalisation stricte : seules deux valeurs sortent d'ici — `pro` ou
     # `decouverte`. `pro_plus`/`pro_lifetime` sont des vestiges → `pro`.
@@ -175,6 +203,9 @@ async def admin_etat_compte(email: str, request: Request):
         "plan_raw": raw_plan or None,
         "opps_proposees_attribuees": n_opps,
         "zones_couvertes_total": n_zc,
+        # Diagnostic : formes d'ID cherchées + top valeurs assigne_a réelles
+        "debug_candidate_ids": [str(c) for c in candidate_ids],
+        "debug_top_assignes_dans_zones": debug_assignes,
     }
 
 
@@ -256,7 +287,8 @@ async def admin_etat_jobs(request: Request):
     """Retourne pour chaque job planifié : sa dernière exécution réussie,
     sa durée, son résultat, et son statut courant."""
     _check_admin(request)
-    jobs = ["extraire_rues_quotidien", "generer_opportunites_quotidien",
+    jobs = ["scraper_quotidien", "extraire_rues_quotidien",
+            "generer_opportunites_quotidien",
             "distribuer_quotidien", "recycler_48h", "recharger_decouverte_hebdo"]
     out = {}
     for j in jobs:
@@ -295,6 +327,7 @@ async def admin_reload_scheduler(request: Request):
     recycler_48h, recharger_decouverte_hebdo) ont été perdus."""
     _check_admin(request)
     from d1.scheduler import start_scheduler as start_d1
+    from a3.scheduler import start_a3_scheduler, a3_scheduler_status
     result = {"d1": None, "a3": None}
     try:
         s = start_d1(_db(), force=True)
@@ -304,6 +337,11 @@ async def admin_reload_scheduler(request: Request):
         }
     except Exception as e:
         result["d1"] = {"error": f"{type(e).__name__}: {e}"}
+    try:
+        start_a3_scheduler(_db(), force=True)
+        result["a3"] = a3_scheduler_status()
+    except Exception as e:
+        result["a3"] = {"error": f"{type(e).__name__}: {e}"}
     return {"ok": True, "schedulers": result}
 
 
@@ -315,7 +353,7 @@ async def admin_run_job(request: Request):
     job = (body or {}).get("job")
     from d1.scheduler import (
         _run_generer_opportunites, _run_distribuer_quotidien,
-        _run_recycler_48h, _run_recharger_decouverte,
+        _run_recycler_48h, _run_recharger_decouverte, _run_scraper_quotidien,
     )
 
     async def _run_extraire_rues_wrapper(db):
@@ -340,6 +378,7 @@ async def admin_run_job(request: Request):
         "distribuer_quotidien": _run_distribuer_quotidien,
         "recycler_48h": _run_recycler_48h,
         "recharger_decouverte_hebdo": _run_recharger_decouverte,
+        "scraper_quotidien": _run_scraper_quotidien,
     }
     if job not in mapping:
         raise HTTPException(status_code=400, detail="job_inconnu")
@@ -1031,18 +1070,60 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
         )
         avec_rue = int(r2.headers.get("content-range", "0/0").split("/")[-1] or 0)
 
-        # Exemples bruts
+        # Exemples bruts — on tire des listings SANS rue_extraite en priorité,
+        # c'est là qu'il faut prouver la panne. Fallback : tous listings.
         r3 = await client.get(
             f"{SUPABASE_URL}/rest/v1/listings",
             params={"select": "id,portal,title,description,floor,rue_extraite,"
                               "etage_extrait,scraped_at",
                     "postal_code": f"eq.{cp}", "is_active": "eq.true",
+                    "rue_extraite": "is.null",
                     "order": "scraped_at.desc",
                     "limit": str(max(1, min(int(limit or 3), 10)))},
             headers=_sb_headers(), timeout=15,
         )
         r3.raise_for_status()
         exemples = r3.json() or []
+        if not exemples:
+            # Fallback : tous listings si aucun sans rue
+            r3b = await client.get(
+                f"{SUPABASE_URL}/rest/v1/listings",
+                params={"select": "id,portal,title,description,floor,rue_extraite,"
+                                  "etage_extrait,scraped_at",
+                        "postal_code": f"eq.{cp}", "is_active": "eq.true",
+                        "order": "scraped_at.desc",
+                        "limit": str(max(1, min(int(limit or 3), 10)))},
+                headers=_sb_headers(), timeout=15,
+            )
+            r3b.raise_for_status()
+            exemples = r3b.json() or []
+
+    # Analyse locale : reproduit la logique du job pour chaque exemple
+    from a3.extract_rue import _normalize_text, _match_voies_in_text, extract_etage
+    def _analyse(e):
+        title = e.get("title") or ""
+        desc = e.get("description") or ""
+        text_norm = _normalize_text(f"{title} {desc}")
+        matches = _match_voies_in_text(text_norm, voies)
+        if len(matches) == 0:
+            verdict = "aucune_voie_ban_dans_le_texte"
+        elif len(matches) == 1:
+            verdict = f"1_voie_matchee_mais_pas_ecrite → attendu: {matches[0]}"
+        else:
+            verdict = f"{len(matches)}_voies_matchees_donc_ambiguite"
+        return {
+            "id": e.get("id"),
+            "portal": e.get("portal"),
+            "title": title,
+            "description": desc,  # description COMPLÈTE, sans troncature
+            "floor": e.get("floor"),
+            "rue_extraite": e.get("rue_extraite"),
+            "etage_extrait": e.get("etage_extrait"),
+            "scraped_at": e.get("scraped_at"),
+            "voies_matchees": matches,
+            "etage_regex_detecte": extract_etage(f"{title} {desc}"),
+            "verdict": verdict,
+        }
 
     return {
         "code_postal": cp,
@@ -1052,19 +1133,7 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
         "listings_sans_rue": total_actifs - avec_rue,
         "couverture_actuelle_pct": round(avec_rue / total_actifs * 100, 1)
             if total_actifs else 0.0,
-        "exemples_bruts": [
-            {
-                "id": e.get("id"),
-                "portal": e.get("portal"),
-                "title": (e.get("title") or "")[:200],
-                "description_preview": (e.get("description") or "")[:200],
-                "floor": e.get("floor"),
-                "rue_extraite": e.get("rue_extraite"),
-                "etage_extrait": e.get("etage_extrait"),
-                "scraped_at": e.get("scraped_at"),
-            }
-            for e in exemples
-        ],
+        "exemples_bruts": [_analyse(e) for e in exemples],
     }
 
 

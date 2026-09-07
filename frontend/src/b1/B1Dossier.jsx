@@ -55,7 +55,7 @@ export function DossierListPage() {
   if (items === null) return <div className="b1-root b1-page" data-testid="dos-list-loading"><p>{b1t('sys.un_instant')}</p></div>;
 
   return (
-    <div className="b1-root b1-page" style={{ padding: '16px 20px 96px' }} data-testid="dos-list-page">
+    <div className="b1-root b1-page" style={{ padding: 'calc(env(safe-area-inset-top) + 16px) 20px calc(96px + env(safe-area-inset-bottom))' }} data-testid="dos-list-page">
       <h1 className="b1-h1" style={{ marginBottom: 12 }}>{b1t('nav.rapport')}</h1>
       {items.length === 0 && !creating && (
         <div className="b1-card" style={{ padding: 20 }} data-testid="dos-list-empty">

@@ -261,3 +261,80 @@
   margin-left: auto;
   padding: 4px 0;
 }
+
+/* ================================================================
+   VeilleMiniList — vignettes compactes affichées dans l'End-of-Stack
+   quand la pile d'opportunités du jour est vide. Ambre uniquement.
+   ================================================================ */
+.b1-veille-mini {
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--veille-amber-tint, #FEF3C7);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.b1-veille-mini-titre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--veille-amber-dark, #92400E);
+  text-align: center;
+}
+.b1-veille-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 10px;
+}
+.b1-veille-mini-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px;
+  background: #FFFFFF;
+  border-radius: 14px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(146, 64, 14, 0.08);
+  transition: transform 0.15s ease;
+}
+.b1-veille-mini-card:active { transform: scale(0.97); }
+.b1-veille-mini-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--veille-amber-tint, #FEF3C7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--veille-amber-dark, #92400E);
+}
+.b1-veille-mini-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.b1-veille-mini-adresse {
+  font-size: 11px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.b1-veille-mini-cta {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--veille-amber, #F59E0B);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.b1-veille-mini-cta:active { opacity: 0.85; }

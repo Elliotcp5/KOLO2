@@ -1077,3 +1077,62 @@ Retourne désormais `role`, `organisation_id`, `organisation_nom`, `plan`, `onbo
 ### URL webhook à configurer dans App Store Connect
 - Preview : `https://responsive-kolo.preview.emergentagent.com/api/webhooks/apple`
 - Production : URL de prod à configurer une fois déployée.
+
+
+## 7 septembre 2026 — Points 1-4 (scheduler + pool) + UX End-of-Stack + login
+
+### Points 1-4 (backend)
+#### 1. Scheduler a3 correctement instancié au boot
+- **`server.py`** startup : remplace `create_task(scheduler_loop(db))` par `start_a3_scheduler(db, force=False)`. Sans ça, la variable globale `_a3_task` restait `None` et `a3_scheduler_status()` retournait `state=never_started` (probablement à l'origine du `"a3": null` vu en prod).
+- **`reload-scheduler`** retourne désormais pour a3 comme pour d1 `{running, state, jobs}`, avec `jobs=["generer_opportunites_quotidien", "extraire_rues_quotidien"]`.
+- **Vérif preview** : `POST /api/d1/admin/reload-scheduler` → d1 running 4 jobs + a3 running 2 jobs.
+
+#### 2. Scrape Apify désormais PLANIFIÉ tous les jours à 02h00 Paris
+- **`d1/scheduler.py`** : nouveau job `scraper_quotidien` (02h00 Paris) qui appelle `scripts/scrape_listings_cron.run_once` puis `scripts/ingest_apify.ingest_runs`. Écrit dans `jobs_runs` + met à jour `v2_scraper_last_run`.
+- **Avant** : le scrape n'était planifié NULLE PART (le `run_scheduler` de `notification_scheduler.py` n'est jamais démarré au boot du backend — seul `run_background_scheduler` de `server.py` tourne, et il n'appelle QUE `notification_scheduler.run_once` à 8h UTC). Le scrape était donc purement manuel via `/api/v2/admin/scraper/run`.
+- **Après** : scrape 02h → génération 03h → distribution 06h → recyclage 07h. La fraîcheur ne peut plus tomber à 0.
+- **Preuve** : `etat-jobs` renvoie `scraper_quotidien.next_run="2026-09-08T02:00:00+02:00"`.
+- **A3 déclenche-t-il le scrape ?** NON. `a3` gère uniquement génération + extraction rues à 03h00. Le scrape (Apify → Supabase) est un job d1 séparé.
+
+#### 3. `etat-compte` — debug enrichi
+- Ajout d'un 4ᵉ candidate_id (ObjectId brut) au cas où `assigne_a` est stocké en ObjectId.
+- Nouveau champ `debug_top_assignes_dans_zones` : top 10 valeurs distinctes de `assigne_a` pour les CP `zones_perso` de l'utilisateur, avec compte. Permet au directeur de VOIR pourquoi son compte ne matche pas.
+- Nouveau champ `debug_candidate_ids` : liste des IDs cherchés.
+- Vérif preview : `opps_proposees_attribuees=10` pour Elliot, cohérent.
+
+#### 4. `diagnostic-extraction-rues` — verdict par exemple
+- L'endpoint retourne désormais pour chaque exemple : `voies_matchees` (liste des voies BAN trouvées dans title+description), `etage_regex_detecte`, et un `verdict` textuel : `aucune_voie_ban_dans_le_texte` / `1_voie_matchee_mais_pas_ecrite → attendu: X` / `N_voies_matchees_donc_ambiguite`.
+- **Résultat sur preview 13008 (3 exemples)** :
+  - id=25463 (Pointe Rouge) : **BUG identifié** — voies matchées `["marseilleveyre", "pointe rouge"]` → règle "exactement 1 match" bloque, alors qu'un nom précis est trouvable.
+  - id=25475 : description vraiment sans nom de rue → verdict correct.
+  - id=25299 : investissement locatif sans adresse → verdict correct.
+- Sur 3, 1 bug d'algo + 2 limitations Apify. La conclusion « c'est Apify » était partiellement fausse.
+
+### UX (dans l'ordre donné par l'utilisateur)
+#### B1Screen sur les pages restantes
+- `b1.css` : `.b1-page, .b1-root { padding-top: calc(env(safe-area-inset-top) + 12px) !important }` (auparavant sans le +12px, la première ligne collait au notch).
+- `B1Dossier.jsx` : padding-top passe de `16px` à `calc(env(safe-area-inset-top) + 16px)`.
+
+#### Cartes Veille dans End-of-Stack
+- Nouveau composant `VeilleMiniList` dans `B1Veille.jsx` : max 3 vignettes (adresse exacte + miniature `thumbnail_url`, pictogramme `<Home>` en repli).
+- `B1Shell.jsx` : la pile de fin passe désormais les VRAIES cartes veille au `veilleSlot` (via `VeilleMiniListLazy`), au lieu du promo `VeilleIntercalaire` texte.
+- CSS `b1Veille.css` : `.b1-veille-mini*` (grille 90×90px + CTA ambre).
+
+#### Simplification "Mes opportunités" — max 2 actions
+- `B1MesMandats.jsx` : suppression de `StatutToggle` (3 boutons) et des 2 boutons rapides « Déjà en vente » + « Abandon ».
+- Nouveau `StatutSelect` : un unique `<select>` avec les 5 statuts. Choisir `abandon` → double confirm, `deja_en_vente` → instant, autres → simple changement.
+- Résultat : **exactement 2 actions** dans la vue détail : « Estimer ce bien » (primary) + sélecteur statut.
+
+#### Plan Découverte — écran-bloc neutre au lieu d'erreur
+- `B1Estimation.jsx` : sur 402 quota estimation épuisé, on ne pousse plus le code d'erreur avant de naviguer → navigation directe vers `/app-b1/veille/paywall` (écran-bloc neutre existant, icône Eye ambre).
+
+#### Login — animation + spinner loading
+- `V2AuthPage.js` : logo `KOLO` avec animation `pulse` (3.6s ease-in-out), form avec animation `fade + lift` à l'apparition (0.55s cubic-bezier). Respect `prefers-reduced-motion`.
+- Boutons `Send my code` et `Verify` : spinner CSS blanc 16px + texte à droite au lieu de simple label texte.
+
+### PDF WeasyPrint — curl à lancer côté prod
+Voir la fin de session pour le curl exact.
+
+### Ne PAS faire (rappel utilisateur)
+- Gamification streak avec flamme, bonus 7 jours et notif 20h — refusée par l'utilisateur tant que le pool n'est pas fiable.
+

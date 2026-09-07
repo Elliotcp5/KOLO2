@@ -163,6 +163,27 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "laennec mermoz": "lyon-laennec-mermoz",
     "mermoz": "lyon-laennec-mermoz",
     "lyon 8eme": "lyon-8",
+    # Marseille — arrondissements + quartiers 13008/13013 remontés par Apify
+    "marseille-8": "marseille-8", "marseille 8": "marseille-8", "marseille 8e": "marseille-8",
+    "marseille-13": "marseille-13", "marseille 13": "marseille-13", "marseille 13e": "marseille-13",
+    "prado - saint-giniez": "marseille-prado", "prado saint-giniez": "marseille-prado",
+    "prado saint giniez": "marseille-prado", "prado": "marseille-prado", "saint-giniez": "marseille-prado",
+    "roy d espagne": "marseille-roy-d-espagne", "roy-d-espagne": "marseille-roy-d-espagne",
+    "roy d'espagne": "marseille-roy-d-espagne",
+    "madrague de montredon": "marseille-madrague-montredon",
+    "madrague-de-montredon": "marseille-madrague-montredon",
+    "madrague montredon": "marseille-madrague-montredon",
+    "vieille chapelle": "marseille-vieille-chapelle",
+    "bonneveine": "marseille-bonneveine",
+    "sainte anne": "marseille-sainte-anne", "sainte-anne": "marseille-sainte-anne",
+    "perier": "marseille-perier", "périer": "marseille-perier",
+    "rouet": "marseille-rouet",
+    "menpenti": "marseille-menpenti",
+    # Lyon — quartiers 69003 manquants
+    "lyon-3": "lyon-3",
+    "garibaldi": "lyon-3", "gambetta": "lyon-3",
+    "lacassagne": "lyon-3", "montchat lacassagne": "lyon-3",
+    "villeurbanne": "lyon-villeurbanne", "monplaisir la plaine": "lyon-monplaisir",
     "lyon 8e": "lyon-8",
     "lyon 8": "lyon-8",
     "lyon 9eme": "lyon-9",
@@ -185,24 +206,15 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "marseille 7eme": "marseille-7",
     "marseille 7": "marseille-7",
     "marseille 8eme": "marseille-8",
-    "marseille 8": "marseille-8",
-    "prado": "marseille-perier",
-    "perier": "marseille-perier",
     "bagatelle": "marseille-perier",
-    "bonneveine": "marseille-bonneveine",
-    "sainte-anne": "marseille-sainte-anne",
-    "sainte anne": "marseille-sainte-anne",
     "carre d or": "marseille-perier",
     "carre d'or": "marseille-perier",
-    "le rouet": "marseille-le-rouet",
-    "rouet": "marseille-le-rouet",
-    "saint giniez": "marseille-saint-giniez",
-    "saint-giniez": "marseille-saint-giniez",
+    "le rouet": "marseille-rouet",
+    "saint giniez": "marseille-prado",
     "montredon": "marseille-montredon",
     "la pointe rouge": "marseille-la-pointe-rouge",
     "pointe rouge": "marseille-la-pointe-rouge",
     "la plage": "marseille-la-plage",
-    "vieille chapelle": "marseille-vieille-chapelle",
     "les goudes": "marseille-les-goudes",
     "marseille 9eme": "marseille-9",
     "marseille 9": "marseille-9",
@@ -213,7 +225,6 @@ LABEL_TO_QUARTIER: dict[str, str] = {
     "marseille 12eme": "marseille-12",
     "marseille 12": "marseille-12",
     "marseille 13eme": "marseille-13",
-    "marseille 13": "marseille-13",
     "marseille 14eme": "marseille-14",
     "marseille 14": "marseille-14",
     "marseille 15eme": "marseille-15",
@@ -437,6 +448,10 @@ def label_to_quartier(district: Optional[str]) -> tuple[Optional[str], bool]:
       - `slug` = None si non reconnu (ou district vide).
       - `is_unknown` = True si le libellé est non-vide mais inconnu (à
         journaliser). False si le district est vide (absence légitime).
+
+    **Build 81 fix** : Apify remonte des libellés préfixés « Marseille 13008
+    Prado - Saint-Giniez » ou « Lyon 3e Garibaldi ». On essaie le libellé
+    complet puis, à défaut, le libellé stripé du préfixe ville + CP + arrond.
     """
     if not district:
         return None, False
@@ -446,6 +461,25 @@ def label_to_quartier(district: Optional[str]) -> tuple[Optional[str], bool]:
     slug = LABEL_TO_QUARTIER.get(key)
     if slug:
         return slug, False
+
+    # Retirer le préfixe ville + CP + arrondissement s'il existe.
+    #   « marseille 13008 prado - saint-giniez » → « prado - saint-giniez »
+    #   « lyon 69003 garibaldi »                → « garibaldi »
+    #   « marseille 8e »                        → « marseille-8 » (arrondt seul)
+    #   « lyon 3e »                             → « lyon-3 »
+    stripped = re.sub(r"^(marseille|lyon|paris)\s+\d{5}\s+", "", key)
+    if stripped != key:
+        slug = LABEL_TO_QUARTIER.get(stripped)
+        if slug:
+            return slug, False
+    # Libellé « marseille 8e » ou « lyon 3e » (arrondissement sans quartier)
+    m = re.match(r"^(marseille|lyon)\s+(\d{1,2})(?:er|e|eme)?$", key)
+    if m:
+        arrond_key = f"{m.group(1)}-{m.group(2)}"
+        slug = LABEL_TO_QUARTIER.get(arrond_key)
+        if slug:
+            return slug, False
+
     # Libellé non reconnu → log une fois par run
     if key not in _UNKNOWN_LABELS_SEEN:
         _UNKNOWN_LABELS_SEEN.add(key)

@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronDown, ChevronUp, MapPin, XCircle, Check, Award,
+  ArrowLeft, ChevronDown, ChevronUp, MapPin, Check, Award,
 } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
@@ -88,32 +88,37 @@ function StatutPastille({ statut }) {
 }
 
 // ============================================================================
-// StatutToggle — 3 boutons segment pour changer rapidement de statut
-//
-// À démarcher → Démarché → Mandat signé.
-// L'abandon a sa propre entrée avec double confirmation.
+// StatutSelect — sélecteur unique pour changer de statut (regroupe les 5
+// actions : à démarcher / démarché / mandat signé / déjà en vente / abandon).
+// Remplace l'ancien StatutToggle + 2 boutons rapides afin de tenir la promesse
+// « max 2 actions dans la vue détail » (l'autre étant « Estimer ce bien »).
 // ============================================================================
-function StatutToggle({ current, onChange }) {
+function StatutSelect({ current, onSelect }) {
   const options = [
     { key: 'a_demarcher' },
     { key: 'demarche' },
     { key: 'mandat_signe' },
+    { key: 'deja_en_vente' },
+    { key: 'abandon' },
   ];
   return (
-    <div className="b1-mm-toggle" data-testid="b1-mm-toggle">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          className="b1-mm-toggle-btn"
-          data-active={current === o.key}
-          data-key={o.key}
-          data-testid={`b1-mm-toggle-${o.key}`}
-          onClick={() => onChange(o.key)}
-        >
-          {b1t(`opp.statut.${o.key}`)}
-        </button>
-      ))}
-    </div>
+    <label className="b1-mm-select" data-testid="b1-mm-statut-select">
+      <span className="b1-mm-select-label">
+        {b1t('opp.mes_mandats.detail.statut') || 'Statut'}
+      </span>
+      <select
+        className="b1-mm-select-input"
+        value={current}
+        data-testid="b1-mm-statut-select-input"
+        onChange={(e) => onSelect(e.target.value)}
+      >
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {b1t(`opp.statut.${o.key}`)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -174,9 +179,8 @@ function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer }
           {opp.note && (
             <div className="b1-mm-note">{opp.note}</div>
           )}
-          {/* Bouton « Estimer ce bien » — pré-remplit l'onglet Estimation avec
-              tout ce que le DPE fournit (type, surface, DPE, adresse, étage).
-              Nav via location.state, jamais via redirect vers accueil. */}
+          {/* Bouton « Estimer ce bien » — action principale, gardée en primary.
+              Pré-remplit l'onglet Estimation avec tout ce que le DPE fournit. */}
           <button
             className="b1-pill b1-pill--primary b1-pill--fullwidth"
             data-testid={`b1-mm-estimer-${opp.id}`}
@@ -188,35 +192,17 @@ function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer }
           >
             {b1t('opp.mes_mandats.estimer')}
           </button>
-          {/* Actions rapides : ne s'affichent QUE si la carte n'est pas déjà
-              sortie du pipeline (abandon / déjà en vente). */}
-          {(opp.statut === 'a_demarcher'
-            || opp.statut === 'demarche'
-            || opp.statut === 'mandat_signe') && (
-            <>
-              <StatutToggle
-                current={opp.statut}
-                onChange={(s) => onStatutChange(opp.id, s)}
-              />
-              <div className="b1-mm-card-actions">
-                <button
-                  className="b1-mm-quick-btn b1-mm-quick-btn--vente"
-                  data-testid={`b1-mm-deja-en-vente-${opp.id}`}
-                  onClick={() => onDejaEnVente(opp.id)}
-                >
-                  {b1t('opp.mes_mandats.deja_en_vente')}
-                </button>
-                <button
-                  className="b1-mm-quick-btn b1-mm-quick-btn--abandon"
-                  data-testid={`b1-mm-abandonner-${opp.id}`}
-                  onClick={() => onAbandon(opp.id)}
-                >
-                  <XCircle size={16} style={{ marginRight: 4 }} />
-                  {b1t('opp.statut.abandon')}
-                </button>
-              </div>
-            </>
-          )}
+          {/* Action 2 (unique) — sélecteur qui regroupe les 5 statuts.
+              Abandon déclenche la double confirmation, déjà en vente est
+              instantané, les 3 autres sont un simple changement de statut. */}
+          <StatutSelect
+            current={opp.statut}
+            onSelect={(s) => {
+              if (s === 'abandon') return onAbandon(opp.id);
+              if (s === 'deja_en_vente') return onDejaEnVente(opp.id);
+              if (s !== opp.statut) return onStatutChange(opp.id, s);
+            }}
+          />
         </div>
       )}
     </div>

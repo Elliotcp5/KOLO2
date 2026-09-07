@@ -162,6 +162,7 @@ export function OpportunitesPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [veilleDispo, setVeilleDispo] = useState(false);
+  const [veilleCards, setVeilleCards] = useState([]);
   const [pending, setPending] = useState(false);
   const cur = items[idx];
 
@@ -247,7 +248,9 @@ export function OpportunitesPage() {
         const { veilleApi } = await import('./B1Veille');
         const r = await veilleApi.fileDuJour();
         if (cancelled) return;
-        setVeilleDispo(r.actif && (r.cartes || []).length > 0);
+        const cartes = r.cartes || [];
+        setVeilleDispo(r.actif && cartes.length > 0);
+        setVeilleCards(cartes);
       } catch (_e) { /* 402 Découverte ou 401 anonyme → pas d'intercalaire */ }
     })();
     return () => { cancelled = true; };
@@ -301,9 +304,9 @@ export function OpportunitesPage() {
             <FinDePileScreen
               veilleSlot={veilleDispo ? (
                 <React.Suspense fallback={null}>
-                  <VeilleIntercalaireLazy
-                    onOuvrir={() => navigate('/app-b1/veille')}
-                    onPlusTard={() => setVeilleDispo(false)}
+                  <VeilleMiniListLazy
+                    cards={veilleCards}
+                    onOpen={() => navigate('/app-b1/veille')}
                   />
                 </React.Suspense>
               ) : null}
@@ -332,6 +335,9 @@ export function OpportunitesPage() {
 // Lazy-loaded veille intercalaire — evite le cycle d'import
 const VeilleIntercalaireLazy = React.lazy(() =>
   import('./B1Veille').then((m) => ({ default: m.VeilleIntercalaire }))
+);
+const VeilleMiniListLazy = React.lazy(() =>
+  import('./B1Veille').then((m) => ({ default: m.VeilleMiniList }))
 );
 
 // ============================================================================

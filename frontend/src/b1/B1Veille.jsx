@@ -287,6 +287,53 @@ export function MesVeilleSuivisPage() {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// VeilleMiniList — vignettes compactes pour l'End-of-Stack
+//   • max 3 cartes (adresse + miniature ou pictogramme)
+//   • tap = navigation vers la pile complète /app-b1/veille
+//   • fetch autonome (le parent lui passe juste la liste)
+// ---------------------------------------------------------------------------
+export function VeilleMiniList({ cards = [], onOpen }) {
+  if (!cards || cards.length === 0) return null;
+  const items = cards.slice(0, 3);
+  return (
+    <div className="b1-veille-mini" data-testid="b1-veille-mini">
+      <div className="b1-veille-mini-titre">
+        {b1t('veille.intercalaire.titre')}
+      </div>
+      <div className="b1-veille-mini-grid">
+        {items.map((c) => (
+          <button
+            type="button"
+            key={c.listing_id}
+            className="b1-veille-mini-card"
+            data-testid={`b1-veille-mini-card-${c.listing_id}`}
+            onClick={onOpen}
+          >
+            <div className="b1-veille-mini-thumb">
+              {c.thumbnail_url ? (
+                <img src={c.thumbnail_url} alt="" loading="lazy" />
+              ) : (
+                <Home size={26} strokeWidth={1.4} />
+              )}
+            </div>
+            <div className="b1-veille-mini-adresse">{c.adresse || '—'}</div>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="b1-veille-mini-cta"
+        data-testid="b1-veille-mini-cta"
+        onClick={onOpen}
+      >
+        {b1t('veille.intercalaire.cta')}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page pile de veille (accessible via l'intercalaire ou par deeplink)
 // ---------------------------------------------------------------------------
 export function VeillePileDuJourPage() {

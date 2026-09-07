@@ -1628,10 +1628,94 @@
    utilisent padding-top DIRECT (pas shorthand) pour ne PAS être écrasées. */
 .b1-page,
 .b1-root {
-  padding-top: env(safe-area-inset-top) !important;
+  padding-top: calc(env(safe-area-inset-top) + 12px) !important;
 }
 /* Header interne (BackHeader, ShellHeader) — marge sous la barre d'état */
 .b1-back-header,
 .b1-opp-header {
   padding-top: 12px !important;
+}
+
+/* ================================================================
+   b1-mm-select — sélecteur unique (statut) pour la vue détail
+   Mes opportunités. Remplace le trio de boutons segment + les 2
+   boutons rapides afin d'avoir max 2 actions par carte détail.
+   ================================================================ */
+.b1-mm-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.b1-mm-select-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.b1-mm-select-input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23111827' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.b1-mm-select-input:focus {
+  outline: 2px solid #EC8690;
+  outline-offset: 2px;
+}
+
+/* ================================================================
+   Écran de connexion — animation d'apparition (build 2.21+)
+   Logo pulse subtil, form fade+lift à l'ouverture. Respect
+   `prefers-reduced-motion` : aucune animation dans ce cas.
+   ================================================================ */
+@keyframes b1-auth-fade-lift {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes b1-auth-logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.b1-auth-appear {
+  animation: b1-auth-fade-lift 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.b1-auth-logo {
+  animation: b1-auth-logo-pulse 3.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .b1-auth-appear, .b1-auth-logo { animation: none !important; }
+}
+
+/* Bouton chargement : spinner inline + texte à droite */
+.b1-btn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.b1-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #FFFFFF;
+  animation: b1-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes b1-spin {
+  to { transform: rotate(360deg); }
+}
+.b1-pill--primary:disabled .b1-spinner {
+  border-color: rgba(255, 255, 255, 0.4);
+  border-top-color: #FFFFFF;
 }

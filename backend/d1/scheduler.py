@@ -43,6 +43,54 @@ async def _log_run(db, job: str, start_iso: str, status: str,
     })
 
 
+async def _run_scraper_quotidien(db):
+    """Job 0 — 02h00 Paris — kick-off le scrape Apify + ingest Supabase pour
+    toutes les zones actives.
+
+    Pourquoi 02h00 : la génération à 03h00 lit la fraîcheur du dernier scrape
+    via `_facteur_fraicheur`. Si le scrape date de >5j, `f_frais` tombe à 0 et
+    zéro opportunité passe le seuil, quel que soit le seuil. Le scrape doit
+    donc précéder la génération dans la nuit.
+    """
+    start = _now_iso()
+    try:
+        from scripts.scrape_listings_cron import run_once as _scrape_run
+        from scripts.ingest_apify import ingest_runs
+        scrape = await _scrape_run()
+        run_ids = list(scrape.get("run_ids") or [])
+        ingest: dict = {}
+        if run_ids:
+            ingest = await ingest_runs(run_ids, stale_hours=48)
+        # Persist marker read by /api/v2/admin/scraper/status
+        now_iso = _now_iso()
+        await db.v2_scraper_last_run.update_one(
+            {"_id": "singleton"},
+            {"$set": {
+                "last_run_at": now_iso,
+                "scrape": {
+                    "batches": scrape.get("batches"),
+                    "total_upserted": scrape.get("total_upserted"),
+                    "total_unique": scrape.get("total_unique"),
+                    "target_zips_count": scrape.get("target_zips_count"),
+                    "error": scrape.get("error"),
+                },
+                "ingest": {
+                    "inserted": ingest.get("inserted"),
+                    "updated": ingest.get("updated"),
+                    "deactivated": ingest.get("deactivated"),
+                    "items_fetched": ingest.get("items_fetched"),
+                    "error": ingest.get("error"),
+                },
+            }},
+            upsert=True,
+        )
+        await _log_run(db, "scraper_quotidien", start, "done",
+                       summary={"scrape": scrape, "ingest": ingest})
+    except Exception as e:
+        await _log_run(db, "scraper_quotidien", start, "failed",
+                       error=f"{type(e).__name__}: {e}")
+
+
 async def _run_generer_opportunites(db):
     """Job 1 — génère sur toutes les zones actives."""
     from a3.job_generer_opportunites import run_generer_opportunites
@@ -163,6 +211,11 @@ def start_scheduler(db, force: bool = False):
             pass
         _scheduler = None
     sched = AsyncIOScheduler(timezone=TZ)
+    # Job 0 (scrape Apify+ingest Supabase) 02h00 Paris — précède obligatoirement
+    # la génération (03h00) sinon la fraîcheur tombe à 0 après 5j.
+    sched.add_job(lambda: asyncio.create_task(_run_scraper_quotidien(db)),
+                  CronTrigger(hour=2, minute=0, timezone=TZ), id="scraper_quotidien",
+                  replace_existing=True)
     # Job 1 (génération 03h00) est déjà géré par `a3.scheduler` — on ne le
     # réenregistre pas ici pour éviter le doublon. On garde la fonction
     # `_run_generer_opportunites` pour /api/d1/admin/run-job manuel uniquement.
@@ -177,5 +230,5 @@ def start_scheduler(db, force: bool = False):
                   id="recharger_decouverte_hebdo", replace_existing=True)
     sched.start()
     _scheduler = sched
-    logger.info("[d1.scheduler] démarré (Europe/Paris) — 3 jobs planifiés (généra déléguée à a3)")
+    logger.info("[d1.scheduler] démarré (Europe/Paris) — 4 jobs planifiés (généra déléguée à a3)")
     return sched

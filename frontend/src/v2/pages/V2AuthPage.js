@@ -75,7 +75,7 @@ export default function V2AuthPage({ mode = 'login' }) {
   };
 
   return (
-    <div className="b1-root" data-testid="auth-root">
+    <div className="b1-root b1-auth-root" data-testid="auth-root">
       <div
         style={{
           minHeight: '100vh',
@@ -87,15 +87,16 @@ export default function V2AuthPage({ mode = 'login' }) {
           position: 'relative',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 380 }}>
+        <div style={{ width: '100%', maxWidth: 380 }} className="b1-auth-appear">
           {/* Logotype KOLO — texte stylé (le PNG ne s'affichait pas au
               packaging Capacitor malgré plusieurs tentatives). Retour build
               2.20 : l'utilisateur accepte le repli texte. League Spartan,
               gras, noir, interlettrage resserré, centré. Ça doit ressembler
               à un logotype, pas à un titre de page. */}
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }} className="b1-auth-logo-wrap">
             <div
               data-testid="auth-logo"
+              className="b1-auth-logo"
               style={{
                 fontFamily: '"League Spartan", "DM Sans", system-ui, -apple-system, sans-serif',
                 fontWeight: 900,
@@ -148,7 +149,12 @@ export default function V2AuthPage({ mode = 'login' }) {
                 disabled={busy || !emailValid}
                 data-testid="auth-send-code"
               >
-                {busy ? b1t('sys.un_instant') : b1t('auth.send_code')}
+                {busy ? (
+                  <span className="b1-btn-loading" data-testid="auth-send-code-spinner">
+                    <span className="b1-spinner" aria-hidden />
+                    {b1t('sys.un_instant')}
+                  </span>
+                ) : b1t('auth.send_code')}
               </button>
 
               <p className="b1-small" style={{ textAlign: 'center', marginTop: 24, color: 'var(--b1-text-muted)' }}>
@@ -201,7 +207,12 @@ export default function V2AuthPage({ mode = 'login' }) {
                 disabled={busy || code.length !== 6}
                 data-testid="auth-verify"
               >
-                {busy ? b1t('auth.checking') : b1t('auth.confirm')}
+                {busy ? (
+                  <span className="b1-btn-loading" data-testid="auth-verify-spinner">
+                    <span className="b1-spinner" aria-hidden />
+                    {b1t('auth.checking')}
+                  </span>
+                ) : b1t('auth.confirm')}
               </button>
               <button
                 className="b1-pill b1-pill--ghost b1-pill--fullwidth"

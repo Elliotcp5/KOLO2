@@ -233,10 +233,14 @@ export function EstimationFlowPage() {
       setResult(res);
       clearDraft(draftKey);
     } catch (e) {
-      setError(e?.data?.detail?.code || e?.message || 'erreur');
-      if ((e?.data?.detail?.code === 'quota_estimation_epuise') && e?.status === 402) {
+      const code = e?.data?.detail?.code || e?.message || 'erreur';
+      // 402 = Découverte quota épuisé → écran-bloc neutre, PAS d'erreur affichée
+      if ((code === 'quota_estimation_epuise' || code === 'plan_estimation')
+          && e?.status === 402) {
         navigate('/app-b1/veille/paywall');
+        return;
       }
+      setError(code);
     } finally {
       setCalc(false);
     }
