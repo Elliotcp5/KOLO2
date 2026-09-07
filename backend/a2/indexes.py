@@ -151,4 +151,34 @@ async def ensure_a2_indexes(db) -> dict[str, list[str]]:
 
     for coll, names in created.items():
         logger.info(f"a2.ensure_indexes: {coll} → {names}")
+
+    # ---- Boot check : doublons d'email dans users -------------------------
+    # Détecte les cas où plusieurs docs `users` partagent le même email
+    # (bug historique corrigé build 2.22.2 : seed super admin en UUID vs
+    # login V2 en `u_{hex[:16]}`). On journalise en WARNING pour que le
+    # directeur voit immédiatement le pb avant que ça retombe en support.
+    try:
+        pipe = [
+            {"$match": {"email": {"$exists": True, "$ne": None}}},
+            {"$group": {"_id": {"$toLower": "$email"},
+                         "n": {"$sum": 1},
+                         "user_ids": {"$push": "$user_id"}}},
+            {"$match": {"n": {"$gt": 1}}},
+            {"$limit": 50},
+        ]
+        doublons = []
+        async for row in db.users.aggregate(pipe):
+            doublons.append({"email": row["_id"], "n": row["n"],
+                              "user_ids": row["user_ids"]})
+        if doublons:
+            logger.warning(
+                f"[users.doublons] {len(doublons)} email(s) avec plusieurs "
+                f"docs users — RUN /api/d1/admin/consolider-users pour "
+                f"réparer. Sample: {doublons[:3]}"
+            )
+        else:
+            logger.info("[users.doublons] aucun doublon détecté ✓")
+    except Exception as e:
+        logger.error(f"[users.doublons] boot check failed: {e}")
+
     return created

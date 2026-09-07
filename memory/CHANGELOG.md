@@ -1136,3 +1136,21 @@ Voir la fin de session pour le curl exact.
 ### Ne PAS faire (rappel utilisateur)
 - Gamification streak avec flamme, bonus 7 jours et notif 20h — refusée par l'utilisateur tant que le pool n'est pas fiable.
 
+
+## 7 septembre 2026 (soir) — Build 2.22.3 : Consolidation user_ids + boot check
+
+### Cause racine identifiée
+Deux chemins de création de comptes produisaient des formats d'user_id différents pour le même email :
+- **Seed super admin** (`server.py` L8858) : `str(uuid.uuid4())` → 36 chars, format UUID standard
+- **Login V2 email-code** (`v2_router.py` L1327) : `f"u_{uuid.uuid4().hex[:16]}"` → 18 chars
+
+Résultat prod : sur `pressardelliot@gmail.com` (directeur), 2 docs users coexistaient, la distribution avait posé `assigne_a=2110156f-...` (UUID) sur 10 opps, mais la session utilisait `u_bacf0ba33818`. `etat-compte` retournait 0.
+
+### Correctifs
+1. **`server.py`** — seed super admin unifie le format vers `u_{hex[:16]}`. Plus jamais deux formats sur les deux chemins.
+2. **`a2/indexes.py`** — boot check qui log WARNING si N emails ont plusieurs docs users. Signal directeur avant remontée support.
+3. **`d1/routes.py`** — `consolider-users` archive chaque doc supprimé dans `users_archived` avec `_archived_at`, `_archived_reason`, `_archived_email`, `_archived_merged_into_user_id`. Filtre strict `delete_one({user_id, email})` : impossible de croiser deux comptes différents.
+
+### Sessions iPhone après consolidation
+Le `session_token` ne change pas. Seul `user_sessions.user_id` est migré vers le canonical. La lookup `get_user_from_session` continue à fonctionner sans reconnexion iPhone, à condition que le canonical soit celui qui a le plus de sessions actives (recommandation automatique du diagnostic).
+

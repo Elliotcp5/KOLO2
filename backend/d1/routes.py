@@ -355,8 +355,10 @@ async def admin_consolider_users(payload: dict, request: Request):
         "user_sessions.user_id": 0,
         "dossiers.user_id": 0,
         "device_tokens.user_id": 0,
+        "users.archived": 0,
         "users.deleted": 0,
     }
+    from a2.tz import now_utc_iso
     for uid in others:
         r = await _db().opportunites.count_documents({"assigne_a": uid})
         plan["opportunites.assigne_a"] += r
@@ -383,9 +385,25 @@ async def admin_consolider_users(payload: dict, request: Request):
         if not dry_run and r:
             await _db().device_tokens.update_many(
                 {"user_id": uid}, {"$set": {"user_id": canonical}})
+    # Archive AVANT suppression — irréversible sinon. On tag chaque doc
+    # supprimé avec le canonical vers lequel il a été fusionné + la date.
+    for uid in others:
+        doc_to_archive = await _db().users.find_one({"user_id": uid, "email": e})
+        if doc_to_archive:
+            plan["users.archived"] += 1
+            if not dry_run:
+                await _db().users_archived.insert_one({
+                    **doc_to_archive,
+                    "_archived_at": now_utc_iso(),
+                    "_archived_reason": "consolidation_doublons_users",
+                    "_archived_email": e,
+                    "_archived_merged_into_user_id": canonical,
+                })
     plan["users.deleted"] = len(others)
     if not dry_run:
         for uid in others:
+            # Filtre strict par email + user_id — impossible de toucher
+            # un autre compte même en cas de collision d'user_id.
             await _db().users.delete_one({"user_id": uid, "email": e})
     return {
         "ok": True,
@@ -394,6 +412,7 @@ async def admin_consolider_users(payload: dict, request: Request):
         "canonical_user_id": canonical,
         "supprimes": others,
         "mutations": plan,
+        "archive_collection": "users_archived",
     }
 
 

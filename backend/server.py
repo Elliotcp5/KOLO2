@@ -8854,8 +8854,15 @@ async def startup_event():
             )
             logger.info(f"Super admin {seed_email} refreshed (Pro+ lifetime)")
         else:
+            # Format user_id UNIFIÉ avec v2_router.verify-email-code
+            # (build 2.22.2). Avant : `str(uuid.uuid4())` (36 chars) → créait
+            # un second doc quand l'utilisateur se connectait ensuite par
+            # code email, qui insérait un doc `u_{hex[:16]}` en pensant que
+            # l'email n'existait pas encore (race / collation). Résultat :
+            # 2 docs users pour le même email → distribution utilisait un
+            # user_id, session l'autre, `etat-compte` retournait 0.
             await db.users.insert_one({
-                "user_id": str(uuid.uuid4()),
+                "user_id": f"u_{uuid.uuid4().hex[:16]}",
                 "email": seed_email,
                 "name": "Elliot Cohen-Pressard",
                 "password_hash": pwd_hash,
