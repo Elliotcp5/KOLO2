@@ -82,6 +82,7 @@ const STRINGS = {
 
     // Bottom nav
     'nav.opportunites': 'Opportunités',
+    'nav.profil': 'Profil',
     'nav.estimation': 'Estimation',
     'nav.rapport': 'Rapport',
     'nav.assistant': 'Assistant',
@@ -282,6 +283,7 @@ STRINGS.en = {
   'tour.6.texte': 'Your details, areas, and plan. Everything is editable anytime.',
 
   'nav.opportunites': 'Opportunities',
+  'nav.profil': 'Profile',
   'nav.estimation': 'Estimate',
   'nav.rapport': 'Report',
   'nav.assistant': 'Assistant',
@@ -469,6 +471,7 @@ STRINGS.it = {
   'tour.6.titre': 'Profilo',
   'tour.6.texte': 'I tuoi dati, le tue zone, il tuo piano. Tutto è modificabile in qualsiasi momento.',
   'nav.opportunites': 'Opportunità',
+  'nav.profil': 'Profilo',
   'nav.estimation': 'Stima',
   'nav.rapport': 'Pratica',
   'nav.assistant': 'Assistente',
@@ -649,6 +652,7 @@ STRINGS.de = {
   'tour.6.titre': 'Profil',
   'tour.6.texte': 'Ihre Angaben, Ihre Gebiete, Ihr Tarif. Alles jederzeit änderbar.',
   'nav.opportunites': 'Chancen',
+  'nav.profil': 'Profil',
   'nav.estimation': 'Schätzung',
   'nav.rapport': 'Dossier',
   'nav.assistant': 'Assistent',

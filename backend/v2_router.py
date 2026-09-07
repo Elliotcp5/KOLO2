@@ -1293,7 +1293,7 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
             "user_id": existing["user_id"],
             "email": existing["email"],
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=90)).isoformat(),
         })
         return await _build_a2_auth_response(db, session_token, existing, new_user=False)
 
@@ -1319,7 +1319,7 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
             "user_id": existing["user_id"],
             "email": existing["email"],
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=90)).isoformat(),
         })
         return await _build_a2_auth_response(db, session_token, existing, new_user=False)
 
@@ -1366,7 +1366,7 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
         "user_id": user_id,
         "email": email,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=90)).isoformat(),
     })
     new_user_doc = await db.users.find_one({"user_id": user_id}) or user_doc
     return await _build_a2_auth_response(db, session_token, new_user_doc, new_user=True)

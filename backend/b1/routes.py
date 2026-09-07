@@ -331,6 +331,11 @@ async def get_my_profil(request: Request):
             "code_postal_perso": user.get("code_postal_perso"),
             "ville_perso": user.get("ville_perso"),
             "role": user.get("role"),
+            "organisation_id": (
+                str(user["organisation_id"])
+                if user.get("organisation_id") else None
+            ),
+            "directeur_prospecte": bool(user.get("directeur_prospecte", False)),
             "statut_declare": user.get("statut_declare"),
             "plan": user.get("plan"),
             "plan_depuis": user.get("plan_depuis"),

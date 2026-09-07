@@ -694,7 +694,8 @@ async def process_auth_session(request: AuthSessionRequest, response: Response):
         await db.users.insert_one(user_doc)
         subscription_status = "none"
     
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+    expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     session = UserSession(
         user_id=user_id,
         session_token=session_token,
@@ -4213,7 +4214,8 @@ async def create_account_after_payment(request: CreateAccountRequest, response: 
         # Create session
         logger.debug("Step 6: Creating session")
         session_token = f"sess_{uuid.uuid4().hex}"
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+        expires_at = datetime.now(timezone.utc) + timedelta(days=90)
         user_session = UserSession(
             user_id=user_id,
             session_token=session_token,
@@ -4350,7 +4352,8 @@ async def register_free_trial(request: Request, register_data: RegisterRequest, 
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+    expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     user_session = UserSession(
         user_id=user_id,
         session_token=session_token,
@@ -4478,7 +4481,8 @@ async def login_with_password(request: Request, login_data: LoginRequest, respon
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+    expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     session = UserSession(
         user_id=user["user_id"],
         session_token=session_token,
@@ -4631,7 +4635,8 @@ async def google_oauth_exchange(payload: GoogleExchangeRequest, response: Respon
 
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+    expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     await db.user_sessions.insert_one({
         "user_id": user["user_id"],
         "session_token": session_token,
@@ -4704,7 +4709,8 @@ async def recover_account(request: RecoverAccountRequest, response: Response, ht
     
     # Create session
     session_token = f"sess_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    # Session TTL — 90 jours. Retour build 80 : reconnexions constantes.
+    expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     session = UserSession(
         user_id=user_id,
         session_token=session_token,

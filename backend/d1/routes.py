@@ -288,6 +288,25 @@ async def admin_etat_jobs(request: Request):
     return out
 
 
+@router.post("/api/d1/admin/reload-scheduler")
+async def admin_reload_scheduler(request: Request):
+    """Force la réinitialisation du scheduler d1 + a3. Utile quand un pod
+    a redémarré en prod et que les jobs planifiés (distribuer_quotidien,
+    recycler_48h, recharger_decouverte_hebdo) ont été perdus."""
+    _check_admin(request)
+    from d1.scheduler import start_scheduler as start_d1
+    result = {"d1": None, "a3": None}
+    try:
+        s = start_d1(_db(), force=True)
+        result["d1"] = {
+            "running": bool(getattr(s, "running", False)),
+            "jobs": [j.id for j in s.get_jobs()],
+        }
+    except Exception as e:
+        result["d1"] = {"error": f"{type(e).__name__}: {e}"}
+    return {"ok": True, "schedulers": result}
+
+
 @router.post("/api/d1/admin/run-job")
 async def admin_run_job(request: Request):
     """Déclenche manuellement un job planifié. Body: {"job": "distribuer_quotidien"}."""

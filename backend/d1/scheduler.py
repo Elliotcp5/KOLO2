@@ -142,11 +142,26 @@ async def _run_recharger_decouverte(db):
                        error=f"{type(e).__name__}: {e}")
 
 
-def start_scheduler(db):
-    """Démarré au startup FastAPI. Idempotent."""
+def start_scheduler(db, force: bool = False):
+    """Démarré au startup FastAPI. Idempotent sauf si force=True.
+
+    Bug prod (build 80) : après un redémarrage du pod backend, le module reste
+    en mémoire du worker mais l'`AsyncIOScheduler` peut être stoppé. La garde
+    `if _scheduler is not None` renvoyait un objet mort. `force=True` permet
+    un reset complet via l'endpoint admin `/api/d1/admin/reload-scheduler`.
+    """
     global _scheduler
+    if _scheduler is not None and not force:
+        # Vérifie que le scheduler est bien VIVANT (running)
+        if getattr(_scheduler, "running", False):
+            return _scheduler
+        logger.warning("[d1.scheduler] scheduler existant mais mort — restart forcé")
     if _scheduler is not None:
-        return _scheduler
+        try:
+            _scheduler.shutdown(wait=False)
+        except Exception:
+            pass
+        _scheduler = None
     sched = AsyncIOScheduler(timezone=TZ)
     # Job 1 (génération 03h00) est déjà géré par `a3.scheduler` — on ne le
     # réenregistre pas ici pour éviter le doublon. On garde la fonction

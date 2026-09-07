@@ -1425,11 +1425,12 @@
 
 .b1-mm-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  flex-wrap: wrap;   /* la pastille passe en dessous si l'adresse est longue */
 }
 .b1-mm-card-header-main {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
 }
 .b1-mm-card-address {
@@ -1440,6 +1441,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 .b1-mm-card-meta {
   margin-top: 3px;
@@ -1600,4 +1602,36 @@
 .b1-fin-pile-recap strong {
   color: #EC8690;
   font-weight: 700;
+}
+
+/* --- Masquer les scrollbars sur toute l'app B1 (retour build 80) ---
+   Aucune app iOS native n'affiche de scrollbar visible. */
+.b1-root, .b1-root *,
+.b1-page, .b1-page *,
+.b1-screen, .b1-screen * {
+  scrollbar-width: none;              /* Firefox */
+  -ms-overflow-style: none;           /* IE / Edge legacy */
+}
+.b1-root::-webkit-scrollbar,
+.b1-root *::-webkit-scrollbar,
+.b1-page::-webkit-scrollbar,
+.b1-page *::-webkit-scrollbar,
+.b1-screen::-webkit-scrollbar,
+.b1-screen *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none;
+}
+
+/* --- Zones sûres iOS RACINE — force safe-area-inset-top sur TOUS les
+   containers B1, même quand un style inline overrides le padding. Ces règles
+   utilisent padding-top DIRECT (pas shorthand) pour ne PAS être écrasées. */
+.b1-page,
+.b1-root {
+  padding-top: env(safe-area-inset-top) !important;
+}
+/* Header interne (BackHeader, ShellHeader) — marge sous la barre d'état */
+.b1-back-header,
+.b1-opp-header {
+  padding-top: 12px !important;
 }

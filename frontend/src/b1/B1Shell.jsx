@@ -410,13 +410,24 @@ export function ProfilPage() {
     { id: 'suppr', to: '/app-b1/profil/supprimer', icon: Trash2, label: b1t('profil.menu.suppr'), danger: true },
   ];
   const logout = () => {
+    // Purge COMPLETE : tokens + tour flag + caches API
     try { localStorage.removeItem('kolo_v2_session'); } catch {}
-    navigate('/app-v2/login');
+    try { localStorage.removeItem('kolo_token'); } catch {}
+    try { localStorage.removeItem('kolo_b1_show_tour'); } catch {}
+    try { localStorage.removeItem('kolo_zones_confirmees'); } catch {}
+    try {
+      // Purge tout item lié à KOLO (précaution)
+      const keys = Object.keys(localStorage);
+      keys.forEach((k) => { if (k.startsWith('kolo_')) localStorage.removeItem(k); });
+    } catch {}
+    try { sessionStorage.clear(); } catch {}
+    // Redirect vers login natif (racine app pour ne pas rester sur route protégée)
+    navigate('/app-v2/login', { replace: true });
   };
   return (
     <div className="b1-root">
       <div className="b1-screen">
-        <BackHeader label={b1t('nav.opportunites')} />
+        <BackHeader label={b1t('nav.profil')} />
         <div className="b1-profil-plan" data-testid="b1-profil-plan-card">
           <div className="b1-profil-plan-eyebrow">{b1t('profil.plan.titre')}</div>
           <div className="b1-profil-plan-name">
@@ -456,7 +467,6 @@ export function ProfilPage() {
         <button className="b1-logout" data-testid="b1-profil-logout" onClick={logout}>
           {b1t('profil.menu.logout')}
         </button>
-        <B1BuildStamp />
       </div>
     </div>
   );
