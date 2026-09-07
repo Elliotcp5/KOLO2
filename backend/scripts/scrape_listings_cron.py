@@ -84,10 +84,21 @@ APIFY_SOURCES = ["leboncoin", "pap", "seloger", "bienici", "logic-immo"]
 # 20 ZIPs at once returns ~1-2 items per ZIP (as we discovered in prod).
 # So we run ONE ZIP per Apify run, in parallel, with a small concurrency cap
 # to be nice to the Apify actor queue.
+# --------------------------------------------------------------------------
+# maxItems — anciennement 30 : le compteur limitait le scrape à ~76 items par
+# CP après dedupe (30 items × 5 sources - doublons URL). Résultat : sur les
+# 663 annonces actives du 13008, seules 76 étaient revues et les 587 autres
+# passaient hors fenêtre stale_hours=48. On monte à 1500 pour absorber les
+# plus grosses zones. L'acteur Apify facture au dataset item, mais le coût
+# ne monte QUE si les portails ont réellement 1500 annonces à retourner —
+# les petites zones restent bon marché.
+# --------------------------------------------------------------------------
 MAX_PARALLEL_RUNS = 5
-MAX_ITEMS_PER_ZIP = 30
+MAX_ITEMS_PER_ZIP = 1500
 POLL_INTERVAL_SEC = 5
-POLL_MAX_SEC = 180              # 3 min per single-ZIP run max
+POLL_MAX_SEC = 480              # 8 min max par run — le scrape sur 1500 items
+                                # peut prendre plus de 3 min quand un CP est
+                                # gros (75008, 13008).
 
 # Top-50 curated FR cities (biggest lead pools for real-estate agents).
 STATIC_TOP_ZIPS = [

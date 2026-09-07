@@ -368,6 +368,39 @@ async def _upsert_batch(client: httpx.AsyncClient, rows: list[dict]) -> int:
     return total
 
 
+async def _count_active_by_pc(
+    client: httpx.AsyncClient,
+    postal_codes: list[str],
+) -> dict[str, int]:
+    """Retourne le nombre d'annonces actives Supabase par code postal.
+
+    Utilisé par le garde-fou anti-appauvrissement d'`_ingest_one_run` : si
+    un scrape ramène <50 % de ce total pour un CP, la désactivation est
+    coupée pour préserver le pool.
+    """
+    if not postal_codes:
+        return {}
+    postal_codes = sorted({p for p in postal_codes if p})
+    if not postal_codes:
+        return {}
+    out: dict[str, int] = {p: 0 for p in postal_codes}
+    for pc in postal_codes:
+        try:
+            r = await client.head(
+                f"{SUPABASE_URL}/rest/v1/listings",
+                params={"postal_code": f"eq.{pc}", "is_active": "eq.true"},
+                headers={**_sb_headers(), "Prefer": "count=exact"},
+                timeout=15,
+            )
+            # Supabase renvoie le total dans Content-Range: "0-24/1234"
+            cr = r.headers.get("content-range") or ""
+            if "/" in cr:
+                out[pc] = int(cr.split("/")[-1])
+        except Exception as e:
+            logger.warning(f"count active for {pc} failed: {e}")
+    return out
+
+
 async def _deactivate_stale(
     client: httpx.AsyncClient,
     postal_codes: list[str],
@@ -477,8 +510,50 @@ async def _ingest_one_run(
         inserted = int(round(would_insert * ratio))
         updated = max(0, sent - inserted)
 
-    # Deactivation phase — GATED by the "clean run" heuristic.
-    # And restricted to postal codes that were EXPLICITLY in the run input.
+    # A1 — comptage par code postal (utilisé aussi par le garde-fou).
+    items_by_pc: dict[str, int] = {}
+    for r in rows:
+        pc = r.get("postal_code")
+        if not pc:
+            continue
+        items_by_pc[pc] = items_by_pc.get(pc, 0) + 1
+
+    # ------------------------------------------------------------------
+    # Garde-fou anti-appauvrissement (build 2.22)
+    # ------------------------------------------------------------------
+    # Contexte : le 6 septembre, un scrape a ramené 76 items sur le 13008
+    # alors que la base contenait 663 annonces actives. Sans garde-fou,
+    # les 587 « non revues » seraient sorties de la fenêtre stale_hours=48
+    # et auraient été désactivées, faisant chuter le pool.
+    #
+    # Règle : pour chaque CP en entrée, on compare items remontés vs.
+    # annonces actives Supabase pré-run. Si un seul CP tombe sous 50 %
+    # (avec plancher 20 pour éviter les faux positifs sur petits CP),
+    # le run est marqué unclean : aucune désactivation, log warning,
+    # `reason` explicite, `undercoverage` liste les CP fautifs.
+    undercoverage: list[dict] = []
+    if input_pcs:
+        prev_counts = await _count_active_by_pc(client, input_pcs)
+        for pc in input_pcs:
+            new = items_by_pc.get(pc, 0)
+            prev = prev_counts.get(pc, 0)
+            if prev >= 20 and new < 0.5 * prev:
+                undercoverage.append({
+                    "pc": pc, "prev": prev, "new": new,
+                    "pct": round(100 * new / max(prev, 1), 1),
+                })
+        if undercoverage:
+            logger.warning(
+                f"[run {run_id}] UNDER-COVERAGE detected on "
+                f"{len(undercoverage)} postal code(s): {undercoverage[:5]} "
+                f"→ deactivation DISABLED"
+            )
+            clean = False
+            reason = f"under_coverage on {len(undercoverage)} PCs"
+
+    # Deactivation phase — GATED by the "clean run" heuristic (incluant le
+    # garde-fou anti-appauvrissement ci-dessus).
+    # Restricted to postal codes that were EXPLICITLY in the run input.
     # allow_deactivate=False (mode incremental du webhook) court-circuite tout.
     deactivated = 0
     if allow_deactivate and clean and input_pcs:
@@ -493,14 +568,6 @@ async def _ingest_one_run(
             f"[run {run_id}] deactivation skipped — allow_deactivate={allow_deactivate}, "
             f"clean={clean}, reason={reason}, input_pcs={len(input_pcs)}"
         )
-
-    # A1 — comptage par code postal pour alimenter zones_scraping (Mongo).
-    items_by_pc: dict[str, int] = {}
-    for r in rows:
-        pc = r.get("postal_code")
-        if not pc:
-            continue
-        items_by_pc[pc] = items_by_pc.get(pc, 0) + 1
 
     # A1 — portails distincts vus dans ce run (utile pour zones_scraping).
     sources = sorted({r["portal"] for r in rows if r.get("portal")})
@@ -522,6 +589,7 @@ async def _ingest_one_run(
         "reason": reason,
         "skipped": False,
         "items_by_postal_code": items_by_pc,
+        "undercoverage": undercoverage,  # ← nouveau, pour diagnostic
         "sources": sources,
         "allow_deactivate": allow_deactivate,
     }

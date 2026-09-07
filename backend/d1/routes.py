@@ -1017,6 +1017,83 @@ async def admin_normaliser_plans(request: Request):
     }
 
 
+@router.post("/api/d1/admin/pdf-dossier/{dossier_id}")
+async def admin_pdf_dossier(dossier_id: str, request: Request):
+    """Génère le PDF d'un dossier EXISTANT (par son ID) et retourne les
+    mêmes stats colorimétriques que `pdf-test` (build 2.22).
+
+    Complète `pdf-test` : `pdf-test` prouve que le renderer va bien avec un
+    doc minimal, celui-ci teste avec les VRAIES données du dossier — pour
+    isoler si le PDF noir vient d'une image d'entrée corrompue ou d'une
+    section HTML particulière du dossier de l'utilisateur.
+
+    Usage :
+        curl -sX POST "$API_URL/api/d1/admin/pdf-dossier/DOSSIER_ID" \\
+             -H "X-Admin-Secret: $ADMIN_SECRET" | jq .
+    """
+    _check_admin(request)
+    from c2.pdf.renderer import render_pdf
+    from pathlib import Path
+    db = _db()
+    dossier = await db.dossiers.find_one({"_id": dossier_id}) \
+              or await db.dossiers.find_one({"id": dossier_id})
+    if not dossier:
+        raise HTTPException(status_code=404, detail="dossier_introuvable")
+    # Construit le doc attendu par le renderer à partir du dossier
+    doc = {
+        "dossier_id": dossier_id,
+        "sections": dossier.get("sections") or {},
+    }
+    out = Path(f"/tmp/admin_pdf_dossier_{dossier_id}.pdf")
+    try:
+        render_pdf(doc, out)
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}",
+                "dossier_id": dossier_id,
+                "sections_keys": list(doc["sections"].keys())}
+    size = out.stat().st_size
+    verdict = "PDF correct"
+    avg = None
+    dark_pct = None
+    n_pages = None
+    try:
+        import pymupdf
+        d = pymupdf.open(str(out))
+        n_pages = len(d)
+        page = d[0]
+        pix = page.get_pixmap(dpi=72)
+        import random
+        samples = []
+        for _ in range(500):
+            x = random.randint(0, pix.width - 1)
+            y = random.randint(0, pix.height - 1)
+            p = pix.pixel(x, y)[:3]
+            samples.append(sum(p) / 3)
+        avg = sum(samples) / len(samples)
+        dark_pct = sum(1 for s in samples if s < 50) / len(samples) * 100
+        d.close()
+        if avg < 100:
+            verdict = "PDF NOIR (fond sombre injecté ou image corrompue)"
+        elif dark_pct > 30:
+            verdict = f"PDF assombri ({dark_pct:.1f}% pixels sombres)"
+    except Exception as e:
+        return {"ok": True, "size_bytes": size, "dossier_id": dossier_id,
+                "analyse_error": f"{type(e).__name__}: {e}"}
+    return {
+        "ok": True,
+        "dossier_id": dossier_id,
+        "size_bytes": size,
+        "pages": n_pages,
+        "luminosite_moyenne": round(avg, 1),
+        "pct_pixels_sombres_moins_50": round(dark_pct, 2),
+        "verdict": verdict,
+        "sections_keys": list(doc["sections"].keys()),
+        "chemin_disque": str(out),
+    }
+
+
+
+
 @router.get("/api/d1/admin/diagnostic-extraction-rues")
 async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
                                             limit: int = 3):
@@ -1079,7 +1156,7 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
                     "postal_code": f"eq.{cp}", "is_active": "eq.true",
                     "rue_extraite": "is.null",
                     "order": "scraped_at.desc",
-                    "limit": str(max(1, min(int(limit or 3), 10)))},
+                    "limit": str(max(1, min(int(limit or 3), 30)))},
             headers=_sb_headers(), timeout=15,
         )
         r3.raise_for_status()
@@ -1092,7 +1169,7 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
                                   "etage_extrait,scraped_at",
                         "postal_code": f"eq.{cp}", "is_active": "eq.true",
                         "order": "scraped_at.desc",
-                        "limit": str(max(1, min(int(limit or 3), 10)))},
+                        "limit": str(max(1, min(int(limit or 3), 30)))},
                 headers=_sb_headers(), timeout=15,
             )
             r3b.raise_for_status()
