@@ -52,10 +52,12 @@ export function DossierListPage() {
     } catch (e) { console.error(e); }
   };
 
-  if (items === null) return <div className="b1-root b1-page" data-testid="dos-list-loading"><p>{b1t('sys.un_instant')}</p></div>;
+  if (items === null) return <div className="b1-root b1-page" data-testid="dos-list-loading"><div style={{background:'#FF0000',color:'#FFF',height:40,fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>src/b1/B1Dossier.jsx</div><p>{b1t('sys.un_instant')}</p></div>;
 
   return (
-    <div className="b1-root b1-page" style={{ padding: '16px 20px 96px' }} data-testid="dos-list-page">
+    <div className="b1-root b1-page" style={{ padding: 0 }} data-testid="dos-list-page">
+      <div style={{background:'#FF0000',color:'#FFF',height:40,fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',zIndex:999999}}>src/b1/B1Dossier.jsx</div>
+      <div style={{ padding: '16px 20px 96px' }}>
       <h1 className="b1-h1" style={{ marginBottom: 12 }}>{b1t('nav.rapport')}</h1>
       {items.length === 0 && !creating && (
         <div className="b1-card" style={{ padding: 20 }} data-testid="dos-list-empty">
@@ -124,6 +126,7 @@ export function DossierListPage() {
           )}
         </div>
       )}
+      </div>
       <BottomTabPill active="rapport" />
     </div>
   );

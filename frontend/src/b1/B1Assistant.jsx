@@ -111,6 +111,7 @@ export function AssistantPage() {
 
   return (
     <div className="b1-root b1-page" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0 }} data-testid="as-page">
+      <div style={{background:'#FF0000',color:'#FFF',height:40,fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',zIndex:999999,flexShrink:0}}>src/b1/B1Assistant.jsx</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--b1-border)' }}>
         <Bot size={20} color="var(--b1-accent)" />
         <div style={{ flex: 1 }}>
