@@ -45,27 +45,35 @@
 
 .b3-rings {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 4px;
+  align-items: center;             /* centre vertical — cercles centrés sur le MÊME axe */
+  justify-content: center;         /* centre horizontal */
+  gap: 16px;
+  padding: 12px 4px;
 }
 .b3-ring {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center;             /* nombre + libellé alignés sur même axe */
+  justify-content: center;
 }
 .b3-ring-number {
+  /* Centrage parfait dans le cercle SVG */
   position: absolute;
-  top: 40%;
-  left: 0; right: 0;
-  transform: translateY(-50%);
-  text-align: center;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 26px;
   font-weight: 900;
   color: var(--b1-text-primary);
   line-height: 1;
+  /* Le libellé (position: static) est en dessous du SVG — on doit décaler
+     ce nombre pour qu'il reste centré dans le SVG et non sur toute la col */
+  padding-bottom: 26px;            /* compense la hauteur label + sub */
 }
 .b3-ring-label {
   color: var(--b1-accent);

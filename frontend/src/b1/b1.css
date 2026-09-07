@@ -79,11 +79,9 @@
 .b1-screen {
   max-width: 480px;
   margin: 0 auto;
-  /* Marges CRITIQUES : 20px horizontales + safe-area iOS haut (encoche /
-     Dynamic Island) + safe-area bas (barre navigation iOS) + 140px pour
-     laisser passer la tab bar fixe.
-     Retour build 2.20 : les textes touchaient les bords sur pages 3/4. */
-  padding: max(24px, calc(env(safe-area-inset-top) + 24px)) 20px
+  /* Zones sûres iOS + marges 20px horizontales garanties.
+     padding-bottom 140px pour passer par-dessus la tab bar fixed. */
+  padding: calc(env(safe-area-inset-top) + 24px) 20px
            calc(140px + env(safe-area-inset-bottom));
   min-height: 100vh;
   display: flex;
@@ -1203,7 +1201,8 @@
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Composer — position sticky au-dessus de la tab bar */
+/* Composer — flex enfant, plus de margin-bottom (le padding est sur le root
+   de l'assistant qui laisse déjà l'espace tab bar). */
 .as-composer {
   display: flex;
   gap: 10px;
@@ -1211,10 +1210,7 @@
   padding: 12px 16px 14px;
   background: #FFFFFF;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  /* CRITIQUE : marge basse pour laisser passer la tab bar fixed (76px) +
-     safe-area iOS (env). Sans ça, la barre du bas masque le champ de saisie
-     et le chat devient inutilisable. Retesté build 2.20. */
-  margin-bottom: calc(76px + env(safe-area-inset-bottom) + 20px);
+  flex-shrink: 0;
 }
 
 .as-input {
@@ -1315,58 +1311,51 @@
    Charte : rose #EC8690, lavande #F0EEF8, ambre #F59E0B pour veille.
    ============================================================= */
 .b1-mes-mandats-btn {
-  /* Position FIXED par rapport au viewport (comme la tab bar) — évite tout
-     souci de parent non-positionné. Toujours JUSTE au-dessus de la tab bar,
-     dans la même colonne visuelle. */
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(20px + env(safe-area-inset-bottom) + 76px + 12px);
-  z-index: 41;
-  display: inline-flex;
+  /* Version 2 (retour build 78/79) : PLEIN OPAQUE, dans le flow du contenu,
+     JAMAIS en position fixed — la fixed masque le contenu et chevauche.
+     Le rendu final : bouton pilule rose #EC8690 sous les cartes/hourglass. */
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 10px 18px 10px 14px;
-  min-height: 44px;
+  width: 100%;
+  max-width: 340px;
+  margin: 24px auto 8px;
+  padding: 0 20px;
+  min-height: 52px;
   border-radius: 999px;
   border: none;
-  background: #FFFFFF;
-  color: var(--b1-text, #111);
-  box-shadow: 0 6px 24px rgba(236, 134, 144, 0.28),
-              0 2px 8px rgba(17, 17, 17, 0.06);
-  font: 600 14px/1 'DM Sans', system-ui, sans-serif;
+  background: #EC8690;
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(236, 134, 144, 0.32);
+  font: 700 15px/1 'DM Sans', system-ui, sans-serif;
   cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease;
-  max-width: calc(100vw - 48px);
-  white-space: nowrap;
-}
-.b1-mes-mandats-btn:hover {
-  transform: translateX(-50%) translateY(-1px);
-  box-shadow: 0 8px 32px rgba(236, 134, 144, 0.36);
+  transition: transform 120ms ease, box-shadow 160ms ease;
 }
 .b1-mes-mandats-btn:active {
-  transform: translateX(-50%) translateY(0);
+  transform: scale(0.97);
+  box-shadow: 0 3px 10px rgba(236, 134, 144, 0.24);
 }
 .b1-mes-mandats-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
-  background: rgba(236, 134, 144, 0.14);
-  color: var(--b1-accent, #EC8690);
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
 }
 .b1-mes-mandats-btn-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
+  min-width: 24px;
   height: 22px;
-  padding: 0 7px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: var(--b1-accent, #EC8690);
-  color: #FFFFFF;
+  background: #FFFFFF;
+  color: #EC8690;
   font: 700 12px/1 'DM Mono', monospace;
 }
 
@@ -1501,45 +1490,40 @@
   font: 400 13px/1.4 'DM Sans', sans-serif;
 }
 
-/* Segment control statut — pastilles pleines colorées, non un menu caché */
+/* Segment control statut — 3 pastilles pleines colorées, très visibles */
 .b1-mm-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .b1-mm-toggle-btn {
-  padding: 12px 8px;
+  padding: 12px 6px;
   min-height: 44px;
-  border: 2px solid transparent;
+  border: 2px solid #E5E7EB;
   border-radius: 14px;
-  background: #F3F4F6;
-  color: #4B5563;
+  background: #FFFFFF;
+  color: #6B7280;
   font: 700 12px/1.15 'DM Sans', sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: transform 120ms ease, background 160ms ease, color 160ms ease,
-              box-shadow 160ms ease;
-  box-shadow: 0 1px 2px rgba(17,17,17,0.04);
+  transition: transform 100ms ease, background 160ms ease, color 160ms ease,
+              border-color 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 1px 3px rgba(17,17,17,0.04);
 }
-.b1-mm-toggle-btn:active {
-  transform: scale(0.96);
-}
-/* Actif — pastille pleine dans la couleur du statut */
+.b1-mm-toggle-btn:active { transform: scale(0.96); }
+/* Actif : PLEIN dans la couleur du statut, bordure de la même couleur */
 .b1-mm-toggle-btn[data-active="true"][data-key="a_demarcher"] {
-  background: #E5E7EB;
-  color: #1F2937;
+  background: #E5E7EB; color: #1F2937; border-color: #9CA3AF;
   box-shadow: 0 4px 12px rgba(31, 41, 55, 0.12);
 }
 .b1-mm-toggle-btn[data-active="true"][data-key="demarche"] {
-  background: #EC8690;
-  color: #FFFFFF;
+  background: #EC8690; color: #FFFFFF; border-color: #EC8690;
   box-shadow: 0 4px 14px rgba(236, 134, 144, 0.35);
 }
 .b1-mm-toggle-btn[data-active="true"][data-key="mandat_signe"] {
-  background: #10B981;
-  color: #FFFFFF;
+  background: #10B981; color: #FFFFFF; border-color: #10B981;
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 

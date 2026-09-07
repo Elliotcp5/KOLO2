@@ -212,6 +212,9 @@ export const patchStatutMandat = (id, statut) =>
   req(`/api/opportunites/${encodeURIComponent(id)}/statut-mandat`,
       { method: 'PATCH', body: { statut } });
 
+// --- Quota utilisateur (source de vérité du décompte fin de pile) ---
+export const getQuotaEtat = () => req('/api/me/quota-etat');
+
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
   getQuotas, getProfil, patchProfil, patchZones, deleteMe,
@@ -229,6 +232,6 @@ export const b1api = {
   getSuggestionsZones, confirmerZones,
   // Opportunités
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
-  getMesMandats, patchStatutMandat,
+  getMesMandats, patchStatutMandat, getQuotaEtat,
 };
 export default b1api;

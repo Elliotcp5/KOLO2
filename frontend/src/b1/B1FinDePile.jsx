@@ -77,18 +77,48 @@ function formatCountdown(totalSec) {
 }
 
 // ---------- Composant final ----------
-// Retour build 2.20 : l'écran restait trop vide.
-// AJOUTS : récap journée (X traitées / Y retenues) + bouton « Voir mes
-// opportunités » (action naturelle après avoir swipé).
+// Décompte SERVEUR-DRIVEN — le front ne calcule plus rien.
+// À l'expiration, on rappelle /api/me/quota-etat qui donne la nouvelle échéance.
+// Si zone_vide, aucun décompte n'est affiché — on montre le message
+// « Votre zone est calme… Ajoutez un second code postal. »
 export function FinDePileScreen({ veilleSlot = null }) {
-  const [remaining, setRemaining] = useState(() => secondsUntilNext03hParis());
+  const [state, setState] = React.useState({ loading: true, quota: null });
+  const [remaining, setRemaining] = useState(0);
   const [recap, setRecap] = useState(null);
   const navigate = useReactNavigate();
-  useEffect(() => {
-    const t = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : secondsUntilNext03hParis())), 1000);
-    return () => clearInterval(t);
+
+  // 1. Fetch quota + prochaine recharge depuis le serveur
+  const fetchQuota = React.useCallback(async () => {
+    try {
+      const b1api = (await import('./b1api')).default;
+      const r = await b1api.getQuotaEtat();
+      setState({ loading: false, quota: r });
+      if (r?.prochaine_recharge_iso) {
+        const target = new Date(r.prochaine_recharge_iso).getTime();
+        setRemaining(Math.max(0, Math.round((target - Date.now()) / 1000)));
+      }
+    } catch (e) {
+      setState({ loading: false, quota: null, error: e?.message || 'Erreur' });
+    }
   }, []);
-  // Récap chargé une seule fois — on compte les swipes du jour Paris.
+  useEffect(() => { fetchQuota(); }, [fetchQuota]);
+
+  // 2. Compteur — décrémente chaque seconde. À l'expiration, RE-FETCH,
+  // ne redémarre PAS un compteur de lui-même.
+  useEffect(() => {
+    if (!state.quota || state.quota.zone_vide) return;
+    if (remaining <= 0) return;
+    const t = setInterval(() => setRemaining((r) => {
+      if (r <= 1) {
+        fetchQuota();       // à expiration : le serveur redonne l'heure exacte
+        return 0;
+      }
+      return r - 1;
+    }), 1000);
+    return () => clearInterval(t);
+  }, [remaining, state.quota, fetchQuota]);
+
+  // 3. Récap journée
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -96,28 +126,45 @@ export function FinDePileScreen({ veilleSlot = null }) {
         const b1api = (await import('./b1api')).default;
         const r = await b1api.getMesMandats(500);
         if (cancelled || !r) return;
-        // « traitées aujourd'hui » = swipes datés du jour Paris.
         const parisToday = new Intl.DateTimeFormat('fr-FR', {
           timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
         }).format(new Date());
-        const [d, m, y] = parisToday.split('/'); // dd/mm/yyyy → yyyy-mm-dd
+        const [d, m, y] = parisToday.split('/');
         const iso = `${y}-${m}-${d}`;
         const isToday = (dateStr) => (dateStr || '').startsWith(iso);
         const traitees = (r.items || []).filter((it) => isToday(it.date_dernier_statut)).length;
         const retenues = (r.items || []).filter((it) => isToday(it.date_a_demarcher)
                             && ['a_demarcher','demarche','mandat_signe'].includes(it.statut)).length;
         setRecap({ traitees, retenues });
-      } catch { /* silencieux : le récap est optionnel */ }
+      } catch { /* silencieux */ }
     })();
     return () => { cancelled = true; };
   }, []);
-  const { h, m, s } = formatCountdown(remaining);
 
+  // Zone vide : PAS de décompte, message d'invitation
+  if (state.quota?.zone_vide) {
+    return (
+      <div className="b1-fin-pile" data-testid="b1-fin-pile-zone-vide">
+        <div className="b1-fin-pile-sablier"><Sablier /></div>
+        <div className="b1-fin-pile-texte" style={{ maxWidth: 320 }}>
+          {state.quota.message}
+        </div>
+        <button
+          className="b1-pill b1-pill--primary b1-pill--fullwidth"
+          style={{ marginTop: 24 }}
+          data-testid="b1-fin-pile-zones"
+          onClick={() => navigate('/app-b1/profil/zones')}
+        >
+          Gérer mes zones de prospection
+        </button>
+      </div>
+    );
+  }
+
+  const { h, m, s } = formatCountdown(remaining);
   return (
     <div className="b1-fin-pile" data-testid="b1-fin-pile">
-      <div className="b1-fin-pile-sablier">
-        <Sablier />
-      </div>
+      <div className="b1-fin-pile-sablier"><Sablier /></div>
       <div className="b1-fin-pile-texte">
         De nouvelles opportunités de mandat vous attendent dans
       </div>

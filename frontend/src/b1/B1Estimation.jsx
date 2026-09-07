@@ -53,7 +53,6 @@ export function EstimationHomePage() {
 
   return (
     <div className="b1-root">
-      <div style={{background:'#FF0000',color:'#FFF',height:40,fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',zIndex:999999}}>src/b1/B1Estimation.jsx</div>
       <div className="b1-screen" style={{ paddingBottom: 120 }}>
         <div className="b1-screen-content" style={{ paddingTop: 32 }}>
           <div className="est-hero">
@@ -66,7 +65,7 @@ export function EstimationHomePage() {
             <button
               data-testid="est-home-cta-opp"
               className="b1-pill b1-pill--primary b1-pill--fullwidth"
-              onClick={() => navigate('/app-b1')}>
+              onClick={() => navigate('/app-b1/mes-mandats')}>
               {b1t('est.home.cta_opp')}
             </button>
             <button

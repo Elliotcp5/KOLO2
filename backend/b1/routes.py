@@ -802,6 +802,81 @@ async def rejeter_opportunite(opportunite_id: str, request: Request):
 
 
 # ---------------------------------------------------------------------------
+# État quota utilisateur — SOURCE DE VÉRITÉ pour le décompte de fin de pile.
+# Le front ne calcule plus rien : il appelle cet endpoint, affiche, et rappelle
+# à expiration.
+# ---------------------------------------------------------------------------
+@router.get("/api/me/quota-etat")
+async def get_quota_etat(request: Request):
+    """Retourne l'état de quota courant de l'utilisateur + prochaine recharge.
+
+    Reponse :
+    {
+      "quota_du_jour": 5,                # max opportunités attribuées aujourd'hui
+      "opportunites_proposees": 3,       # celles restant à swiper
+      "opportunites_swipees_aujourdhui": 2,
+      "prochaine_recharge_iso": "2026-09-06T01:00:00+00:00", # 03h00 Paris en UTC
+      "zone_vide": false,                # si true, ne pas afficher de décompte
+      "message": null,                   # ou "Votre zone est calme..."
+    }
+    """
+    from datetime import timedelta, timezone as _tz
+    user = await _current_user_doc(request)
+    uid = user["user_id"]
+
+    # Compte opps proposées (non swipées, pas expirées)
+    n_proposees = await _db().opportunites.count_documents({
+        "assigne_a": uid, "statut": "proposee",
+    })
+    # Compte swipes du jour Paris
+    from zoneinfo import ZoneInfo
+    now_paris = datetime.now(ZoneInfo("Europe/Paris"))
+    start_of_day_paris = now_paris.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_utc = start_of_day_paris.astimezone(_tz.utc).isoformat()
+    n_swipes_jour = await _db().opportunites.count_documents({
+        "assigne_a": uid,
+        "date_dernier_statut": {"$gte": start_utc},
+        "statut": {"$in": ["a_demarcher", "rejetee", "demarche",
+                            "mandat_signe", "abandon", "deja_en_vente"]},
+    })
+
+    quota_jour = int(user.get("quota_du_jour", 5) or 5)
+
+    # Prochaine recharge = prochain 03h00 Paris
+    next_recharge_paris = start_of_day_paris + timedelta(days=1)
+    next_recharge_paris = next_recharge_paris.replace(hour=3)
+    if now_paris.hour < 3:
+        next_recharge_paris = start_of_day_paris.replace(hour=3)
+    next_recharge_utc = next_recharge_paris.astimezone(_tz.utc).isoformat()
+
+    # Zone vide : si aucune opportunité proposée ET aucune en pool sur les zones
+    # perso de l'utilisateur, on ne montre pas de décompte.
+    zones_perso = user.get("zones_perso") or []
+    n_pool = 0
+    if zones_perso and n_proposees == 0:
+        n_pool = await _db().opportunites.count_documents({
+            "code_postal": {"$in": [str(z) for z in zones_perso]},
+            "statut": "pool",
+        })
+    zone_vide = (n_proposees == 0 and n_pool == 0)
+
+    return {
+        "ok": True,
+        "quota_du_jour": quota_jour,
+        "opportunites_proposees": n_proposees,
+        "opportunites_swipees_aujourdhui": n_swipes_jour,
+        "prochaine_recharge_iso": next_recharge_utc,
+        "zone_vide": zone_vide,
+        "pool_zones_perso": n_pool,
+        "message": (
+            "Votre zone est calme en ce moment. "
+            "Ajoutez un second code postal pour recevoir plus d'opportunités."
+            if zone_vide else None
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Mes opportunités de mandats — la liste de travail réelle
 # ---------------------------------------------------------------------------
 # Statuts métier après swipe droite :

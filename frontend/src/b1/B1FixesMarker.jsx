@@ -15,7 +15,7 @@ import React from 'react';
 // Signatures littérales — chaque const référence une chaîne UNIQUE issue
 // de son correctif ; si elle est absente du bundle, le code du correctif
 // est absent avec elle. On les LIT toutes pour forcer leur survie.
-const S_COMPOSER = `composer:76+safe`;      // fix 1 — as-composer margin-bottom
+const S_COMPOSER = `composer:root-pad-safe`;      // fix 1 — root paddingBottom safe-area
 const S_ESTIMER = `estimer:mm-btn`;         // fix 2 — b1-mm-estimer button
 const S_STATUTS = `statuts:pastilles-couleur`; // fix 3 — b1-mm-toggle-btn data-key
 const S_LAZY = `lazy:12-routes`;            // fix 4 — Suspense + React.lazy

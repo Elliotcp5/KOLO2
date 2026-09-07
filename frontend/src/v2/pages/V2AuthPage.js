@@ -101,7 +101,7 @@ export default function V2AuthPage({ mode = 'login' }) {
                 fontWeight: 900,
                 fontSize: 68,
                 lineHeight: 1,
-                color: '#0B0B0F',
+                color: '#EC8690',
                 letterSpacing: '-0.045em',
                 textAlign: 'center',
                 userSelect: 'none',

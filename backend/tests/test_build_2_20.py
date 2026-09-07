@@ -15,11 +15,12 @@ def _b1css() -> str:
 # 1. Champ de saisie assistant sous la tab bar → marge basse
 # ------------------------------------------------------------------
 def test_composer_assistant_pas_masque_par_tabbar():
-    css = _b1css()
-    # Le composer DOIT avoir un margin-bottom qui laisse passer la tab bar
-    # (76px + safe-area). Sinon le champ est masqué et le chat inutilisable.
-    assert "margin-bottom: calc(76px + env(safe-area-inset-bottom)" in css, \
-        "as-composer doit avoir margin-bottom compensant la tab bar fixed"
+    """L'Assistant a `paddingBottom: calc(76px + env(safe-area-inset-bottom))`
+    sur son root (B1Assistant.jsx) pour laisser passer la tab bar fixed,
+    sans utiliser de margin sur le composer (qui crée un espace blanc)."""
+    src = open("/app/frontend/src/b1/B1Assistant.jsx").read()
+    assert "paddingBottom: 'calc(76px + env(safe-area-inset-bottom))'" in src, \
+        "root assistant doit avoir paddingBottom safe-area pour libérer la tab bar"
 
 
 # ------------------------------------------------------------------

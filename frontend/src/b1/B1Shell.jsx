@@ -255,7 +255,6 @@ export function OpportunitesPage() {
 
   return (
     <div className="b1-root">
-      <div style={{background:'#FF0000',color:'#FFF',height:40,fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',zIndex:999999}}>src/b1/B1Shell.jsx</div>
       <NetworkBanner />
       <div className="b1-shell">
         <div className="b1-screen">
