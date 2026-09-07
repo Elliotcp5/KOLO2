@@ -56,8 +56,15 @@ async def ensure_a2_indexes(db) -> dict[str, list[str]]:
         ),
         await db.opportunites.create_index("dpe_id"),
         await db.opportunites.create_index("code_postal"),
+        # Composite (code_postal, statut) — accélère `diagnostic-zone`
+        # dont l'aggregate {$match code_postal, $group statut} timeoutait
+        # côté Cloudflare (520) sur les grosses zones (build 2.22.1).
+        await db.opportunites.create_index([("code_postal", 1), ("statut", 1)]),
         await db.opportunites.create_index("statut"),
         await db.opportunites.create_index("assigne_a"),
+        # Composite (assigne_a, statut) — accélère `etat-compte` qui
+        # comptait les opps proposée d'un user (build 2.22.1).
+        await db.opportunites.create_index([("assigne_a", 1), ("statut", 1)]),
         await db.opportunites.create_index("user_id"),
         await db.opportunites.create_index([("organisation_id", 1), ("statut", 1)]),
         await db.opportunites.create_index("date_creation"),

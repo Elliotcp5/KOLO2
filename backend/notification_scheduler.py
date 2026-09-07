@@ -429,7 +429,7 @@ async def run_scraper_tick():
     try:
         from scripts.ingest_apify import ingest_runs  # type: ignore
         if fresh_run_ids:
-            ingest_summary = await ingest_runs(fresh_run_ids, stale_hours=48)
+            ingest_summary = await ingest_runs(fresh_run_ids, stale_hours=240)
         else:
             ingest_summary = {"error": "no_run_ids_from_scrape"}
     except Exception as e:

@@ -936,7 +936,10 @@ async def run_generer_opportunites(
             cps = [z["code_postal"] async for z in db.zones_couvertes.find(
                 {"actif": True}, {"code_postal": 1}
             )]
-        cps = [c for c in cps if c]
+        # Nettoyage : retire les CP vides et le CP fictif « 99999 »
+        # (marker de zone Découverte, sans DPE/annonces réels — la
+        # boucle le rejetait à chaque passage pour fraîcheur nulle).
+        cps = [c for c in cps if c and c != "99999"]
 
         by_cp: list[dict] = []
         for cp in cps:

@@ -48,7 +48,11 @@ APIFY_ACTOR = (os.environ.get("APIFY_ACTOR_PIGE_IMMO") or "dltik/pige-immo-fr-sc
 SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
 SUPABASE_KEY = (os.environ.get("SUPABASE_SECRET_KEY") or "").strip()
 
-STALE_HOURS = 48
+# Fenêtre de fraîcheur : une annonce est désactivée si elle n'a pas été
+# revue depuis STALE_HOURS heures. Build 2.22.1 : 48h → 240h (10j) pour
+# accompagner le quota Apify réduit — sans ça, chaque scrape bridé à ~70
+# items/CP faisait tomber le pool à 76 même si la base avait 663.
+STALE_HOURS = int(os.environ.get("APIFY_STALE_HOURS", "240"))
 CHUNK_SIZE = 500  # Supabase REST upsert batch size
 
 # Signals that a SUCCEEDED run was probably truncated (cost/item/time limit).

@@ -85,20 +85,15 @@ APIFY_SOURCES = ["leboncoin", "pap", "seloger", "bienici", "logic-immo"]
 # So we run ONE ZIP per Apify run, in parallel, with a small concurrency cap
 # to be nice to the Apify actor queue.
 # --------------------------------------------------------------------------
-# maxItems — anciennement 30 : le compteur limitait le scrape à ~76 items par
-# CP après dedupe (30 items × 5 sources - doublons URL). Résultat : sur les
-# 663 annonces actives du 13008, seules 76 étaient revues et les 587 autres
-# passaient hors fenêtre stale_hours=48. On monte à 1500 pour absorber les
-# plus grosses zones. L'acteur Apify facture au dataset item, mais le coût
-# ne monte QUE si les portails ont réellement 1500 annonces à retourner —
-# les petites zones restent bon marché.
+# maxItems — volontairement bas côté test (compte Apify à quota réduit,
+# budget quelques dollars). Le plafond n'est PAS un bug, c'est un choix.
+# En production réelle, la valeur sera montée par variable d'env quand les
+# robinets seront ouverts. On garde 30 par défaut pour maîtriser le coût.
 # --------------------------------------------------------------------------
 MAX_PARALLEL_RUNS = 5
-MAX_ITEMS_PER_ZIP = 1500
+MAX_ITEMS_PER_ZIP = int(os.environ.get("APIFY_MAX_ITEMS_PER_ZIP", "30"))
 POLL_INTERVAL_SEC = 5
-POLL_MAX_SEC = 480              # 8 min max par run — le scrape sur 1500 items
-                                # peut prendre plus de 3 min quand un CP est
-                                # gros (75008, 13008).
+POLL_MAX_SEC = 180              # 3 min per single-ZIP run max
 
 # Top-50 curated FR cities (biggest lead pools for real-estate agents).
 STATIC_TOP_ZIPS = [
@@ -132,17 +127,56 @@ def _mongo() -> AsyncIOMotorClient:
 
 
 async def _resolve_target_zips(db, extra_zips: list[str] | None = None) -> list[str]:
-    """Union of:
-        - user-searched ZIPs in the last 7 days (from v2_prospecting_logs)
-        - static curated top-50 FR cities
-        - CLI --zips override (if given, replaces the auto detection)
+    """Cible du scrape : ZIPs des utilisateurs ACTIFS (build 2.22.1).
+
+    Contexte : le compte Apify est sur un quota bas (quelques dollars).
+    Faire tourner le scrape sur 57 CPs alors que seulement 3 sont
+    utilisés (13008, 69003, 75017) gaspille 94 % du budget. On restreint
+    donc la cible aux CPs qui ont au moins un utilisateur actif.
+
+    Source de vérité (par ordre de préférence) :
+      1. `users.zones_perso` — les CP explicitement suivis par un user
+         connecté durant les 30 derniers jours.
+      2. `users.zones_couvertes` — champ historique équivalent.
+      3. `v2_prospecting_logs` (7 jours) — CPs cherchés dans l'app.
+      4. Fallback : le paramètre `--zips` en CLI ou `PROD_TARGET_ZIPS`
+         en variable d'env (jamais utilisé en prod normale).
+
+    Le CP fictif « 99999 » est exclu (marker de zone Découverte, sans
+    listings réels — la génération le rejette pour fraîcheur nulle).
     """
     if extra_zips:
-        return sorted({z.strip() for z in extra_zips if z.strip().isdigit() and len(z.strip()) == 5})
+        return sorted({z.strip() for z in extra_zips if z.strip().isdigit()
+                        and len(z.strip()) == 5 and z.strip() != "99999"})
 
-    since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    user_zips: set[str] = set()
+    zips: set[str] = set()
+    # 1. Users actifs (session touchée dans les 30 derniers jours)
     try:
+        since = datetime.now(timezone.utc) - timedelta(days=30)
+        cursor = db.users.find(
+            {"$or": [
+                {"last_seen_at": {"$gte": since}},
+                {"updated_at": {"$gte": since.isoformat()}},
+                {"derniere_connexion": {"$gte": since.isoformat()}},
+            ]},
+            {"_id": 0, "zones_perso": 1, "zones_couvertes": 1},
+        )
+        n_users = 0
+        async for u in cursor:
+            n_users += 1
+            for k in ("zones_perso", "zones_couvertes"):
+                for z in (u.get(k) or []):
+                    z = str(z).strip()
+                    if z.isdigit() and len(z) == 5:
+                        zips.add(z)
+        logger.info(f"[target-zips] {n_users} users actifs 30j → {len(zips)} CP")
+    except Exception as e:
+        logger.warning(f"Could not read users zones: {e}")
+
+    # 2. Complément via prospecting logs (7 jours) — permet aux users
+    #    non actifs mais qui prospectent quand même d'être servis.
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         cursor = db.v2_prospecting_logs.find(
             {"kind": "listings", "created_at": {"$gte": since}},
             {"_id": 0, "params": 1},
@@ -152,15 +186,29 @@ async def _resolve_target_zips(db, extra_zips: list[str] | None = None) -> list[
             for tok in sector.split(","):
                 z = tok.strip()
                 if z.isdigit() and len(z) == 5:
-                    user_zips.add(z)
+                    zips.add(z)
     except Exception as e:
         logger.warning(f"Could not read prospecting logs: {e}")
 
-    combined = sorted(user_zips | set(STATIC_TOP_ZIPS))
-    logger.info(
-        f"Target ZIPs = {len(user_zips)} (user-searched 7d) ∪ {len(STATIC_TOP_ZIPS)} (curated) → {len(combined)} total"
-    )
-    return combined
+    # 3. Exclure 99999 (marker Découverte, sans listings réels)
+    zips.discard("99999")
+
+    # 4. Ultime filet — si aucun user actif ET aucun log prospection,
+    #    override par variable d'env pour ne PAS faire tourner à vide.
+    if not zips:
+        override = os.environ.get("SCRAPE_TARGET_ZIPS_FALLBACK", "")
+        for z in override.split(","):
+            z = z.strip()
+            if z.isdigit() and len(z) == 5 and z != "99999":
+                zips.add(z)
+        if zips:
+            logger.warning(f"[target-zips] aucune donnée user → fallback env: {sorted(zips)}")
+        else:
+            logger.error("[target-zips] AUCUNE cible détectée. Scrape va être vide.")
+
+    out = sorted(zips)
+    logger.info(f"[target-zips] cible finale = {len(out)} CP : {out[:20]}{'…' if len(out) > 20 else ''}")
+    return out
 
 
 def _batch(iterable: Iterable[str], size: int) -> Iterable[list[str]]:

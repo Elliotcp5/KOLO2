@@ -60,7 +60,7 @@ async def _run_scraper_quotidien(db):
         run_ids = list(scrape.get("run_ids") or [])
         ingest: dict = {}
         if run_ids:
-            ingest = await ingest_runs(run_ids, stale_hours=48)
+            ingest = await ingest_runs(run_ids, stale_hours=240)
         # Persist marker read by /api/v2/admin/scraper/status
         now_iso = _now_iso()
         await db.v2_scraper_last_run.update_one(

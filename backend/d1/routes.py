@@ -167,9 +167,19 @@ async def admin_etat_compte(email: str, request: Request):
         "assigne_a": {"$in": list(candidate_ids)},
         "statut": "proposee",
     })
+    # Nouveau : compte aussi les opps NON ASSIGNÉES dans les zones perso.
+    # Cas fréquent d'incompréhension : « il y a 10 opps proposee, pourquoi
+    # etat-compte dit 0 ? » → parce qu'elles ne sont assignées à personne
+    # (assigne_a=null). Distinguer les deux évite la confusion.
+    n_opps_non_assignees_dans_zones = 0
+    if zones_perso := (u.get("zones_perso") or []):
+        n_opps_non_assignees_dans_zones = await _db().opportunites.count_documents({
+            "code_postal": {"$in": zones_perso},
+            "statut": "proposee",
+            "$or": [{"assigne_a": None}, {"assigne_a": {"$exists": False}}],
+        })
     # Debug : liste des valeurs distinctes de `assigne_a` pour ce CP côté prod
     # (utile pour repérer une désynchro user_id vs. ce qui est stocké).
-    zones_perso = u.get("zones_perso") or []
     debug_assignes = []
     if zones_perso:
         pipe = [
@@ -181,6 +191,7 @@ async def admin_etat_compte(email: str, request: Request):
         async for row in _db().opportunites.aggregate(pipe):
             debug_assignes.append({"assigne_a": str(row["_id"]) if row["_id"] is not None else None,
                                    "n": int(row["n"])})
+    zones_perso = u.get("zones_perso") or []
     n_zc = await _db().zones_couvertes.count_documents({})
     # Normalisation stricte : seules deux valeurs sortent d'ici — `pro` ou
     # `decouverte`. `pro_plus`/`pro_lifetime` sont des vestiges → `pro`.
@@ -202,6 +213,7 @@ async def admin_etat_compte(email: str, request: Request):
         "plan": plan_normalise,
         "plan_raw": raw_plan or None,
         "opps_proposees_attribuees": n_opps,
+        "opps_proposees_non_assignees_dans_zones": n_opps_non_assignees_dans_zones,
         "zones_couvertes_total": n_zc,
         # Diagnostic : formes d'ID cherchées + top valeurs assigne_a réelles
         "debug_candidate_ids": [str(c) for c in candidate_ids],
@@ -1090,6 +1102,47 @@ async def admin_pdf_dossier(dossier_id: str, request: Request):
         "sections_keys": list(doc["sections"].keys()),
         "chemin_disque": str(out),
     }
+
+
+@router.get("/api/d1/admin/push-status")
+async def admin_push_status(request: Request):
+    """Retourne l'état APNs sans exposer les secrets. À lancer en prod
+    après avoir collé `APNS_TEAM_ID` pour vérifier que la signature JWT
+    fonctionne avant d'envoyer une vraie push. build 2.22.1.
+    """
+    _check_admin(request)
+    from b3.services import apns_diagnostic
+    return apns_diagnostic()
+
+
+@router.post("/api/d1/admin/push-test")
+async def admin_push_test(payload: dict, request: Request):
+    """Envoie une push de test à un utilisateur donné.
+
+    Body : `{"email": "elliot.cohenpressard@trykolo.io", "message": "Hello"}`
+    Réponse : `{"envoyes": N, "tokens_cibles": M, "apns_ready": bool}`.
+    """
+    _check_admin(request)
+    e = (payload.get("email") or "").strip().lower()
+    if not e:
+        raise HTTPException(status_code=400, detail="email_requis")
+    u = await _db().users.find_one({"email": e}, {"user_id": 1, "_id": 0})
+    if not u or not u.get("user_id"):
+        raise HTTPException(status_code=404, detail="user_introuvable")
+    from b3.services import send_push_to_user, _apns_ready
+    msg = payload.get("message") or "Test KOLO push"
+    n = await send_push_to_user(
+        _db(), u["user_id"], key="admin_test",
+        params={"message": msg},
+    )
+    tokens = await _db().device_tokens.count_documents({"user_id": u["user_id"]})
+    return {
+        "envoyes": n,
+        "tokens_cibles": tokens,
+        "user_id": u["user_id"],
+        "apns_ready": _apns_ready(),
+    }
+
 
 
 

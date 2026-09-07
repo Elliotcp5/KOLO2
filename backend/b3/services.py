@@ -216,3 +216,38 @@ async def send_push_to_user(db, user_id: str, key: str, params: Optional[dict] =
             {"$set": {"envoyes": sent}}, upsert=False,
         )
     return sent
+
+
+
+def apns_diagnostic() -> dict:
+    """Retourne l'état de configuration APNs (sans exposer la clé privée).
+
+    Utilisé par `/api/d1/admin/push-status` pour valider en un coup d'œil
+    que les 4 variables sont posées et que le JWT signe correctement.
+    """
+    ready = _apns_ready()
+    missing = [k for k, v in {
+        "APNS_KEY_ID": _APNS_KEY_ID,
+        "APNS_TEAM_ID": _APNS_TEAM_ID,
+        "APNS_BUNDLE_ID": _APNS_BUNDLE_ID,
+        "APNS_KEY_P8": _APNS_KEY_P8,
+    }.items() if not v]
+    jwt_ok = False
+    jwt_err = None
+    if ready:
+        try:
+            tok = _apns_jwt()
+            jwt_ok = bool(tok)
+        except Exception as e:
+            jwt_err = f"{type(e).__name__}: {e}"
+    return {
+        "ready": ready,
+        "missing": missing,
+        "env": _APNS_ENV,
+        "bundle_id": _APNS_BUNDLE_ID or None,
+        "key_id": _APNS_KEY_ID or None,
+        "team_id_defined": bool(_APNS_TEAM_ID),
+        "key_p8_length": len(_APNS_KEY_P8),
+        "jwt_signing_ok": jwt_ok,
+        "jwt_error": jwt_err,
+    }
