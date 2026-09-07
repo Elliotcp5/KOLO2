@@ -663,6 +663,19 @@ export function EstimationAdressePage() {
                     {' · '}{b1t('est.adr.dpe_surface')} : <strong>{dpe.surface_habitable} m²</strong>
                     {dpe.classe_dpe && (<>{' · DPE '}<strong>{dpe.classe_dpe}</strong></>)}
                   </div>
+                  {/* Un immeuble a plusieurs logements — l'user doit pouvoir
+                      créer une NOUVELLE estimation à la même adresse quand
+                      le DPE trouvé ne correspond pas à son bien. Build 2.22.5. */}
+                  <button
+                    type="button"
+                    className="b1-link"
+                    data-testid="est-adr-creer-nouvelle"
+                    style={{ marginTop: 10, background: 'transparent', border: 0,
+                             color: 'var(--b1-primary)', textDecoration: 'underline',
+                             cursor: 'pointer', fontSize: 13, padding: 0 }}
+                    onClick={() => { setDpe(null); setSurface(''); }}>
+                    {b1t('est.adr.creer_nouvelle') || 'Créer une nouvelle estimation à cette adresse'}
+                  </button>
                 </div>
               ) : (
                 <div style={{ marginTop: 16 }}>

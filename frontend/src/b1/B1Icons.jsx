@@ -44,11 +44,17 @@ export const IconRobot = ({ size = 22, ...p }) => (
   </svg>
 );
 
-export const IconStats = ({ size = 20, ...p }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...p}>
-    <rect x="4" y="12" width="4" height="8" rx="1.5" />
-    <rect x="10" y="7" width="4" height="13" rx="1.5" />
-    <rect x="16" y="3" width="4" height="17" rx="1.5" />
+export const IconStats = ({ size = 22, ...p }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    {/* Icône graphique avec ligne de tendance ascendante + axes.
+        Build 2.22.5 : remplace les barres pleines peu lisibles par
+        un tracé équivalent au IconUser (même taille, même style). */}
+    <path d="M3 3v18h18" />
+    <path d="M7 14l4-4 3 3 5-6" />
+    <circle cx="7" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="11" cy="10" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="13" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="19" cy="7" r="1.2" fill="currentColor" stroke="none" />
   </svg>
 );
 

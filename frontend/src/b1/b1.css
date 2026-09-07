@@ -1719,3 +1719,42 @@
   border-color: rgba(255, 255, 255, 0.4);
   border-top-color: #FFFFFF;
 }
+
+/* ================================================================
+   b1-cta-mes-opps — CTA principal Home vers Mes opportunités
+   Contrasté, visible sans défiler, compteur intégré à droite.
+   Build 2.22.5 : remplace le lien ton-sur-ton, quasi invisible.
+   ================================================================ */
+.b1-cta-mes-opps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  margin: 20px auto 0;
+  padding: 16px 20px;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, #EC8690 0%, #D66E7A 100%);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(236, 134, 144, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.b1-cta-mes-opps:active {
+  transform: scale(0.985);
+  box-shadow: 0 4px 12px rgba(236, 134, 144, 0.28);
+}
+.b1-cta-mes-opps-badge {
+  min-width: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}

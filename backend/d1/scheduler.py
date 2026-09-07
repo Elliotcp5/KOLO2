@@ -139,13 +139,22 @@ async def _run_distribuer_quotidien(db):
         total_attrib = 0
         for u in users:
             uid = u.get("user_id")
+            role = (u.get("role") or "").lower()
+            is_directeur = role == "directeur"
             for cp in (u.get("zones_perso") or []):
                 pool_size = await db.opportunites.count_documents(
                     {"code_postal": cp, "statut": "pool"}
                 )
                 if pool_size == 0:
                     continue
-                n = max(1, min(5, pool_size - 3))
+                # Cap quotidien : 5 par zone pour un agent (garde 3 en réserve
+                # pour recyclage). AUCUN cap pour un directeur — il reçoit
+                # tout ce qui est dispo ce jour-là, à charge pour lui de
+                # redistribuer via routes.attribuer-lot. build 2.22.5.
+                if is_directeur:
+                    n = pool_size
+                else:
+                    n = max(1, min(5, pool_size - 3))
                 cur = db.opportunites.find(
                     {"code_postal": cp, "statut": "pool"}
                 ).limit(n)

@@ -96,7 +96,7 @@ function ShellHeader({ onProfile, onStats }) {
       <div style={{ width: 40 }} />
       <div className="b1-header-icons">
         <button className="b1-header-icon" data-testid="b1-header-stats" onClick={onStats} aria-label="Performances">
-          <IconStats size={20} />
+          <IconStats size={22} />
         </button>
         <button className="b1-header-icon" data-testid="b1-header-profile" onClick={onProfile} aria-label="Profil">
           <IconUser size={22} />
@@ -163,6 +163,7 @@ export function OpportunitesPage() {
   const [loading, setLoading] = useState(true);
   const [veilleDispo, setVeilleDispo] = useState(false);
   const [veilleCards, setVeilleCards] = useState([]);
+  const [mandatsCount, setMandatsCount] = useState(0);
   const [pending, setPending] = useState(false);
   const cur = items[idx];
 
@@ -256,6 +257,20 @@ export function OpportunitesPage() {
     return () => { cancelled = true; };
   }, [idx, items.length]);
 
+  // Compteur `a_demarcher` pour l'affichage du CTA « Mes opportunités ».
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await b1api.getMesMandats();
+        if (cancelled) return;
+        const arr = Array.isArray(r?.mandats) ? r.mandats : (Array.isArray(r) ? r : []);
+        setMandatsCount(arr.filter((m) => m.statut === 'a_demarcher').length);
+      } catch (_e) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="b1-root">
       <NetworkBanner />
@@ -275,12 +290,38 @@ export function OpportunitesPage() {
           {loading ? (
             <div className="b1-loading" data-testid="b1-opp-loading">…</div>
           ) : cur ? (
+            <>
             <SwipeCard
               onSwipeLeft={() => swipe('gauche')}
               onSwipeRight={() => swipe('droite')}
               disabled={pending}
               testid="b1-opp-swipe"
             >
+              {/* Zone cliquable : tap simple → estimation directe avec adresse
+                  + surface pré-remplies. Détails accessibles via l'icône info
+                  en haut à droite. build 2.22.5. */}
+              <div
+                role="button"
+                tabIndex={0}
+                data-testid="b1-opp-tap-to-estimate"
+                style={{ position: 'absolute', top: 44, left: 12, right: 44, bottom: 100,
+                         zIndex: 2, cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/app-b1/estimation/flow', {
+                    state: {
+                      bien: {
+                        adresse: cur.adresse,
+                        code_postal: cur.code_postal,
+                        type_bien: cur.type_bien || 'Appartement',
+                        surface_habitable: cur.superficie,
+                        classe_dpe: cur.dpe,
+                        opportunite_id: cur.id,
+                      },
+                    },
+                  });
+                }}
+              />
               <div className="b1-opp-illus">
                 <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 12l9-9 9 9" />
@@ -298,6 +339,21 @@ export function OpportunitesPage() {
                 <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
               </div>
             </SwipeCard>
+            {/* CTA « Mes opportunités » visible au-dessus de la ligne de
+                flottaison, contrasté, avec le compteur d'opps a_demarcher.
+                Solution au « bouton ton sur ton, quasi invisible ». */}
+            <button
+              type="button"
+              className="b1-cta-mes-opps"
+              data-testid="b1-home-cta-mes-opps"
+              onClick={() => navigate('/app-b1/mes-mandats')}
+            >
+              <span>{b1t('opp.mes_mandats.cta') || 'Mes opportunités de mandats'}</span>
+              {typeof mandatsCount === 'number' && mandatsCount > 0 && (
+                <span className="b1-cta-mes-opps-badge">{mandatsCount}</span>
+              )}
+            </button>
+            </>
           ) : (
             // Fin de pile : sablier + décompte 03h00 Paris + éventuellement
             // les cartes de veille en dessous. Aucun cul-de-sac.
@@ -416,19 +472,41 @@ export function ProfilPage() {
     { id: 'suppr', to: '/app-b1/profil/supprimer', icon: Trash2, label: b1t('profil.menu.suppr'), danger: true },
   ];
   const logout = () => {
-    // Purge COMPLETE : tokens + tour flag + caches API
+    // Purge COMPLETE : tokens + tour flag + caches API + IndexedDB + cookies
     try { localStorage.removeItem('kolo_v2_session'); } catch {}
     try { localStorage.removeItem('kolo_token'); } catch {}
     try { localStorage.removeItem('kolo_b1_show_tour'); } catch {}
     try { localStorage.removeItem('kolo_zones_confirmees'); } catch {}
     try {
-      // Purge tout item lié à KOLO (précaution)
       const keys = Object.keys(localStorage);
       keys.forEach((k) => { if (k.startsWith('kolo_')) localStorage.removeItem(k); });
     } catch {}
     try { sessionStorage.clear(); } catch {}
-    // Redirect vers login natif (racine app pour ne pas rester sur route protégée)
-    navigate('/app-v2/login', { replace: true });
+    // Capacitor Preferences (iOS native storage) — purge async si présent
+    try {
+      // eslint-disable-next-line no-undef
+      if (window?.Capacitor?.Plugins?.Preferences) {
+        // fire-and-forget, on ne bloque pas la nav
+        window.Capacitor.Plugins.Preferences.clear().catch(() => {});
+      }
+    } catch {}
+    // Cookies HTTP (au cas où) — purge tous les non-httpOnly
+    try {
+      document.cookie.split(';').forEach((c) => {
+        const eq = c.indexOf('=');
+        const name = eq > -1 ? c.substring(0, eq).trim() : c.trim();
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+      });
+    } catch {}
+    // Hard reload sur /login — sur iOS Capacitor, un `navigate` React Router
+    // ne recharge PAS le React state global (auth context reste chargé).
+    // window.location.replace force le nouveau chargement de app.
+    // build 2.22.5.
+    try {
+      window.location.replace('/login');
+    } catch {
+      navigate('/login', { replace: true });
+    }
   };
   return (
     <div className="b1-root">
@@ -653,8 +731,13 @@ export function ProfilZonesPage() {
     setEditing(true);
   };
   const confirmModif = () => { setShowBlock(false); setEditing(true); };
+  // Zones illimitées pour un directeur (produit 2.22.5), plafond 2 pour un
+  // agent / conseiller / independant. Le champ `role` peut ne pas être posé
+  // sur d'anciens comptes → fallback: on regarde `is_directeur`.
+  const isDirecteur = (user?.role || '').toLowerCase() === 'directeur' || !!user?.is_directeur;
+  const maxZones = isDirecteur ? 99 : 2;
   const addCp = () => {
-    if (cp.length !== 5 || cps.some(x => x.cp === cp) || cps.length >= 2) return;
+    if (cp.length !== 5 || cps.some(x => x.cp === cp) || cps.length >= maxZones) return;
     setCps([...cps, { cp, ville: null }]);
     setCp('');
   };
@@ -834,6 +917,52 @@ export function ProfilDeletePage() {
 
 // Paiement page (délégué à V2 existant)
 export function ProfilPaiementPage() {
-  useEffect(() => { window.location.href = '/app-v2/settings/subscription'; }, []);
-  return <div className="b1-root"><div className="b1-screen"><p className="b1-lead">{b1t('sys.un_instant')}</p></div></div>;
+  // Écran Plan & abonnement Apple-compliant : aucun prix, aucun lien de
+  // paiement direct dans l'app. Un bouton unique qui deeplink vers les
+  // réglages d'abonnement Apple (source of truth). Build 2.22.5.
+  const [me, setMe] = useState(null);
+  useEffect(() => {
+    b1api.getProfil().then((r) => setMe(r?.user || r)).catch(() => setMe(null));
+  }, []);
+  const isPro = !!me && (me.plan === 'pro' || me.subscription_status === 'active');
+  const openAppleSubs = () => {
+    // Deeplink officiel — ouvre directement les abonnements de l'user
+    // dans l'App Store natif iOS. Sur web/desktop, ouvre l'équivalent web.
+    try {
+      window.location.href = 'https://apps.apple.com/account/subscriptions';
+    } catch {}
+  };
+  return (
+    <div className="b1-root">
+      <div className="b1-screen">
+        <BackHeader label={b1t('profil.menu.paiement') || 'Plan & abonnement'} />
+        <div className="b1-profil-plan" data-testid="b1-paiement-plan-card">
+          <div className="b1-profil-plan-eyebrow">{b1t('profil.plan.titre') || 'Mon plan'}</div>
+          <div className="b1-profil-plan-name">
+            <Crown size={30} strokeWidth={2.2} />
+            {isPro ? (b1t('profil.plan.pro') || 'Pro') : (b1t('profil.plan.decouverte') || 'Découverte')}
+          </div>
+          {isPro && me?.subscription_ends_at && (
+            <div className="b1-profil-plan-renouv">
+              {b1t('profil.plan.renouv', { date: new Date(me.subscription_ends_at).toLocaleDateString() })}
+            </div>
+          )}
+        </div>
+        <div className="b1-screen-content">
+          <div className="b1-lead" style={{ marginTop: 16, marginBottom: 20 }}>
+            {b1t('profil.paiement.explication')
+              || "Votre abonnement se gère depuis les réglages Apple. Vous pouvez y changer de formule, mettre en pause, ou résilier à tout moment."}
+          </div>
+          <button
+            type="button"
+            className="b1-pill b1-pill--primary b1-pill--fullwidth"
+            data-testid="b1-paiement-manage-apple"
+            onClick={openAppleSubs}
+          >
+            {b1t('profil.paiement.gerer_apple') || 'Gérer mon abonnement'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

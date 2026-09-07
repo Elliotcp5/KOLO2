@@ -15,6 +15,7 @@ export default function B1RepriseZones() {
   const [cp, setCp] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [maxZones, setMaxZones] = useState(2);
 
   // Charge les suggestions au montage (jamais un champ vide)
   useEffect(() => {
@@ -25,6 +26,13 @@ export default function B1RepriseZones() {
         // Si déjà confirmé → on redirige vers l'app
         if (r.zones_confirmees) { navigate('/app-b1', { replace: true }); return; }
         const suggestions = (r.zones_suggestions || []).slice(0, 2);
+        // Directeur = zones illimitées (produit 2.22.5)
+        try {
+          const me = await b1api.getProfil();
+          if ((me?.role || '').toLowerCase() === 'directeur' || me?.is_directeur) {
+            if (!cancelled) setMaxZones(99);
+          }
+        } catch (_) {}
         // Enrichit chaque CP avec sa ville
         const items = await Promise.all(suggestions.map(async (c) => {
           try { const v = await b1api.getVille(c); return { cp: c, ville: v?.ville || null }; }
@@ -39,7 +47,7 @@ export default function B1RepriseZones() {
   }, [navigate]);
 
   const addCp = async () => {
-    if (cp.length !== 5 || cps.some((x) => x.cp === cp) || cps.length >= 2) return;
+    if (cp.length !== 5 || cps.some((x) => x.cp === cp) || cps.length >= maxZones) return;
     try {
       const v = await b1api.getVille(cp);
       setCps([...cps, { cp, ville: v?.ville || null }]);
