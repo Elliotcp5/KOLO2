@@ -2076,3 +2076,241 @@ async def retirer_attribution(opportunite_id: str, request: Request):
          "$unset": {"assigne_a": "", "date_attribution": ""}},
     )
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Espace directeur — endpoints agrégés (build 2.23)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/d1/mon-equipe")
+async def get_mon_equipe(request: Request):
+    """Onglet 2 espace directeur — liste des conseillers de son agence
+    avec compteurs par statut d'opportunité.
+
+    Sortie :
+      - `conseillers`: [{user_id, prenom, nom, email, siege_statut,
+                        a_demarcher: N, demarche: N, mandat_signe: N,
+                        abandon: N, total_actifs: N,
+                        derniere_activite: iso}]
+      - `organisation`: {id, nom, sieges_total, sieges_utilises}
+    """
+    user = await _require_directeur(request)
+    orga_id = user["organisation_id"]
+    orga = await _db().organisations.find_one({"_id": orga_id})
+    if not orga:
+        raise HTTPException(status_code=404, detail="orga_introuvable")
+
+    # Charge tous les membres actifs de l'agence
+    cursor = _db().users.find(
+        {"organisation_id": orga_id, "siege_statut": "actif"},
+        {"user_id": 1, "prenom": 1, "nom": 1, "email": 1, "role": 1,
+         "siege_statut": 1, "derniere_connexion": 1, "last_seen_at": 1},
+    )
+    conseillers = []
+    async for u in cursor:
+        uid = u.get("user_id")
+        if not uid:
+            continue
+        # Compteurs par statut
+        counts = {"a_demarcher": 0, "demarche": 0, "mandat_signe": 0,
+                  "abandon": 0}
+        pipe = [
+            {"$match": {"assigne_a": uid,
+                        "statut": {"$in": list(counts.keys())}}},
+            {"$group": {"_id": "$statut", "n": {"$sum": 1}}},
+        ]
+        async for row in _db().opportunites.aggregate(pipe):
+            counts[row["_id"]] = int(row["n"])
+        total_actifs = counts["a_demarcher"] + counts["demarche"] + counts["mandat_signe"]
+        conseillers.append({
+            "user_id": uid,
+            "prenom": u.get("prenom") or "",
+            "nom": u.get("nom") or "",
+            "email": u.get("email") or "",
+            "role": u.get("role") or "conseiller",
+            "siege_statut": u.get("siege_statut"),
+            "derniere_activite": u.get("last_seen_at") or u.get("derniere_connexion"),
+            **counts,
+            "total_actifs": total_actifs,
+        })
+    # Tri par total_actifs desc
+    conseillers.sort(key=lambda c: c["total_actifs"], reverse=True)
+    return {
+        "organisation": {
+            "id": str(orga.get("_id")),
+            "nom": orga.get("nom") or "",
+            "sieges_total": orga.get("sieges_total") or orga.get("seats") or 0,
+            "sieges_utilises": orga.get("sieges_utilises") or 0,
+        },
+        "conseillers": conseillers,
+        "n_conseillers": len(conseillers),
+    }
+
+
+@router.get("/api/d1/mon-equipe/{user_id}/opportunites")
+async def get_opps_conseiller(user_id: str, request: Request):
+    """Détail des opps d'un conseiller vu par son directeur."""
+    user = await _require_directeur(request)
+    # Vérifie que ce conseiller appartient bien à l'agence du directeur
+    conseiller = await _db().users.find_one(
+        {"user_id": user_id, "organisation_id": user["organisation_id"]},
+        {"_id": 0, "prenom": 1, "nom": 1, "email": 1},
+    )
+    if not conseiller:
+        raise HTTPException(status_code=404, detail="conseiller_introuvable_dans_agence")
+    items = []
+    cur = _db().opportunites.find(
+        {"assigne_a": user_id,
+         "statut": {"$in": ["proposee", "a_demarcher", "demarche",
+                             "mandat_signe", "abandon", "deja_en_vente"]}},
+        {"_id": 1, "adresse": 1, "code_postal": 1, "statut": 1,
+         "date_dernier_statut": 1, "date_attribution": 1,
+         "caracteristiques": 1},
+    ).sort("date_dernier_statut", -1).limit(200)
+    async for opp in cur:
+        caracs = opp.get("caracteristiques") or {}
+        items.append({
+            "id": str(opp["_id"]),
+            "adresse": opp.get("adresse") or "",
+            "code_postal": opp.get("code_postal"),
+            "statut": opp.get("statut"),
+            "date_dernier_statut": opp.get("date_dernier_statut"),
+            "date_attribution": opp.get("date_attribution"),
+            "surface": caracs.get("surface_habitable"),
+            "dpe": caracs.get("classe_dpe"),
+        })
+    return {"conseiller": conseiller, "opportunites": items,
+            "total": len(items)}
+
+
+@router.get("/api/d1/perf-agence")
+async def get_perf_agence(request: Request, periode: str = "mois"):
+    """Onglet 3 espace directeur — perfs agrégées agence.
+
+    `periode` : "mois" | "trimestre" | "annee".
+    """
+    user = await _require_directeur(request)
+    orga_id = user["organisation_id"]
+    from datetime import datetime, timedelta, timezone as _tz
+    now = datetime.now(_tz.utc)
+    if periode == "annee":
+        debut = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif periode == "trimestre":
+        debut = now - timedelta(days=90)
+    else:
+        debut = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    debut_iso = debut.isoformat()
+
+    # Users de l'agence
+    membres_ids = []
+    async for u in _db().users.find(
+        {"organisation_id": orga_id, "siege_statut": "actif"},
+        {"_id": 0, "user_id": 1, "prenom": 1, "nom": 1},
+    ):
+        if u.get("user_id"):
+            membres_ids.append(u)
+    uids = [m["user_id"] for m in membres_ids]
+
+    # Agrégats globaux
+    def _q(status):
+        return {"assigne_a": {"$in": uids}, "statut": status,
+                "date_dernier_statut": {"$gte": debut_iso}}
+    async def _cnt(status):
+        return await _db().opportunites.count_documents(_q(status))
+    n_recues = await _db().opportunites.count_documents({
+        "assigne_a": {"$in": uids},
+        "date_attribution": {"$gte": debut_iso},
+    })
+    n_demarche = await _cnt("demarche")
+    n_signes = await _cnt("mandat_signe")
+    n_abandon = await _cnt("abandon")
+    taux = round(100 * n_signes / max(n_recues, 1), 1)
+
+    # Classement par conseiller
+    classement = []
+    for m in membres_ids:
+        uid = m["user_id"]
+        r = await _db().opportunites.count_documents({
+            "assigne_a": uid, "date_attribution": {"$gte": debut_iso},
+        })
+        d = await _db().opportunites.count_documents({
+            "assigne_a": uid, "statut": "demarche",
+            "date_dernier_statut": {"$gte": debut_iso},
+        })
+        s = await _db().opportunites.count_documents({
+            "assigne_a": uid, "statut": "mandat_signe",
+            "date_dernier_statut": {"$gte": debut_iso},
+        })
+        classement.append({
+            "user_id": uid,
+            "prenom": m.get("prenom"),
+            "nom": m.get("nom"),
+            "recues": r,
+            "demarchees": d,
+            "signees": s,
+            "taux": round(100 * s / max(r, 1), 1),
+        })
+    classement.sort(key=lambda c: c["signees"], reverse=True)
+    return {
+        "periode": periode,
+        "debut_periode": debut_iso,
+        "agence": {
+            "opportunites_recues": n_recues,
+            "demarchees": n_demarche,
+            "mandats_signes": n_signes,
+            "abandonnees": n_abandon,
+            "taux_transformation_pct": taux,
+        },
+        "classement_conseillers": classement,
+    }
+
+
+@router.post("/api/d1/opportunites/{opp_id}/swipe-directeur")
+async def swipe_directeur(opp_id: str, payload: dict, request: Request):
+    """Swipe directeur avec affectation immédiate.
+
+    Body :
+      - `sens`: "droite" | "gauche"
+      - `user_id` (si droite): conseiller cible, ou `null` pour garder pour soi
+    """
+    user = await _require_directeur(request)
+    sens = (payload.get("sens") or "").lower()
+    if sens not in ("droite", "gauche"):
+        raise HTTPException(status_code=400, detail="sens_invalide")
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    try:
+        _id = ObjectId(opp_id)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail="opp_id_invalide")
+    now_iso = now_utc_iso()
+    if sens == "gauche":
+        # Ignore : passe en rejetee
+        await _db().opportunites.update_one(
+            {"_id": _id, "assigne_a": user["user_id"]},
+            {"$set": {"statut": "rejetee",
+                      "date_rejetee": now_iso, "swiped_at": now_iso,
+                      "date_dernier_statut": now_iso}},
+        )
+        return {"ok": True, "sens": "gauche", "statut": "rejetee"}
+    # Droite : affecter à un conseiller ou soi-même
+    target = payload.get("user_id") or user["user_id"]
+    # Vérifie que target est bien de l'agence du directeur
+    target_user = await _db().users.find_one(
+        {"user_id": target, "organisation_id": user["organisation_id"]},
+        {"_id": 0, "user_id": 1},
+    )
+    if not target_user:
+        raise HTTPException(status_code=400,
+            detail="target_hors_agence" if target != user["user_id"] else "user_introuvable")
+    await _db().opportunites.update_one(
+        {"_id": _id, "assigne_a": user["user_id"]},
+        {"$set": {"assigne_a": target, "statut": "a_demarcher",
+                  "affectee_par": user["user_id"],
+                  "date_affectation": now_iso, "swiped_at": now_iso,
+                  "date_dernier_statut": now_iso,
+                  "affectation_notif_flag": True}},
+    )
+    return {"ok": True, "sens": "droite", "affectee_a": target,
+            "statut": "a_demarcher"}
+
