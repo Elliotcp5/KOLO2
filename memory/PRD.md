@@ -17,6 +17,59 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC F · Build 2.24 batch 3 — Chaîne push token APNs réparée + A2 schéma acteur lu (Fév 8, 2026) 🔥 LATEST
+
+**Contexte**
+- User teste en prod : `push-test` renvoie `envoyes:0, tokens_cibles:0, apns_ready:false`.
+- 2 bugs distincts : (a) batch 2 non redéployé (apns_ready=false, apify-ping 404) — action déploiement côté user, (b) **aucun device token n'a jamais atteint la base** — bug code.
+
+**Bugs identifiés (chaîne complète)**
+1. Le frontend Capacitor B1 (B3Perf.jsx) appelait `PushNotifications.register()` **sans installer de listener `registration`** → le token émis par APNs était perdu.
+2. `services/pushNotifications.js` avait un listener mais n'était appelé que dans les pages V2 (AppShell.js, NotificationPrompt.js), **jamais dans la stack B1**.
+3. L'endpoint legacy `/api/notifications/register-device` écrivait `{user_id, device_token, platform}` avec upsert sur `(user_id, platform)` — **différent du schéma canonique** `{user_id, token, plateforme}` lu par `b3.services.send_push_to_user`. Résultat : même si un token avait été écrit par l'endpoint legacy, le moteur d'envoi ne le trouvait pas → tokens_cibles=0.
+
+**Fixes appliqués**
+1. **Nouveau `frontend/src/b1/B1PushBridge.jsx`** :
+   - Composant monté au niveau App.js (`<B1PushBridge />` juste sous `<Suspense>`).
+   - Installe UNE FOIS un listener global `PushNotifications.addListener('registration', ...)` qui POSTe le token à `/api/notifications/register-device` avec l'entête Bearer.
+   - Au cold-start, si permission déjà `granted`, appelle `PushNotifications.register()` → re-emit du token (essentiel : APNs peut avoir changé le token entre deux sessions, et le serveur peut avoir purgé le token précédent via un 410 GONE).
+   - No-op sur web (`Capacitor.isNativePlatform()`).
+2. **`B3Perf.jsx`** — après acceptation, appelle `register()` puis re-`register()` à +2 s pour absorber les cas où APNs met du temps à émettre le token à froid sur un iPhone fraîchement installé.
+3. **`server.py::register_device_token`** — écrit désormais dans le schéma **canonique** (`token`, `plateforme`) avec upsert sur `(user_id, token)`. Champs legacy (`device_token`, `platform`) conservés en rétro-compat. Idempotent.
+4. **`b3/services.py::send_push_to_user`** — lit désormais les DEUX schémas (`token` OU `device_token`), pour ne rater aucun token existant. Normalise `plateforme|platform`.
+5. **Nouveau `GET /api/d1/admin/diagnostic-device-tokens?email=X`** — introspecte les tokens enregistrés pour un user (preview, longueur, schéma, dates). Permet de vérifier en un appel que la chaîne a bien injecté le token.
+
+**Test bout-en-bout en preview** — reproduit l'incident prod et le résout :
+- `POST /api/notifications/register-device {device_token, platform: "ios"}` → 200 `{ok:true}`.
+- `GET /api/d1/admin/diagnostic-device-tokens` → `count:1, schema:"canonique", apns_ready:true, apns_team_id_defined:true`.
+- `POST /api/d1/admin/push-test` → **`tokens_cibles:1`** (au lieu de 0). `envoyes:0` car token bidon, mais le pipeline complet fonctionne.
+
+**Actions user pour rétablir en prod** (après redéploiement du batch 2 + batch 3)
+1. Redéployer (batch 2 non déployé confirmé par 404 sur apify-ping et derniere-run-scraper).
+2. Sur l'iPhone : Réglages → KOLO → Notifications → Autoriser. Fermer et rouvrir l'app.
+3. À l'ouverture, si permission déjà `granted`, le B1PushBridge redemande automatiquement le token → POST vers /api/notifications/register-device → token en base.
+4. Vérifier via `GET /api/d1/admin/diagnostic-device-tokens?email=...` : `count>=1, schema:"canonique"`.
+5. Retirer/remettre l'app (facultatif) — le bridge se re-déclenche à chaque cold-start.
+
+**A2 · Schéma acteur Apify lu** (voir réponse chat pour détail complet)
+- 5 filtres exploitables pour découper : `priceMin/priceMax`, `surfaceMin/surfaceMax`, `roomsMin/roomsMax`, `bedroomsMin`, `propertyTypes`.
+- 20 sources disponibles vs 2 utilisées aujourd'hui — élargir peut multiplier x2,5 sans découpage.
+- **`incremental=true`** oublié : explique la chute 45→9→0 items — l'acteur re-renvoie les mêmes annonces qu'il a déjà rendues précédemment.
+- A3 (tranchage) EN ATTENTE de validation user avant de coder.
+
+**Tests posés**
+- `backend/tests/test_build_224_push_tokens.py` : 4 nouveaux tests. Total : **12/12 passent**.
+
+**Ce qui reste**
+- A3-A6 (Apify : incremental + sources + tranchage + volume_attendu + déploiement batch 2).
+- B1-B5 (paywall : première estimation gratuite + notifs zone + cartes floutées + audit Apple).
+- C1-C4 (polish : Outlet persistant + boutons alignés + haptics + tour guidé).
+
+---
+
+
+
+
 ### BLOC E · Build 2.24 batch 2 — Dossier complet + Logo + Vue agent d'agence (Fév 8, 2026) 🔥 LATEST
 Suite du batch 1. Traité A1-A4 sur les 8 items ouverts. A5-A8 (polish) et B2-B5 (paywall UX) reportés au prochain sprint.
 

@@ -15,6 +15,7 @@
 // écran malgré la refonte. Correction : LoginPage supprimé du router.
 // =============================================================
 import React, { useEffect, useState, lazy, Suspense } from "react";
+import { B1PushBridge } from "./b1/B1PushBridge";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -204,6 +205,9 @@ const AppRouter = () => {
         <div className="b1-loading">…</div>
       </div>
     }>
+    {/* Bridge global APNs — capte le token à chaque register()
+        et le POSTe au serveur. Voir B1PushBridge.jsx. */}
+    <B1PushBridge />
     <Routes>
       {/* ============================================================== */}
       {/* SITE VITRINE — trykolo.io. Native app ne voit JAMAIS ça.       */}

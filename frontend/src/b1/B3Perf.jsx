@@ -228,12 +228,22 @@ export function NotifPermissionScreen() {
         body: JSON.stringify({ decision }),
       });
       if (decision === 'autorise') {
-        // Demande système iOS (Capacitor plugin) — best-effort
+        // Demande système iOS (Capacitor plugin) — best-effort.
+        // Le token, une fois émis, est capté par B1PushBridge (App.js)
+        // qui l'enregistre en base via /api/notifications/register-device.
         try {
           const mod = await import('@capacitor/push-notifications').catch(() => null);
           if (mod?.PushNotifications) {
             const p = await mod.PushNotifications.requestPermissions();
-            if (p.receive === 'granted') await mod.PushNotifications.register();
+            if (p.receive === 'granted') {
+              await mod.PushNotifications.register();
+              // Re-register à +2 s pour absorber les cas où APNs met du
+              // temps à émettre le token à froid (observé sur iPhone
+              // fraîchement installé). Idempotent côté serveur.
+              setTimeout(() => {
+                mod.PushNotifications.register().catch(() => {});
+              }, 2000);
+            }
           }
         } catch {}
       }

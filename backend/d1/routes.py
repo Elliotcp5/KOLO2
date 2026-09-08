@@ -1411,6 +1411,54 @@ async def admin_push_test(payload: dict, request: Request):
     }
 
 
+@router.get("/api/d1/admin/diagnostic-device-tokens")
+async def admin_diagnostic_device_tokens(request: Request, email: str = ""):
+    """Introspecte les device_tokens enregistrés pour un utilisateur.
+
+    Utile quand `push-test` retourne `tokens_cibles: 0` : permet de voir
+    si le token a été enregistré, avec quel schéma, et quand.
+
+    Retour :
+      - `user_id`, `email`
+      - `count` : nombre de documents device_tokens
+      - `tokens` : liste (masquée) avec `{token_preview, plateforme, platform, created_at, updated_at, schema}`
+      - `apns_status` : `_apns_ready()` + team_id_defined
+    """
+    _check_admin(request)
+    if not email:
+        raise HTTPException(status_code=400, detail="email_requis")
+    u = await _db().users.find_one({"email": email.lower().strip()}, {"_id": 0, "user_id": 1})
+    if not u:
+        raise HTTPException(status_code=404, detail="user_introuvable")
+    from b3.services import _apns_ready
+    tokens_cur = _db().device_tokens.find({"user_id": u["user_id"]}, {"_id": 0})
+    tokens = []
+    async for t in tokens_cur:
+        raw = t.get("token") or t.get("device_token") or ""
+        if raw:
+            preview = raw[:8] + "…" + raw[-6:] if len(raw) > 20 else raw
+        else:
+            preview = "<empty>"
+        tokens.append({
+            "token_preview": preview,
+            "token_length": len(raw),
+            "plateforme": t.get("plateforme"),
+            "platform": t.get("platform"),
+            "created_at": t.get("created_at"),
+            "updated_at": t.get("updated_at"),
+            "schema": ("canonique" if "token" in t else "legacy"),
+        })
+    import os as _os
+    return {
+        "user_id": u["user_id"],
+        "email": email,
+        "count": len(tokens),
+        "tokens": tokens,
+        "apns_ready": _apns_ready(),
+        "apns_team_id_defined": bool(_os.environ.get("APNS_TEAM_ID")),
+    }
+
+
 @router.get("/api/d1/admin/diagnostic-apify-fields")
 async def admin_diagnostic_apify_fields(request: Request, run_id: str = ""):
     """Dump les CLÉS présentes dans les items du dernier run Apify (ou run_id

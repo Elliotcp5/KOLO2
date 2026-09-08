@@ -154,9 +154,24 @@ async def send_push_to_user(db, user_id: str, key: str, params: Optional[dict] =
     """Envoie une notif push à tous les device_tokens de l'utilisateur.
 
     Retourne le nombre d'envois effectifs (ou 0 si APNs non configuré).
+
+    Compat : lit à la fois le schéma canonique b3 `{token, plateforme}` ET
+    l'ancien schéma server.py `{device_token, platform}` — plusieurs points
+    d'entrée frontend historiques utilisent l'un ou l'autre, et jusqu'ici
+    seul le schéma canonique était visible du moteur d'envoi (bug qui a
+    empêché toutes les notifs d'arriver à l'iPhone).
     """
     params = params or {}
-    tokens = [t async for t in db.device_tokens.find({"user_id": user_id}, {"token": 1, "plateforme": 1, "_id": 0})]
+    cur = db.device_tokens.find({"user_id": user_id},
+                                  {"token": 1, "device_token": 1,
+                                   "plateforme": 1, "platform": 1, "_id": 0})
+    raw = [t async for t in cur]
+    tokens = []
+    for t in raw:
+        tok = t.get("token") or t.get("device_token")
+        plat = t.get("plateforme") or t.get("platform") or "ios"
+        if tok:
+            tokens.append({"token": tok, "plateforme": plat})
     if not tokens:
         return 0
 

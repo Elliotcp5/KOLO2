@@ -6421,34 +6421,51 @@ async def subscribe_notifications(request: Request, data: NotificationSubscripti
 
 @api_router.post("/notifications/register-device")
 async def register_device_token(request: Request):
-    """Register native device token (APNs for iOS, FCM for Android)"""
+    """Register native device token (APNs for iOS, FCM for Android).
+
+    Fix Build 2.24 : écrit désormais dans le schéma canonique b3
+    (`{user_id, token, plateforme}`) pour que le moteur d'envoi push
+    B3 puisse retrouver le token. Auparavant on stockait
+    `{device_token, platform}` que send_push_to_user ne lisait pas —
+    résultat : tokens_cibles=0 sur toutes les envois.
+
+    Idempotent : upsert sur (user_id, token) — un même device peut
+    être ré-enregistré à chaque ouverture sans dupliquer.
+    """
     user = await get_user_from_session(request)
     data = await request.json()
     
-    device_token = data.get("device_token")
-    platform = data.get("platform", "ios")  # 'ios' or 'android'
+    device_token = data.get("device_token") or data.get("token")
+    platform = (data.get("platform") or data.get("plateforme") or "ios").lower()
     
     if not device_token:
         raise HTTPException(status_code=400, detail="device_token required")
     
     user_id = user.user_id if user else data.get("user_id")
     if not user_id:
-        raise HTTPException(status_code=400, detail="User authentication required")
+        raise HTTPException(status_code=401, detail="User authentication required")
     
-    # Store device token
+    now_iso = datetime.now(timezone.utc).isoformat()
+    # Schéma canonique b3 (le moteur d'envoi le lit).
     await db.device_tokens.update_one(
-        {"user_id": user_id, "platform": platform},
+        {"user_id": user_id, "token": device_token},
         {"$set": {
             "user_id": user_id,
+            "token": device_token,
+            "plateforme": platform,
+            "updated_at": now_iso,
+            # Rétro-compat : on garde aussi les anciens noms si un ancien
+            # code de lecture existe encore quelque part.
             "device_token": device_token,
             "platform": platform,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }},
-        upsert=True
+        },
+         "$setOnInsert": {"created_at": now_iso}},
+        upsert=True,
     )
     
     logger.info(f"Device token registered for user {user_id} on {platform}")
-    return {"message": "Device token registered", "platform": platform}
+    return {"message": "Device token registered", "platform": platform,
+            "ok": True}
 
 
 @api_router.delete("/notifications/unsubscribe")
