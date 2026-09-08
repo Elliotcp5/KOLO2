@@ -233,7 +233,22 @@ export function EstimationFlowPage() {
       setResult(res);
       clearDraft(draftKey);
     } catch (e) {
-      const code = e?.data?.detail?.code || e?.message || 'erreur';
+      // Extraction sûre du message d'erreur — jamais [object Object].
+      // Priorité : detail.code (business error), detail (string), message HTTP.
+      let code = 'erreur';
+      const detail = e?.data?.detail;
+      if (typeof detail === 'string' && detail.trim()) {
+        code = detail;
+      } else if (detail && typeof detail === 'object' && detail.code) {
+        code = String(detail.code);
+      } else if (Array.isArray(detail) && detail[0]) {
+        // FastAPI 422 : liste d'erreurs Pydantic
+        const first = detail[0];
+        code = `${first?.loc?.slice(-1)?.[0] || 'champ'}_invalide`;
+      } else if (typeof e?.message === 'string' && e.message
+                  && e.message !== '[object Object]') {
+        code = e.message;
+      }
       // 402 = Découverte quota épuisé → écran-bloc neutre, PAS d'erreur affichée
       if ((code === 'quota_estimation_epuise' || code === 'plan_estimation')
           && e?.status === 402) {
@@ -278,7 +293,11 @@ export function EstimationFlowPage() {
         </div>
 
         <div className="b1-screen-content">
-          {error && <div className="est-error" data-testid="est-error">{error}</div>}
+          {error && (
+            <div className="est-error" data-testid="est-error">
+              {typeof error === 'object' ? JSON.stringify(error) : String(error)}
+            </div>
+          )}
           {qKey === 'etat' && <QEtat value={answers.etat} onPick={(v) => setAnswer('etat', v)} />}
           {qKey === 'etage' && <QEtage value={answers.etage} onPick={(v) => setAnswer('etage', v)} />}
           {qKey === 'ascenseur' && <QAsc value={answers.ascenseur} onPick={(v) => setAnswer('ascenseur', v)} />}

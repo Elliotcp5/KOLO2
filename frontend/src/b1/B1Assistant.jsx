@@ -20,7 +20,26 @@ export function AssistantPage() {
   const [pickerItems, setPickerItems] = useState({ estimations: [], dossiers: [] });
   const [convs, setConvs] = useState([]);
   const [error, setError] = useState('');
+  // Hauteur du clavier iOS (Capacitor). À l'ouverture, on l'applique en
+  // marge basse du composer + de la zone de messages, sinon la barre de
+  // saisie et le dernier message se retrouvent sous le clavier.
+  // Build 2.22.6 (point 3 du feedback terrain).
+  const [kbHeight, setKbHeight] = useState(0);
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    // Écoute clavier via Capacitor Keyboard plugin s'il est chargé
+    // eslint-disable-next-line no-undef
+    const Kb = window?.Capacitor?.Plugins?.Keyboard;
+    if (!Kb || !Kb.addListener) return () => {};
+    const l1 = Kb.addListener('keyboardWillShow', (info) => {
+      setKbHeight(Number(info?.keyboardHeight) || 300);
+    });
+    const l2 = Kb.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => {
+      try { l1?.remove?.(); l2?.remove?.(); } catch {}
+    };
+  }, []);
 
   useEffect(() => { (async () => {
     try {
@@ -110,7 +129,7 @@ export function AssistantPage() {
   const showSuggestions = messages.length === 0;
 
   return (
-    <div className="b1-root b1-page" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, paddingBottom: 'calc(76px + env(safe-area-inset-bottom))' }} data-testid="as-page">
+    <div className="b1-root b1-page" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, paddingBottom: `calc(76px + env(safe-area-inset-bottom) + ${kbHeight}px)`, transition: 'padding-bottom 0.2s ease' }} data-testid="as-page">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'calc(env(safe-area-inset-top) + 12px) 16px 12px', borderBottom: '1px solid var(--b1-border)' }}>
         <Bot size={20} color="var(--b1-accent)" />
         <div style={{ flex: 1 }}>

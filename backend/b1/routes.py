@@ -689,17 +689,58 @@ async def get_my_veille_suivis(request: Request):
 @router.get("/api/opportunites/du-jour")
 async def get_opportunites_du_jour(request: Request, limit: int = 5):
     """Retourne les opportunités attribuées à l'utilisateur, en statut
-    `proposee`, triées par date_attribution DESC (les plus récentes d'abord).
-    Limite à `limit` (par défaut 5).
+    `proposee`, triées par date_attribution DESC.
+
+    Quota quotidien (build 2.22.6) : max 5 opps swipeables par jour pour
+    un agent, illimité pour un directeur. Le quota est consommé par les
+    swipes (statut passe de `proposee` à `a_demarcher`/`rejetee`) et ne
+    se recharge qu'à 03h Paris (job distribuer_quotidien).
+
+    Concrètement : `n_swipes_du_jour + n_proposees_restantes >= 5` →
+    on plafonne à `5 - n_swipes_du_jour` propositions.
     """
     user = await _current_user_doc(request)
     uid = user["user_id"]
+    is_directeur = (user.get("role") or "").lower() == "directeur"
+
+    # Fenêtre journalière : 03h Paris (aligné sur le job distribuer_quotidien).
+    from datetime import datetime, timedelta, timezone as _tz
+    now = datetime.now(_tz.utc)
+    paris_offset = 2  # DST-aware un peu grossier ; suffisant pour la fenêtre
+    debut_j = (now - timedelta(hours=paris_offset - 3)).replace(
+        hour=3, minute=0, second=0, microsecond=0)
+    if debut_j > now:
+        debut_j -= timedelta(days=1)
+    debut_j_iso = debut_j.isoformat()
+
+    # Nombre d'opps DÉJÀ swipées (droite ou gauche) depuis 03h.
+    n_swipes = 0
+    if not is_directeur:
+        n_swipes = await _db().opportunites.count_documents({
+            "assigne_a": uid,
+            "statut": {"$in": ["a_demarcher", "demarche", "mandat_signe",
+                                "abandon", "deja_en_vente", "rejetee"]},
+            "swiped_at": {"$gte": debut_j_iso},
+        })
+
+    # Plafond effectif
+    if is_directeur:
+        effectif = max(1, min(limit, 50))
+    else:
+        reste = max(0, 5 - n_swipes)
+        effectif = min(reste, max(1, min(limit, 20)))
+
+    if effectif == 0:
+        return {"ok": True, "items": [], "count": 0,
+                "quota_quotidien": 5, "swipes_du_jour": n_swipes,
+                "reste_du_jour": 0}
+
     cur = _db().opportunites.find(
         {"assigne_a": uid, "statut": "proposee"},
         {"_id": 1, "adresse": 1, "code_postal": 1, "complement_adresse": 1,
          "lat": 1, "lng": 1, "caracteristiques": 1, "score_confiance": 1,
          "motif_opportunite": 1, "date_attribution": 1, "id_parcelle": 1},
-    ).sort("date_attribution", -1).limit(max(1, min(limit, 20)))
+    ).sort("date_attribution", -1).limit(effectif)
     items = []
     async for opp in cur:
         caracs = opp.get("caracteristiques") or {}
@@ -721,7 +762,10 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
             "caracteristiques": caracs,
             "id_parcelle": opp.get("id_parcelle"),
         })
-    return {"ok": True, "items": items, "count": len(items)}
+    return {"ok": True, "items": items, "count": len(items),
+            "quota_quotidien": None if is_directeur else 5,
+            "swipes_du_jour": n_swipes,
+            "reste_du_jour": None if is_directeur else max(0, 5 - n_swipes - len(items))}
 
 
 def _oid_or_400(raw: str):
@@ -755,6 +799,7 @@ async def swipe_opportunite(opportunite_id: str, request: Request):
         {"_id": _id, "assigne_a": user["user_id"], "statut": "proposee"},
         {"$set": {"statut": nouveau_statut,
                   date_field: now_iso,
+                  "swiped_at": now_iso,  # quota quotidien build 2.22.6
                   "date_dernier_statut": now_iso,
                   "updated_at": now_iso}},
     )
