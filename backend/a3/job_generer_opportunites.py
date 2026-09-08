@@ -385,16 +385,27 @@ async def _log_rapprochement(db, doc: dict) -> None:
 
 
 def _motif_opportunite(dpe: dict, active_count: int, sources: list[str]) -> str:
+    """Génère le motif humain visible sur la fiche opportunité.
+
+    Retiré le 8/2/2026 : le chiffre `active_count` (annonces actives dans la
+    zone) était figé au moment de la génération et devenait faux dès qu'un
+    scrape ultérieur ajoutait des lignes. On l'a vu à 663 alors que la base
+    en comptait 139 → chiffre périmé visible pour l'utilisateur. On garde
+    le motif court, sans chiffre, et on reformule le cas où `sources` est
+    vide en phrase compréhensible pour un agent.
+    """
     try:
         date_iso = dpe.get("date_etablissement") or ""
         d = datetime.fromisoformat(date_iso[:19].replace("Z", ""))
         jours = max(0, (datetime.utcnow() - d).days)
     except Exception:
         jours = 0
+    prefix = f"DPE réalisé il y a {jours} jour{'s' if jours > 1 else ''}"
+    if not sources or len(sources) == 0:
+        return f"{prefix} · ce bien n'apparaît sur aucun portail."
     return (
-        f"DPE réalisé il y a {jours} jour{'s' if jours > 1 else ''}, "
-        f"aucune annonce détectée sur {len(sources)} portail{'s' if len(sources) > 1 else ''} "
-        f"({active_count} annonces actives dans la zone)"
+        f"{prefix} · aucune annonce détectée sur "
+        f"{len(sources)} portail{'s' if len(sources) > 1 else ''}."
     )
 
 

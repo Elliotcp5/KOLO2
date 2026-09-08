@@ -684,14 +684,22 @@ export function EstimationAdressePage() {
                   </div>
                   {/* Un immeuble a plusieurs logements — l'user doit pouvoir
                       créer une NOUVELLE estimation à la même adresse quand
-                      le DPE trouvé ne correspond pas à son bien. Build 2.22.5. */}
+                      le DPE trouvé ne correspond pas à son bien. Build 2.22.5.
+                      2026-02-08 : marginTop 16 → 20 + display block pour
+                      corriger le chevauchement avec la ligne de caractéristiques
+                      remonté par le user. */}
                   <button
                     type="button"
                     className="b1-link"
                     data-testid="est-adr-creer-nouvelle"
-                    style={{ marginTop: 10, background: 'transparent', border: 0,
+                    style={{ display: 'block', marginTop: 20, paddingTop: 12,
+                             borderTop: '1px solid rgba(0,0,0,0.06)',
+                             width: '100%', textAlign: 'left',
+                             background: 'transparent', border: 0,
+                             borderTopColor: 'rgba(0,0,0,0.06)',
+                             borderTopWidth: 1, borderTopStyle: 'solid',
                              color: 'var(--b1-primary)', textDecoration: 'underline',
-                             cursor: 'pointer', fontSize: 13, padding: 0 }}
+                             cursor: 'pointer', fontSize: 13 }}
                     onClick={() => { setDpe(null); setSurface(''); }}>
                     {b1t('est.adr.creer_nouvelle') || 'Créer une nouvelle estimation à cette adresse'}
                   </button>

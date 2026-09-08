@@ -642,14 +642,9 @@ export function ProfilPersoPage() {
   const [me, setMe] = useState(null);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({});
-  const [logoUrl, setLogoUrl] = useState('');
-  const [logoBusy, setLogoBusy] = useState(false);
-  const [logoError, setLogoError] = useState('');
-  const logoInputRef = React.useRef(null);
   useEffect(() => {
     b1api.getProfil().then((r) => {
       setMe(r.user);
-      setLogoUrl(r.user?.logo_url || '');
       setValues({
         prenom: r.user?.prenom || '',
         nom: r.user?.nom || '',
@@ -666,48 +661,10 @@ export function ProfilPersoPage() {
     setSaving(true);
     try { await b1api.patchProfil({ perso: values }); } finally { setSaving(false); }
   };
-  const onLogoPick = async (ev) => {
-    const f = ev.target.files?.[0];
-    if (!f) return;
-    setLogoBusy(true); setLogoError('');
-    try {
-      const r = await b1api.uploadLogo(f, f.name);
-      setLogoUrl(r?.url || '');
-    } catch (e) {
-      setLogoError(String(e?.message || e));
-    } finally { setLogoBusy(false); ev.target.value = ''; }
-  };
-  const token = (typeof window !== 'undefined')
-    ? (localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '')
-    : '';
-  const API = process.env.REACT_APP_BACKEND_URL;
-  const logoSrc = logoUrl ? `${API}${logoUrl}${logoUrl.includes('?') ? '&' : '?'}auth=${encodeURIComponent(token)}` : '';
   return (
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('profil.perso.titre')} />
-        {/* Bloc logo agent (Build 2.24 A2) — apparaît sur le PDF du dossier */}
-        <div className="b1-card" data-testid="b1-perso-logo-card" style={{ marginBottom: 12 }}>
-          <div className="b1-input-label">{b1t('profil.perso.logo') || 'Logo agent'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-            {logoSrc ? (
-              <img src={logoSrc} alt="" data-testid="b1-perso-logo-preview" style={{ maxHeight: 64, maxWidth: 160, borderRadius: 8, border: '1px solid var(--b1-border)', objectFit: 'contain' }} />
-            ) : (
-              <div className="b1-small" style={{ opacity: 0.7 }}>{b1t('profil.perso.logo.aucun') || 'Aucun logo'}</div>
-            )}
-            <button
-              type="button"
-              className="b1-pill b1-pill--ghost"
-              data-testid="b1-perso-logo-upload"
-              disabled={logoBusy}
-              onClick={() => logoInputRef.current?.click()}
-            >
-              {logoBusy ? b1t('sys.un_instant') : (logoSrc ? (b1t('profil.perso.logo.changer') || 'Changer') : (b1t('profil.perso.logo.ajouter') || 'Ajouter'))}
-            </button>
-            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoPick} data-testid="b1-perso-logo-input" />
-          </div>
-          {logoError && <div className="b1-small" data-testid="b1-perso-logo-error" style={{ color: 'var(--b1-danger)', marginTop: 6 }}>{logoError}</div>}
-        </div>
         {['prenom', 'nom', 'phone', 'email', 'adresse', 'code_postal_perso', 'ville_perso'].map((k) => (
           <div key={k}>
             <div className="b1-input-label">{b1t(`profil.perso.${k === 'code_postal_perso' ? 'cp' : k === 'ville_perso' ? 'ville' : k === 'phone' ? 'tel' : k}`)}</div>
@@ -733,8 +690,15 @@ export function ProfilPersoPage() {
 export function ProfilProPage() {
   const [state, setState] = useState({ infos_pro: {}, completude: 0 });
   const [saving, setSaving] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const logoInputRef = React.useRef(null);
   useEffect(() => {
-    b1api.getProfil().then((r) => setState({ infos_pro: r.user?.infos_pro || {}, completude: r.user?.infos_pro_completude || 0 })).catch(() => {});
+    b1api.getProfil().then((r) => {
+      setState({ infos_pro: r.user?.infos_pro || {}, completude: r.user?.infos_pro_completude || 0 });
+      setLogoUrl(r.user?.logo_url || '');
+    }).catch(() => {});
   }, []);
   const setF = (k, v) => setState((s) => ({ ...s, infos_pro: { ...s.infos_pro, [k]: v } }));
   const save = async () => {
@@ -744,6 +708,22 @@ export function ProfilProPage() {
       setState({ infos_pro: r.user?.infos_pro || state.infos_pro, completude: r.infos_pro_completude || 0 });
     } finally { setSaving(false); }
   };
+  const onLogoPick = async (ev) => {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    setLogoBusy(true); setLogoError('');
+    try {
+      const r = await b1api.uploadLogo(f, f.name);
+      setLogoUrl(r?.url || '');
+    } catch (e) {
+      setLogoError(String(e?.message || e));
+    } finally { setLogoBusy(false); ev.target.value = ''; }
+  };
+  const authToken = (typeof window !== 'undefined')
+    ? (localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '')
+    : '';
+  const API = process.env.REACT_APP_BACKEND_URL;
+  const logoSrc = logoUrl ? `${API}${logoUrl}${logoUrl.includes('?') ? '&' : '?'}auth=${encodeURIComponent(authToken)}` : '';
   const textFields = [
     { k: 'siren' }, { k: 'agence' }, { k: 'carte_t' }, { k: 'cci' },
     { k: 'rcp_assureur' }, { k: 'rcp_police' }, { k: 'garantie' },
@@ -753,6 +733,31 @@ export function ProfilProPage() {
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('profil.pro.titre')} />
+        {/* Logo agence (Build 2.24 A2 · déplacé de perso vers pro le 8/2/2026) */}
+        <div className="b1-card" data-testid="b1-pro-logo-card" style={{ marginBottom: 12 }}>
+          <div className="b1-input-label">{b1t('profil.pro.logo') || "Logo de l'agence"}</div>
+          <div className="b1-small" style={{ opacity: 0.7, marginTop: 2, marginBottom: 8 }}>
+            {b1t('profil.pro.logo.hint') || "Affiché sur le dossier d'estimation généré."}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {logoSrc ? (
+              <img src={logoSrc} alt="" data-testid="b1-pro-logo-preview" style={{ maxHeight: 64, maxWidth: 160, borderRadius: 8, border: '1px solid var(--b1-border)', objectFit: 'contain' }} />
+            ) : (
+              <div className="b1-small" style={{ opacity: 0.7 }}>{b1t('profil.perso.logo.aucun') || 'Aucun logo'}</div>
+            )}
+            <button
+              type="button"
+              className="b1-pill b1-pill--ghost"
+              data-testid="b1-pro-logo-upload"
+              disabled={logoBusy}
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {logoBusy ? b1t('sys.un_instant') : (logoSrc ? (b1t('profil.perso.logo.changer') || 'Changer') : (b1t('profil.perso.logo.ajouter') || 'Ajouter'))}
+            </button>
+            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoPick} data-testid="b1-pro-logo-input" />
+          </div>
+          {logoError && <div className="b1-small" data-testid="b1-pro-logo-error" style={{ color: 'var(--b1-danger)', marginTop: 6 }}>{logoError}</div>}
+        </div>
         <div className="b1-card">
           <div className="b1-small" style={{ marginBottom: 6 }}>
             {b1t('profil.pro.completude', { pct: state.completude })}

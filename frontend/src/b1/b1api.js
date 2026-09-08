@@ -262,5 +262,6 @@ export const b1api = {
   // Opportunités
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
   getMesMandats, patchStatutMandat, getQuotaEtat,
+  uploadLogo,
 };
 export default b1api;
