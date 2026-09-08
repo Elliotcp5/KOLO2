@@ -17,6 +17,61 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC E · Build 2.24 batch 2 — Dossier complet + Logo + Vue agent d'agence (Fév 8, 2026) 🔥 LATEST
+Suite du batch 1. Traité A1-A4 sur les 8 items ouverts. A5-A8 (polish) et B2-B5 (paywall UX) reportés au prochain sprint.
+
+**A1 · Champs manquants dans le dossier**
+- `backend/c2/routes.py::_completude` : ajoute `dpe_ok` et `annee_ok` aux blocages niveau 1. `pret_export` bloque désormais tant que `classe_dpe` et `annee_construction` ne sont pas remplis.
+- `frontend/src/b1/B1Dossier.jsx` :
+  - `SECTIONS.identification` accueille `classe_dpe` (text), `annee_construction` (number) et `reference_cadastrale` (text, optionnel).
+  - Deux nouveaux items de complétude « Classe DPE » et « Année de construction » avec sous-texte « Non trouvée — à saisir » quand vide, cliquables → ouvre l'éditeur de la section identification.
+- i18n : `dos.completude.item.dpe`, `dos.completude.item.dpe.non_trouve`, `dos.completude.item.annee`, `dos.completude.item.annee.non_trouve`, `dos.f.classe_dpe`, `dos.f.annee_construction`, `dos.f.cadastre` en FR/EN/IT/DE.
+
+**A2 · Logo agent**
+- Backend :
+  - `POST /api/me/logo` (multipart file) : compresse JPEG max 800 px q85, stocke via Emergent Object Storage sur `{APP_NAME}/agents/{user_id}/logo_{uuid}.jpg`, pose `users.logo_url` + `logo_path` + `logo_updated_at`. Guards : 15 Mo max, format image obligatoire, retour code utilisateur `logo_trop_lourd|logo_invalide|storage_indisponible`.
+  - `GET /api/me/logo/{logo_id}?auth=<token>` : sert le binaire, auth via session OU query token (nécessaire pour `<img src>` côté web). 404 si l'ID ne matche pas le `logo_url` du user (défense contre l'énumération).
+  - `/api/me/profil` retourne désormais `logo_url` pour hydratation front.
+  - `prefill.py` propage `redacteur.logo_url = users.logo_url` → passé au template.
+  - `renderer.py` : `agent_logo_url` passé dans le contexte, `optimize_image()` applique data-URI CID pour WeasyPrint.
+  - `template.html.j2` : `<img class="brand-logo" src="{{ agent_logo_url }}">` sur la couverture (56×180 px max, contain).
+- Frontend : `ProfilPersoPage` (`B1Shell.jsx`) affiche une carte « Logo agent » avec preview + boutons « Ajouter » / « Changer ». Utilise `b1api.uploadLogo(blob)`. Erreurs traduites.
+- Test bout-en-bout : upload d'un rectangle 100×60 → URL retournée → `?auth=<token>` sert 200 image/jpeg 329 bytes.
+
+**A3 · Profil directeur — carte agence**
+- `B1Shell.jsx::ProfilAgenceCard` : lit `getMyOrganisation()`, affiche nom d'agence, `sieges_utilises/total`, zones (marquées « zones illimitées »). Rendu uniquement si `role==='directeur' && organisation_id`.
+- Screenshot confirmé : « Mon agence · KOLO Test Agency · sièges utilisés/total · zones illimitées · … » sous le badge Pro.
+
+**A4 · Vue agent d'agence**
+- Backend :
+  - `GET /api/opportunites/du-jour` remonte désormais `affectation_notif_flag`, `affectee_par`, `date_affectation`, `en_agence` (bool, vrai dès que le user a un `organisation_id` OU que l'opp a un `organisation_id`).
+  - `POST /api/opportunites/{id}/swipe` renvoie **403 `swipe_desactive_agence`** si le user est en agence (organisation_id) et n'est pas directeur.
+- Frontend : `OpportunitesPage` (`B1Shell.jsx`) :
+  - `SwipeCard` reçoit `disabled=pending || affectation_notif_flag || en_agence` → gestures bloqués.
+  - Bandeau haut de carte `.b1-opp-affectee-banner` affiché uniquement si `affectation_notif_flag`. Fond ambre `#FFECD2`, texte `#7A4A00`. i18n `dir.b224.affectee.badge`.
+
+**Rename déjà appliqué au batch 1**
+- « Biens à surveiller » → « Veille concurrentielle » dans FR/EN/IT/DE (`b1i18nVeille.js`, aria-label B1Shell).
+
+**Tests posés**
+- `backend/tests/test_build_224_batch2.py` : 5 assertions (A1 completude, A2 upload/render/prefill, A3 profil expose logo, A4 backend swipe désactivé, A4 bannière frontend). ✅ 5/5 passent (8/8 total avec batch 1).
+
+**Ce qui reste — À traiter au prochain sprint (batch 3)**
+- A5 : `<Outlet />` persistant + squelettes gris + transitions 200 ms.
+- A6 : alignement boutons swipe (taille/spacing/tap feedback).
+- A7 : tour guidé qui pointe (flèche) ou ouvre le menu, reste sombre.
+- A8 : haptics, animations d'apparition, états vides soignés, cohérence typo.
+- B1 (inventaire paywall) : état des lieux déjà mailé au user hors PRD (voir summary finish).
+- B2 : notifications chiffrées zone-spécifiques (« 12 opps vous attendent dans le 13008 »).
+- B3 : deux notifs quotidiennes max, désactivables profil.
+- B4 : cartes floutées + compteur zone + CTA « Passer Pro » (une action).
+- B5 : audit compliance Apple (aucun prix, aucun lien externe de paiement dans l'app).
+
+---
+
+
+
+
 ### BLOC D · Build 2.24 — Visibilité scraper Apify + Interface directeur (Fév 8, 2026) 🔥 LATEST
 Contexte : après une consommation quasi-complète du quota Apify en 10 lancements manuels, le scrape retournait un « succès vide » (0 items) sans indice d'erreur. Le user a exigé (a) une remontée claire des erreurs Apify, (b) un cooldown budgétaire, (c) l'interface directeur B2B (Build 2.24) enfin construite.
 

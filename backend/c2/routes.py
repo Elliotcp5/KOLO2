@@ -239,13 +239,15 @@ REDACTEUR_CHAMPS_BLOQUANTS_MANDATAIRE: tuple[str, ...] = (
 
 
 def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
-    """5 blocages niveau 1 :
+    """Blocages niveau 1 avant export :
       1. demandeur_nom (mission)
       2. adresse (identification)
       3. surface_habitable (surfaces)
       4. photo_couverture (dossier)
-      5. redacteur complet (9 champs bloquants en carte propre,
-         11 en mandataire)
+      5. redacteur complet (9/11 champs)
+      6. classe_dpe (identification) — Build 2.24 A1 : demandé au user si
+         auto-fetch ADEME a échoué. Aucun dossier remis vide.
+      7. annee_construction (identification) — idem.
     """
     s = dossier_doc.get("sections") or {}
     mission = s.get("mission") or {}
@@ -258,6 +260,8 @@ def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
     adresse_ok = bool((identification.get("adresse") or "").strip())
     surface_ok = bool(surfaces.get("surface_habitable"))
     photo_ok = bool(dossier.get("photo_couverture"))
+    dpe_ok = bool(str(identification.get("classe_dpe") or "").strip())
+    annee_ok = bool(identification.get("annee_construction"))
 
     statut_carte = (redacteur.get("statut_carte") or "propre").lower()
     bloquants = (
@@ -278,10 +282,13 @@ def _completude(dossier_doc: dict[str, Any]) -> dict[str, Any]:
             "surface": surface_ok,
             "photo": photo_ok,
             "redacteur": redacteur_ok,
+            "dpe": dpe_ok,
+            "annee_construction": annee_ok,
         },
         "redacteur_manquants": manquants,
         "statut_carte": statut_carte,
-        "pret_export": all([demandeur_ok, adresse_ok, surface_ok, photo_ok, redacteur_ok]),
+        "pret_export": all([demandeur_ok, adresse_ok, surface_ok, photo_ok,
+                            redacteur_ok, dpe_ok, annee_ok]),
     }
 
 

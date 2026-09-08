@@ -289,6 +289,8 @@ export function DossierEditorPage() {
         <CompletudeItem ok={completude.blocages.adresse} labelKey="dos.completude.item.adresse" onClick={() => { setCurrentSection('identification'); setMode('section'); }} testid="dos-comp-adresse" />
         <CompletudeItem ok={completude.blocages.surface} labelKey="dos.completude.item.surface" onClick={() => { setCurrentSection('surfaces'); setMode('section'); }} testid="dos-comp-surface" />
         <CompletudeItem ok={completude.blocages.photo} labelKey="dos.completude.item.photo" onClick={() => { setCurrentSection('dossier'); setMode('section'); }} testid="dos-comp-photo" />
+        <CompletudeItem ok={completude.blocages.dpe} labelKey="dos.completude.item.dpe" detail={!completude.blocages.dpe ? b1t('dos.completude.item.dpe.non_trouve') : ''} onClick={() => { setCurrentSection('identification'); setMode('section'); }} testid="dos-comp-dpe" />
+        <CompletudeItem ok={completude.blocages.annee_construction} labelKey="dos.completude.item.annee" detail={!completude.blocages.annee_construction ? b1t('dos.completude.item.annee.non_trouve') : ''} onClick={() => { setCurrentSection('identification'); setMode('section'); }} testid="dos-comp-annee" />
         <CompletudeItem
           ok={completude.blocages.redacteur}
           labelKey="dos.completude.item.redacteur"
@@ -467,7 +469,9 @@ function SectionEditor({ dossier, sectionId, ajustement, onBack, onSave }) {
       { id: 'adresse', labelKey: 'dos.completude.item.adresse', type: 'text' },
       { id: 'code_postal', labelKey: 'profil.perso.cp', type: 'text' },
       { id: 'commune', labelKey: 'profil.perso.ville', type: 'text' },
-      { id: 'annee_construction', labelKey: 'dos.f.demandeur_qualite', type: 'number' },
+      { id: 'classe_dpe', labelKey: 'dos.f.classe_dpe', type: 'text' },
+      { id: 'annee_construction', labelKey: 'dos.f.annee_construction', type: 'number' },
+      { id: 'reference_cadastrale', labelKey: 'dos.f.cadastre', type: 'text' },
     ],
     surfaces: [
       { id: 'surface_habitable', labelKey: 'dos.f.surface_habitable', type: 'number' },

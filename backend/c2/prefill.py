@@ -241,6 +241,8 @@ def build_prefill(
         "rcp_assureur": infos_pro.get("rcp_assureur") or "",
         "rcp_police": infos_pro.get("rcp_police") or "",
         "garantie_financiere": infos_pro.get("garantie") or "",
+        # Logo agent — Build 2.24 A2. Injecté dans le PDF si présent.
+        "logo_url": user.get("logo_url") or "",
         # Cas mandataire : réseau + attestation d'habilitation
         "reseau_nom": infos_pro.get("reseau_nom") or "",
         "reseau_carte_t": infos_pro.get("reseau_carte_t") or "",

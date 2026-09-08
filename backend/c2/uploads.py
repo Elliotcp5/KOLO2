@@ -225,6 +225,81 @@ async def get_photo(
     return Response(content=data, media_type=ct or "image/jpeg")
 
 
+# ---------------------------------------------------------------------------
+# LOGO AGENT (Build 2.24 A2)
+# ---------------------------------------------------------------------------
+# Upload d'un logo pro dans « Informations personnelles ». Le logo est
+# stocké dans Emergent Object Storage (comme les photos de dossier) et
+# l'URL est posée sur `users.logo_url` pour être injectée dans le PDF
+# généré (renderer.build_context).
+# ---------------------------------------------------------------------------
+@router.post("/api/me/logo")
+async def upload_logo(request: Request, file: UploadFile = File(...)):
+    """Upload le logo de l'agent. Retourne l'URL servie par le backend.
+
+    Conforme Apple : aucune donnée sensible, pas de montant, pas de lien
+    externe. Le fichier est compressé silencieusement (max 800 px, JPEG q85).
+    """
+    user = await _current_user_doc(request)
+    db = _db()
+    raw = await file.read()
+    if len(raw) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="logo_trop_lourd")
+    try:
+        jpg = _compress_to_jpeg(raw, max_width=800, quality=85)
+    except Exception as e:
+        logger.warning(f"logo compress failed: {e}")
+        raise HTTPException(status_code=400, detail="logo_invalide")
+
+    logo_id = uuid.uuid4().hex
+    path = f"{APP_NAME}/agents/{user['user_id']}/logo_{logo_id}.jpg"
+    try:
+        _put(path, jpg, "image/jpeg")
+    except Exception as e:
+        logger.exception(f"logo put failed: {e}")
+        raise HTTPException(status_code=502, detail="storage_indisponible")
+
+    url_path = f"/api/me/logo/{logo_id}"
+    now = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"logo_url": url_path, "logo_path": path,
+                  "logo_updated_at": now}},
+    )
+    return {"ok": True, "url": url_path, "size_bytes": len(jpg)}
+
+
+@router.get("/api/me/logo/{logo_id}")
+async def get_logo(logo_id: str, request: Request,
+                    auth: str | None = Query(None),
+                    authorization: str | None = Header(None)):
+    """Sert le binaire du logo (auth session ou `?auth=<token>` pour <img>)."""
+    from server import get_user_from_session  # type: ignore
+    user = await get_user_from_session(request)
+    if not user and auth:
+        sess = await _db().user_sessions.find_one({"session_token": auth})
+        if sess:
+            udoc = await _db().users.find_one({"user_id": sess["user_id"]}, {"_id": 0})
+            if udoc:
+                class _U: pass
+                user = _U(); user.user_id = udoc["user_id"]
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    doc = await _db().users.find_one({"user_id": user.user_id}, {"_id": 0, "logo_path": 1, "logo_url": 1})
+    if not doc or not doc.get("logo_path"):
+        raise HTTPException(status_code=404, detail="logo_introuvable")
+    expected_url = f"/api/me/logo/{logo_id}"
+    if doc.get("logo_url") != expected_url:
+        raise HTTPException(status_code=404, detail="logo_introuvable")
+    try:
+        data, ct = _get(doc["logo_path"])
+    except Exception as e:
+        logger.exception(f"logo get failed: {e}")
+        raise HTTPException(status_code=502, detail="storage_indisponible")
+    return Response(content=data, media_type=ct or "image/jpeg")
+
+
+
 @router.delete("/api/dossiers/{dossier_id}/photos/{photo_id}")
 async def delete_photo(dossier_id: str, photo_id: str, request: Request):
     """Soft-delete + désaccroche la référence dans le dossier."""

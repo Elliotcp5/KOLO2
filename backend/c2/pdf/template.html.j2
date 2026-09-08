@@ -22,6 +22,9 @@
 {#================ 1. COUVERTURE =====================#}
 <div class="cover cover-wrap">
   <div class="cover-top">
+    {% if agent_logo_url %}
+      <img class="brand-logo" src="{{ agent_logo_url }}" alt="" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:6px;" />
+    {% endif %}
     <div class="brandmark">{{ agence_nom or "" }}</div>
     <div class="eyebrow">Dossier {{ dossier.ref }}</div>
   </div>

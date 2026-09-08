@@ -324,9 +324,28 @@ export function OpportunitesPage() {
             <SwipeCard
               onSwipeLeft={() => swipe('gauche')}
               onSwipeRight={() => swipe('droite')}
-              disabled={pending}
+              disabled={pending || !!cur?.affectation_notif_flag || cur?.en_agence}
               testid="b1-opp-swipe"
             >
+              {/* A4 · Build 2.24 : bandeau « Nouvelle opportunité affectée »
+                  quand le directeur l'a affectée à cet agent. Le swipe est
+                  désactivé côté carte (disabled ci-dessus). L'agent doit
+                  la démarcher, il ne peut plus rejeter. */}
+              {cur?.affectation_notif_flag && (
+                <div
+                  className="b1-opp-affectee-banner"
+                  data-testid="b1-opp-affectee-banner"
+                  style={{
+                    position: 'absolute', top: 8, left: 12, right: 12,
+                    zIndex: 3, padding: '8px 12px', borderRadius: 12,
+                    background: 'rgba(255, 236, 210, 0.95)',
+                    color: '#7A4A00', fontSize: 12, fontWeight: 600,
+                    textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  {b1t('dir.b224.affectee.badge')}
+                </div>
+              )}
               {/* Zone cliquable : tap simple → estimation directe avec adresse
                   + surface pré-remplies. Détails accessibles via l'icône info
                   en haut à droite. build 2.22.5. */}
@@ -559,6 +578,7 @@ export function ProfilPage() {
             </button>
           )}
         </div>
+        {isDirecteur && <ProfilAgenceCard />}
         <div className="b1-profil-menu">
           {menu.map((m) => (
             <button
@@ -586,14 +606,50 @@ export function ProfilPage() {
   );
 }
 
+// ============================================================================
+// Carte "Mon agence" — affichée dans le profil du directeur (Build 2.24)
+// Affiche : nom d'agence, sièges utilisés / total, zones illimitées.
+// Aucun montant, aucun lien de paiement — Apple compliant.
+// ============================================================================
+function ProfilAgenceCard() {
+  const [orga, setOrga] = useState(null);
+  useEffect(() => {
+    b1api.getMyOrganisation().then((r) => setOrga(r?.organisation)).catch(() => {});
+  }, []);
+  if (!orga) return null;
+  const total = orga.sieges_total || orga.seats || orga.sieges || 0;
+  const used = orga.sieges_utilises || 0;
+  const zones = orga.zones || [];
+  return (
+    <div className="b1-profil-plan" data-testid="b1-profil-agence-card" style={{ marginTop: 12 }}>
+      <div className="b1-profil-plan-eyebrow">{b1t('dir.b224.profil.agence')}</div>
+      <div className="b1-profil-plan-name" style={{ fontSize: 18 }}>
+        <Users size={22} strokeWidth={2.2} />
+        {orga.nom || '—'}
+      </div>
+      <div className="b1-small" style={{ marginTop: 10, opacity: 0.85 }} data-testid="b1-profil-agence-sieges">
+        {b1t('dir.b224.profil.sieges', { utilises: used, total })}
+      </div>
+      <div className="b1-small" style={{ marginTop: 6, opacity: 0.85 }} data-testid="b1-profil-agence-zones">
+        {b1t('dir.b224.profil.zones_illimitees')} · {zones.length > 0 ? zones.join(' · ') : '—'}
+      </div>
+    </div>
+  );
+}
+
 // -- Perso subpage
 export function ProfilPersoPage() {
   const [me, setMe] = useState(null);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({});
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const logoInputRef = React.useRef(null);
   useEffect(() => {
     b1api.getProfil().then((r) => {
       setMe(r.user);
+      setLogoUrl(r.user?.logo_url || '');
       setValues({
         prenom: r.user?.prenom || '',
         nom: r.user?.nom || '',
@@ -610,10 +666,48 @@ export function ProfilPersoPage() {
     setSaving(true);
     try { await b1api.patchProfil({ perso: values }); } finally { setSaving(false); }
   };
+  const onLogoPick = async (ev) => {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    setLogoBusy(true); setLogoError('');
+    try {
+      const r = await b1api.uploadLogo(f, f.name);
+      setLogoUrl(r?.url || '');
+    } catch (e) {
+      setLogoError(String(e?.message || e));
+    } finally { setLogoBusy(false); ev.target.value = ''; }
+  };
+  const token = (typeof window !== 'undefined')
+    ? (localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '')
+    : '';
+  const API = process.env.REACT_APP_BACKEND_URL;
+  const logoSrc = logoUrl ? `${API}${logoUrl}${logoUrl.includes('?') ? '&' : '?'}auth=${encodeURIComponent(token)}` : '';
   return (
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('profil.perso.titre')} />
+        {/* Bloc logo agent (Build 2.24 A2) — apparaît sur le PDF du dossier */}
+        <div className="b1-card" data-testid="b1-perso-logo-card" style={{ marginBottom: 12 }}>
+          <div className="b1-input-label">{b1t('profil.perso.logo') || 'Logo agent'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+            {logoSrc ? (
+              <img src={logoSrc} alt="" data-testid="b1-perso-logo-preview" style={{ maxHeight: 64, maxWidth: 160, borderRadius: 8, border: '1px solid var(--b1-border)', objectFit: 'contain' }} />
+            ) : (
+              <div className="b1-small" style={{ opacity: 0.7 }}>{b1t('profil.perso.logo.aucun') || 'Aucun logo'}</div>
+            )}
+            <button
+              type="button"
+              className="b1-pill b1-pill--ghost"
+              data-testid="b1-perso-logo-upload"
+              disabled={logoBusy}
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {logoBusy ? b1t('sys.un_instant') : (logoSrc ? (b1t('profil.perso.logo.changer') || 'Changer') : (b1t('profil.perso.logo.ajouter') || 'Ajouter'))}
+            </button>
+            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoPick} data-testid="b1-perso-logo-input" />
+          </div>
+          {logoError && <div className="b1-small" data-testid="b1-perso-logo-error" style={{ color: 'var(--b1-danger)', marginTop: 6 }}>{logoError}</div>}
+        </div>
         {['prenom', 'nom', 'phone', 'email', 'adresse', 'code_postal_perso', 'ville_perso'].map((k) => (
           <div key={k}>
             <div className="b1-input-label">{b1t(`profil.perso.${k === 'code_postal_perso' ? 'cp' : k === 'ville_perso' ? 'ville' : k === 'phone' ? 'tel' : k}`)}</div>

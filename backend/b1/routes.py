@@ -277,7 +277,7 @@ async def get_my_quotas(request: Request):
 # ---------------------------------------------------------------------------
 # GET /api/me/profil
 # ---------------------------------------------------------------------------
-_INFOS_PERSO_FIELDS = ["prenom", "nom", "phone", "email", "adresse", "code_postal_perso", "ville_perso"]
+_INFOS_PERSO_FIELDS = ["prenom", "nom", "phone", "email", "adresse", "code_postal_perso", "ville_perso", "logo_url"]
 
 _INFOS_PRO_FIELDS = [
     "statut_juridique", "siren", "agence_nom", "carte_t_num", "cci_delivrance",
@@ -344,6 +344,7 @@ async def get_my_profil(request: Request):
             "zones_deja_modifiees": bool(user.get("zones_deja_modifiees")),
             "infos_pro": infos_pro,
             "infos_pro_completude": _completude_pro(infos_pro),
+            "logo_url": user.get("logo_url"),
         },
     }
 
@@ -739,7 +740,9 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
         {"assigne_a": uid, "statut": "proposee"},
         {"_id": 1, "adresse": 1, "code_postal": 1, "complement_adresse": 1,
          "lat": 1, "lng": 1, "caracteristiques": 1, "score_confiance": 1,
-         "motif_opportunite": 1, "date_attribution": 1, "id_parcelle": 1},
+         "motif_opportunite": 1, "date_attribution": 1, "id_parcelle": 1,
+         "affectation_notif_flag": 1, "affectee_par": 1, "date_affectation": 1,
+         "organisation_id": 1},
     ).sort("date_attribution", -1).limit(effectif)
     items = []
     async for opp in cur:
@@ -761,6 +764,14 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
             "date_attribution": opp.get("date_attribution"),
             "caracteristiques": caracs,
             "id_parcelle": opp.get("id_parcelle"),
+            # A4 · Build 2.24 : opps affectées par le directeur d'agence.
+            # Le front (a) affiche la bannière « Nouvelle opportunité affectée »
+            # (b) DÉSACTIVE le swipe (l'agent ne peut plus rejeter/accepter,
+            # il doit démarcher). L'agence est en pull, l'agent n'a plus le choix.
+            "affectation_notif_flag": bool(opp.get("affectation_notif_flag")),
+            "affectee_par": opp.get("affectee_par"),
+            "date_affectation": opp.get("date_affectation"),
+            "en_agence": bool(opp.get("organisation_id")) or bool(user.get("organisation_id")),
         })
     return {"ok": True, "items": items, "count": len(items),
             "quota_quotidien": None if is_directeur else 5,
@@ -792,6 +803,14 @@ async def swipe_opportunite(opportunite_id: str, request: Request):
         raise HTTPException(status_code=400, detail="sens_invalide (droite|gauche)")
     user = await _current_user_doc(request)
     _id = _oid_or_400(opportunite_id)
+    # A4 · Build 2.24 : un agent d'agence (organisation_id posé + role != directeur)
+    # ne peut PAS swiper. Le directeur affecte, l'agent démarche. Le swipe est
+    # désactivé côté UI mais on protège aussi côté serveur au cas où.
+    role = (user.get("role") or "").lower()
+    if user.get("organisation_id") and role != "directeur":
+        raise HTTPException(status_code=403, detail={
+            "code": "swipe_desactive_agence",
+            "message": "Votre directeur affecte les opportunités."})
     now_iso = now_utc_iso()
     nouveau_statut = "a_demarcher" if sens == "droite" else "ignoree"
     date_field = "date_a_demarcher" if sens == "droite" else "date_ignoree"

@@ -287,6 +287,8 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         "agent_qualite": redacteur.get("agent_qualite"),
         "agent_tel": redacteur.get("agent_tel"),
         "agent_email": redacteur.get("agent_email"),
+        # Logo agent — Build 2.24 A2. Injecté sur la première page du PDF.
+        "agent_logo_url": optimize_image(redacteur.get("logo_url") or ""),
         "agence_nom": redacteur.get("agence_nom"),
         "agence_nom_short": _short_name(redacteur.get("agence_nom") or "KOLO"),
         "agence_forme": redacteur.get("agence_forme"),

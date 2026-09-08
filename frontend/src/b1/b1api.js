@@ -41,6 +41,23 @@ async function req(path, { method = 'GET', body, headers = {}, auth = true } = {
   return data;
 }
 
+// --- Logo agent (Build 2.24 A2) ---
+export const uploadLogo = async (blob, filename = 'logo.jpg') => {
+  const token = (typeof window !== 'undefined')
+    ? (localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '')
+    : '';
+  const fd = new FormData();
+  fd.append('file', blob, filename);
+  const res = await fetch(`${API}/api/me/logo`, {
+    method: 'POST', body: fd,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const txt = await res.text();
+  let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
+  if (!res.ok) throw new Error(data?.detail?.code || data?.detail || `HTTP ${res.status}`);
+  return data;
+};
+
 // --- Public
 export const getVille = (cp) => req(`/api/b1/ville/${encodeURIComponent(cp)}`, { auth: false });
 
