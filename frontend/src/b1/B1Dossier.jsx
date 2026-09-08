@@ -784,17 +784,36 @@ function PhotoField({ dossierId, currentUrl, photoType, onChange, testid }) {
     setBusy(true); setError('');
     try {
       const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+      if (!blob || (blob.size !== undefined && blob.size === 0)) {
+        throw new Error('Fichier vide — reprenez la photo');
+      }
       const fd = new FormData();
       fd.append('file', blob, filename);
       const res = await fetch(
         `${API}/api/dossiers/${encodeURIComponent(dossierId)}/photos?type=${photoType}`,
         { method: 'POST', body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const j = await res.json();
-      onChange(j.url);
+      const txt = await res.text();
+      let data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
+      if (!res.ok) {
+        const code = data?.detail?.code || data?.detail || `HTTP ${res.status}`;
+        // Traduction utilisateur des erreurs connues
+        const trad = {
+          photo_trop_lourde: 'Photo trop volumineuse (max 15 Mo)',
+          photo_invalide: 'Photo illisible — reprenez la photo',
+          storage_indisponible: 'Stockage indisponible — réessayez dans un instant',
+          dossier_introuvable: 'Dossier introuvable',
+        };
+        throw new Error(trad[code] || String(code));
+      }
+      if (!data?.url) throw new Error('Réponse serveur invalide');
+      onChange(data.url);
     } catch (e) {
-      setError(String(e.message || e));
+      const msg = String(e?.message || e);
+      setError(msg);
+      // Remonte au bandeau global si présent — sinon reste local
+      try { window.dispatchEvent(new CustomEvent('kolo:toast', { detail: { kind: 'error', text: `Photo : ${msg}` } })); } catch {}
     } finally {
       setBusy(false);
     }

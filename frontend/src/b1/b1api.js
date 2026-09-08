@@ -139,6 +139,17 @@ export const getEquipe = (periode = 'mois') =>
 export const retirerConseiller = (userId) =>
   req(`/api/d1/equipe/${encodeURIComponent(userId)}`, { method: 'DELETE' });
 
+// --- D1 Build 2.24 : nouvelle interface directeur (Mon équipe / Perf agence / Swipe) ---
+export const getMonEquipe = () => req('/api/d1/mon-equipe');
+export const getMonEquipeConseillerOpps = (userId) =>
+  req(`/api/d1/mon-equipe/${encodeURIComponent(userId)}/opportunites`);
+export const getPerfAgence = (periode = 'mois') =>
+  req(`/api/d1/perf-agence?periode=${encodeURIComponent(periode)}`);
+// sens : "droite" (avec user_id du conseiller ou null pour soi-même) | "gauche"
+export const swipeDirecteur = (oppId, sens, userId = null) =>
+  req(`/api/d1/opportunites/${encodeURIComponent(oppId)}/swipe-directeur`,
+    { method: 'POST', body: { sens, user_id: userId } });
+
 export const attribuerOpportunite = (oppId, userId) =>
   req(`/api/d1/opportunites/${encodeURIComponent(oppId)}/attribuer`,
     { method: 'POST', body: { user_id: userId } });
@@ -228,6 +239,7 @@ export const b1api = {
   getMyOrganisation, patchMyOrganisation,
   listInvitations, createInvitation, relancerInvitation, annulerInvitation, checkInvitation,
   getEquipe, retirerConseiller,
+  getMonEquipe, getMonEquipeConseillerOpps, getPerfAgence, swipeDirecteur,
   attribuerOpportunite, attribuerLot, autoResteRepartir, retirerAttribution,
   getSuggestionsZones, confirmerZones,
   // Opportunités

@@ -345,6 +345,28 @@ async def create_estimation(payload: EstimationInput, request: Request):
         postal_code=code_postal or "",
     )
 
+    # ---- Normalisation de l'adresse ----
+    # La BAN retourne un `label` du type « 43 Rue Legendre 75017 Paris ».
+    # Stocker ça tel quel provoque la duplication du CP dans le titre du
+    # dossier et du PDF. On ne garde que la partie voie + numéro.
+    def _strip_cp_ville(adr: str | None, cp: str | None, ville: str | None) -> str | None:
+        if not adr:
+            return adr
+        s = str(adr).split(",")[0].strip()
+        if cp:
+            cps = str(cp).strip()
+            for suffix in ((f" {cps} {ville}" if ville else None), f" {cps}"):
+                if suffix and s.lower().endswith(suffix.lower()):
+                    s = s[: -len(suffix)].rstrip()
+                    break
+        if ville:
+            vs = str(ville).strip()
+            if vs and s.lower().endswith(f" {vs.lower()}"):
+                s = s[: -(len(vs) + 1)].rstrip()
+        return s or adr
+    ville_norm = (opp_doc or {}).get("ville") or caracs.get("commune")
+    adresse = _strip_cp_ville(adresse, code_postal, ville_norm)
+
     # Persistance — comparables figés, aucune référence aux collections vivantes
     doc = {
         "estimation_id": result["estimation_id"],
@@ -352,7 +374,7 @@ async def create_estimation(payload: EstimationInput, request: Request):
         "opportunite_id": payload.opportunite_id,
         "adresse": adresse,
         "code_postal": code_postal,
-        "ville": (opp_doc or {}).get("ville") or caracs.get("commune"),
+        "ville": ville_norm,
         "lat": float(lat), "lng": float(lng),
         "type_bien": type_bien,
         "surface_habitable": surface,

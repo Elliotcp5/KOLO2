@@ -43,7 +43,9 @@ async def _log_run(db, job: str, start_iso: str, status: str,
     })
 
 
-async def _run_scraper_quotidien(db):
+async def _run_scraper_quotidien(db, force: bool = False,
+                                  cooldown_hours: int = 6,
+                                  explicit_zips: list[str] | None = None):
     """Job 0 — 02h00 Paris — kick-off le scrape Apify + ingest Supabase pour
     toutes les zones actives.
 
@@ -51,16 +53,24 @@ async def _run_scraper_quotidien(db):
     via `_facteur_fraicheur`. Si le scrape date de >5j, `f_frais` tombe à 0 et
     zéro opportunité passe le seuil, quel que soit le seuil. Le scrape doit
     donc précéder la génération dans la nuit.
+
+    `force` : bypass cooldown quotidien de 6 h.
+    `cooldown_hours` : période pendant laquelle un nouveau run manuel refuse.
     """
     start = _now_iso()
     try:
         from scripts.scrape_listings_cron import run_once as _scrape_run
         from scripts.ingest_apify import ingest_runs
-        scrape = await _scrape_run()
+        scrape = await _scrape_run(explicit_zips=explicit_zips,
+                                    force=force, cooldown_hours=cooldown_hours)
+        scrape_status = scrape.get("status")
         run_ids = list(scrape.get("run_ids") or [])
         ingest: dict = {}
         if run_ids:
-            ingest = await ingest_runs(run_ids, stale_hours=240)
+            try:
+                ingest = await ingest_runs(run_ids, stale_hours=240)
+            except Exception as e:
+                ingest = {"error": f"{type(e).__name__}: {e}"}
         # Persist marker read by /api/v2/admin/scraper/status
         now_iso = _now_iso()
         await db.v2_scraper_last_run.update_one(
@@ -68,11 +78,18 @@ async def _run_scraper_quotidien(db):
             {"$set": {
                 "last_run_at": now_iso,
                 "scrape": {
+                    "status": scrape_status,
                     "batches": scrape.get("batches"),
+                    "n_ok": scrape.get("n_ok"),
+                    "n_fail": scrape.get("n_fail"),
+                    "total_items_fetched": scrape.get("total_items_fetched"),
                     "total_upserted": scrape.get("total_upserted"),
                     "total_unique": scrape.get("total_unique"),
                     "target_zips_count": scrape.get("target_zips_count"),
+                    "target_zips": scrape.get("target_zips"),
                     "error": scrape.get("error"),
+                    "apify_ping": scrape.get("apify_ping"),
+                    "results": scrape.get("results"),
                 },
                 "ingest": {
                     "inserted": ingest.get("inserted"),
@@ -84,11 +101,18 @@ async def _run_scraper_quotidien(db):
             }},
             upsert=True,
         )
-        await _log_run(db, "scraper_quotidien", start, "done",
-                       summary={"scrape": scrape, "ingest": ingest})
+        # Statut effectif pour jobs_runs : `done` uniquement si scrape.status=ok
+        # OU scrape.status=cooldown (comportement voulu). Sinon `failed`.
+        log_status = "done" if scrape_status in ("ok", "cooldown", "no_target") else "failed"
+        error_msg = scrape.get("error") if log_status == "failed" else None
+        await _log_run(db, "scraper_quotidien", start, log_status,
+                       summary={"scrape": scrape, "ingest": ingest},
+                       error=error_msg)
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()[:1000]
         await _log_run(db, "scraper_quotidien", start, "failed",
-                       error=f"{type(e).__name__}: {e}")
+                       error=f"{type(e).__name__}: {e}\n{tb}")
 
 
 async def _run_generer_opportunites(db):

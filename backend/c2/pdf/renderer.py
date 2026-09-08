@@ -112,11 +112,40 @@ def _fmt_date_fr(v: Any) -> str | None:
     return s
 
 
-def _adresse_ligne1(adr: str | None) -> str | None:
+def _adresse_ligne1(adr: str | None,
+                     code_postal: str | None = None,
+                     commune: str | None = None) -> str | None:
+    """Extrait la première ligne de l'adresse pour l'entête PDF.
+
+    Bug prod (build 2.24) : BAN retourne un `label` de la forme
+    « 43 Rue Legendre 75017 Paris » et on stockait ça tel quel dans
+    `identification.adresse`. La ligne 2 « {code_postal} {commune} »
+    dupliquait donc le CP + la ville. On strip ici tout suffixe
+    reconnu comme `{CP} {commune}` OU juste `{CP}`.
+    """
     if not adr:
         return None
-    # Coupe à la virgule si le user a mis « rue X, Ville »
-    return adr.split(",")[0].strip()
+    # 1) Coupe à la virgule si le user a mis « rue X, Ville »
+    s = adr.split(",")[0].strip()
+    # 2) Enlève un éventuel suffixe « <CP> <commune> » ou « <commune> <CP> »
+    if code_postal:
+        cp = str(code_postal).strip()
+        # « 43 Rue Legendre 75017 Paris » → « 43 Rue Legendre »
+        commune_str = (commune or "").strip()
+        if commune_str:
+            for suffix in (f" {cp} {commune_str}", f" {commune_str} {cp}"):
+                if s.lower().endswith(suffix.lower()):
+                    s = s[: -len(suffix)].rstrip()
+                    break
+        # « … 75017 » sec en fin de chaîne
+        if s.lower().endswith(f" {cp.lower()}"):
+            s = s[: -(len(cp) + 1)].rstrip()
+    # 3) Retire un éventuel numéro/nom de commune redondant sec en fin
+    if commune:
+        c = commune.strip()
+        if c and s.lower().endswith(f" {c.lower()}"):
+            s = s[: -(len(c) + 1)].rstrip()
+    return s or None
 
 
 def _short_name(name: str | None) -> str:
@@ -170,7 +199,11 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
     photo_cover = optimize_image(dossier.get("photo_couverture"))
 
     # ---- adresse / commune ----
-    adresse_ligne1 = _adresse_ligne1(identification.get("adresse"))
+    adresse_ligne1 = _adresse_ligne1(
+        identification.get("adresse"),
+        code_postal=identification.get("code_postal"),
+        commune=identification.get("commune"),
+    )
 
     # ---- comparables : formatage FR + labels tags ----
     rows_in: list[dict[str, Any]] = comparables_sec.get("comparables") or []
@@ -384,8 +417,11 @@ def _slugify(text: str) -> str:
 
 def build_filename(dossier_doc: dict[str, Any]) -> str:
     sections = dossier_doc.get("sections") or {}
-    adr = (sections.get("identification") or {}).get("adresse") or ""
-    slug = _slugify(_adresse_ligne1(adr) or "")
+    ident = sections.get("identification") or {}
+    adr = ident.get("adresse") or ""
+    slug = _slugify(_adresse_ligne1(adr,
+                                     code_postal=ident.get("code_postal"),
+                                     commune=ident.get("commune")) or "")
     stamp = datetime.now().strftime("%Y%m%d")
     return f"Avis-de-valeur_{slug}_{stamp}.pdf"
 

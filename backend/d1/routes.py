@@ -554,7 +554,16 @@ async def admin_reload_scheduler(request: Request):
 
 @router.post("/api/d1/admin/run-job")
 async def admin_run_job(request: Request):
-    """Déclenche manuellement un job planifié. Body: {"job": "distribuer_quotidien"}."""
+    """Déclenche manuellement un job planifié. Body: {"job": "distribuer_quotidien"}.
+
+    Pour `scraper_quotidien`, options :
+      - `force` (bool, défaut False) : bypass le cooldown 6 h. À utiliser
+        après avoir constaté l'échec du dernier run.
+      - `cooldown_hours` (int, défaut 6) : période pendant laquelle un nouveau
+        lancement manuel est refusé si un run a réussi.
+      - `zips` (list[str]|str, optionnel) : force un scrape sur des CP précis
+        au lieu de résoudre les zones actives.
+    """
     _check_admin(request)
     body = await request.json()
     job = (body or {}).get("job")
@@ -579,6 +588,16 @@ async def admin_run_job(request: Request):
             await _log_run(db, "extraire_rues_quotidien", start, "failed",
                            error=f"{type(e).__name__}: {e}")
 
+    # Options pour scraper_quotidien
+    force = bool((body or {}).get("force", False))
+    cooldown_hours = int((body or {}).get("cooldown_hours", 6))
+    zips_raw = (body or {}).get("zips")
+    explicit_zips: list[str] | None = None
+    if isinstance(zips_raw, str):
+        explicit_zips = [z.strip() for z in zips_raw.split(",") if z.strip()]
+    elif isinstance(zips_raw, list):
+        explicit_zips = [str(z).strip() for z in zips_raw if str(z).strip()]
+
     mapping = {
         "extraire_rues_quotidien": _run_extraire_rues_wrapper,
         "generer_opportunites_quotidien": _run_generer_opportunites,
@@ -590,8 +609,61 @@ async def admin_run_job(request: Request):
     if job not in mapping:
         raise HTTPException(status_code=400, detail="job_inconnu")
     import asyncio
+    if job == "scraper_quotidien":
+        asyncio.create_task(_run_scraper_quotidien(
+            _db(), force=force, cooldown_hours=cooldown_hours,
+            explicit_zips=explicit_zips,
+        ))
+        return {"ok": True, "job": job, "status": "running_in_background",
+                "force": force, "cooldown_hours": cooldown_hours,
+                "explicit_zips": explicit_zips,
+                "hint": "Consulter /api/d1/admin/etat-jobs dans 60-180s"}
     asyncio.create_task(mapping[job](_db()))
     return {"ok": True, "job": job, "status": "running_in_background"}
+
+
+@router.get("/api/d1/admin/apify-ping")
+async def admin_apify_ping(request: Request):
+    """Ping minimal de l'API Apify : GET /v2/users/me.
+
+    Utilité : distinguer d'un coup un problème côté Apify (compte
+    désactivé, quota atteint, token invalide) d'un problème côté KOLO
+    (config, scheduler mort, garde-fou anti-appauvrissement). Auparavant
+    un échec Apify complet ressemblait à un scrape « done » avec 0 items.
+
+    Retour :
+      - `verdict` : `ok` | `disabled` | `quota_reached` | `unauthorized` | `error`
+      - `status_code` : HTTP status Apify
+      - `message` : extrait du body réponse Apify (200 chars max)
+      - `token_present` : bool
+    """
+    _check_admin(request)
+    import os as _os
+    import httpx as _httpx
+    from scripts.scrape_listings_cron import _apify_ping
+    token_present = bool((_os.environ.get("APIFY_API_TOKEN") or "").strip())
+    async with _httpx.AsyncClient() as client:
+        ping = await _apify_ping(client)
+    ping["token_present"] = token_present
+    return ping
+
+
+@router.get("/api/d1/admin/derniere-run-scraper")
+async def admin_derniere_run_scraper(request: Request):
+    """Retourne le DERNIER résumé complet du scrape stocké dans
+    v2_scraper_runs, sans les 500 items bruts (`results` gardés).
+
+    Complète `etat-jobs` : ce dernier ne donne qu'un aperçu, ici on a
+    tout — status par zip, items_fetched, apify_ping, error.
+    """
+    _check_admin(request)
+    doc = await _db().v2_scraper_runs.find_one(
+        {}, sort=[("started_at", -1)]
+    )
+    if not doc:
+        return {"found": False}
+    doc["_id"] = str(doc.get("_id"))
+    return {"found": True, "run": doc}
 
 
 @router.post("/api/d1/admin/force-zones-suggestions")
@@ -1431,6 +1503,55 @@ async def admin_diagnostic_extraction_rues(code_postal: str, request: Request,
     C'est le diagnostic à faire AVANT de relancer le job — si les listings
     n'ont ni title ni description, aucun run ne pourra extraire quoi que ce soit.
     """
+    _check_admin(request)
+    cp = (code_postal or "").strip()
+    if len(cp) != 5 or not cp.isdigit():
+        raise HTTPException(status_code=400, detail="code_postal_invalide")
+    import httpx
+    from a3.sources.ban import voies_by_postcode
+    from a3.job_extract_rues import SUPABASE_URL, SUPABASE_KEY, _sb_headers
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="supabase_env_missing")
+    db = _db()
+    async with httpx.AsyncClient() as client:
+        voies = await voies_by_postcode(client, cp, db=db)
+        r = await client.get(f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select":"id","postal_code":f"eq.{cp}","is_active":"eq.true","limit":"1"},
+            headers={**_sb_headers(),"Prefer":"count=exact"}, timeout=15)
+        total_actifs = int(r.headers.get("content-range","0/0").split("/")[-1] or 0)
+        r2 = await client.get(f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select":"id","postal_code":f"eq.{cp}","is_active":"eq.true","rue_extraite":"not.is.null","limit":"1"},
+            headers={**_sb_headers(),"Prefer":"count=exact"}, timeout=15)
+        avec_rue = int(r2.headers.get("content-range","0/0").split("/")[-1] or 0)
+        r3 = await client.get(f"{SUPABASE_URL}/rest/v1/listings",
+            params={"select":"id,portal,title,description,floor,rue_extraite,etage_extrait,scraped_at","postal_code":f"eq.{cp}","is_active":"eq.true","rue_extraite":"is.null","order":"scraped_at.desc","limit":str(max(1,min(int(limit or 3),30)))},
+            headers=_sb_headers(), timeout=15)
+        r3.raise_for_status()
+        exemples = r3.json() or []
+        if not exemples:
+            r3b = await client.get(f"{SUPABASE_URL}/rest/v1/listings",
+                params={"select":"id,portal,title,description,floor,rue_extraite,etage_extrait,scraped_at","postal_code":f"eq.{cp}","is_active":"eq.true","order":"scraped_at.desc","limit":str(max(1,min(int(limit or 3),30)))},
+                headers=_sb_headers(), timeout=15)
+            r3b.raise_for_status()
+            exemples = r3b.json() or []
+    from a3.extract_rue import _normalize_text, _match_voies_in_text, extract_etage
+    def _analyse(e):
+        title = e.get("title") or ""
+        desc = e.get("description") or ""
+        text_norm = _normalize_text(f"{title} {desc}")
+        matches = _match_voies_in_text(text_norm, voies)
+        if len(matches) == 0: verdict = "aucune_voie_ban_dans_le_texte"
+        elif len(matches) == 1: verdict = f"1_voie_matchee_mais_pas_ecrite → attendu: {matches[0]}"
+        else: verdict = f"{len(matches)}_voies_matchees_donc_ambiguite"
+        return {"id":e.get("id"),"portal":e.get("portal"),"title":title,"description":desc,
+                "floor":e.get("floor"),"rue_extraite":e.get("rue_extraite"),
+                "etage_extrait":e.get("etage_extrait"),"scraped_at":e.get("scraped_at"),
+                "voies_matchees":matches,"etage_regex_detecte":extract_etage(f"{title} {desc}"),
+                "verdict":verdict}
+    return {"code_postal":cp,"voies_ban_count":len(voies),"listings_actifs_total":total_actifs,
+            "listings_avec_rue_extraite":avec_rue,"listings_sans_rue":total_actifs-avec_rue,
+            "couverture_actuelle_pct":round(avec_rue/total_actifs*100,1) if total_actifs else 0.0,
+            "exemples_bruts":[_analyse(e) for e in exemples]}
 
 
 @router.get("/api/d1/admin/diagnostic-score-rejetes")
@@ -1461,14 +1582,21 @@ async def admin_diagnostic_score_rejetes(code_postal: str, request: Request,
     rejetes = []
     async for r in cur:
         breakdown = r.get("breakdown") or {}
+        facts = r.get("facteurs_score") or {}
         score = r.get("score_confiance") or 0.0
-        f_couv = breakdown.get("couverture") or 0.83
-        f_frais = breakdown.get("fraicheur") or 1.0
-        f_loc = breakdown.get("location") or 1.0
-        v_score = breakdown.get("v_score") or r.get("meilleur_score_vente") or 0.0
-        # Verdict
+        # Priorité aux facteurs RÉELS stockés depuis build 2.23.1. Fallback
+        # sur les valeurs approchées si l'entry est antérieure.
+        v_score = r.get("meilleur_score_vente") or 0.0
+        f_couv = facts.get("f_couverture", breakdown.get("couverture") or 0.83)
+        f_frais = facts.get("f_fraicheur", breakdown.get("fraicheur") or 1.0)
+        f_loc = facts.get("f_location", breakdown.get("location") or 1.0)
+        un_moins_v = facts.get("un_moins_v_score", round(1.0 - v_score, 4))
+        # Verdict : le facteur MULTIPLICATIF le plus limitant est celui
+        # qui, s'il valait 1, aurait fait passer le score au-dessus du seuil.
+        # C'est le MIN du produit, pas juste le MIN des valeurs (la
+        # similarité 1_moins_v peut être 0.4 et la couverture 0.11 → couv gagne).
         facteurs = {"couverture": f_couv, "fraicheur": f_frais,
-                    "location": f_loc, "similarite": (1.0 - v_score)}
+                    "location": f_loc, "similarite": un_moins_v}
         pire = min(facteurs, key=facteurs.get)
         rejetes.append({
             "dpe_id": r.get("dpe_id"),
@@ -1482,10 +1610,11 @@ async def admin_diagnostic_score_rejetes(code_postal: str, request: Request,
                 "score_confiance": score,
                 "seuil_pub": seuil,
                 "delta": round(score - seuil, 4),
-                "1_moins_best_v_score": round(1.0 - v_score, 4),
+                "1_moins_best_v_score": un_moins_v,
                 "f_couverture": f_couv,
                 "f_fraicheur": f_frais,
                 "f_location": f_loc,
+                "produit_recalcule": round(un_moins_v * f_couv * f_frais * f_loc, 4),
                 "formule": "score = (1 - best_v) × f_couv × f_frais × f_loc",
             },
             "meilleur_score_vente": v_score,

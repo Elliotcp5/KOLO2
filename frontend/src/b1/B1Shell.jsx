@@ -20,10 +20,16 @@ import './b1.css';
 // N'entre JAMAIS dans la barre de progression des opportunités.
 // ============================================================================
 const _veilleBadgeCache = { count: null, at: 0 };
+// Cache du rôle courant — évite un fetch /me/profil à chaque changement d'onglet.
+// Rempli au premier ShellHeader affiché.
+const _roleCache = { role: null, orga: null, at: 0 };
 
 function _BottomTabPill({ active }) {
   const navigate = useNavigate();
   const [badge, setBadge] = useState(_veilleBadgeCache.count || 0);
+  const [isDirecteur, setIsDirecteur] = useState(
+    _roleCache.role === 'directeur' && !!_roleCache.orga
+  );
   useEffect(() => {
     // Cache 60s pour ne pas taper l'API à chaque changement d'onglet.
     const stale = Date.now() - _veilleBadgeCache.at > 60_000;
@@ -49,12 +55,36 @@ function _BottomTabPill({ active }) {
     })();
     return () => { cancelled = true; };
   }, []);
-  const tabs = [
+
+  // Détecte le rôle une seule fois puis le garde en cache module-level.
+  useEffect(() => {
+    if (_roleCache.role && Date.now() - _roleCache.at < 5 * 60_000) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await b1api.getProfil();
+        const role = r?.user?.role || null;
+        const orga = r?.user?.organisation_id || null;
+        _roleCache.role = role; _roleCache.orga = orga; _roleCache.at = Date.now();
+        if (!cancelled) setIsDirecteur(role === 'directeur' && !!orga);
+      } catch (_e) { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const tabsAgent = [
     { id: 'opportunites', to: '/app-b1', Icon: IconSwipe, label: b1t('nav.opportunites') },
     { id: 'estimation',   to: '/app-b1/estimation', Icon: IconCalc,  label: b1t('nav.estimation') },
     { id: 'rapport',      to: '/app-b1/rapport',    Icon: IconReport,label: b1t('nav.rapport') },
     { id: 'assistant',    to: '/app-b1/assistant',  Icon: IconRobot, label: b1t('nav.assistant') },
   ];
+  const tabsDirecteur = [
+    { id: 'opportunites', to: '/app-b1', Icon: IconSwipe, label: b1t('nav.opportunites') },
+    { id: 'mon_equipe',   to: '/app-b1/directeur/equipe-b224', Icon: Users, label: b1t('nav.mon_equipe') },
+    { id: 'perf_agence',  to: '/app-b1/directeur/perf-agence', Icon: IconStats, label: b1t('nav.perf_agence') },
+    { id: 'assistant',    to: '/app-b1/assistant', Icon: IconRobot, label: b1t('nav.assistant') },
+  ];
+  const tabs = isDirecteur ? tabsDirecteur : tabsAgent;
   return (
     <nav className="b1-tabbar" data-testid="b1-bottom-tab-bar" aria-label="Navigation">
       {tabs.map((t) => (
@@ -72,7 +102,7 @@ function _BottomTabPill({ active }) {
             <span
               className="b1-tab-badge"
               data-testid="b1-tab-veille-badge"
-              aria-label={`${badge} biens en vente à surveiller`}
+              aria-label={`${badge} biens à surveiller`}
             >
               {badge}
             </span>

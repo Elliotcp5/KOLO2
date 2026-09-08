@@ -14,7 +14,7 @@
 // + V2AuthPage code). React Router prenait la 1re → l'utilisateur voyait le vieil
 // écran malgré la refonte. Correction : LoginPage supprimé du router.
 // =============================================================
-import React, { useEffect, lazy, Suspense } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -87,6 +87,29 @@ const B1VeillePaywall = lazy(() => import("./b1/B1Veille").then((m) => ({ defaul
 const D1DirecteurRepartitionPage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurRepartitionPage })));
 const D1DirecteurEquipePage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurEquipePage })));
 const D1DirecteurAgencePage = lazy(() => import("./b1/B1Directeur").then((m) => ({ default: m.DirecteurAgencePage })));
+// Build 2.24 — nouvelle interface directeur (4 onglets partagés avec l'agent)
+const D1B224DirecteurOpps = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurOpportunitesPage })));
+const D1B224DirecteurEquipe = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurMonEquipePage })));
+const D1B224DirecteurConseiller = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurConseillerDetailPage })));
+const D1B224DirecteurPerf = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurPerfAgencePage })));
+
+// Router pour l'onglet 1 : rend `OpportunitesPage` (agent) OU
+// `DirecteurOpportunitesPage` (swipe + affectation) selon le rôle.
+function B1OpportunitesRouter() {
+  const [role, setRole] = useState(undefined); // undefined = loading
+  useEffect(() => {
+    (async () => {
+      try {
+        const b1api = (await import("./b1/b1api")).default;
+        const r = await b1api.getProfil();
+        setRole(r?.user?.role === 'directeur' && r?.user?.organisation_id ? 'directeur' : 'agent');
+      } catch { setRole('agent'); }
+    })();
+  }, []);
+  if (role === undefined) return null; // évite le flash entre agent & directeur
+  if (role === 'directeur') return <D1B224DirecteurOpps />;
+  return <B1OpportunitesPage />;
+}
 
 
 // ------------------------------------------------------------
@@ -219,7 +242,7 @@ const AppRouter = () => {
       {/* KOLO BLOC B1 — LA refonte. Toutes les routes app iOS.          */}
       {/* ============================================================== */}
       <Route path="/onboarding-b1" element={<B1Onboarding />} />
-      <Route path="/app-b1" element={<B1OpportunitesPage />} />
+      <Route path="/app-b1" element={<B1OpportunitesRouter />} />
       <Route path="/app-b1/mes-mandats" element={<B1MesMandatsPage />} />
       {/* Reprise post-migration zones */}
       <Route path="/app-b1/reprise" element={<B1RepriseZones />} />
@@ -259,6 +282,10 @@ const AppRouter = () => {
       <Route path="/app-b1/directeur/repartition" element={<D1DirecteurRepartitionPage />} />
       <Route path="/app-b1/directeur/equipe" element={<D1DirecteurEquipePage />} />
       <Route path="/app-b1/directeur/agence" element={<D1DirecteurAgencePage />} />
+      {/* D1 · Build 2.24 — nouvelle interface directeur (4 onglets) */}
+      <Route path="/app-b1/directeur/equipe-b224" element={<D1B224DirecteurEquipe />} />
+      <Route path="/app-b1/directeur/equipe/:user_id" element={<D1B224DirecteurConseiller />} />
+      <Route path="/app-b1/directeur/perf-agence" element={<D1B224DirecteurPerf />} />
 
       {/* ============================================================== */}
       {/* PIÈGES À VIEILLES URLs — tout ce qui existait avant redirige   */}

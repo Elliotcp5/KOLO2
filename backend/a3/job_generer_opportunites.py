@@ -877,6 +877,16 @@ async def _process_zone(
                 "rue_dpe": dpe.get("nom_voie"),
                 "rue_annonce_retenue": (best_v_annonce or {}).get("rue_extraite"),
                 "breakdown": best_v_breakdown,
+                # Facteurs RÉELLEMENT utilisés dans le calcul du score
+                # (build 2.23.1). Le diagnostic les affichait bidonnés en
+                # constantes 0.83/1.0/1.0 alors que la couverture réelle
+                # tombait à 0.106 quand la base était descendue à 85 items.
+                "facteurs_score": {
+                    "un_moins_v_score": round(1.0 - best_v_score, 4),
+                    "f_couverture": round(f_couverture, 4),
+                    "f_fraicheur": round(f_fraicheur, 4),
+                    "f_location": round(f_location, 4),
+                },
                 "score_confiance": round(score_confiance, 4),
             })
             continue

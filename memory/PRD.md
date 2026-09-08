@@ -17,6 +17,58 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC D · Build 2.24 — Visibilité scraper Apify + Interface directeur (Fév 8, 2026) 🔥 LATEST
+Contexte : après une consommation quasi-complète du quota Apify en 10 lancements manuels, le scrape retournait un « succès vide » (0 items) sans indice d'erreur. Le user a exigé (a) une remontée claire des erreurs Apify, (b) un cooldown budgétaire, (c) l'interface directeur B2B (Build 2.24) enfin construite.
+
+**A · Scraper (visibilité + budget)**
+1. `scripts/scrape_listings_cron.py` :
+   - `_kickoff_apify()` retourne désormais `(run_id, dataset_id, error_reason)` — 402 quota / 403 disabled / 401 unauth sont taggés explicitement.
+   - `_poll_and_fetch()` retourne `(items, status, items_count)` — `POLL_TIMEOUT` / `FAILED` / `ABORTED` / `FETCH_ERROR` distingués.
+   - `_scrape_single_zip()` renvoie un dict RICHE : `status`, `apify_run_status`, `items_fetched`, `kept_after_dedupe`, `upserted`, `reason` — un run vide ne ressemble PLUS à un succès.
+   - `run_once(force=False, cooldown_hours=6)` refuse un nouveau scrape si un run réussi existe depuis < 6h → protège le budget Apify. Le CLI accepte `--force` et `--cooldown-hours`.
+   - `_apify_ping()` : diagnostic Apify (GET `/v2/users/me`) qui rend un `verdict` `ok|quota_reached|disabled|unauthorized|error`.
+2. `d1/scheduler.py::_run_scraper_quotidien(force, cooldown_hours, explicit_zips)` — passe les options au scrape, logue `failed` dans `jobs_runs` si `scrape.status not in ('ok','cooldown','no_target')`, traceback intégré.
+3. `d1/routes.py` :
+   - `POST /api/d1/admin/run-job` : pour `scraper_quotidien`, accepte `force`, `cooldown_hours`, `zips`.
+   - `GET /api/d1/admin/apify-ping` : retourne `verdict` + `token_present` + extrait body Apify.
+   - `GET /api/d1/admin/derniere-run-scraper` : rend le dernier résumé complet stocké dans `v2_scraper_runs` (résultats par zip, apify_ping, error).
+4. `APNS_TEAM_ID=2XRB82J4W9` posé dans `backend/.env` → `push-status` confirmé `ready: true, jwt_signing_ok: true`.
+
+**B · Dossier estimation**
+1. Photos : `PhotoField` (frontend) surface les erreurs (guard blob vide, parse detail.code, traduction utilisateur, remontée toast global via CustomEvent). Un échec silencieux devient un message concret.
+2. Doublon du CP dans le titre : `c2/pdf/renderer.py::_adresse_ligne1(adr, code_postal, commune)` strip désormais le suffixe `{cp} {commune}` du label BAN. `c1/routes.py::create_estimation` normalise aussi l'adresse AVANT stockage → le titre du dossier généré depuis un dossier créé aujourd'hui n'aura plus de CP dupliqué.
+3. B3/B4 (formulaire pour champs manquants, upload logo) — **NOT DONE dans cette session**, à faire en Build 2.25.
+
+**C · Interface directeur (nouvelle, 4 onglets partagés avec l'agent)**
+- Frontend : nouveau fichier `frontend/src/b1/B1DirecteurB224.jsx` avec 4 pages :
+  1. `DirecteurOpportunitesPage` — swipe standard + `SheetAffectation` (feuille bottom sheet). Après swipe droite, ouvre la feuille avec « Garder pour moi » en tête + un bouton par conseiller (nom + nombre d'opps actives). Appui → `POST /api/d1/opportunites/{id}/swipe-directeur {sens:"droite", user_id}`.
+  2. `DirecteurMonEquipePage` — liste des conseillers avec pastilles compteurs (À démarcher / Démarchées / Mandats / Abandons). Bouton « Inviter un conseiller » ouvre une feuille (prénom optionnel + email → `POST /api/d1/invitations`).
+  3. `DirecteurConseillerDetailPage` (`/app-b1/directeur/equipe/:user_id`) — détail des opps en cours du conseiller (via `/api/d1/mon-equipe/{user_id}/opportunites`).
+  4. `DirecteurPerfAgencePage` — KPI mois/trimestre/année + classement conseillers (via `/api/d1/perf-agence`).
+- `B1Shell.jsx::BottomTabPill` : rôle chargé une fois puis mis en cache module-level ; si `role==='directeur'`, la tab bar affiche `[Swipe, Users (Mon équipe), Stats (Perf agence), Robot (Assistant)]` au lieu de la tab bar agent — MÊME barre, contenus différents comme demandé.
+- `App.js::B1OpportunitesRouter` : la route `/app-b1` route vers `DirecteurOpportunitesPage` si role=directeur, sinon la page agent classique.
+- Rename `Biens à surveiller` → `Veille concurrentielle` dans FR/EN/IT/DE (`b1i18nVeille.js` + aria-label dans B1Shell).
+
+Backend endpoints exploités :
+- `GET /api/d1/mon-equipe`, `GET /api/d1/mon-equipe/{user_id}/opportunites`
+- `GET /api/d1/perf-agence?periode=mois|trimestre|annee`
+- `POST /api/d1/opportunites/{opp_id}/swipe-directeur {sens, user_id}`
+
+**Tests posés**
+- `backend/tests/test_build_224_directeur.py` (3 tests : endpoints déclarés, scraper riche, CLI `--force`).
+
+**Ce qui reste à faire (Build 2.25)**
+- B3 : formulaire pour champs manquants DPE/cadastre/année dans le dossier.
+- B4 : upload logo agent + affichage sur PDF.
+- C5 : ProfilPage directeur — afficher agence / sièges utilisés / zones illimitées.
+- C6 : Vue agent des opportunités affectées (swipe désactivé + bannière « Nouvelle opportunité affectée »).
+- D2-D5 : `<Outlet />` persistant + skeletons 200ms, alignement boutons, tour guidé pointing.
+
+---
+
+
+
+
 ### BLOC D · Passe finale build 2.20 — PDF diagnostic + rappel prior fixes (Fév 5, 2026) 🔥 LATEST
 
 **PDF noir diagnostic** — J'ai généré un PDF test sur le renderer WeasyPrint actuel avec un dossier minimal et analysé sa luminosité colorimétrique :
