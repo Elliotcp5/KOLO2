@@ -191,6 +191,10 @@ export function EstimationFlowPage() {
   const setAnswer = (k, v, opts = {}) => {
     const next = { ...answers, [k]: v };
     setAnswers(next);
+    // Fix 8/2/2026 : purger l'erreur d'un précédent essai de launch quand
+    // l'user change de réponse — sinon le rouge reste et donne l'impression
+    // que le simple fait de choisir « place » a cassé l'estimation.
+    if (error) setError(null);
     // Avance auto — SAUF pour extérieur avec valeur ≠ aucun (on veut la surface avant)
     if (opts.noAdvance) return;
     if (step < activeQs.length - 1) setStep(step + 1);
@@ -249,13 +253,24 @@ export function EstimationFlowPage() {
                   && e.message !== '[object Object]') {
         code = e.message;
       }
-      // 402 = Découverte quota épuisé → écran-bloc neutre, PAS d'erreur affichée
+      // 402 = Découverte quota épuisé → paywall unifié
       if ((code === 'quota_estimation_epuise' || code === 'plan_estimation')
           && e?.status === 402) {
-        navigate('/app-b1/veille/paywall');
+        navigate('/app-b1/paywall');
         return;
       }
-      setError(code);
+      // Traduction utilisateur des codes techniques les plus fréquents
+      // pour éviter les messages du type « surface_requise » en rouge.
+      const trad = {
+        quota_estimation_epuise: b1t('est.err.quota') || "Passez à Pro pour estimer sans limite.",
+        plan_estimation: b1t('est.err.quota') || "Passez à Pro pour estimer sans limite.",
+        surface_requise: b1t('est.err.surface') || "Surface habitable manquante — revenez à l'adresse et complétez.",
+        type_bien_requis: b1t('est.err.type') || "Type de bien manquant — revenez à l'adresse.",
+        geoloc_manquante: b1t('est.err.geo') || "Impossible de localiser le bien — vérifiez l'adresse.",
+        adresse_introuvable: b1t('est.err.geo') || "Adresse introuvable.",
+        dvf_exclu: b1t('est.err.dvf') || "Zone non couverte (livre foncier).",
+      };
+      setError(trad[code] || (b1t('est.err.generique') || "Une erreur est survenue. Réessayez."));
     } finally {
       setCalc(false);
     }
@@ -331,7 +346,7 @@ export function EstimationFlowPage() {
               className="b1-pill b1-pill--primary b1-pill--fullwidth"
               disabled={!canLaunch}
               onClick={launch}>
-              {b1t('est.bien.cta_estimer')}
+              {error ? (b1t('est.err.retry') || 'Réessayer') : b1t('est.bien.cta_estimer')}
             </button>
           </div>
         )}

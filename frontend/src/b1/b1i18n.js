@@ -106,6 +106,14 @@ const STRINGS = {
     'paywall.legal': "Renouvellement automatique. Résiliable dans Réglages > Apple ID.",
     'paywall.err.pas_ios': "Achat disponible uniquement dans l'app iOS.",
     'paywall.err.echec': "Achat impossible pour le moment.",
+    // Estimation — messages d'erreur utilisateur (fix stationnement 8/2/2026)
+    'est.err.quota': "Passez à Pro pour estimer sans limite.",
+    'est.err.surface': "Surface habitable manquante — revenez à l'adresse et complétez.",
+    'est.err.type': "Type de bien manquant — revenez à l'adresse.",
+    'est.err.geo': "Impossible de localiser le bien — vérifiez l'adresse.",
+    'est.err.dvf': "Zone non couverte (livre foncier).",
+    'est.err.generique': "Une erreur est survenue. Réessayez.",
+    'est.err.retry': "Réessayer",
 
     'profil.menu.perso': 'Informations personnelles',
     'profil.menu.pro': 'Informations professionnelles',

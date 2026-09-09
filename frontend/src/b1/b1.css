@@ -738,13 +738,37 @@
   background: var(--b1-card);
   border-radius: var(--b1-radius-card);
   padding: 16px 16px 20px;
-  box-shadow: var(--b1-shadow-card);
+  /* Section 5.5 · 8/2/2026 : ombre franche demandée (0 8px 24px). */
+  box-shadow: 0 8px 24px rgba(26, 27, 51, 0.10);
   display: flex;
   flex-direction: column;
   gap: 12px;
   touch-action: pan-y;
   user-select: none;
+  /* Section 5.7 : animation d'apparition fondu montant sur 200 ms. */
+  animation: b1-card-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
+@keyframes b1-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Section 5.2 · pile de cartes visible — les deux cartes suivantes derrière
+   l'active, décalées de 8 px, réduites, plus transparentes. */
+.b1-opp-stack {
+  position: relative;
+  padding-top: 16px; /* laisse voir les cartes empilées */
+}
+.b1-opp-stack-slot {
+  position: absolute;
+  left: 0; right: 0;
+  box-shadow: 0 8px 24px rgba(26, 27, 51, 0.08);
+  border-radius: var(--b1-radius-card);
+  background: var(--b1-card);
+  height: 100%;
+  pointer-events: none;
+}
+.b1-opp-stack-slot--1 { transform: translateY(8px) scale(0.96); opacity: 0.6; z-index: 1; }
+.b1-opp-stack-slot--2 { transform: translateY(16px) scale(0.92); opacity: 0.35; z-index: 0; }
 .b1-opp-illus {
   aspect-ratio: 1 / 0.55;         /* moins haut pour laisser voir ✕/♥ au-dessus de la tab bar */
   background: var(--b1-accent);
@@ -756,12 +780,15 @@
 }
 .b1-opp-address {
   color: var(--b1-accent);
-  font-size: 22px;
+  /* Section 5.6 · hiérarchie typo — adresse 26 px gras */
+  font-size: 26px;
   font-weight: 800;
   margin: 0;
+  line-height: 1.1;
 }
 .b1-opp-details {
-  font-size: 14px;
+  /* Section 5.6 · caractéristiques 15 px */
+  font-size: 15px;
   color: var(--b1-text-primary);
   line-height: 1.6;
 }
@@ -770,31 +797,50 @@
   padding: 6px 12px;
   background: #F0F0F2;
   border-radius: var(--b1-radius-pill);
+  /* Section 5.6 · métadonnées 12 px MAJ interlettrage. */
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--b1-text-secondary);
 }
 .b1-opp-actions {
   display: flex;
-  justify-content: center;
-  gap: 40px;
-  padding-top: 8px;
+  justify-content: space-between;
+  gap: 24px;
+  /* Section 5.3 · boutons ancrés sous la carte alignés sur ses bords. */
+  padding: 12px 8px 0;
+  margin-top: -4px;
 }
 .b1-opp-action-btn {
-  width: 60px;
-  height: 60px;
+  /* Section 5.3 · 64 px pleins avec ombre franche. */
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--b1-shadow-card);
-  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: 0 8px 24px rgba(26, 27, 51, 0.14);
+  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 140ms ease;
+  border: 0;
+  cursor: pointer;
 }
-.b1-opp-action-btn:active { transform: scale(0.9); }
-.b1-opp-action-btn--reject { background: #fff; color: var(--b1-danger); border: 2px solid var(--b1-danger); }
-.b1-opp-action-btn--reject:active { background: var(--b1-danger-tint); }
-.b1-opp-action-btn--accept { background: var(--b1-success); color: #fff; border: 2px solid var(--b1-success); }
-.b1-opp-action-btn--accept:active { background: #128A3E; }
+.b1-opp-action-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 4px 12px rgba(26, 27, 51, 0.18);
+}
+.b1-opp-action-btn--reject {
+  background: #fff;
+  color: var(--b1-danger, #E53935);
+}
+.b1-opp-action-btn--reject:active { background: #FCE9EA; }
+.b1-opp-action-btn--accept {
+  /* Section 5.3 · rose de marque plein cœur blanc, pas de vert. */
+  background: var(--b1-accent, #EC8690);
+  color: #fff;
+}
+.b1-opp-action-btn--accept:active { background: #D67680; }
 
 .b1-opp-empty {
   text-align: center;
