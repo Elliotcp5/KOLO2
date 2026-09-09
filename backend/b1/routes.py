@@ -280,9 +280,19 @@ async def get_my_quotas(request: Request):
 _INFOS_PERSO_FIELDS = ["prenom", "nom", "phone", "email", "adresse", "code_postal_perso", "ville_perso", "logo_url"]
 
 _INFOS_PRO_FIELDS = [
-    "statut_juridique", "siren", "agence_nom", "carte_t_num", "cci_delivrance",
-    "rcp_assureur", "rcp_police", "garantie_financiere", "taux_honoraires_pct",
-    "honoraires_charge",
+    # Fix Build 2.24 · 8/2/2026 : les noms frontend étaient désalignés
+    # (frontend `agence`, `carte_t`, `cci`, `garantie` vs backend
+    # `agence_nom`, `carte_t_num`, `cci_delivrance`, `garantie_financiere`).
+    # `_sanitize` rejetait tout ce qui n'était pas listé → bouton Enregistrer
+    # ne sauvegardait rien. On accepte désormais les DEUX noms pour ne pas
+    # casser les enregistrements historiques.
+    "statut_juridique", "siren",
+    "agence", "agence_nom",
+    "carte_t", "carte_t_num",
+    "cci", "cci_delivrance",
+    "rcp_assureur", "rcp_police",
+    "garantie", "garantie_financiere",
+    "taux_honoraires_pct", "honoraires_charge",
     # Grille de pondération des surfaces annexes (coefficients)
     "pond_terrasse", "pond_balcon_loggia", "pond_combles",
     "pond_cave_cellier", "pond_garage", "pond_place_parking", "pond_jardin",
@@ -392,6 +402,16 @@ async def patch_my_profil(payload: ProfilPatch, request: Request):
 
     await _db().users.update_one({"user_id": user["user_id"]}, {"$set": set_fields})
     fresh = await _db().users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if fresh:
+        # Défensive : purge tout ObjectId résiduel (organisation_id, etc.)
+        # sinon FastAPI casse en 500 « 'ObjectId' object is not iterable ».
+        for k, v in list(fresh.items()):
+            try:
+                from bson import ObjectId
+                if isinstance(v, ObjectId):
+                    fresh[k] = str(v)
+            except Exception:
+                pass
     infos_pro = (fresh or {}).get("infos_pro") or {}
     for k, v in _INFOS_PRO_DEFAULTS.items():
         infos_pro.setdefault(k, v)
@@ -922,7 +942,10 @@ async def get_quota_etat(request: Request):
     # perso de l'utilisateur, on ne montre pas de décompte.
     zones_perso = user.get("zones_perso") or []
     n_pool = 0
-    if zones_perso and n_proposees == 0:
+    if zones_perso:
+        # Toujours calculer le pool (utile pour l'écran paywall qui affiche
+        # « N opportunités vous attendent dans le 13008 »), même quand
+        # l'utilisateur a encore des opps proposées à traiter.
         n_pool = await _db().opportunites.count_documents({
             "code_postal": {"$in": [str(z) for z in zones_perso]},
             "statut": "pool",
@@ -943,6 +966,34 @@ async def get_quota_etat(request: Request):
             if zone_vide else None
         ),
     }
+
+
+@router.get("/api/me/pool-zones")
+async def me_pool_zones(request: Request):
+    """Ventilation du pool d'opportunités par code postal de l'utilisateur.
+
+    Utilisé par l'écran paywall pour afficher chiffré ce que le user rate :
+    « 12 opportunités de mandats vous attendent dans le 13008 ».
+
+    Le chiffre vient du POOL RÉEL (`statut:"pool"` limité à la zone du user).
+    Jamais inventé. Aucun prix, conforme Apple.
+    """
+    user = await _current_user_doc(request)
+    zones = user.get("zones_perso") or []
+    if not zones:
+        return {"ok": True, "zones": [], "total": 0, "top_zone": None}
+    breakdown = []
+    total = 0
+    top = None
+    for cp in zones:
+        n = await _db().opportunites.count_documents({
+            "code_postal": str(cp), "statut": "pool",
+        })
+        breakdown.append({"code_postal": str(cp), "count": n})
+        total += n
+        if not top or n > top["count"]:
+            top = {"code_postal": str(cp), "count": n}
+    return {"ok": True, "zones": breakdown, "total": total, "top_zone": top}
 
 
 # ---------------------------------------------------------------------------

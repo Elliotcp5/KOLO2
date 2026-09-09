@@ -198,7 +198,7 @@ export function VeillePaywall() {
         <button
           className="b1-veille-inter-cta"
           data-testid="b1-veille-paywall-cta"
-          onClick={() => navigate('/app-v2/settings/subscription')}
+          onClick={() => navigate('/app-b1/paywall')}
         >
           {b1t('veille.paywall.cta')}
         </button>

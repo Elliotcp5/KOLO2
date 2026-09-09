@@ -561,19 +561,27 @@ export function ProfilPage() {
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('nav.profil')} />
-        <div className="b1-profil-plan" data-testid="b1-profil-plan-card">
+        {/* Carte plan : rose+couronne pour Pro, neutre grise SANS couronne
+            pour Découverte (fix 8/2/2026 : les deux étaient identiques,
+            l'user ne voyait plus l'incitation à passer Pro). */}
+        <div className={`b1-profil-plan ${isPro ? '' : 'b1-profil-plan--free'}`} data-testid="b1-profil-plan-card">
           <div className="b1-profil-plan-eyebrow">{b1t('profil.plan.titre')}</div>
           <div className="b1-profil-plan-name">
-            <Crown size={30} strokeWidth={2.2} />
+            {isPro && <Crown size={30} strokeWidth={2.2} />}
             {isPro ? b1t('profil.plan.pro') : b1t('profil.plan.decouverte')}
           </div>
+          {!isPro && (
+            <div className="b1-small" style={{ marginTop: 4, opacity: 0.75 }}>
+              {b1t('profil.plan.decouverte.limite') || "3 opportunités/jour · pas d'estimation · pas de veille"}
+            </div>
+          )}
           {isPro && me?.subscription_ends_at && (
             <div className="b1-profil-plan-renouv">
               {b1t('profil.plan.renouv', { date: new Date(me.subscription_ends_at).toLocaleDateString() })}
             </div>
           )}
           {!isPro && (
-            <button className="b1-profil-plan-cta" data-testid="b1-profil-passer-pro" onClick={() => navigate('/app-v2/settings/subscription')}>
+            <button className="b1-profil-plan-cta" data-testid="b1-profil-passer-pro" onClick={() => navigate('/app-b1/paywall')}>
               {b1t('profil.plan.passer_pro')}
             </button>
           )}
@@ -966,7 +974,7 @@ export function ProfilZonesPage() {
                     {b1t('profil.zones.modif.maintenant')}
                   </button>
                 )}
-                <button className="b1-pill b1-pill--ghost b1-pill--fullwidth" data-testid="b1-zones-modal-pro" onClick={() => { setShowBlock(false); window.location.href = '/app-v2/settings/subscription'; }}>
+                <button className="b1-pill b1-pill--ghost b1-pill--fullwidth" data-testid="b1-zones-modal-pro" onClick={() => { setShowBlock(false); navigate('/app-b1/paywall'); }}>
                   {b1t('profil.plan.passer_pro')}
                 </button>
               </div>

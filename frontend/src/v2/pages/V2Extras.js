@@ -466,7 +466,7 @@ export const V2SettingsPage = () => {
         <div className="v2-row-title" style={{ marginTop: 6 }}>{dashboard?.has_pro ? 'KOLO Pro' : 'KOLO Gratuit'}</div>
         <div className="v2-row-sub">{dashboard?.has_pro ? 'Toutes les fonctionnalités, sans limite.' : `${dashboard?.free_contacts_left ?? 10} contacts gratuits restants`}</div>
         {!dashboard?.has_pro && (
-          <button className="v2-btn ai-btn full" style={{ marginTop: 12 }} onClick={() => navigate('/app-v2/settings/subscription')}>Passer Pro · 24,99€/mois</button>
+          <button className="v2-btn ai-btn full" style={{ marginTop: 12 }} onClick={() => navigate('/app-b1/paywall')}>Passer Pro</button>
         )}
       </div>
 

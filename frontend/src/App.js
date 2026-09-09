@@ -93,6 +93,8 @@ const D1B224DirecteurOpps = lazy(() => import("./b1/B1DirecteurB224").then((m) =
 const D1B224DirecteurEquipe = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurMonEquipePage })));
 const D1B224DirecteurConseiller = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurConseillerDetailPage })));
 const D1B224DirecteurPerf = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurPerfAgencePage })));
+// Paywall unifié (remplace /app-v2/settings/subscription qui était mort)
+const B1PaywallPage = lazy(() => import("./b1/B1Paywall"));
 
 // Router pour l'onglet 1 : rend `OpportunitesPage` (agent) OU
 // `DirecteurOpportunitesPage` (swipe + affectation) selon le rôle.
@@ -290,6 +292,11 @@ const AppRouter = () => {
       <Route path="/app-b1/directeur/equipe-b224" element={<D1B224DirecteurEquipe />} />
       <Route path="/app-b1/directeur/equipe/:user_id" element={<D1B224DirecteurConseiller />} />
       <Route path="/app-b1/directeur/perf-agence" element={<D1B224DirecteurPerf />} />
+
+      {/* Paywall unifié — remplace /app-v2/settings/subscription */}
+      <Route path="/app-b1/paywall" element={<B1PaywallPage />} />
+      <Route path="/app-v2/settings/subscription" element={<Navigate to="/app-b1/paywall" replace />} />
+      <Route path="/app-v2/paywall" element={<Navigate to="/app-b1/paywall" replace />} />
 
       {/* ============================================================== */}
       {/* PIÈGES À VIEILLES URLs — tout ce qui existait avant redirige   */}

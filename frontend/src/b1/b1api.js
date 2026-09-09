@@ -242,6 +242,8 @@ export const patchStatutMandat = (id, statut) =>
 
 // --- Quota utilisateur (source de vérité du décompte fin de pile) ---
 export const getQuotaEtat = () => req('/api/me/quota-etat');
+// --- Ventilation du pool par CP — écran paywall (chiffres réels de la zone) ---
+export const getPoolZones = () => req('/api/me/pool-zones');
 
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
@@ -261,7 +263,7 @@ export const b1api = {
   getSuggestionsZones, confirmerZones,
   // Opportunités
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
-  getMesMandats, patchStatutMandat, getQuotaEtat,
+  getMesMandats, patchStatutMandat, getQuotaEtat, getPoolZones,
   uploadLogo,
 };
 export default b1api;

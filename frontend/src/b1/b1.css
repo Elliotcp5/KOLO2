@@ -634,6 +634,22 @@
   margin-top: 12px;
 }
 
+/* Variante Découverte (gratuit) — carte NEUTRE grise sans couronne.
+   Fix 8/2/2026 : la carte était identique à la Pro (rose + couronne),
+   l'user ne voyait plus l'incitation. Le CTA reprend le rose de marque
+   plein pour rester la seule action visible. */
+.b1-profil-plan--free {
+  background: #F1F1F5;
+  color: #1A1B33;
+  box-shadow: 0 2px 8px rgba(26, 27, 51, 0.05);
+}
+.b1-profil-plan--free .b1-profil-plan-eyebrow { opacity: 0.7; }
+.b1-profil-plan--free .b1-profil-plan-cta {
+  background: var(--b1-accent, #EC8690);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(236, 134, 144, 0.32);
+}
+
 .b1-profil-menu {
   display: flex;
   flex-direction: column;
