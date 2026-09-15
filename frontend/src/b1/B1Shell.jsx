@@ -253,8 +253,11 @@ export function OpportunitesPage() {
 
     // Persiste côté serveur si opp réelle. Right → `a_demarcher` (visible dans
     // "Mes opportunités de mandats"). Left → `ignoree`.
-    // **Aucun redirect vers un autre onglet** — on reste sur la pile,
-    // prochaine carte s'affiche. Comportement standard d'app de swipe.
+    // Fix bug remonté depuis 5 builds (8/2/2026) : le swipe droite marquait
+    // l'opp `a_demarcher` en base mais ne LANÇAIT PAS l'estimation. L'user
+    // voyait la carte disparaître, fin de pile, et pensait que l'estimation
+    // était cassée à « l'étape 3 » — en réalité on n'y arrivait JAMAIS.
+    // Comportement attendu : droite → estimation flow, gauche → prochaine.
     if (cur?.id && !cur.demo) {
       setPending(true);
       try {
@@ -266,6 +269,28 @@ export function OpportunitesPage() {
         return;  // On n'avance PAS si le swipe échoue
       }
       setPending(false);
+    }
+    // Ouvre l'estimation UNIQUEMENT sur swipe droite d'une vraie opportunité.
+    // Les agents d'agence n'arrivent pas ici (SwipeCard désactivée). Les
+    // directeurs non plus (Onglet 1 remplacé par DirecteurOpportunitesPage).
+    if (sens === 'droite' && cur?.id && !cur.demo) {
+      const caracs = cur.caracteristiques || {};
+      navigate('/app-b1/estimation/flow', {
+        state: {
+          bien: {
+            adresse: cur.adresse,
+            code_postal: cur.code_postal,
+            lat: cur.lat, lng: cur.lng,
+            type_bien: caracs.type_batiment || cur.type_bien || 'Appartement',
+            surface_habitable: caracs.surface_habitable || cur.superficie,
+            classe_dpe: caracs.classe_dpe || cur.dpe,
+            annee_construction: caracs.annee_construction || cur.annee_construction,
+            caracteristiques: caracs,
+          },
+          opportunite_id: cur.id,
+        },
+      });
+      return; // pas de next() : on quitte l'écran vers l'estimation
     }
     next();
   };
@@ -829,6 +854,7 @@ export function ProfilProPage() {
 
 // -- Zones subpage
 export function ProfilZonesPage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(false);
   const [showBlock, setShowBlock] = useState(false);

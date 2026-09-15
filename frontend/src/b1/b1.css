@@ -753,22 +753,22 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 /* Section 5.2 · pile de cartes visible — les deux cartes suivantes derrière
-   l'active, décalées de 8 px, réduites, plus transparentes. */
+   l'active, décalées de 8 px, réduites, plus transparentes. Les slots
+   sont ABSOLUS et copient les dimensions de la carte active via un padding
+   « ghost » égal (min-height inline sur la wrap). */
 .b1-opp-stack {
   position: relative;
-  padding-top: 16px; /* laisse voir les cartes empilées */
 }
 .b1-opp-stack-slot {
   position: absolute;
-  left: 0; right: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   box-shadow: 0 8px 24px rgba(26, 27, 51, 0.08);
   border-radius: var(--b1-radius-card);
   background: var(--b1-card);
-  height: 100%;
   pointer-events: none;
 }
-.b1-opp-stack-slot--1 { transform: translateY(8px) scale(0.96); opacity: 0.6; z-index: 1; }
-.b1-opp-stack-slot--2 { transform: translateY(16px) scale(0.92); opacity: 0.35; z-index: 0; }
+.b1-opp-stack-slot--1 { transform: translateY(8px) scale(0.96); opacity: 0.55; z-index: 1; }
+.b1-opp-stack-slot--2 { transform: translateY(16px) scale(0.92); opacity: 0.28; z-index: 0; }
 .b1-opp-illus {
   aspect-ratio: 1 / 0.55;         /* moins haut pour laisser voir ✕/♥ au-dessus de la tab bar */
   background: var(--b1-accent);

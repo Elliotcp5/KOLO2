@@ -161,6 +161,13 @@ export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = fals
 
   return (
     <div className="b1-swipe-wrap" data-testid={testid}>
+      {/* Section 5.2 (Build 2.24) · pile de cartes visible — deux cartes
+          fantômes derrière l'active, décalées et transparentes. Elles ne
+          reçoivent aucun événement pointer, la carte active reste seule
+          cliquable. */}
+      <div className="b1-opp-stack">
+        <div className="b1-opp-stack-slot b1-opp-stack-slot--2" aria-hidden="true" />
+        <div className="b1-opp-stack-slot b1-opp-stack-slot--1" aria-hidden="true" />
       <div
         ref={cardRef}
         className="b1-opp-card b1-swipe-card"
@@ -171,6 +178,8 @@ export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = fals
           cursor: disabled ? 'default' : 'grab',
           userSelect: 'none',
           willChange: 'transform',
+          position: 'relative', /* passe au-dessus des stack-slot */
+          zIndex: 2,
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -218,6 +227,7 @@ export function SwipeCard({ children, onSwipeLeft, onSwipeRight, disabled = fals
             <Heart size={26} strokeWidth={2.5} fill="currentColor" />
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
