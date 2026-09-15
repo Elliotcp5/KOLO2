@@ -106,6 +106,15 @@ const STRINGS = {
     'paywall.legal': "Renouvellement automatique. Résiliable dans Réglages > Apple ID.",
     'paywall.err.pas_ios': "Achat disponible uniquement dans l'app iOS.",
     'paywall.err.echec': "Achat impossible pour le moment.",
+    // B1ProCta — points d'entrée paywall contextuels
+    'procta.fin_pile.hero': "Vous en avez traité vos 3 aujourd'hui. {n} autres opportunités vous attendent en {cp} — accessibles en Pro.",
+    'procta.veille.hero': "{n} biens déjà en vente à surveiller en {cp} — accessible en Pro.",
+    'procta.dossier.hero': "Après votre premier dossier gratuit, la génération PDF illimitée est réservée aux Pro.",
+    'procta.estimation.hero': "Vous disposez d'une estimation offerte. Passez Pro pour estimer sans limite.",
+    'procta.assistant.hero': "L'assistant KOLO répond à vos questions terrain — réservé aux Pro.",
+    'procta.generic.hero': "Passez Pro pour débloquer toutes les opportunités, l'estimation illimitée et la veille.",
+    'procta.benefit': "Toutes vos opportunités quotidiennes, estimations et dossiers PDF illimités, veille concurrentielle.",
+    'profil.paiement.explication.free': "Vous êtes en Découverte. Passez à Pro pour recevoir toutes les opportunités de vos zones, l'estimation illimitée, la veille concurrentielle et l'assistant.",
     // Estimation — messages d'erreur utilisateur (fix stationnement 8/2/2026)
     'est.err.quota': "Passez à Pro pour estimer sans limite.",
     'est.err.surface': "Surface habitable manquante — revenez à l'adresse et complétez.",

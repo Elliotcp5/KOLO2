@@ -1,5 +1,41 @@
 # KOLO - Changelog
 
+## Build 2.24 — Chemin Pro + Photos PDF (fork 12 fév 2026)
+
+### Chemin de conversion vers Pro
+- **Fix critique : mur assistant renvoyait vers `/app-b1/profil` au lieu du paywall.** Corrigé — `B1Assistant.jsx` `as-upgrade` → `/app-b1/paywall`.
+- **Écran « Plan & paiement » (`ProfilPaiementPage`)** :
+  - Carte plan neutralisée en Découverte (gris, sans couronne). Auparavant identique à Pro.
+  - Nouveau bouton « Passer Pro » (`b1-paiement-passer-pro`) qui remplace « Gérer mon abonnement » pour les gratuits — celui-ci n'apparaît plus qu'aux Pro.
+- **Nouveau composant réutilisable `B1ProCta.jsx`** : encart avec 3 éléments dans l'ordre demandé — chiffre RÉEL de la zone de l'user (via `/api/me/pool-zones`) → bénéfice en une phrase → CTA plein vers `/app-b1/paywall`.
+- **Points d'entrée posés** :
+  - Fin de pile (`B1FinDePile`) — visible dès qu'un gratuit atteint la fin de son quota du jour.
+  - Écran d'export dossier PDF (`B1Dossier::ExportScreen`) — visible pour tout non-Pro.
+  - Veille — déjà géré via `VeillePaywall`.
+  - Estimation — déjà géré via 402 → paywall.
+
+### Identifiant produit IAP
+Confirmé : produit unique **`PRO_Plus`** dans `services/iapStore.js` (`PRODUCT_IDS.*` mappent tous vers cette chaîne). Doit correspondre à App Store Connect subscription group "KOLO PRO", produit `PRO_Plus`.
+
+### Fix critique — Photos dans le PDF (échec silencieux)
+Cause racine : les photos uploadées sont stockées en URL relative `/api/dossiers/{id}/photos/{photo_id}` (idem `/api/me/logo/{id}`). Le renderer WeasyPrint passait ces URLs à `optimize_image()` qui, ne trouvant pas de scheme http, tombait dans la branche « fichier local » — `os.path.exists("/api/dossiers/…")` = False — et retournait `None`. La photo disparaissait sans erreur.
+
+Fix : nouveau `/app/backend/c2/pdf/photo_resolver.py` qui pré-résout **avant** WeasyPrint, en async, toutes les URLs relatives (couverture, annexes, logo agent, signature) en `file://` local via `_get()` d'Emergent Object Storage. Branché dans `pdf/jobs.py::_run_render`.
+
+Bonus : photos annexes maintenant rendues dans le PDF via une nouvelle page « Photos du bien » dans le template Jinja2 + ajout de `photos_annexes` au contexte du renderer.
+
+Test unitaire : `/app/backend/tests/test_pdf_photo_resolver.py`.
+
+### Fixes collatéraux
+- `B1Assistant` : le hook Capacitor Keyboard plantait sur web (« remove is not a function ») car `Kb.addListener` renvoie une Promise. Ajout d'un guard `isNativePlatform` + gestion Promise-aware.
+
+### Reste à faire (prochain tour)
+- Point 3 : plugin clavier sur formulaire d'invitation conseiller (`B1Directeur`)
+- Point 4 : audit i18n (clé `OPP.MES_MANDATS.DETAIL.STATUT` brute)
+- Point B : écran de chargement PDF animé + suppression du bouton « Générer » en doublon
+- Enforce 1 estimation gratuite lifetime côté backend (`b1/quotas.py`)
+
+
 ## BLOC D — Amorce : test de conformité Apple — 2 sept. 2026
 
 Le prompt bloc D exige d'écrire `tests/test_apple_compliance.py` **avant toute autre ligne** du bloc, pour attraper les régressions pendant la construction.

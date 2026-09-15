@@ -197,6 +197,9 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
 
     # ---- photos : compression silencieuse ----
     photo_cover = optimize_image(dossier.get("photo_couverture"))
+    # Photos d'annexes (galerie). Résolues au préalable par photo_resolver.
+    annexes_sec = sections.get("annexes", {}) or {}
+    photos_annexes = optimize_many(annexes_sec.get("photos") or [])
 
     # ---- adresse / commune ----
     adresse_ligne1 = _adresse_ligne1(
@@ -282,6 +285,7 @@ def build_context(dossier_doc: dict[str, Any]) -> dict[str, Any]:
         "date_edition_fr": _fmt_date_fr(dossier.get("date_edition")) or _fmt_date_fr(date.today().isoformat()),
         "date_visite_fr": _fmt_date_fr(dossier.get("date_visite")),
         "photo_couverture": photo_cover,
+        "photos_annexes": photos_annexes,
         # rédacteur / agence
         "agent_nom": redacteur.get("agent_nom"),
         "agent_qualite": redacteur.get("agent_qualite"),

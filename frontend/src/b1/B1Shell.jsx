@@ -1083,6 +1083,7 @@ export function ProfilPaiementPage() {
   // Écran Plan & abonnement Apple-compliant : aucun prix, aucun lien de
   // paiement direct dans l'app. Un bouton unique qui deeplink vers les
   // réglages d'abonnement Apple (source of truth). Build 2.22.5.
+  const navigate = useNavigate();
   const [me, setMe] = useState(null);
   useEffect(() => {
     b1api.getProfil().then((r) => setMe(r?.user || r)).catch(() => setMe(null));
@@ -1099,10 +1100,10 @@ export function ProfilPaiementPage() {
     <div className="b1-root">
       <div className="b1-screen">
         <BackHeader label={b1t('profil.menu.paiement') || 'Plan & abonnement'} />
-        <div className="b1-profil-plan" data-testid="b1-paiement-plan-card">
+        <div className={`b1-profil-plan ${isPro ? '' : 'b1-profil-plan--free'}`} data-testid="b1-paiement-plan-card">
           <div className="b1-profil-plan-eyebrow">{b1t('profil.plan.titre') || 'Mon plan'}</div>
           <div className="b1-profil-plan-name">
-            <Crown size={30} strokeWidth={2.2} />
+            {isPro && <Crown size={30} strokeWidth={2.2} />}
             {isPro ? (b1t('profil.plan.pro') || 'Pro') : (b1t('profil.plan.decouverte') || 'Découverte')}
           </div>
           {isPro && me?.subscription_ends_at && (
@@ -1112,18 +1113,37 @@ export function ProfilPaiementPage() {
           )}
         </div>
         <div className="b1-screen-content">
-          <div className="b1-lead" style={{ marginTop: 16, marginBottom: 20 }}>
-            {b1t('profil.paiement.explication')
-              || "Votre abonnement se gère depuis les réglages Apple. Vous pouvez y changer de formule, mettre en pause, ou résilier à tout moment."}
-          </div>
-          <button
-            type="button"
-            className="b1-pill b1-pill--primary b1-pill--fullwidth"
-            data-testid="b1-paiement-manage-apple"
-            onClick={openAppleSubs}
-          >
-            {b1t('profil.paiement.gerer_apple') || 'Gérer mon abonnement'}
-          </button>
+          {isPro ? (
+            <>
+              <div className="b1-lead" style={{ marginTop: 16, marginBottom: 20 }}>
+                {b1t('profil.paiement.explication')
+                  || "Votre abonnement se gère depuis les réglages Apple. Vous pouvez y changer de formule, mettre en pause, ou résilier à tout moment."}
+              </div>
+              <button
+                type="button"
+                className="b1-pill b1-pill--primary b1-pill--fullwidth"
+                data-testid="b1-paiement-manage-apple"
+                onClick={openAppleSubs}
+              >
+                {b1t('profil.paiement.gerer_apple') || 'Gérer mon abonnement'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="b1-lead" style={{ marginTop: 16, marginBottom: 20 }}>
+                {b1t('profil.paiement.explication.free')
+                  || "Vous êtes en Découverte. Passez à Pro pour recevoir toutes les opportunités de vos zones, l'estimation illimitée, la veille concurrentielle et l'assistant."}
+              </div>
+              <button
+                type="button"
+                className="b1-pill b1-pill--primary b1-pill--fullwidth"
+                data-testid="b1-paiement-passer-pro"
+                onClick={() => navigate('/app-b1/paywall')}
+              >
+                {b1t('profil.plan.passer_pro') || 'Passer Pro'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

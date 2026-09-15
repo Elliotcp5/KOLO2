@@ -270,6 +270,18 @@
   {% endif %}
 </section>
 
+{#================ ANNEXE PHOTOS (optionnel) =====================#}
+{% if photos_annexes %}
+<section class="sec page-break" id="sec-photos">
+  <div class="sec-head"><h2>Photos du bien</h2></div>
+  <div class="photos-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;">
+    {% for p in photos_annexes %}
+    <img src="{{ p }}" alt="" style="width:100%;height:70mm;object-fit:cover;border-radius:6px;">
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {#================ 9. MENTIONS LÉGALES =====================#}
 <section id="sec-mentions" class="sec page-break">
   <div class="sec-head"><span class="sec-num">09</span><h2>Conditions et limites de cet avis</h2></div>

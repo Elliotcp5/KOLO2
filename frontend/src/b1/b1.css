@@ -1834,3 +1834,60 @@
   font-weight: 800;
   text-align: center;
 }
+
+/* =============================================================
+   B1ProCta — encart réutilisable « Passer Pro »
+   Posé sur chaque écran où un gratuit se heurte à une limite.
+   ============================================================= */
+.b1-procta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(236, 134, 144, 0.08) 0%, rgba(236, 134, 144, 0.02) 100%);
+  border: 1px solid rgba(236, 134, 144, 0.22);
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  margin: 16px 0;
+}
+.b1-procta-crown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(236, 134, 144, 0.16);
+  color: var(--b1-accent);
+}
+.b1-procta-headline {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--b1-text-primary);
+}
+.b1-procta-benefit {
+  font-size: 13px;
+  color: var(--b1-text-secondary);
+  line-height: 1.4;
+}
+.b1-procta-btn {
+  margin-top: 6px !important;
+}
+
+/* Variante compacte : une ligne, icône + texte + CTA */
+.b1-procta--compact {
+  flex-direction: row;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 10px;
+  cursor: pointer;
+}
+.b1-procta--compact .b1-procta-icon { color: var(--b1-accent); flex-shrink: 0; }
+.b1-procta--compact .b1-procta-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--b1-text-primary);
+  line-height: 1.35;
+}
+.b1-procta--compact .b1-pill { flex-shrink: 0; padding: 8px 14px; font-size: 13px; }

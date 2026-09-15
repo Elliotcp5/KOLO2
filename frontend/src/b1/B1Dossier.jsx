@@ -8,6 +8,7 @@ import b1api, { API } from './b1api';
 import { saveDraft, loadDraft, clearDraft } from './b3offline';
 import { DictationButton, DICTABLE } from './B1Dictation';
 import { BottomTabPill } from './B1Shell';
+import { B1ProCta } from './B1ProCta';
 import './b1dossier.css';
 
 const SECTIONS = [
@@ -611,8 +612,19 @@ function ExportScreen({ dossier, onBack, onToast }) {
   const [showProgress, setShowProgress] = useState(false);
   const [errored, setErrored] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
+  const [me, setMe] = useState(null);
   const pollRef = useRef(null);
   const progressTimerRef = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await b1api.getProfil();
+        setMe(r?.user || null);
+      } catch { setMe(null); }
+    })();
+  }, []);
+  const isPro = !!me && (me.plan === 'pro' || me.subscription_status === 'active');
 
   const cleanupPolling = () => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -770,6 +782,8 @@ function ExportScreen({ dossier, onBack, onToast }) {
           </>
         )}
       </div>
+
+      {!isPro && <B1ProCta context="dossier_pdf" testid="dos-export-pro" />}
     </div>
   );
 }

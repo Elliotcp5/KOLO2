@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .photo_resolver import resolve_photos_in_place
 from .renderer import build_filename, render_pdf
 
 logger = logging.getLogger("c2.pdf.jobs")
@@ -50,6 +51,15 @@ async def _run_render(db, dossier_doc: dict[str, Any], job_id: str) -> None:
         )
         out_path = _pdf_path(dossier_id, job_id)
         filename = build_filename(dossier_doc)
+
+        # Résolution async des URLs relatives (`/api/dossiers/*/photos/*`,
+        # `/api/me/logo/*`) → `file://…` local. Sans ça, WeasyPrint essayait
+        # de les charger comme des fichiers locaux et échouait silencieusement
+        # (bug remonté : « les photos ne passent pas au PDF »).
+        try:
+            await resolve_photos_in_place(db, dossier_doc)
+        except Exception as e:
+            logger.warning(f"[c2.pdf] photo resolve failed (non-bloquant): {e}")
 
         # WeasyPrint est bloquant. On délègue au thread pool pour ne pas
         # geler la loop asyncio (autres requêtes continuent à répondre).

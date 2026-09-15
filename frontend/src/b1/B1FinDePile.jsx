@@ -12,6 +12,7 @@
 // =============================================================
 import React, { useEffect, useState } from 'react';
 import { useNavigate as useReactNavigate } from 'react-router-dom';
+import { B1ProCta } from './B1ProCta';
 
 // ---------- Sablier SVG animé ----------
 function Sablier({ size = 88 }) {
@@ -85,6 +86,7 @@ export function FinDePileScreen({ veilleSlot = null }) {
   const [state, setState] = React.useState({ loading: true, quota: null });
   const [remaining, setRemaining] = useState(0);
   const [recap, setRecap] = useState(null);
+  const [me, setMe] = useState(null);
   const navigate = useReactNavigate();
 
   // 1. Fetch quota + prochaine recharge depuis le serveur
@@ -102,6 +104,18 @@ export function FinDePileScreen({ veilleSlot = null }) {
     }
   }, []);
   useEffect(() => { fetchQuota(); }, [fetchQuota]);
+
+  // Charge le profil pour savoir si l'user est Pro (pour afficher ou non le CTA)
+  useEffect(() => {
+    (async () => {
+      try {
+        const b1api = (await import('./b1api')).default;
+        const r = await b1api.getProfil();
+        setMe(r?.user || null);
+      } catch { setMe(null); }
+    })();
+  }, []);
+  const isPro = !!me && (me.plan === 'pro' || me.subscription_status === 'active');
 
   // 2. Compteur — décrémente chaque seconde. À l'expiration, RE-FETCH,
   // ne redémarre PAS un compteur de lui-même.
@@ -187,6 +201,7 @@ export function FinDePileScreen({ veilleSlot = null }) {
       >
         Voir mes opportunités de mandats
       </button>
+      {!isPro && <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />}
       {veilleSlot && (
         <div className="b1-fin-pile-veille" data-testid="b1-fin-pile-veille">
           {veilleSlot}
