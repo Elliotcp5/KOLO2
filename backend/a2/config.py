@@ -102,8 +102,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # `quotidien`, `hebdo`, `mensuel` ou `illimite` (chaîne)
         "decouverte": {
             "opportunite": {"kind": "hebdo", "limite": 1},
-            "estimation": {"kind": "hebdo", "limite": 1},
-            "dossier": {"kind": "mensuel", "limite": 1},
+            # 1 estimation OFFERTE À VIE (spec produit : la première va jusqu'au
+            # PDF, la deuxième déclenche le paywall). Compteur non-rechargeable.
+            "estimation": {"kind": "lifetime", "limite": 1},
+            "dossier": {"kind": "lifetime", "limite": 1},
         },
         "pro": {
             "opportunite": {"kind": "quotidien", "limite": 5},

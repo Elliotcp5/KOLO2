@@ -171,6 +171,7 @@ export function FinDePileScreen({ veilleSlot = null }) {
         >
           Gérer mes zones de prospection
         </button>
+        {!isPro && <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />}
       </div>
     );
   }

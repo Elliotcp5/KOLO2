@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from a2.config import get_config
-from a2.quotas import verifier_quota
+from a2.quotas import verifier_quota, incrementer_quota
 from a2.tz import now_utc_iso
 from a3.sources.ademe import get_schema, _canonical_from_row
 
@@ -392,6 +392,15 @@ async def create_estimation(payload: EstimationInput, request: Request):
         "statut": "active",
     }
     await db.estimations.insert_one(doc)
+
+    # Incrémente le quota Découverte (lifetime=1). Sans ça, les gratuits
+    # pouvaient lancer autant d'estimations qu'ils le voulaient — le bug
+    # « 1ère va au PDF, la 2ème déclenche le paywall » ne se déclenchait
+    # jamais. verifier_quota a déjà autorisé plus haut.
+    try:
+        await incrementer_quota(db, user, "estimation")
+    except Exception as _e:
+        logger.warning(f"incrementer_quota estimation failed (non-bloquant): {_e}")
 
     # Event tracking (utilise la nomenclature B3)
     try:

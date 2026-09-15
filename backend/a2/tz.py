@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 PARIS = ZoneInfo("Europe/Paris")
 UTC = timezone.utc
 
-PeriodKind = Literal["quotidien", "hebdo", "mensuel"]
+PeriodKind = Literal["quotidien", "hebdo", "mensuel", "lifetime"]
 
 
 def now_paris() -> datetime:
@@ -51,6 +51,10 @@ def period_key(kind: PeriodKind, at: Optional[datetime] = None) -> str:
         return f"{iso_year:04d}-W{iso_week:02d}"
     if kind == "mensuel":
         return d.strftime("%Y-%m")
+    if kind == "lifetime":
+        # Une seule fenêtre à vie par utilisateur. La clé est constante.
+        # Utilisée pour « 1 estimation offerte à vie » côté Découverte.
+        return "lifetime"
     raise ValueError(f"Unknown period kind: {kind}")
 
 

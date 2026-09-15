@@ -1312,6 +1312,18 @@ async def verify_email_code(payload: EmailCodeVerify, request: Request):
     # If user exists → login, else create
     existing = await db.users.find_one({"email": email})
     if existing:
+        # D1 · Partie 1 — un directeur peut inviter un email correspondant à
+        # un compte KOLO déjà existant (le user avait testé l'app en solo).
+        # Il faut aussi rattacher AU LOGIN, sinon l'invitation resterait
+        # « envoyee » à vie et le user ne verrait jamais son plan agence.
+        # attach_conseiller_if_invited est idempotent (no-op si déjà attach).
+        try:
+            from d1.invitations import attach_conseiller_if_invited
+            await attach_conseiller_if_invited(db, email, existing["user_id"])
+            # Re-fetch pour que la réponse renvoie les champs à jour
+            existing = await db.users.find_one({"email": email}) or existing
+        except Exception as _e:
+            logging.getLogger(__name__).error(f"attach_conseiller_if_invited (login) failed: {_e}")
         # Issue a fresh session token (same pattern as server.py login flow)
         session_token = f"sess_{uuid.uuid4().hex}"
         await db.user_sessions.insert_one({

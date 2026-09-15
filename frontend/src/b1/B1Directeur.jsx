@@ -399,6 +399,7 @@ export function DirecteurAgencePage() {
         telephone: r.organisation?.telephone || '',
         mode_repartition: r.organisation?.mode_repartition || 'manuel',
         directeur_prospecte: !!r.organisation?.directeur_prospecte,
+        zones: Array.isArray(r.organisation?.zones) ? [...r.organisation.zones] : [],
       });
     }).catch((e) => {
       if (e?.status === 403) setForbidden(true);
@@ -406,6 +407,21 @@ export function DirecteurAgencePage() {
   }, []);
 
   const setV = (k, v) => setValues((x) => ({ ...x, [k]: v }));
+  const [zoneInput, setZoneInput] = useState('');
+  const [zoneError, setZoneError] = useState('');
+
+  const addZone = () => {
+    setZoneError('');
+    const cp = (zoneInput || '').trim();
+    if (!/^\d{5}$/.test(cp)) { setZoneError(b1t('dir.agence.zones.err_format') || 'Code postal à 5 chiffres.'); return; }
+    setValues((v) => {
+      const current = v.zones || [];
+      if (current.includes(cp)) { setZoneError(b1t('dir.agence.zones.err_doublon') || 'Zone déjà ajoutée.'); return v; }
+      return { ...v, zones: [...current, cp] };
+    });
+    setZoneInput('');
+  };
+  const removeZone = (cp) => setValues((v) => ({ ...v, zones: (v.zones || []).filter((z) => z !== cp) }));
 
   const save = async () => {
     setSaving(true);
@@ -461,12 +477,65 @@ export function DirecteurAgencePage() {
             <input className="b1-input" data-testid="d1-agence-tel" value={values.telephone} onChange={(e) => setV('telephone', e.target.value)} />
           </div>
 
-          {/* Zones */}
+          {/* Zones — Build 2.24 (fix parcours 1) : éditable, chips + input CP */}
           <div className="b1-card" style={{ marginTop: 12 }} data-testid="d1-agence-zones">
             <div className="b1-input-label">{b1t('dir.agence.section.zones')}</div>
-            <div className="b1-lead" style={{ marginTop: 8 }}>
-              {(orga.zones || []).length === 0 ? '—' : (orga.zones || []).join(' · ')}
+            <div className="b1-lead" style={{ marginTop: 4, fontSize: 13, opacity: 0.75 }}>
+              {b1t('dir.agence.zones.sous') || "Ajoutez les codes postaux couverts par votre agence. Zones illimitées."}
             </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }} data-testid="d1-agence-zones-chips">
+              {(values.zones || []).length === 0 && (
+                <div className="b1-small" style={{ opacity: 0.6 }}>{b1t('dir.agence.zones.vide') || 'Aucune zone pour le moment.'}</div>
+              )}
+              {(values.zones || []).map((cp) => (
+                <span
+                  key={cp}
+                  data-testid={`d1-agence-zone-chip-${cp}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '6px 10px 6px 12px', borderRadius: 999,
+                    background: 'var(--b1-accent-light)', color: 'var(--b1-accent)',
+                    fontWeight: 600, fontSize: 13,
+                  }}
+                >
+                  {cp}
+                  <button
+                    type="button"
+                    aria-label={`Retirer ${cp}`}
+                    data-testid={`d1-agence-zone-remove-${cp}`}
+                    onClick={() => removeZone(cp)}
+                    style={{
+                      border: 0, background: 'transparent', color: 'var(--b1-accent)',
+                      cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1,
+                    }}
+                  >×</button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <input
+                className="b1-input"
+                data-testid="d1-agence-zone-input"
+                placeholder={b1t('dir.agence.zones.placeholder') || 'Code postal (ex. 75017)'}
+                value={zoneInput}
+                onChange={(e) => setZoneInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addZone(); } }}
+                inputMode="numeric"
+                maxLength={5}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="b1-pill b1-pill--ghost"
+                data-testid="d1-agence-zone-ajouter"
+                onClick={addZone}
+              >
+                {b1t('dir.agence.zones.ajouter') || 'Ajouter'}
+              </button>
+            </div>
+            {zoneError && (
+              <div className="b1-small" data-testid="d1-agence-zone-error" style={{ color: 'var(--b1-danger)', marginTop: 6 }}>{zoneError}</div>
+            )}
           </div>
 
           {/* Sièges */}

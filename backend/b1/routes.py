@@ -757,7 +757,16 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
                 "reste_du_jour": 0}
 
     cur = _db().opportunites.find(
-        {"assigne_a": uid, "statut": "proposee"},
+        {"assigne_a": uid,
+         "$or": [
+             {"statut": "proposee"},
+             # A4 · Build 2.24 : opps affectées par le directeur — le
+             # conseiller ne les voit pas s'il n'y a QUE le filtre
+             # `statut: proposee`. Elles arrivent en `a_demarcher` avec
+             # `affectation_notif_flag: True` et doivent apparaître dans
+             # sa pile du jour (avec bandeau, swipe désactivé côté front).
+             {"statut": "a_demarcher", "affectation_notif_flag": True},
+         ]},
         {"_id": 1, "adresse": 1, "code_postal": 1, "complement_adresse": 1,
          "lat": 1, "lng": 1, "caracteristiques": 1, "score_confiance": 1,
          "motif_opportunite": 1, "date_attribution": 1, "id_parcelle": 1,

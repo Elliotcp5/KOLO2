@@ -67,3 +67,11 @@
 - **ADMIN_SECRET** (bypass admin, header `X-Admin-Secret`) : voir `backend/.env` (rotationné 1 Sept 2026 en début de Session A3 — l'ancien avait été partagé en clair)
 - **APIFY_WEBHOOK_SECRET** (header `X-Apify-Secret` pour `POST /api/webhooks/apify`) : voir `backend/.env` (rotationné 1 Sept 2026)
 
+
+## Comptes créés parcours 1-2 (fork 12 fév 2026 session 2)
+- **Directeur** : `test.director.parcours1@example.com` — email-code (dev_code renvoyé)
+  - user_id: `u_42c253c3f05743f8`, role: directeur, org: Agence Parcours1 KOLO (6aa9508c5e7253966f8ab3d4), zones: [75017, 13008, 93100], sieges_total: 5, plan: pro
+- **Conseiller invité** : `test.conseiller.parcours2@example.com` — email-code
+  - user_id: `u_646a40c35f2c479a`, role: conseiller (auto-rattaché), plan: agence
+- **Découverte pour test paywall** : `test.decouverte.paywall@example.com` — email-code
+  - user_id: `u_dd93d293bf1c40c9`, plan: decouverte, zones: [75017]
