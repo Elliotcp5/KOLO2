@@ -8922,6 +8922,18 @@ async def startup_event():
     except Exception as e:
         logger.error(f"A3 scheduler start failed: {e}")
 
+    # === Watchdog schedulers — 3ème récurrence du bug "schedulers morts en
+    # silence après redéploiement". Cette boucle vérifie toutes les 30 min
+    # que d1.scheduler et a3.scheduler sont vivants, les relance si mort,
+    # et envoie un email d'alerte via Resend si un job quotidien est stale
+    # depuis plus de 24 h. Voir /app/backend/a3/watchdog.py.
+    try:
+        from a3.watchdog import start_watchdog
+        start_watchdog(db, force=False)
+        logger.info("Watchdog schedulers launched (check toutes les 30 min)")
+    except Exception as e:
+        logger.error(f"Watchdog start failed: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

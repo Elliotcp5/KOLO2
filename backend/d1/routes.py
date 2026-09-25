@@ -552,6 +552,55 @@ async def admin_reload_scheduler(request: Request):
     return {"ok": True, "schedulers": result}
 
 
+@router.get("/api/d1/admin/watchdog/status")
+async def admin_watchdog_status(request: Request):
+    """État courant du watchdog schedulers (boucle 30 min qui vérifie que
+    d1 et a3 sont vivants + fraîcheur des jobs quotidiens)."""
+    _check_admin(request)
+    from a3.watchdog import watchdog_status
+    return {"ok": True, "watchdog": watchdog_status()}
+
+
+@router.post("/api/d1/admin/watchdog/tick")
+async def admin_watchdog_tick(request: Request):
+    """Force un tour de watchdog immédiat — répare les schedulers morts et
+    déclenche l'email d'alerte si un job quotidien est stale >24h.
+    Utile pour valider en preview sans attendre 30 min."""
+    _check_admin(request)
+    from a3.watchdog import check_and_repair
+    result = await check_and_repair(_db())
+    return {"ok": True, "result": result}
+
+
+@router.post("/api/d1/admin/schedulers/kill-for-test")
+async def admin_kill_schedulers_for_test(request: Request):
+    """DEV / TEST — tue explicitement les 2 schedulers en mémoire pour
+    valider que le watchdog les ressuscite. Protégé par X-Admin-Secret et
+    par un flag env `KOLO_ALLOW_DEV_KILL=1` (jamais présent en prod).
+    """
+    _check_admin(request)
+    import os
+    if os.environ.get("KOLO_ALLOW_DEV_KILL") != "1":
+        raise HTTPException(status_code=403, detail="dev_kill_disabled")
+    killed: dict = {"d1": False, "a3": False}
+    try:
+        import d1.scheduler as d1s
+        if d1s._scheduler is not None:
+            d1s._scheduler.shutdown(wait=False)
+            d1s._scheduler = None
+            killed["d1"] = True
+    except Exception as e:
+        killed["d1"] = f"err: {e}"
+    try:
+        import a3.scheduler as a3s
+        if a3s._a3_task is not None:
+            a3s._a3_task.cancel()
+            killed["a3"] = True
+    except Exception as e:
+        killed["a3"] = f"err: {e}"
+    return {"ok": True, "killed": killed}
+
+
 @router.post("/api/d1/admin/run-job")
 async def admin_run_job(request: Request):
     """Déclenche manuellement un job planifié. Body: {"job": "distribuer_quotidien"}.
