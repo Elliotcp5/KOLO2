@@ -807,40 +807,75 @@
 .b1-opp-actions {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
-  /* Section 5.3 · boutons ancrés sous la carte alignés sur ses bords. */
-  padding: 12px 8px 0;
-  margin-top: -4px;
+  /* Section 5.3 · alignés sur les bords intérieurs de la carte. La carte a
+     `padding: 16px 16px 20px` — on annule le padding gauche/droite pour
+     que les 64px des boutons touchent bien les bords perçus de la carte. */
+  padding: 20px 0 4px;
+  margin-top: 4px;
+  align-items: center;
 }
-.b1-opp-action-btn {
-  /* Section 5.3 · 64 px pleins avec ombre franche. */
+/* Section 5.3 · Sélecteur `button.b1-opp-action-btn` pour battre la
+   spécificité du preflight Tailwind qui posait `background-color:
+   transparent` sur TOUS les `<button>`. Résultat visuel avant fix : deux
+   ronds gris fantômes avec icônes noires détachés en bas. */
+button.b1-opp-action-btn {
+  /* 64 px pleins. */
   width: 64px;
   height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(26, 27, 51, 0.14);
-  transition: transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
-              box-shadow 140ms ease;
+  /* Ombre franche à double stop : proche pour l'ancrage, lointaine pour
+     l'élévation. Fait ressortir les boutons du fond de la carte. */
+  box-shadow: 0 6px 14px rgba(26, 27, 51, 0.14),
+              0 2px 4px rgba(26, 27, 51, 0.08);
+  transition: transform 120ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 120ms ease,
+              background-color 120ms ease;
   border: 0;
   cursor: pointer;
+  outline: none;
+  /* Force le rendu par-dessus le fond de la carte (au-dessus du padding). */
+  position: relative;
+  z-index: 3;
+  padding: 0;
 }
-.b1-opp-action-btn:active {
-  transform: scale(0.92);
-  box-shadow: 0 4px 12px rgba(26, 27, 51, 0.18);
+/* Animation d'enfoncement franche au tap — 6% de scale, ombre ramenée
+   au ras du bouton pour donner la sensation de "presse". */
+button.b1-opp-action-btn:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 4px rgba(26, 27, 51, 0.14),
+              0 1px 1px rgba(26, 27, 51, 0.10);
 }
-.b1-opp-action-btn--reject {
-  background: #fff;
-  color: var(--b1-danger, #E53935);
+/* Rejet — blanc avec croix rouge. `!important` justifié : Tailwind
+   Preflight (`@layer base`) pose `background-color: transparent` sur tout
+   `<button>` et est chargé APRÈS `b1.css` dans le bundle final (b1.css est
+   importé lazy depuis B1Shell). Sans !important, le fond reste transparent
+   et les icônes lucide (currentColor) apparaissent noires. */
+button.b1-opp-action-btn--reject {
+  background-color: #FFFFFF !important;
+  color: var(--b1-danger, #DC2626) !important;
+  box-shadow: 0 6px 14px rgba(26, 27, 51, 0.16),
+              0 2px 4px rgba(26, 27, 51, 0.10),
+              inset 0 0 0 1px rgba(26, 27, 51, 0.05);
 }
-.b1-opp-action-btn--reject:active { background: #FCE9EA; }
-.b1-opp-action-btn--accept {
-  /* Section 5.3 · rose de marque plein cœur blanc, pas de vert. */
-  background: var(--b1-accent, #EC8690);
-  color: #fff;
+button.b1-opp-action-btn--reject:active {
+  background-color: #FCE9EA !important;
 }
-.b1-opp-action-btn--accept:active { background: #D67680; }
+/* Acceptation — rose de marque plein, cœur blanc. */
+button.b1-opp-action-btn--accept {
+  background-color: var(--b1-accent, #EC8690) !important;
+  color: #FFFFFF !important;
+}
+button.b1-opp-action-btn--accept:active {
+  background-color: var(--b1-accent-pressed, #D67680) !important;
+}
+button.b1-opp-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
 
 .b1-opp-empty {
   text-align: center;
