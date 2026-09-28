@@ -126,8 +126,12 @@ async def _check_daily_job_freshness(db) -> list[dict]:
 
 
 async def _repair_schedulers(db) -> dict[str, Any]:
-    """Vérifie que les 2 schedulers sont vivants. Relance si mort. Retourne l'état."""
-    out: dict[str, Any] = {"d1": None, "a3": None, "repaired": []}
+    """Vérifie que les 2 schedulers sont vivants ET que leurs jobs ont bien
+    une prochaine exécution planifiée dans le futur. Relance si mort.
+    Réenregistre les jobs dont `next_run_time` est nul ou dans le passé.
+    """
+    from datetime import datetime, timezone as _tz
+    out: dict[str, Any] = {"d1": None, "a3": None, "repaired": [], "rescheduled": []}
 
     # d1 (APScheduler)
     try:
@@ -136,23 +140,33 @@ async def _repair_schedulers(db) -> dict[str, Any]:
         if not d1_running:
             logger.warning("[watchdog] d1 scheduler mort ou absent — restart forcé")
             s = start_d1(db, force=True)
-            out["d1"] = {
-                "restarted": True,
-                "running": bool(getattr(s, "running", False)),
-                "jobs": [j.id for j in s.get_jobs()],
-            }
+            out["d1"] = _dump_d1_jobs(s, restarted=True)
             out["repaired"].append("d1")
         else:
-            out["d1"] = {
-                "restarted": False,
-                "running": True,
-                "jobs": [j.id for j in d1_sched.get_jobs()],
-            }
+            # Le scheduler tourne. Chaque job doit avoir un `next_run_time`
+            # dans le futur (< 2 jours de la config CronTrigger quotidien).
+            # Un job avec next_run_time nul est en pause → cron perdu.
+            # Un job avec next_run_time dans le passé n'est pas rattrapé → dead trigger.
+            now = datetime.now(_tz.utc)
+            broken = []
+            for j in d1_sched.get_jobs():
+                nrt = j.next_run_time  # tz-aware datetime | None
+                if nrt is None or nrt < now:
+                    broken.append({"id": j.id, "next_run_time": str(nrt)})
+            if broken:
+                logger.warning(f"[watchdog] d1 jobs sans next_run_time cohérent : {broken}")
+                # Réenregistre en force → reset propre du timer.
+                s = start_d1(db, force=True)
+                out["d1"] = _dump_d1_jobs(s, restarted=True, broken_before=broken)
+                out["rescheduled"].extend([b["id"] for b in broken])
+            else:
+                out["d1"] = _dump_d1_jobs(d1_sched, restarted=False)
     except Exception as e:
         logger.error(f"[watchdog] d1 repair failed: {e}")
         out["d1"] = {"error": f"{type(e).__name__}: {e}"}
 
-    # a3 (asyncio task)
+    # a3 (asyncio task — pas d'APScheduler, calcule le prochain 03h Paris à
+    # chaque itération. Le vrai signal de santé est `task.done() == False`.)
     try:
         from a3.scheduler import start_a3_scheduler, a3_scheduler_status
         status = a3_scheduler_status()
@@ -164,10 +178,42 @@ async def _repair_schedulers(db) -> dict[str, Any]:
             out["repaired"].append("a3")
         else:
             out["a3"] = {"restarted": False, **status}
+            # Ajoute une estimation `next_run_at_iso` pour cohérence de sortie.
+            try:
+                from a3.scheduler import _seconds_until_next_03h_paris
+                from datetime import timedelta as _td
+                out["a3"]["next_run_at_iso"] = (
+                    datetime.now(_tz.utc) + _td(seconds=_seconds_until_next_03h_paris())
+                ).isoformat()
+            except Exception:
+                pass
     except Exception as e:
         logger.error(f"[watchdog] a3 repair failed: {e}")
         out["a3"] = {"error": f"{type(e).__name__}: {e}"}
 
+    return out
+
+
+def _dump_d1_jobs(sched, restarted: bool, broken_before: list | None = None) -> dict:
+    """Sérialise l'état d'un scheduler APScheduler avec next_run_time."""
+    out = {
+        "restarted": restarted,
+        "running": bool(getattr(sched, "running", False)),
+        "jobs": [],
+    }
+    if broken_before:
+        out["broken_before"] = broken_before
+    try:
+        for j in sched.get_jobs():
+            nrt = j.next_run_time
+            out["jobs"].append({
+                "id": j.id,
+                "next_run_time": nrt.isoformat() if nrt else None,
+                "trigger": str(j.trigger),
+                "pending": j.pending,
+            })
+    except Exception as e:
+        out["jobs_error"] = f"{type(e).__name__}: {e}"
     return out
 
 
@@ -192,6 +238,27 @@ async def check_and_repair(db) -> dict[str, Any]:
             f"Timestamp : {_last_check_at}\n"
         )
         await _send_alert_email(db, subject, body, code)
+
+    # 2 bis. Alerte si des jobs ont dû être réenregistrés — c'est l'anomalie
+    # exacte remontée : d1 vivant, jobs listés, mais next_run_time nul ou
+    # dans le passé. Signal critique : le cron ne se déclenche pas.
+    if repair.get("rescheduled"):
+        code = "jobs_rescheduled_" + "_".join(sorted(repair["rescheduled"]))
+        subject = f"[KOLO] Jobs réenregistrés — cron muet : {', '.join(repair['rescheduled'])}"
+        body_lines = [
+            "Le watchdog a détecté des jobs APScheduler enregistrés SANS prochaine",
+            "exécution planifiée dans le futur (next_run_time nul ou dans le passé).",
+            "Symptôme correspondant : scheduler running=True, job dans la liste,",
+            "mais aucun déclenchement effectif → base qui se vide silencieusement.",
+            "",
+            "Jobs réenregistrés via un restart force=True du scheduler :",
+        ]
+        for jid in repair["rescheduled"]:
+            body_lines.append(f"  • {jid}")
+        body_lines.append("")
+        body_lines.append(f"État après restart : {repair.get('d1')}")
+        body_lines.append(f"Timestamp : {_last_check_at}")
+        await _send_alert_email(db, subject, "\n".join(body_lines), code)
 
     # 3. Vérifie la fraîcheur des jobs quotidiens
     stale = await _check_daily_job_freshness(db)

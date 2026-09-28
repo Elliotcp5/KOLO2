@@ -309,14 +309,26 @@ async def _get_zone_scraping_state(db, cp: str, client: httpx.AsyncClient) -> di
 
 
 def _facteur_fraicheur(days: int, cfg: dict) -> float:
+    """Facteur de fraîcheur du scrape.
+
+    Build 2.24 (point 2.2) : ne retourne plus 0.0 même quand le scrape est
+    très ancien. Un plancher `facteur_min` (par défaut 0.4) applique une
+    pénalité franche mais laisse le score aller au bout. Cela évite le
+    court-circuit `skipped:fraicheur_trop_ancienne` qui vidait la base
+    silencieusement après 2 jours sans scrape.
+
+    En prod, le user peut resserrer via env `KOLO_FRAICHEUR_JOURS_PLEIN` et
+    `KOLO_FRAICHEUR_JOURS_DEGRADE` (a2.config.get_config).
+    """
     fr = cfg.get("fraicheur") or {}
-    plein = int(fr.get("jours_plein", 3))
-    degrade = int(fr.get("jours_degrade", 7))
+    plein = int(fr.get("jours_plein", 14))
+    degrade = int(fr.get("jours_degrade", 30))
+    facteur_min = float(fr.get("facteur_min", 0.4))
     if days <= plein:
         return 1.0
     if days <= degrade:
         return 0.7
-    return 0.0
+    return facteur_min
 
 
 def _facteur_couverture(active_count: int, zone_doc: Optional[dict]) -> float:
@@ -647,8 +659,9 @@ async def _process_zone(
     zone_state = await _get_zone_scraping_state(db, cp, client)
 
     f_fraicheur = _facteur_fraicheur(zone_state["days_since_scrape"], cfg)
-    if f_fraicheur == 0.0:
-        return {"cp": cp, "skipped": "fraicheur_trop_ancienne", "days": zone_state["days_since_scrape"]}
+    # Build 2.24 (point 2.2) : plus de court-circuit `fraicheur_trop_ancienne`.
+    # Le facteur dégradé (ou plancher `facteur_min`) est appliqué au score.
+    # La génération va au bout et retourne un diagnostic exploitable.
     f_couverture = _facteur_couverture(zone_state["active_count"], zone_doc)
     f_location = _facteur_location(zone_state["days_since_location"], cfg)
 

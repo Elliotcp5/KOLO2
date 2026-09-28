@@ -48,7 +48,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "seuil_publication": 0.70,
     "score_ban_minimum": 0.8,
     "s_rue_defaut_null": 0.5,
-    "fraicheur": {"jours_plein": 3, "jours_degrade": 7},
+    # Fraîcheur — build 2.24 : dev-friendly 14/30 par défaut, resserrable en
+    # prod via `KOLO_FRAICHEUR_JOURS_PLEIN` et `KOLO_FRAICHEUR_JOURS_DEGRADE`.
+    # Ancien réglage 3/7 : forçait un scrape quotidien sinon f_fraicheur=0.
+    "fraicheur": {"jours_plein": 14, "jours_degrade": 30},
     "facteur_location_perime": 0.85,
     "plafond_cumul_cartes": 15,
     "marge_negociation": 0.04,
@@ -172,17 +175,44 @@ async def ensure_config_seeded(db) -> None:
 
 
 async def get_config(db) -> dict[str, Any]:
-    """Retourne la config en cours (avec cache mémoire 30s)."""
+    """Retourne la config en cours (avec cache mémoire 30s).
+
+    Points 2.1 et 2.2 (build 2.24) : la fraîcheur est pilotable via 2 vars
+    d'env pour permettre au dev de tenir avec un scrape hebdomadaire pendant
+    le budget bas Apify, tout en resserrant en prod. Les env écrasent les
+    valeurs de la config Mongo au read time (invisible pour patch_config —
+    la source d'écrasement d'env est explicite dans le champ retourné).
+    """
+    import os as _os
     now = time.monotonic()
     if _CACHE.value is not None and (now - _CACHE.fetched_at) < CACHE_TTL_SECONDS:
-        return copy.deepcopy(_CACHE.value)
-    doc = await db.config_matching.find_one({"_id": CONFIG_ID})
-    if doc is None:
-        await ensure_config_seeded(db)
+        cfg = copy.deepcopy(_CACHE.value)
+    else:
         doc = await db.config_matching.find_one({"_id": CONFIG_ID})
-    _CACHE.value = copy.deepcopy(doc or {})
-    _CACHE.fetched_at = now
-    return copy.deepcopy(_CACHE.value)
+        if doc is None:
+            await ensure_config_seeded(db)
+            doc = await db.config_matching.find_one({"_id": CONFIG_ID})
+        _CACHE.value = copy.deepcopy(doc or {})
+        _CACHE.fetched_at = now
+        cfg = copy.deepcopy(_CACHE.value)
+    # Override env sur la fraîcheur — appliqué APRÈS le cache pour que
+    # le changement d'env prenne effet immédiatement au prochain hit.
+    fr = cfg.setdefault("fraicheur", {})
+    try:
+        env_plein = _os.environ.get("KOLO_FRAICHEUR_JOURS_PLEIN")
+        if env_plein is not None:
+            fr["jours_plein"] = int(env_plein)
+            fr["_source_jours_plein"] = "env"
+    except (TypeError, ValueError):
+        pass
+    try:
+        env_deg = _os.environ.get("KOLO_FRAICHEUR_JOURS_DEGRADE")
+        if env_deg is not None:
+            fr["jours_degrade"] = int(env_deg)
+            fr["_source_jours_degrade"] = "env"
+    except (TypeError, ValueError):
+        pass
+    return cfg
 
 
 async def patch_config(db, updates: dict[str, Any]) -> dict[str, Any]:
