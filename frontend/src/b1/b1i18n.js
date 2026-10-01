@@ -234,7 +234,7 @@ const STRINGS = {
 
     // Système transverse
     'sys.aucune_annonce': 'Aucune annonce détectée',
-    'opp.titre_quotidien': 'Opportunités de mandats quotidiennes',
+    'opp.titre_quotidien': 'Opportunités du jour',
     'opp.rejeter': 'Rejeter',
     'opp.accepter': 'Accepter',
     'opp.vide.titre': 'Vous avez consulté toutes vos opportunités du moment.',
@@ -479,7 +479,7 @@ STRINGS.en = {
   'placeholder.sous': 'This section will arrive in an upcoming update.',
 
   'sys.aucune_annonce': 'No listing detected',
-  'opp.titre_quotidien': 'Daily mandate opportunities',
+  'opp.titre_quotidien': 'Today\'s opportunities',
   'opp.rejeter': 'Reject',
   'opp.accepter': 'Accept',
   'opp.vide.titre': "You've reviewed all your current opportunities.",
@@ -760,7 +760,7 @@ STRINGS.it = {
   'placeholder.bientot': 'Presto disponibile',
   'placeholder.sous': 'Questa sezione arriverà nei prossimi aggiornamenti.',
   'sys.aucune_annonce': 'Nessun annuncio rilevato',
-  'opp.titre_quotidien': 'Opportunità di mandato quotidiane',
+  'opp.titre_quotidien': 'Opportunità di oggi',
   'opp.rejeter': 'Rifiuta',
   'opp.accepter': 'Accetta',
   'opp.vide.titre': 'Hai consultato tutte le tue opportunità del momento.',
@@ -969,7 +969,7 @@ STRINGS.de = {
   'placeholder.bientot': 'Bald verfügbar',
   'placeholder.sous': 'Dieser Bereich kommt in einem kommenden Update.',
   'sys.aucune_annonce': 'Keine Anzeige erkannt',
-  'opp.titre_quotidien': 'Tägliche Mandatschancen',
+  'opp.titre_quotidien': 'Chancen des Tages',
   'opp.rejeter': 'Ablehnen',
   'opp.accepter': 'Annehmen',
   'opp.vide.titre': 'Sie haben alle aktuellen Chancen gesichtet.',

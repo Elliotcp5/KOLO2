@@ -17,41 +17,43 @@ import './b1.css';
 
 // ============================================================================
 // Bottom nav — pill floating
-// Optional ambre badge on Opportunités tab quand des cartes de veille attendent.
-// Ne concerne QUE Pro (l'API renvoie 402 pour Découverte, on ignore silencieux).
-// N'entre JAMAIS dans la barre de progression des opportunités.
+// Bloc 10 : LE BADGE SUR L'ONGLET OPPORTUNITÉS = reste de la pile du jour,
+// pas le nombre de cartes de veille. L'ancien badge « veille » créait une
+// confusion directe (user voit « 5 » et pense pouvoir swiper 5 opps alors
+// que c'étaient 5 veilles). On lit maintenant `/api/opportunites/du-jour`
+// et on affiche `reste_du_jour`. Pas de badge = pas d'opp à traiter.
 // ============================================================================
-const _veilleBadgeCache = { count: null, at: 0 };
+const _oppBadgeCache = { count: null, at: 0 };
 // Cache du rôle courant — évite un fetch /me/profil à chaque changement d'onglet.
 // Rempli au premier ShellHeader affiché.
 const _roleCache = { role: null, orga: null, at: 0 };
 
 function _BottomTabPill({ active }) {
   const navigate = useNavigate();
-  const [badge, setBadge] = useState(_veilleBadgeCache.count || 0);
+  const [badge, setBadge] = useState(_oppBadgeCache.count || 0);
   const [isDirecteur, setIsDirecteur] = useState(
     _roleCache.role === 'directeur' && !!_roleCache.orga
   );
   useEffect(() => {
     // Cache 60s pour ne pas taper l'API à chaque changement d'onglet.
-    const stale = Date.now() - _veilleBadgeCache.at > 60_000;
-    if (!stale && _veilleBadgeCache.count != null) {
-      setBadge(_veilleBadgeCache.count);
+    const stale = Date.now() - _oppBadgeCache.at > 60_000;
+    if (!stale && _oppBadgeCache.count != null) {
+      setBadge(_oppBadgeCache.count);
       return undefined;
     }
     let cancelled = false;
     (async () => {
       try {
-        const { veilleApi } = await import('./B1Veille');
-        const r = await veilleApi.fileDuJour();
-        const n = r?.actif ? (r.cartes || []).length : 0;
-        _veilleBadgeCache.count = n;
-        _veilleBadgeCache.at = Date.now();
-        if (!cancelled) setBadge(n);
+        // Bloc 10 — on affiche le reste de la pile du jour, pas la veille.
+        // Si le serveur attribue à la demande, `reste_du_jour` est à jour.
+        const r = await b1api.getOpportunitesDuJour(5);
+        const reste = (r?.items || []).length;
+        _oppBadgeCache.count = reste;
+        _oppBadgeCache.at = Date.now();
+        if (!cancelled) setBadge(reste);
       } catch (_e) {
-        // 402 (Découverte) / 401 (anonyme) → pas de badge
-        _veilleBadgeCache.count = 0;
-        _veilleBadgeCache.at = Date.now();
+        _oppBadgeCache.count = 0;
+        _oppBadgeCache.at = Date.now();
         if (!cancelled) setBadge(0);
       }
     })();

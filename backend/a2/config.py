@@ -88,7 +88,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "veille": {
         # Signal minimum : au moins un des deux critères doit être vrai
         # pour qu'un bien `deja_en_vente` devienne carte de veille.
-        "min_days_on_market": 90,
+        # Bloc 10 PB4 — ramené à 30 jours (était 90) : l'actor Apify ne
+        # remplit plus toujours `days_on_market`, et on calcule DOM depuis
+        # `first_seen_at`. 30 jours sur le marché = déjà un signal utile
+        # (annonce dépassée par ses concurrentes).
+        "min_days_on_market": 30,
         # Plafond d'ancienneté au-delà duquel days_on_market cesse d'ajouter
         # au score : 6 mois. La baisse de prix reste le signal fort.
         "dom_cap_days": 180,

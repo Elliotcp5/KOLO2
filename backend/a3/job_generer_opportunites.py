@@ -84,6 +84,11 @@ async def _fetch_candidates(
     # Supabase.listings.surface est INTEGER — on arrondit les bornes.
     smin = int(surface_dpe - tol)
     smax = int(surface_dpe + tol) + 1
+    # Bloc 10 PB4 — ignore les annonces vues il y a > 30 jours : elles portent
+    # souvent des `thumbnail_url` vides (ingestion ancienne, avant que l'actor
+    # Apify ne fournisse les photos) et sont déjà périmées sur le portail.
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz_
+    seuil_last_seen = (_dt.now(_tz_.utc) - _td(days=30)).isoformat()
     params = {
         "select": ("id,portal,title,description,price,surface,rooms,city,postal_code,"
                    "rue_extraite,etage_extrait,floor,energy_class,type_normalise,url,"
@@ -96,6 +101,8 @@ async def _fetch_candidates(
         "est_logement": "eq.true",
         "is_active": "eq.true",
         "surface": f"gte.{smin}",
+        "last_seen_at": f"gte.{seuil_last_seen}",
+        "order": "last_seen_at.desc",
         "limit": "500",
     }
     r = await client.get(
@@ -582,6 +589,17 @@ async def _maybe_insert_veille_card(
         dom = int(dom_raw) if dom_raw is not None else None
     except (TypeError, ValueError):
         dom = None
+    # Bloc 10 PB4 — l'actor Apify ne remplit plus `days_on_market`. Fallback :
+    # calcule DOM depuis `first_seen_at` (en jours).
+    if dom is None:
+        try:
+            from datetime import datetime as _dt_sig, timezone as _tz_sig
+            fsa = annonce.get("first_seen_at")
+            if fsa:
+                dt0 = _dt_sig.fromisoformat(str(fsa).replace("Z", "+00:00"))
+                dom = int((_dt_sig.now(_tz_sig.utc) - dt0).days)
+        except Exception:
+            dom = None
     pdc_raw = annonce.get("price_drop_count")
     try:
         pdc = int(pdc_raw) if pdc_raw is not None else 0

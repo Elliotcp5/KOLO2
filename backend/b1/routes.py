@@ -11,6 +11,7 @@ Conventions :
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -680,7 +681,65 @@ async def get_my_veille(request: Request):
         cartes.append(d)
         if len(cartes) >= max_par_jour:
             break
+
+    # Bloc 10 PB4 — backfill des thumbnails depuis Supabase.listings pour les
+    # cartes dont le champ est vide (ingestion legacy). On évite d'afficher
+    # une icône maison plate alors que l'annonce source a une photo.
+    cartes = await _backfill_veille_thumbnails(cartes)
+
     return {"ok": True, "actif": True, "quota_du_jour": quota, "cartes": cartes}
+
+
+async def _backfill_veille_thumbnails(cartes: list[dict]) -> list[dict]:
+    """Pour chaque carte sans thumbnail, interroge Supabase.listings par URL
+    et prend la dernière entrée vue (par last_seen_at desc) qui a une photo.
+    Résultat écrit en DB pour les prochains fetchs.
+    """
+    import os
+    import httpx
+    missing = [c for c in cartes if not (c.get("thumbnail_url") or "").startswith("http") and c.get("url_annonce")]
+    if not missing:
+        return cartes
+    sb_url = os.environ.get("SUPABASE_URL")
+    sb_key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_KEY")
+    if not (sb_url and sb_key):
+        return cartes
+    headers = {"apikey": sb_key, "Authorization": f"Bearer {sb_key}"}
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as cx:
+            for card in missing:
+                url_ann = card.get("url_annonce")
+                r = await cx.get(
+                    f"{sb_url}/rest/v1/listings",
+                    params={
+                        "url": f"eq.{url_ann}",
+                        "thumbnail_url": "like.http*",
+                        "select": "thumbnail_url,last_seen_at",
+                        "order": "last_seen_at.desc",
+                        "limit": "1",
+                    },
+                    headers=headers,
+                )
+                if r.status_code != 200:
+                    continue
+                rows = r.json() or []
+                if not rows:
+                    continue
+                thumb = rows[0].get("thumbnail_url")
+                if not (thumb and thumb.startswith("http")):
+                    continue
+                card["thumbnail_url"] = thumb
+                # Persiste pour éviter de refaire le fetch au prochain appel.
+                try:
+                    await _db().veille_cards.update_one(
+                        {"listing_id": card.get("listing_id")},
+                        {"$set": {"thumbnail_url": thumb}},
+                    )
+                except Exception:
+                    pass
+    except Exception as e:
+        logging.getLogger(__name__).warning("veille.backfill_thumbnails KO: %s", e)
+    return cartes
 
 
 class VeilleStatutPayload(BaseModel):
@@ -798,6 +857,37 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
         return {"ok": True, "items": [], "count": 0,
                 "quota_quotidien": 5, "swipes_du_jour": n_swipes,
                 "reste_du_jour": 0}
+
+    # ------------------------------------------------------------------
+    # Bloc 10 — attribution à la demande.
+    # TestFlight 2026-02-14 : utilisateur à Marseille, 220+ opps en pool
+    # sur 13008, mais écran « 0/0 + veille » parce que le scheduler
+    # `distribuer_quotidien` de 06h n'avait rien attribué (serveur
+    # redémarré après l'heure, ou user hors timezone). On n'attend plus
+    # le lendemain : si le user n'a RIEN dans sa pile et que son pool
+    # perso n'est pas vide, on attribue immédiatement, puis on relit.
+    pre_count = await _db().opportunites.count_documents({
+        "assigne_a": uid,
+        "$or": [
+            {"statut": "proposee"},
+            {"statut": "a_demarcher", "affectation_notif_flag": True},
+        ],
+    })
+    if pre_count == 0 and not is_directeur:
+        pool_perso = await _db().opportunites.count_documents({
+            "code_postal": {"$in": user.get("zones_perso") or []},
+            "statut": "pool",
+        })
+        if pool_perso > 0:
+            try:
+                from d1.scheduler import distribuer_pour_user
+                attribues = await distribuer_pour_user(_db(), user)
+                logging.getLogger(__name__).info(
+                    "du-jour: attribution ondemand user=%s n=%d (pool=%d)",
+                    uid, attribues, pool_perso)
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    "du-jour: attribution ondemand KO user=%s err=%s", uid, e)
 
     cur = _db().opportunites.find(
         {"assigne_a": uid,
