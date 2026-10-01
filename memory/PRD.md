@@ -17,6 +17,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 8 — Veille & états vides · 2026-02-13 🔥 LATEST
+- Veille prend la place de la pile d'opps dès qu'elle est dispo (`VeilleStackInline` + titre dédié dans `FinDePileScreen`).
+- Photos sur champ `veille_cards.thumbnail_url` affichées en grand (aspect 1/0.75, cover), fallback icône seulement si vide.
+- Pool vraiment vide → sablier figé + message « ajoute une zone » + bouton, aucun décompte dans le vide.
+- 2 captures livrées (veille avec 4 photos + pool vide).
+
+
+
 ### BLOC 7 — Cartes d'opportunité · 2026-02-13 🔥 LATEST
 - Vignette Mapbox Static Images 300×160 @2x (Retina), pin rose KOLO, zoom 15.
 - Env : `MAPBOX_ACCESS_TOKEN` posé en backend/.env, `MAPBOX_STYLE_URL` optionnel (fallback `mapbox/light-v11`).

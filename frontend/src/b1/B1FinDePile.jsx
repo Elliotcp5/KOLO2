@@ -14,6 +14,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate as useReactNavigate } from 'react-router-dom';
 import { B1ProCta } from './B1ProCta';
 
+// Bloc 8 — chargement paresseux de la pile veille swipeable depuis B1Veille.
+const VeilleStackLazy = React.lazy(() =>
+  import('./B1Veille').then((m) => ({ default: m.VeilleStackInline }))
+);
+
 // ---------- Sablier SVG animé ----------
 function Sablier({ size = 88 }) {
   return (
@@ -80,9 +85,15 @@ function formatCountdown(totalSec) {
 // ---------- Composant final ----------
 // Décompte SERVEUR-DRIVEN — le front ne calcule plus rien.
 // À l'expiration, on rappelle /api/me/quota-etat qui donne la nouvelle échéance.
-// Si zone_vide, aucun décompte n'est affiché — on montre le message
-// « Votre zone est calme… Ajoutez un second code postal. »
-export function FinDePileScreen({ veilleSlot = null }) {
+//
+// Bloc 8 refonte :
+//   - Si des cartes de veille sont dispo → la pile veille PREND LA PLACE
+//     directement, avec son titre dédié ; plus de décompte, plus de bouton
+//     intermédiaire « Voir la pile ».
+//   - Si zone_vide (ou pool réellement vide) → message « ajoute une zone ».
+//   - Sinon → sablier + décompte (il y aura des opps demain à 03h Paris).
+export function FinDePileScreen({ veilleCards = [], veilleSlot = null }) {
+  const hasVeille = Array.isArray(veilleCards) && veilleCards.length > 0;
   const [state, setState] = React.useState({ loading: true, quota: null });
   const [remaining, setRemaining] = useState(0);
   const [recap, setRecap] = useState(null);
@@ -155,13 +166,38 @@ export function FinDePileScreen({ veilleSlot = null }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Zone vide : PAS de décompte, message d'invitation
-  if (state.quota?.zone_vide) {
+  // Bloc 8 étape 2+3 — Veille dans la pile DIRECTEMENT quand elle est dispo.
+  // Pas de décompte, pas de bouton intermédiaire. Titre dédié au-dessus.
+  // Priorité absolue : si veille → veille, QUEL que soit l'état du pool opps.
+  if (hasVeille) {
+    return (
+      <div className="b1-fin-pile b1-fin-pile--veille" data-testid="b1-fin-pile-veille-stack">
+        <h2
+          className="b1-fin-pile-veille-titre"
+          data-testid="b1-fin-pile-veille-titre"
+        >
+          Ces biens sont déjà en vente.
+          <br />
+          Le mandat s'essouffle, c'est l'occasion de proposer une reprise.
+        </h2>
+        <React.Suspense fallback={<div className="b1-loading" style={{ margin: 24 }}>…</div>}>
+          <VeilleStackLazy cards={veilleCards} />
+        </React.Suspense>
+      </div>
+    );
+  }
+
+  // Zone vide / pool vraiment vide : PAS de décompte, message d'invitation
+  // (Bloc 8 étape 5 — veille déjà exclue par le if ci-dessus).
+  const poolReellementVide = state.quota && !state.quota.zone_vide
+    && (state.quota.pool_zones_perso === 0);
+  if (state.quota?.zone_vide || poolReellementVide) {
     return (
       <div className="b1-fin-pile" data-testid="b1-fin-pile-zone-vide">
         <div className="b1-fin-pile-sablier"><Sablier /></div>
         <div className="b1-fin-pile-texte" style={{ maxWidth: 320 }}>
-          {state.quota.message}
+          {state.quota?.message
+            || 'Votre zone est calme en ce moment. Ajoutez un second code postal pour recevoir plus d\'opportunités.'}
         </div>
         {/* Bloc 4 étape 3 — Hiérarchie inversée pour Découverte :
             CTA plein principal = "Passer Pro" via B1ProCta, lien discret pour les zones.

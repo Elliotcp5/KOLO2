@@ -432,17 +432,11 @@ export function OpportunitesPage() {
             </button>
             </>
           ) : (
-            // Fin de pile : sablier + décompte 03h00 Paris + éventuellement
-            // les cartes de veille en dessous. Aucun cul-de-sac.
+            // Fin de pile : si veille dispo → pile veille directement (Bloc 8).
+            // Si pool vraiment vide → écran « ajoute une zone ».
+            // Sinon → décompte sablier jusqu'à 03h Paris.
             <FinDePileScreen
-              veilleSlot={veilleDispo ? (
-                <React.Suspense fallback={null}>
-                  <VeilleMiniListLazy
-                    cards={veilleCards}
-                    onOpen={() => navigate('/app-b1/veille')}
-                  />
-                </React.Suspense>
-              ) : null}
+              veilleCards={veilleDispo ? veilleCards : []}
             />
           )}
           {swipeError && (

@@ -1,5 +1,29 @@
 # KOLO - Changelog
 
+## Build 2.30 — Bloc 8 Veille & états vides · 2026-02-13
+
+### Veille promue en place de la pile
+- Nouveau composant `VeilleStackInline` dans `B1Veille.jsx` : vraie pile swipeable (`<VeilleCard>` indexée) à injecter directement dans `FinDePileScreen`.
+- `FinDePileScreen` refactor : si `veilleCards.length > 0` → rendu immédiat de la pile veille avec le titre dédié « Ces biens sont déjà en vente. Le mandat s'essouffle, c'est l'occasion de proposer une reprise. » (`<h2 data-testid="b1-fin-pile-veille-titre">`). Plus de bouton intermédiaire, plus de scroll, plus de vignettes miniatures.
+- B1Shell passe désormais `veilleCards` directement à `FinDePileScreen` au lieu d'un slot JSX pré-rendu.
+
+### Photos de veille
+- Champ `veille_cards.thumbnail_url` (alimenté par scraper Apify, `a3/job_generer_opportunites.py:632`).
+- `VeilleCard` : image rendue en `.b1-veille-photo` pleine largeur, aspect-ratio 1/0.75, `object-fit: cover`. Fallback icône `<Home>` uniquement si le champ est vide.
+
+### Pool réellement vide
+- Nouvelle condition `poolReellementVide = quota.pool_zones_perso === 0 && !hasVeille` dans `FinDePileScreen`.
+- Affiche le même écran que `zone_vide` : sablier figé + message « Votre zone est calme en ce moment. Ajoutez un second code postal… » + bouton **« Gérer mes zones de prospection »** → `/app-b1/profil/zones`. Aucun décompte visible.
+
+### CSS
+- `.b1-fin-pile--veille` : variante avec padding réduit (`16px 20px 60px`), text-align left, gap 14 px.
+- `.b1-fin-pile-veille-titre` : 17 px, font-weight 700, letterspacing -0.01em, line-height 1.35.
+
+### Preuve
+- Capture 1 : veille stack rendu, titre complet, carte 1/4 avec photo Unsplash 600×400 cover, « 15 Avenue Niel 75017 Paris » (test data seeded avec 4 cartes).
+- Capture 2 : pool réellement vide, sablier figé, aucun décompte, CTA zones présent.
+
+
 ## Build 2.29 — Bloc 7 Design cartes d'opportunité · 2026-02-13
 
 ### Vignette carto Mapbox (étape 2)

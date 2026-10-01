@@ -1457,6 +1457,22 @@ button.b1-opp-action-btn:disabled {
   text-align: center;
   gap: 22px;
 }
+/* Bloc 8 — variante veille : moins de padding haut, titre + pile swipeable
+   collée en dessous, pas de centrage sablier. */
+.b1-fin-pile--veille {
+  padding: 16px 20px 60px;
+  gap: 14px;
+  text-align: left;
+  align-items: stretch;
+}
+.b1-fin-pile-veille-titre {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--b1-text-primary, #1A1B33);
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
 .b1-fin-pile-sablier {
   filter: drop-shadow(0 8px 22px rgba(236, 134, 144, 0.28));
 }

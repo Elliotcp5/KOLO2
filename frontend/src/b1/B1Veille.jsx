@@ -288,6 +288,48 @@ export function MesVeilleSuivisPage() {
 //   • tap = navigation vers la pile complète /app-b1/veille
 //   • fetch autonome (le parent lui passe juste la liste)
 // ---------------------------------------------------------------------------
+// Bloc 8 étape 2 — VeilleStackInline : la vraie pile swipeable injectée
+// directement à l'intérieur du FinDePileScreen. Reçoit la liste des cartes
+// de veille, gère un index local, permet de swipe/suivre/passer.
+// ---------------------------------------------------------------------------
+export function VeilleStackInline({ cards = [] }) {
+  const [idx, setIdx] = useState(0);
+  const [pendingErr, setPendingErr] = useState('');
+  const list = Array.isArray(cards) ? cards : [];
+  const cur = list[idx];
+  if (!cur) {
+    // Si on arrive au bout, on retombe silencieusement sur null — le parent
+    // affichera le décompte au prochain render (parce que hasVeille=false).
+    return null;
+  }
+  const sendStatut = async (statut) => {
+    setPendingErr('');
+    try {
+      await veilleApi.setStatut(cur.listing_id, statut);
+      setIdx((i) => i + 1);
+    } catch (e) {
+      setPendingErr(e?.message || 'Erreur');
+    }
+  };
+  return (
+    <div data-testid="b1-veille-stack-inline">
+      <div className="b1-opp-count" data-testid="b1-veille-stack-count">
+        {Math.min(idx + 1, list.length)}/{list.length}
+      </div>
+      <VeilleCard
+        card={cur}
+        onSkip={() => sendStatut('veille_ignoree')}
+        onWatch={() => sendStatut('veille_a_surveiller')}
+      />
+      {pendingErr && (
+        <div data-testid="b1-veille-stack-err" style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, background: '#FEE2E2', color: '#991B1B', fontSize: 13, textAlign: 'center' }}>
+          {pendingErr}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VeilleMiniList({ cards = [], onOpen }) {
   if (!cards || cards.length === 0) return null;
   const items = cards.slice(0, 3);
