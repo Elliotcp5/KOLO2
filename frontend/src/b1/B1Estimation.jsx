@@ -209,6 +209,11 @@ export function EstimationFlowPage() {
     setCalc(true);
     setError(null);
     try {
+      // BLOC 2 (build 2.24) : coercer `""` → undefined sur les champs Literal.
+      // Un ancien brouillon offline (localStorage) peut contenir une chaîne vide
+      // sur stationnement/etat/etage/exterieur — c'était la cause racine du
+      // symptôme signalé « erreur étape 3 quel que soit le choix retenu ».
+      const emptyToUndef = (v) => (v === '' ? undefined : v);
       const payload = {
         opportunite_id: oppId,
         adresse: bien.adresse,
@@ -218,12 +223,12 @@ export function EstimationFlowPage() {
         surface_habitable: bien.surface_habitable,
         classe_dpe: bien.classe_dpe,
         annee_construction: bien.annee_construction,
-        etat: answers.etat,
-        etage: answers.etage,
+        etat: emptyToUndef(answers.etat),
+        etage: emptyToUndef(answers.etage),
         ascenseur: answers.ascenseur,
-        exterieur: answers.exterieur,
+        exterieur: emptyToUndef(answers.exterieur),
         exterieur_surface_m2: ext_surface ? Number(ext_surface) : undefined,
-        stationnement: answers.stationnement,
+        stationnement: emptyToUndef(answers.stationnement),
       };
       const t0 = Date.now();
       const res = await b1api.postEstimation(payload);
@@ -269,6 +274,11 @@ export function EstimationFlowPage() {
         geoloc_manquante: b1t('est.err.geo') || "Impossible de localiser le bien — vérifiez l'adresse.",
         adresse_introuvable: b1t('est.err.geo') || "Adresse introuvable.",
         dvf_exclu: b1t('est.err.dvf') || "Zone non couverte (livre foncier).",
+        opportunite_introuvable: "Cette opportunité n'existe plus. Revenez à la pile pour en choisir une autre.",
+        stationnement_invalide: "Choix de stationnement non reconnu — recommencez l'étape (code STAT-INV).",
+        etat_invalide: "Choix d'état non reconnu — recommencez l'étape (code ETAT-INV).",
+        etage_invalide: "Choix d'étage non reconnu — recommencez l'étape (code ETG-INV).",
+        exterieur_invalide: "Choix d'extérieur non reconnu — recommencez l'étape (code EXT-INV).",
       };
       setError(trad[code] || (b1t('est.err.generique') || "Une erreur est survenue. Réessayez."));
     } finally {
@@ -697,27 +707,6 @@ export function EstimationAdressePage() {
                     {' · '}{b1t('est.adr.dpe_surface')} : <strong>{dpe.surface_habitable} m²</strong>
                     {dpe.classe_dpe && (<>{' · DPE '}<strong>{dpe.classe_dpe}</strong></>)}
                   </div>
-                  {/* Un immeuble a plusieurs logements — l'user doit pouvoir
-                      créer une NOUVELLE estimation à la même adresse quand
-                      le DPE trouvé ne correspond pas à son bien. Build 2.22.5.
-                      2026-02-08 : marginTop 16 → 20 + display block pour
-                      corriger le chevauchement avec la ligne de caractéristiques
-                      remonté par le user. */}
-                  <button
-                    type="button"
-                    className="b1-link"
-                    data-testid="est-adr-creer-nouvelle"
-                    style={{ display: 'block', marginTop: 20, paddingTop: 12,
-                             borderTop: '1px solid rgba(0,0,0,0.06)',
-                             width: '100%', textAlign: 'left',
-                             background: 'transparent', border: 0,
-                             borderTopColor: 'rgba(0,0,0,0.06)',
-                             borderTopWidth: 1, borderTopStyle: 'solid',
-                             color: 'var(--b1-primary)', textDecoration: 'underline',
-                             cursor: 'pointer', fontSize: 13 }}
-                    onClick={() => { setDpe(null); setSurface(''); }}>
-                    {b1t('est.adr.creer_nouvelle') || 'Créer une nouvelle estimation à cette adresse'}
-                  </button>
                 </div>
               ) : (
                 <div style={{ marginTop: 16 }}>
@@ -754,6 +743,33 @@ export function EstimationAdressePage() {
                 {b1t('est.bien.cta_estimer')}
               </button>
             </div>
+          )}
+          {/* BLOC 2 étape 5 : bouton séparé SOUS la carte DPE, pour les cas
+              où le bien cherché n'est pas celui qui a été retrouvé par le
+              DPE. Pré-remplit l'adresse (déjà dans `manual`) et vide les
+              caractéristiques via setDpe(null) + setSurface('') + setType(null). */}
+          {manual && dpe && (
+            <button
+              type="button"
+              className="b1-card b1-card-tap"
+              data-testid="est-adr-bien-pas-dans-liste"
+              onClick={() => { setDpe(null); setSurface(''); setType(null); }}
+              style={{
+                marginTop: 16,
+                textAlign: 'left',
+                border: 0,
+                width: '100%',
+                cursor: 'pointer',
+                padding: 16,
+              }}
+            >
+              <div className="b1-card-title" style={{ fontSize: 15 }}>
+                {b1t('est.adr.pas_dans_liste.titre') || "Le bien que je cherche n'est pas dans la liste"}
+              </div>
+              <div className="b1-small" style={{ marginTop: 4, color: 'var(--b1-text-secondary)' }}>
+                {b1t('est.adr.pas_dans_liste.sous') || 'Créer une estimation à cette adresse'}
+              </div>
+            </button>
           )}
         </div>
       </div>

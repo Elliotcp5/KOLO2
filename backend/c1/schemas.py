@@ -42,6 +42,23 @@ class EstimationInput(BaseModel):
     # Net vendeur (facultatif — utilise le profil par défaut)
     net_vendeur: Optional[bool] = None
 
+    @field_validator("etat", "etage", "exterieur", "stationnement", "classe_dpe", "type_bien", mode="before")
+    @classmethod
+    def _empty_string_to_none(cls, v: Any) -> Any:
+        """BLOC 2 (build 2.24) : les Literal du parcours ne doivent jamais
+        rejeter `""` sur un 422 Pydantic brut.
+
+        Un ancien brouillon offline (localStorage via b3offline.loadDraft) peut
+        contenir `stationnement:""` après trois builds de régressions. Le symptôme
+        signalé par le user (« erreur à l'étape 3 quel que soit le choix retenu »)
+        venait de là : l'app renvoyait le draft bugué AVANT même que le user ne
+        clique, et le serveur refusait avec `literal_error`. On coerce vers None,
+        le calcul utilise les défauts, l'estimation va au bout.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
     @field_validator("code_postal")
     @classmethod
     def _cp_5_digits(cls, v: Optional[str]) -> Optional[str]:
