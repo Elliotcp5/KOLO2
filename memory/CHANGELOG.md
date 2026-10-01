@@ -1,5 +1,37 @@
 # KOLO - Changelog
 
+## Build 2.26 — Bloc 4 Chemin vers Pro + IAP · 2026-02-13
+
+### Les 5 murs vers Pro
+- Fin de pile (Découverte uniquement) : hiérarchie inversée — `B1ProCta` devient CTA plein principal, « Gérer mes zones » / « Voir mes mandats » passent en lien discret `.b1-link-secondaire`. Pour Pro, l'ancien CTA plein reste.
+- Estimation : mur AVANT la saisie. Au mount, `/api/me/quotas` + `/api/me/profil` sont fetchés ; si Découverte + `estimation.autorise=false`, les CTAs `cta-opp` et `cta-adr` redirigent directement vers `/app-b1/paywall`. Encart `B1ProCta` visible.
+- Dossier liste : `B1ProCta context="dossier_pdf"` permanent sur `/app-b1/rapport` pour Découverte.
+- Veille : `VeillePaywall` refait sur `B1ProCta context="veille"`, lien discret « Retour ».
+- Assistant : wall `as-wall` refait sur `B1ProCta context="assistant"`.
+
+### Chiffres réels par contexte (B1ProCta)
+- `fin_pile` → `top_zone.count` (pool opportunités dans la zone).
+- `veille` → `top_zone.veille_count` (ajouté à `/api/me/pool-zones` : compte `veille_cards` par CP).
+- `dossier_pdf`, `estimation`, `assistant` → PAS de chiffre réel. Phrases factuelles ancrées sur le quota lifetime (« première estimation offerte », « premier dossier gratuit »).
+
+### Carte Découverte neutralisée (`b1-profil-plan--free`)
+- Grise `#F1F1F5`, pas de couronne, liste explicite des limites (5 items : opps, estim, dossier, veille, assistant) via nouvelles clés i18n `profil.plan.limites.*` FR/EN/IT/DE.
+
+### Quota 1 estimation à vie
+- `a2/config.py` already set `decouverte.estimation = {kind:"lifetime", limite:1}`. Vérifié bout-en-bout : POST /api/estimations #1 → 200, #2 → 402 avec `detail.code='quota_estimation_epuise'`.
+
+### IAP chaîne corrigée (B1Paywall)
+- Avant : `iap.initIapStore?.()` et `iap.orderProduct?.()` — ces fonctions N'EXISTENT PAS → optional chaining masquait l'absence, le click ne faisait rien.
+- Après : utilise `initIAP`, `areProductsReady`, `getProducts`, `purchasePlan`. Affiche en toutes lettres le code d'erreur retourné (`not_ios`, `product_not_loaded`, `product_not_found`, `product_unavailable`, `no_offer`, `apple_timeout`, `user_cancelled`, etc.) avec testid `b1-paywall-error-code`. Logs console préfixés `[paywall-iap]`.
+
+### Conformité Apple
+- 0 prix hard-codés dans `/app/frontend/src/b1/` et `services/iapStore.js` (grep sur `24,99`, `19,99`, `€24`, `$24` : vide).
+- Remplacement des 4 strings `onb.plan.pro.prix` par un texte neutre « Abonnement mensuel » (FR/EN/IT/DE).
+- 0 lien de paiement externe (stripe.com/paypal/razorpay/checkout). Seul lien sortant autorisé : `apps.apple.com/account/subscriptions` (deeplink officiel).
+
+Vérification : testing agent — `/app/test_reports/iteration_67.json` — 10/10 scénarios PASS (8 UI + 2 backend).
+
+
 ## Build 2.25 — Bloc 3 finitions (c) + (d) · 2026-02-13
 
 ### Dossier PDF / Profil Pro

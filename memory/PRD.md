@@ -17,6 +17,16 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 4 — Chemin vers Pro + IAP · 2026-02-13 🔥 LATEST
+- Les 5 murs (fin de pile, veille, estimation, dossier liste, assistant) atterrissent sur `/app-b1/paywall`.
+- Mur Estimation posé AVANT la saisie (quota lifetime 1).
+- Carte Découverte grise sans couronne, 5 limites listées.
+- IAP chaîne réparée (`initIAP` + `purchasePlan` au lieu de fonctions inexistantes). Codes d'erreur StoreKit affichés en toutes lettres.
+- 0 prix hard-codés / 0 liens de paiement externes (grep PASS).
+- Testing agent iteration_67.json : 10/10 scénarios PASS.
+
+
+
 ### BLOC 3 finitions — Dossier PDF (c) + (d) · 2026-02-13 🔥 LATEST
 - **(c)** Logo agence déplacé dans « Informations professionnelles » (en-tête de page, label « Logo de l'agence »). Perso ne contient plus aucun bloc logo.
 - **(d)** Toast de confirmation visible lors du save sur la page Pro (`b1-pro-save-ok` succès vert, `b1-pro-save-err` erreur rouge, auto-dismiss 2,4 s). Même toast déclenché sur upload logo réussi.

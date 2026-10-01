@@ -1,0 +1,39 @@
+{
+  "summary": "Bloc 4 (étapes 3→7) fully verified — frontend UI + backend quota/pool-zones + Apple-compliance grep. 10/10 scenarios pass (8 UI + 2 backend). Zero regressions.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bloc4_quota_pool.py",
+    "/app/test_reports/pytest/bloc4_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "B1Shell.jsx ProfilPaiementPage (~L1114) tests `me.plan === 'pro' || me.subscription_status === 'active'` but does NOT include `pro_lifetime === true` or `plan === 'pro_lifetime'/'pro_plus'`. In practice backend returns plan='pro' for the lifetime account so UI renders correctly today — but the inconsistency with other screens (B1Estimation isPro check includes all 4 flags) is a latent bug. Recommend harmonizing the isPro helper.",
+    "B1Shell.jsx is still ~1185 lines — split ProfilPaiementPage/ProfilProPage/PersoPage into separate files (carried over from iteration 66).",
+    "B1Paywall.jsx acheter() handles 7+ error codes with inline string concatenation — consider a tiny map { code → user-facing message } for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (2/2)", "frontend": "100% (8/8)"},
+  "test_credentials": "Dynamic Découverte created via /api/v2/auth/send-email-code (dev_code returned in preview). Pro lifetime: pressardelliot@gmail.com (also dev_code). Admin secret in request (OK in preview).",
+  "seed_data_creation": "Each run creates a fresh Découverte user via send-email-code + verify-email-code + /api/d1/admin/bascule-b1 + PATCH /api/me/zones.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Full Bloc 4 (étapes 3→7) verified end-to-end on preview URL. All testids match spec exactly: b1-fin-pile-pro-btn, b1-fin-pile-zones (class b1-link-secondaire), b1-veille-paywall + -btn + -retour, est-home-procta-wrapper + est-home-pro-btn, dos-list-procta-wrapper + dos-list-pro-btn, as-upgrade + -btn, b1-paiement-plan-card (class b1-profil-plan--free for Découverte, 5 limites li), b1-paywall-cta → b1-paywall-error + b1-paywall-error-code with 'code technique : not_ios · produit : PRO_Plus'. Backend: POST /api/estimations quota lifetime=1 enforced (402 with detail.code='quota_estimation_epuise' on 2nd call). GET /api/me/pool-zones returns veille_total + per-zone veille_count (top_zone included). Grep conformité: zero occurrences of 24,99/19,99/€24/$24 in b1/ and services/iapStore.js (only 'Discovery — €0' / 'Découverte — 0 €' for the free plan name, semantically correct). Zero external payment URLs.",
+  "verification_details": {
+    "T1_fin_pile_decouverte_hierarchy": "zone-vide variant shown; pro-btn primary + zones link with class b1-link-secondaire; click → /app-b1/paywall ✓",
+    "T2_veille_paywall": "b1-veille-paywall + -btn + -retour all present; btn → /app-b1/paywall ✓",
+    "T3_estimation_gate_before_submit": "No procta before consumption; after POST /api/estimations: procta visible + cta-opp AND cta-adr both redirect directly to /app-b1/paywall (no form fill) ✓",
+    "T4_dossier_procta": "Always visible for Découverte on /app-b1/rapport even without dossier; click → paywall ✓",
+    "T5_assistant_procta": "as-upgrade + as-upgrade-btn visible; click → paywall ✓",
+    "T6_paiement_decouverte": "card class b1-profil-plan b1-profil-plan--free; 5 limites li; no crown ✓",
+    "T7_paywall_iap_error": "No price markers on screen; click b1-paywall-cta on web → b1-paywall-error + b1-paywall-error-code with text 'code technique : not_ios · produit : PRO_Plus' ✓",
+    "T8_pro_paiement_card": "pressardelliot@gmail.com → plan='pro'; card does NOT have b1-profil-plan--free class; no limites list; crown SVG rendered ✓",
+    "T9_backend_pool_zones_veille_fields": "veille_total (int) at root + veille_count (int) in each zone and in top_zone ✓",
+    "T10_backend_estimation_quota_lifetime_1": "1st POST /api/estimations = 200 OK; 2nd = 402 with detail.code='quota_estimation_epuise' ✓",
+    "T11_grep_apple_compliance": "0 price strings (24,99/19,99/€24/$24) and 0 external payment URLs (stripe/paypal/razorpay/checkout) in /app/frontend/src/b1/ and /app/frontend/src/services/iapStore.js ✓"
+  }
+}
