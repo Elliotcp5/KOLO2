@@ -279,6 +279,28 @@ def start_scheduler(db, force: bool = False):
     sched.add_job(lambda: asyncio.create_task(_run_recharger_decouverte(db)),
                   CronTrigger(day_of_week="mon", hour=0, minute=0, timezone=TZ),
                   id="recharger_decouverte_hebdo", replace_existing=True)
+    # Bloc 9 — relances email paywall 10h00 Paris, lit events paywall_affiche
+    # sur fenêtres J+1 et J+3.
+    try:
+        from b1.paywall_relances import job_envoyer_relances_paywall
+        sched.add_job(lambda: asyncio.create_task(job_envoyer_relances_paywall(db)),
+                      CronTrigger(hour=10, minute=0, timezone=TZ),
+                      id="paywall_relances_j1_j3", replace_existing=True)
+        logger.info("[d1.scheduler] paywall_relances job planifié 10h Paris")
+    except Exception as _e:
+        logger.warning("[d1.scheduler] paywall_relances non planifié: %s", _e)
+    # Bloc 9 — push quotidien matin (7h30) + soir (18h) Paris
+    try:
+        from b1.push_quotidien import job_push_matin, job_push_soir
+        sched.add_job(lambda: asyncio.create_task(job_push_matin(db)),
+                      CronTrigger(hour=7, minute=30, timezone=TZ),
+                      id="push_matin", replace_existing=True)
+        sched.add_job(lambda: asyncio.create_task(job_push_soir(db)),
+                      CronTrigger(hour=18, minute=0, timezone=TZ),
+                      id="push_soir", replace_existing=True)
+        logger.info("[d1.scheduler] push_matin+push_soir planifiés 7h30 + 18h Paris")
+    except Exception as _e:
+        logger.warning("[d1.scheduler] push quotidien non planifié: %s", _e)
     sched.start()
     _scheduler = sched
     logger.info("[d1.scheduler] démarré (Europe/Paris) — 4 jobs planifiés (généra déléguée à a3)")

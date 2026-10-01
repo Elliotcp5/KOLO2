@@ -1,5 +1,32 @@
 # KOLO - Changelog
 
+## Build 2.31 — Bloc 9 Notifications & relances · 2026-02-13
+
+### Chaîne push vérifiée
+- APNs ready : env=production, bundle=io.kolo.app, key=LDQ2K5YLVZ, JWT signé OK.
+- Schéma `device_tokens` : index unique `(user_id, token)`, canonique b3 `{user_id, token, plateforme}`.
+- `pressardelliot@gmail.com` : `count=0` tokens → compte testé en preview web, pas de device TestFlight. Pour une vraie réponse Apple, ouvrir la build iOS sur un vrai device + accepter les notifs.
+
+### Push quotidien `/app/backend/b1/push_quotidien.py`
+- 7h30 Paris : « N nouvelles opportunités dans le CP ce matin » pour les Pro avec `top_zone.count > 0`.
+- 18h Paris : rappel pour les Pro inactifs > 12h avec ≥ 1 opp proposée.
+- Max 2 push/jour/user via `push_log_daily`.
+- Opt-out `users.notifications_push_actives` (défaut true).
+
+### Email relances paywall `/app/backend/b1/paywall_relances.py`
+- Cron 10h Paris, lit `events.paywall_affiche` sur fenêtres [−25h,−23h] (J+1) et [−73h,−71h] (J+3).
+- Garde-fous : opt-out, pas de double envoi, pas d'envoi si Pro, chiffre réel via requête `count_documents({code_postal, statut:'pool'})` identique à `/api/me/pool-zones`.
+- Resend + domaine trykolo.io, texte validé par le user, header `List-Unsubscribe` conforme RFC 8058.
+- Token opt-out stable 24 bytes dans `users.email_opt_out_token` + endpoint `GET /api/me/email-relances-stop?tok=…`.
+
+### UI
+- Carte « NOTIFICATIONS » dans `/app-b1/profil/paiement` (fichier `B1Shell.jsx`) : 2 toggles push + email, click → `PATCH /api/me/notifications-prefs`, toast vert « Préférences enregistrées ».
+- i18n `profil.notifs.*` ajouté FR/EN.
+
+### Scheduling
+- 3 nouveaux jobs enregistrés dans `d1/scheduler.py` avec `CronTrigger(timezone=Europe/Paris)` : `paywall_relances_j1_j3`, `push_matin`, `push_soir`. Logs de démarrage confirmés.
+
+
 ## Build 2.30 — Bloc 8 Veille & états vides · 2026-02-13
 
 ### Veille promue en place de la pile

@@ -89,6 +89,10 @@ const STRINGS = {
 
     // Profil
     'profil.plan.titre': 'Votre plan actuel',
+    'profil.notifs.titre': 'Notifications',
+    'profil.notifs.push': 'Notifications push (opportunités du jour, rappel 18h)',
+    'profil.notifs.email': 'Emails de relance paywall',
+    'profil.notifs.enregistre': 'Préférences enregistrées',
     'profil.plan.pro': 'Pro',
     'profil.plan.decouverte': 'Découverte',
     'profil.plan.limites.opps': '1 opportunité par semaine',
@@ -340,6 +344,10 @@ STRINGS.en = {
   'nav.assistant': 'Assistant',
 
   'profil.plan.titre': 'Your current plan',
+  'profil.notifs.titre': 'Notifications',
+  'profil.notifs.push': 'Push notifications (daily opportunities, 6pm reminder)',
+  'profil.notifs.email': 'Paywall re-engagement emails',
+  'profil.notifs.enregistre': 'Preferences saved',
   'profil.plan.pro': 'Pro',
   'profil.plan.decouverte': 'Discovery',
   'profil.plan.limites.opps': '1 opportunity per week',

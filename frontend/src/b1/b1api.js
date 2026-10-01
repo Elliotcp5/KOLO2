@@ -75,6 +75,8 @@ export const postTermine = () =>
   req('/api/onboarding/termine', { method: 'POST' });
 
 // --- /me
+export const patchNotificationsPrefs = (payload) => req('/api/me/notifications-prefs', { method: 'PATCH', body: payload });
+
 export const getQuotas = () => req('/api/me/quotas');
 export const getProfil = () => req('/api/me/profil');
 export const patchProfil = (payload) => req('/api/me/profil', { method: 'PATCH', body: payload });
@@ -265,5 +267,6 @@ export const b1api = {
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
   getMesMandats, patchStatutMandat, getQuotaEtat, getPoolZones,
   uploadLogo,
+  patchNotificationsPrefs,
 };
 export default b1api;

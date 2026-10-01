@@ -1156,3 +1156,55 @@ async def patch_statut_mandat(opportunite_id: str,
             detail="opportunite_introuvable_ou_pas_dans_pile_mandats",
         )
     return {"ok": True, "opportunite_id": opportunite_id, "statut": new_statut}
+
+
+# ============================================================================
+# Bloc 9 — Opt-outs + toggles notifications
+# ============================================================================
+
+@router.get("/api/me/email-relances-stop")
+async def email_relances_stop(tok: str = ""):
+    """Lien de désinscription des emails de relance paywall.
+    Accessible SANS auth — le token (24 bytes urlsafe) sert d'auth.
+    """
+    if not tok:
+        raise HTTPException(status_code=400, detail="token_requis")
+    res = await _db().users.update_one(
+        {"email_opt_out_token": tok},
+        {"$set": {"email_relances_actives": False, "email_relances_stop_at": now_utc_iso()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="token_inconnu")
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(
+        "<html><head><meta charset='utf-8'><title>KOLO</title></head>"
+        "<body style='font-family:system-ui;padding:40px;text-align:center;'>"
+        "<h1 style='color:#EC8690;'>KOLO</h1>"
+        "<p>Vous êtes désinscrit des relances paywall.</p>"
+        "<p style='color:#6B7280;font-size:14px;'>Vous ne recevrez plus de messages à ce sujet.</p>"
+        "</body></html>"
+    )
+
+
+@router.patch("/api/me/notifications-prefs")
+async def patch_notifications_prefs(payload: dict, request: Request):
+    """Toggle les préférences notifications (push + email) depuis le profil.
+
+    Body : `{"notifications_push_actives": bool, "email_relances_actives": bool}`
+    Les 2 champs sont optionnels. Désactivés par défaut (push) jusqu'à ce
+    que l'utilisateur active explicitement.
+    """
+    user = await _current_user_doc(request)
+    set_fields = {}
+    if "notifications_push_actives" in payload:
+        set_fields["notifications_push_actives"] = bool(payload["notifications_push_actives"])
+    if "email_relances_actives" in payload:
+        set_fields["email_relances_actives"] = bool(payload["email_relances_actives"])
+    if not set_fields:
+        raise HTTPException(status_code=400, detail="aucun_champ")
+    set_fields["notifications_prefs_updated_at"] = now_utc_iso()
+    await _db().users.update_one({"user_id": user["user_id"]}, {"$set": set_fields})
+    u = await _db().users.find_one({"user_id": user["user_id"]},
+                                     {"notifications_push_actives": 1,
+                                      "email_relances_actives": 1, "_id": 0})
+    return {"ok": True, "prefs": u}

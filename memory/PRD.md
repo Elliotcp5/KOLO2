@@ -17,6 +17,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 9 — Notifications & relances · 2026-02-13 🔥 LATEST
+- Push matin (7h30) + soir (18h) planifiés, Pro only, chiffre réel du pool, max 2/jour.
+- Email relances paywall J+1 et J+3 via Resend, texte validé, opt-out stable + List-Unsubscribe RFC 8058.
+- Toggle "Notifications push" + "Emails de relance" dans Profil / Plan.
+- `pressardelliot@gmail.com` : 0 device_tokens (compte web), apns_ready=true, prêt pour TestFlight.
+
+
+
 ### BLOC 8 — Veille & états vides · 2026-02-13 🔥 LATEST
 - Veille prend la place de la pile d'opps dès qu'elle est dispo (`VeilleStackInline` + titre dédié dans `FinDePileScreen`).
 - Photos sur champ `veille_cards.thumbnail_url` affichées en grand (aspect 1/0.75, cover), fallback icône seulement si vide.

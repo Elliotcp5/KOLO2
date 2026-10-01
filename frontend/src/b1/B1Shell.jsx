@@ -1175,7 +1175,84 @@ export function ProfilPaiementPage() {
             </>
           )}
         </div>
+
+        {/* Bloc 9 — Toggle notifications push + email relances */}
+        <NotificationsPrefsCard me={me} setMe={setMe} />
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// Bloc 9 — Carte Notifications dans Profil / Paiement
+// ============================================================================
+function NotificationsPrefsCard({ me, setMe }) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 2200);
+    return () => clearTimeout(t);
+  }, [saved]);
+  if (!me) return null;
+  const push = me.notifications_push_actives !== false; // défaut true
+  const emailRel = me.email_relances_actives !== false; // défaut true
+  const toggle = async (field, val) => {
+    setSaving(true);
+    try {
+      await b1api.patchNotificationsPrefs({ [field]: val });
+      setMe({ ...me, [field]: val });
+      setSaved(true);
+    } finally { setSaving(false); }
+  };
+  return (
+    <div className="b1-card" style={{ marginTop: 20, padding: 16 }} data-testid="b1-notifs-prefs">
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--b1-text-primary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {b1t('profil.notifs.titre') || 'Notifications'}
+      </div>
+      <PrefsRow
+        testid="b1-toggle-push"
+        label={b1t('profil.notifs.push') || 'Notifications push'}
+        value={push}
+        disabled={saving}
+        onChange={(v) => toggle('notifications_push_actives', v)}
+      />
+      <div style={{ height: 8 }} />
+      <PrefsRow
+        testid="b1-toggle-email"
+        label={b1t('profil.notifs.email') || 'Emails de relance'}
+        value={emailRel}
+        disabled={saving}
+        onChange={(v) => toggle('email_relances_actives', v)}
+      />
+      {saved && (
+        <div
+          data-testid="b1-notifs-saved"
+          className="b1-save-toast"
+          data-kind="ok"
+          role="status"
+        >
+          {b1t('profil.notifs.enregistre') || 'Préférences enregistrées'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrefsRow({ testid, label, value, disabled, onChange }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: disabled ? 'wait' : 'pointer' }}>
+      <input
+        type="checkbox"
+        data-testid={testid}
+        checked={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ width: 20, height: 20, accentColor: 'var(--b1-accent)' }}
+      />
+      <span style={{ fontSize: 14, color: 'var(--b1-text-primary)', flex: 1 }}>
+        {label}
+      </span>
+    </label>
   );
 }
