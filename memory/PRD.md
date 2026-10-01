@@ -17,6 +17,17 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 10 — Onboarding, traductions, conformité Apple · 2026-02-14 🔥 LATEST
+- **Étape 1 — Tutoriel en surimpression** : nouveau `B1GuidedTour.jsx` avec spotlight sombre + halo rose pulsant + flèche vers l'élément cible + bulle « Suivant / Passer ». 5 étapes (opportunités / estimation / rapport / assistant / profil). Les cibles sont les `data-testid` déjà posés (`b1-tab-*` + `b1-header-profile`). CSS : `.b1-tour2-*` dans `b1.css`.
+- **Étape 2 — Traductions** : 9 clés FR manquantes ajoutées (`dos.export.visualiser`, `dos.progress.rotate.{1..4}`, `nav.retour`, `paywall.err.init`, `paywall.err.produit`, `sys.supprimer`) + 55 clés EN manquantes ajoutées (`dir.b224.*`, `est.err.*`, `net.*`, `notif.perm.*`, `perf.*`, `procta.*`, `profil.pro.logo*`, …). Tour i18n passé de 6 clés `tour.1..6` à 5 clés sémantiques `tour.{opportunites|estimation|rapport|assistant|profil}` en FR/EN/IT/DE.
+- **Étape 3 — Chiffres figés** : 2 nouveaux endpoints `/api/me/plan-limits` (lit `a2.config.quotas`) et `/api/me/stats-aujourdhui` (compte les swipes droite du jour, fuseau Paris). La ligne « Découverte » du profil est composée en direct (« 1 opportunité par semaine · 1 estimation à vie · 1 dossier à vie »). Le texte `procta.fin_pile.hero` utilise `{traites}` au lieu du « 3 » hard-codé. Le suffixe périmé « (N annonces actives dans la zone) » des opportunités legacy est effacé à la lecture via `_scrub_motif_stale_count`.
+- **Étape 4 — Conformité Apple** : accès in-app à la Politique de confidentialité (`https://trykolo.io/privacy`) et aux CGU (`https://trykolo.io/terms`) ajoutés au menu profil. Suppression de compte déjà en place (DELETE /api/me, 2-tap). Permissions iOS déjà déclarées avec motifs explicites dans `Info.plist` (camera, micro, photos, speech, location, Face ID). Aucun prix hard-codé (vérifié), aucun lien de paiement externe (IAP natif only).
+- **Étape 5 — Boutons morts** : l'entrée profil « Legacy KOLO » (qui routait vers `/app-v2?legacy=1` → redirect vers `/app-b1`) a été supprimée. Le bouton « Revoir le tour guidé » reste et fonctionne (set flag + navigate + remount de la OpportunitesPage).
+- 9 tests pytest `tests/test_bloc10.py` verrouillent chaque fix. 5 captures du tour prises à Prague (step 1 → 5).
+
+
+
+
 ### BLOC 9 — Notifications & relances · 2026-02-13 🔥 LATEST
 - Push matin (7h30) + soir (18h) planifiés, Pro only, chiffre réel du pool, max 2/jour.
 - Email relances paywall J+1 et J+3 via Resend, texte validé, opt-out stable + List-Unsubscribe RFC 8058.

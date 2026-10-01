@@ -246,6 +246,9 @@ export const patchStatutMandat = (id, statut) =>
 export const getQuotaEtat = () => req('/api/me/quota-etat');
 // --- Ventilation du pool par CP — écran paywall (chiffres réels de la zone) ---
 export const getPoolZones = () => req('/api/me/pool-zones');
+// --- Bloc 10 · chiffres figés : limites de plan + stats du jour ---
+export const getPlanLimits = () => req('/api/me/plan-limits');
+export const getStatsAujourdhui = () => req('/api/me/stats-aujourdhui');
 
 export const b1api = {
   getVille, postProfil, postZones, postPlan, postTermine,
@@ -266,6 +269,7 @@ export const b1api = {
   // Opportunités
   getOpportunitesDuJour, swipeOpportunite, marquerADemarcher, accepterOpportunite, rejeterOpportunite,
   getMesMandats, patchStatutMandat, getQuotaEtat, getPoolZones,
+  getPlanLimits, getStatsAujourdhui,
   uploadLogo,
   patchNotificationsPrefs,
 };

@@ -648,6 +648,103 @@
 }
 
 /* ===========================================================================
+   Bloc 10 · Guided tour v2 — spotlight + halo + flèche
+   =========================================================================== */
+.b1-tour2 {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  animation: b1-fade-in 220ms ease;
+}
+.b1-tour2-dim {
+  position: fixed;
+  background: rgba(10, 10, 12, 0.72);
+  pointer-events: auto;
+}
+.b1-tour2-halo {
+  position: fixed;
+  border-radius: 20px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 3px rgba(236, 134, 144, 0.90),
+    0 0 0 10px rgba(236, 134, 144, 0.35),
+    0 0 24px 10px rgba(236, 134, 144, 0.55);
+  animation: b1-halo-pulse 1.8s ease-in-out infinite;
+}
+@keyframes b1-halo-pulse {
+  0%, 100% { box-shadow:
+      0 0 0 3px rgba(236, 134, 144, 0.90),
+      0 0 0 10px rgba(236, 134, 144, 0.35),
+      0 0 24px 10px rgba(236, 134, 144, 0.55); }
+  50%      { box-shadow:
+      0 0 0 3px rgba(236, 134, 144, 1),
+      0 0 0 14px rgba(236, 134, 144, 0.45),
+      0 0 36px 16px rgba(236, 134, 144, 0.70); }
+}
+.b1-tour2-bubble {
+  position: fixed;
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 18px 20px 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  animation: b1-bubble-in 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  max-width: 420px;
+}
+.b1-tour2-step {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--b1-accent, #EC8690);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
+}
+.b1-tour2-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--b1-text-primary, #0B0B0F);
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+.b1-tour2-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--b1-text-secondary, #4B5563);
+  margin: 0 0 14px;
+}
+.b1-tour2-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.b1-tour2-skip {
+  font-size: 13px;
+  color: var(--b1-text-muted, #9CA3AF);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.b1-tour2-arrow {
+  position: absolute;
+  width: 24px;
+  height: 12px;
+  pointer-events: none;
+}
+.b1-tour2-arrow--down {
+  bottom: -11px;
+  background: #FFFFFF;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.b1-tour2-arrow--up {
+  top: -11px;
+  background: #FFFFFF;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* ===========================================================================
    Profile screen
    =========================================================================== */
 .b1-profil-plan {

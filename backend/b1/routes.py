@@ -22,6 +22,28 @@ from a2.tz import now_utc_iso
 
 from .ville_resolver import DEMO_CODE_POSTAL, resolve_ville
 
+# ---------------------------------------------------------------------------
+# Bloc 10 Étape 3 — chiffres figés
+# Les anciennes opportunités (créées avant le 8/2/2026) ont dans leur
+# `motif_opportunite` un suffixe « (N annonces actives dans la zone) » dont
+# le chiffre N a été figé au moment de la génération, et qui a souvent dérivé
+# (663 affiché alors que la vraie base en comptait 139). Le code
+# `_motif_opportunite()` du scraper ne pose plus ce suffixe, mais la base
+# contient encore des opps legacy avec ce vieux texte. On le gomme à la
+# lecture, pour que l'utilisateur ne voie plus JAMAIS un chiffre faux.
+import re as _re_motif
+_RE_ANNONCES_ACTIVES = _re_motif.compile(
+    r"\s*\(?\s*\d+\s+annonces?\s+actives?\s+dans\s+la\s+zone\.?\s*\)?",
+    _re_motif.IGNORECASE,
+)
+def _scrub_motif_stale_count(motif: str) -> str:
+    """Supprime le suffixe `(N annonces actives dans la zone)` des opps legacy."""
+    if not motif:
+        return motif
+    cleaned = _RE_ANNONCES_ACTIVES.sub("", motif).rstrip(" .·")
+    return (cleaned + ".") if cleaned and not cleaned.endswith(".") else cleaned
+
+
 router = APIRouter(tags=["b1"])
 
 
@@ -809,7 +831,7 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
             "annee_construction": caracs.get("annee_construction"),
             "type_bien": caracs.get("type_batiment"),
             "source": "DPE",
-            "note": opp.get("motif_opportunite") or "",
+            "note": _scrub_motif_stale_count(opp.get("motif_opportunite") or ""),
             "score_confiance": opp.get("score_confiance"),
             "date_attribution": opp.get("date_attribution"),
             "caracteristiques": caracs,
@@ -1093,7 +1115,7 @@ async def get_mes_mandats(request: Request, limit: int = 100):
             "superficie": caracs.get("surface_habitable"),
             "annee_construction": caracs.get("annee_construction"),
             "type_bien": caracs.get("type_batiment"),
-            "note": opp.get("motif_opportunite") or "",
+            "note": _scrub_motif_stale_count(opp.get("motif_opportunite") or ""),
             "score_confiance": opp.get("score_confiance"),
             "statut": opp.get("statut"),
             "date_a_demarcher": opp.get("date_a_demarcher"),
@@ -1208,3 +1230,74 @@ async def patch_notifications_prefs(payload: dict, request: Request):
                                      {"notifications_push_actives": 1,
                                       "email_relances_actives": 1, "_id": 0})
     return {"ok": True, "prefs": u}
+
+
+
+# ---------------------------------------------------------------------------
+# Bloc 10 · Étape 3 — Chiffres figés : /api/me/plan-limits + /api/me/stats-aujourdhui
+# Permet aux cartes « Découverte » et aux encarts Pro CTA d'afficher
+# en direct les limites de plan et le nombre d'opportunités traitées
+# aujourd'hui, SANS valeurs hard-codées dans le code front.
+# ---------------------------------------------------------------------------
+@router.get("/api/me/plan-limits")
+async def me_plan_limits(request: Request):
+    """Retourne les limites réelles du plan de l'utilisateur, lues depuis
+    `a2.config` (`quotas.{plan}.{opportunite|estimation|dossier}`).
+
+    Format :
+      {
+        "plan": "decouverte"|"pro"|"agence",
+        "opportunite": {"kind": "hebdo"|"quotidien"|"lifetime", "limite": 1|5|"illimite"},
+        "estimation":  {"kind": "lifetime"|"hebdo", "limite": 1|"illimite"},
+        "dossier":     {"kind": "lifetime"|"mensuel", "limite": 1|"illimite"},
+      }
+
+    Les textes humains ("3 opportunités/jour", "1 estimation à vie") sont
+    composés côté front à partir de ces valeurs.
+    """
+    from a2.config import get_config
+    user = await _current_user_doc(request)
+    plan = _plan_effectif(user)
+    cfg = await get_config(_db())
+    quotas = (cfg or {}).get("quotas", {})
+    rules = quotas.get(plan) or quotas.get("decouverte") or {}
+    return {
+        "ok": True,
+        "plan": plan,
+        "opportunite": rules.get("opportunite") or {"kind": "hebdo", "limite": 0},
+        "estimation": rules.get("estimation") or {"kind": "lifetime", "limite": 0},
+        "dossier": rules.get("dossier") or {"kind": "lifetime", "limite": 0},
+    }
+
+
+@router.get("/api/me/stats-aujourdhui")
+async def me_stats_aujourdhui(request: Request):
+    """Compteurs vivants du jour (fuseau Paris) pour l'utilisateur.
+
+    Utilisé par le CTA Pro « Vous en avez traité N aujourd'hui ». Jamais
+    une valeur figée côté front.
+    """
+    from datetime import date
+    from zoneinfo import ZoneInfo
+    user = await _current_user_doc(request)
+    uid = user["user_id"]
+    tz_paris = ZoneInfo("Europe/Paris")
+    today_paris = datetime.now(tz_paris).date().isoformat()  # YYYY-MM-DD
+
+    # Swipes droite aujourd'hui = opportunités dont date_a_demarcher commence par today_paris
+    swipes_droite = await _db().opportunites.count_documents({
+        "assigne_a": uid,
+        "statut": {"$in": ["a_demarcher", "demarche", "mandat_signe"]},
+        "date_a_demarcher": {"$regex": f"^{today_paris}"},
+    })
+    # Mandats signés (total à vie)
+    mandats_total = await _db().opportunites.count_documents({
+        "assigne_a": uid,
+        "statut": "mandat_signe",
+    })
+    return {
+        "ok": True,
+        "swipes_droite_aujourdhui": swipes_droite,
+        "mandats_total": mandats_total,
+        "jour_paris": today_paris,
+    }

@@ -12,6 +12,7 @@ import { SwipeCard } from './B1Nav';
 import { FinDePileScreen } from './B1FinDePile';
 import { MesMandatsButton } from './B1MesMandats';
 import OppVignette from './B1OppVignette';
+import B1GuidedTour from './B1GuidedTour';
 import './b1.css';
 
 // ============================================================================
@@ -138,50 +139,12 @@ function ShellHeader({ onProfile, onStats }) {
 }
 
 // ============================================================================
-// Guided Tour (6 bulles)
+// Guided Tour — Bloc 10 Étape 1
+// Re-exporté depuis B1GuidedTour.jsx (spotlight + halo). Conservé ici pour
+// compat historique si d'autres fichiers importaient `GuidedTour` depuis
+// B1Shell. Nouveau composant : 5 étapes max, surimpression spotlight.
 // ============================================================================
-export function GuidedTour({ onDone }) {
-  const [step, setStep] = useState(1);
-  const bubbles = useMemo(() => [
-    { key: '1', hand: true },
-    { key: '2' }, { key: '3' }, { key: '4' }, { key: '5' }, { key: '6' },
-  ], []);
-  const cur = bubbles[step - 1];
-  const isLast = step === bubbles.length;
-  const done = (termine) => {
-    track(termine ? EVENTS.TOUR_GUIDE_TERMINE : EVENTS.TOUR_GUIDE_PASSE, termine ? { bulles_vues: step } : { bulle_arret: step });
-    onDone();
-  };
-  return (
-    <div className="b1-tour-backdrop" data-testid="b1-tour-overlay">
-      <div className="b1-tour-bubble" data-testid={`b1-tour-bubble-${step}`}>
-        <div className="b1-tour-step">{b1t('tour.progress', { step })}</div>
-        <h2 className="b1-tour-title">{b1t(`tour.${cur.key}.titre`)}</h2>
-        {cur.hand && (
-          <div className="b1-tour-hand" data-testid="b1-tour-swipe-hand">
-            <span className="b1-tour-hand-icon" role="img" aria-label="swipe">
-              <IconSwipe size={40} />
-            </span>
-          </div>
-        )}
-        <p className="b1-tour-text">{b1t(`tour.${cur.key}.texte`)}</p>
-        <div className="b1-tour-actions">
-          <button className="b1-tour-skip" data-testid="b1-tour-skip" onClick={() => done(false)}>
-            {b1t('tour.passer')}
-          </button>
-          <button
-            className="b1-pill b1-pill--primary"
-            data-testid="b1-tour-next"
-            style={{ minHeight: 44, padding: '10px 24px', fontSize: 15 }}
-            onClick={() => (isLast ? done(true) : setStep(step + 1))}
-          >
-            {isLast ? b1t('tour.terminer') : b1t('tour.suivant')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+export { default as GuidedTour } from './B1GuidedTour';
 
 // ============================================================================
 // Page — Opportunités (swipe réel + fetch API + fallback démo)
@@ -453,7 +416,7 @@ export function OpportunitesPage() {
             Placé au-dessus de la tab bar, jamais dessous. */}
         <MesMandatsButton />
         {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout, retiré ici. */}
-        {showTour && <GuidedTour onDone={closeTour} />}
+        {showTour && <B1GuidedTour onDone={closeTour} />}
       </div>
     </div>
   );
@@ -522,9 +485,34 @@ function BackHeader({ label }) {
 export function ProfilPage() {
   const navigate = useNavigate();
   const [me, setMe] = useState(null);
+  const [limits, setLimits] = useState(null);
   useEffect(() => { b1api.getProfil().then((r) => setMe(r.user)).catch(() => {}); }, []);
+  // Bloc 10 Étape 3 — limites plan en direct (JAMAIS hard-codées).
+  useEffect(() => { b1api.getPlanLimits().then(setLimits).catch(() => setLimits(null)); }, []);
   const isPro = (me?.plan || '') === 'pro';
   const isDirecteur = me?.role === 'directeur' && !!me?.organisation_id;
+
+  // Compose la ligne « Découverte » à partir des règles réelles lues en API.
+  // Format : "1 opportunité/semaine · 1 estimation à vie · 1 dossier à vie"
+  const decouverteLimites = (() => {
+    if (!limits || limits.plan === 'pro') return null;
+    const opp = limits.opportunite || {};
+    const est = limits.estimation || {};
+    const dos = limits.dossier || {};
+    const parts = [];
+    if (opp.kind === 'hebdo' && typeof opp.limite === 'number') {
+      parts.push(opp.limite === 1
+        ? b1t('profil.plan.decouverte.opps_1_hebdo')
+        : b1t('profil.plan.decouverte.opps_n_hebdo', { n: opp.limite }));
+    }
+    if (est.kind === 'lifetime' && est.limite === 1) {
+      parts.push(b1t('profil.plan.decouverte.est_1_vie'));
+    }
+    if (dos.kind === 'lifetime' && dos.limite === 1) {
+      parts.push(b1t('profil.plan.decouverte.dos_1_vie'));
+    }
+    return parts.length ? parts.join(' · ') : null;
+  })();
   const menu = [
     ...(isDirecteur ? [{
       id: 'directeur',
@@ -537,8 +525,12 @@ export function ProfilPage() {
     { id: 'zones', to: '/app-b1/profil/zones', icon: MapPin, label: b1t('profil.menu.zones') },
     { id: 'veille', to: '/app-b1/veille/suivis', icon: Compass, label: b1t('veille.section.titre') },
     { id: 'paiement', to: '/app-b1/profil/paiement', icon: CreditCard, label: b1t('profil.menu.paiement') },
-    { id: 'tour', to: '/app-b1', icon: Compass, label: b1t('profil.menu.tour'), onSelect: () => localStorage.setItem('kolo_b1_show_tour', '1') },
-    { id: 'legacy', to: '/app-v2?legacy=1', icon: LogOut, label: b1t('profil.menu.legacy') },
+    { id: 'tour', to: '/app-b1', icon: Compass, label: b1t('profil.menu.tour'),
+      onSelect: () => { try { localStorage.setItem('kolo_b1_show_tour', '1'); } catch {} } },
+    // Bloc 10 Étape 4 — Conformité Apple : accès in-app à la politique de
+    // confidentialité et aux CGU. Ouverture dans un onglet externe (safari).
+    { id: 'privacy', to: 'https://trykolo.io/privacy', icon: User, label: b1t('onb.plan.legal.privacy'), external: true },
+    { id: 'cgu', to: 'https://trykolo.io/terms', icon: User, label: b1t('onb.plan.legal.cgu'), external: true },
     { id: 'support', to: 'mailto:contact@trykolo.io', icon: HeadphonesIcon, label: b1t('profil.menu.support'), external: true },
     { id: 'suppr', to: '/app-b1/profil/supprimer', icon: Trash2, label: b1t('profil.menu.suppr'), danger: true },
   ];
@@ -593,8 +585,8 @@ export function ProfilPage() {
             {isPro ? b1t('profil.plan.pro') : b1t('profil.plan.decouverte')}
           </div>
           {!isPro && (
-            <div className="b1-small" style={{ marginTop: 4, opacity: 0.75 }}>
-              {b1t('profil.plan.decouverte.limite') || "3 opportunités/jour · pas d'estimation · pas de veille"}
+            <div className="b1-small" style={{ marginTop: 4, opacity: 0.75 }} data-testid="b1-profil-plan-limite">
+              {decouverteLimites || b1t('sys.un_instant')}
             </div>
           )}
           {isPro && me?.subscription_ends_at && (
