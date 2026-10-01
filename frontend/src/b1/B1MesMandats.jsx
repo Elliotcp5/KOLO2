@@ -309,9 +309,7 @@ export function MesMandatsPage() {
             <div style={{ width: 40 }} />
           </div>
           {loading ? (
-            <div className="b1-loading" data-testid="b1-mm-loading">
-              {b1t('sys.un_instant')}
-            </div>
+            <div className="b1-loading" data-testid="b1-mm-loading">…</div>
           ) : error ? (
             <div className="b1-error" data-testid="b1-mm-error">{error}</div>
           ) : items.length === 0 ? (

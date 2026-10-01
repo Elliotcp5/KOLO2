@@ -1,5 +1,23 @@
 # KOLO - Changelog
 
+## Build 2.28 — Bloc 6 Fluidité & navigation · 2026-02-13
+
+### Architecture persistante
+- Nouveau `B1TabsLayout.jsx` : monte `<BottomTabPill>` une seule fois au-dessus d'un `<Outlet/>` React Router. Détection de l'onglet actif via `matchPath({ end: true })`.
+- `App.js` : les 7 routes principales (`/app-b1`, `/app-b1/estimation`, `/app-b1/rapport`, `/app-b1/assistant`, `/app-b1/profil`, `/app-b1/directeur/equipe-b224`, `/app-b1/directeur/perf-agence`) sont désormais enfants d'un même `<Route element={<B1TabsLayout />}>`. Les sous-pages (perso, flow, détail dossier…) restent hors layout.
+- Retrait des 7 `<BottomTabPill>` inline des composants : B1Shell (OpportunitesPage), B1DirecteurB224 (×3), B1Dossier (DossierListPage), B1Estimation (EstimationHomePage), B1Assistant (×2).
+
+### Transitions
+- CSS `.b1-tab-content { animation: b1-tab-fade-in 200ms ease-out }`. Clé React basée sur `location.pathname` → fondu rejoué uniquement sur le contenu.
+
+### Squelettes de chargement
+- Remplacement des `b1t('sys.un_instant')` affichés en texte brut par la classe `.b1-loading` (shimmer déjà existant dans `b1.css`). Fichiers touchés : `B1Dossier.jsx`, `B1Estimation.jsx`, `B1MesMandats.jsx`, `B1Directeur.jsx`, `B1DirecteurB224.jsx`, `B1Veille.jsx`, `B3Perf.jsx`.
+- Les usages restants de `sys.un_instant` sont des libellés de bouton pendant un submit — conservés.
+
+### Preuve
+- Playwright : 5 captures successives, `total tab-bars in DOM = 1` constant à chaque transition. Captures prises 80 ms après chaque click montrent le contenu en fondu et la tab bar pleine opacité.
+
+
 ## Build 2.27 — Bloc 5 Directeur B2B · 2026-02-13
 
 ### Fixes

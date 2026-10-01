@@ -129,7 +129,7 @@ export function AssistantPage() {
               alors la phrase bénéfice générique dédiée. */}
           <B1ProCta context="assistant" testid="as-upgrade" />
         </div>
-        <BottomTabPill active="assistant" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
       </div>
     );
   }
@@ -305,7 +305,7 @@ export function AssistantPage() {
           </div>
         </div>
       )}
-      <BottomTabPill active="assistant" />
+      {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
     </div>
   );
 }

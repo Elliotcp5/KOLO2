@@ -120,7 +120,7 @@ export function EstimationHomePage() {
             </button>
           </div>
         </div>
-        <BottomTabPill active="estimation" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
       </div>
     </div>
   );
@@ -828,7 +828,7 @@ export function MesEstimationsPage() {
       <div className="b1-screen" style={{ paddingBottom: 120 }}>
         <BackHeader label={b1t('mes.est.titre')} />
         <div className="b1-screen-content">
-          {items === null && <div className="b1-small">{b1t('sys.un_instant')}</div>}
+          {items === null && <div className="b1-loading" data-testid="mes-est-loading">…</div>}
           {items && items.length === 0 && (
             <div className="b1-card" data-testid="mes-est-vide">
               <div className="b1-h2" style={{ fontSize: 18 }}>{b1t('mes.est.vide.titre')}</div>
@@ -885,7 +885,7 @@ export function EstimationDetailPage() {
   if (!est) return (
     <div className="b1-root">
       <div className="b1-screen"><BackHeader label={b1t('mes.est.titre')} />
-        <div className="b1-screen-content"><div className="b1-small">{b1t('sys.un_instant')}</div></div>
+        <div className="b1-screen-content"><div className="b1-loading" data-testid="est-detail-loading">…</div></div>
       </div>
     </div>
   );

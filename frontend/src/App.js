@@ -93,6 +93,8 @@ const D1B224DirecteurOpps = lazy(() => import("./b1/B1DirecteurB224").then((m) =
 const D1B224DirecteurEquipe = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurMonEquipePage })));
 const D1B224DirecteurConseiller = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurConseillerDetailPage })));
 const D1B224DirecteurPerf = lazy(() => import("./b1/B1DirecteurB224").then((m) => ({ default: m.DirecteurPerfAgencePage })));
+// Bloc 6 — layout persistant avec BottomTabPill au-dessus de <Outlet>
+const B1TabsLayout = lazy(() => import("./b1/B1TabsLayout"));
 // Paywall unifié (remplace /app-v2/settings/subscription qui était mort)
 const B1PaywallPage = lazy(() => import("./b1/B1Paywall"));
 
@@ -248,27 +250,32 @@ const AppRouter = () => {
       {/* KOLO BLOC B1 — LA refonte. Toutes les routes app iOS.          */}
       {/* ============================================================== */}
       <Route path="/onboarding-b1" element={<B1Onboarding />} />
-      <Route path="/app-b1" element={<B1OpportunitesRouter />} />
+      {/* Bloc 6 — Les 7 onglets principaux partagent un layout unique
+          avec <BottomTabPill> monté une seule fois. Les sous-pages (perso,
+          flow, détail dossier…) sortent du layout pour cacher la tab bar. */}
+      <Route element={<B1TabsLayout />}>
+        <Route path="/app-b1" element={<B1OpportunitesRouter />} />
+        <Route path="/app-b1/estimation" element={<C1EstimationHome />} />
+        <Route path="/app-b1/rapport" element={<C2DossierList />} />
+        <Route path="/app-b1/assistant" element={<B1AssistantPage />} />
+        <Route path="/app-b1/profil" element={<B1ProfilPage />} />
+        <Route path="/app-b1/directeur/equipe-b224" element={<D1B224DirecteurEquipe />} />
+        <Route path="/app-b1/directeur/perf-agence" element={<D1B224DirecteurPerf />} />
+      </Route>
       <Route path="/app-b1/mes-mandats" element={<B1MesMandatsPage />} />
       {/* Reprise post-migration zones */}
       <Route path="/app-b1/reprise" element={<B1RepriseZones />} />
 
-      {/* C1 — Estimation */}
-      <Route path="/app-b1/estimation" element={<C1EstimationHome />} />
+      {/* C1 — Estimation (sous-pages, hors layout tabs) */}
       <Route path="/app-b1/estimation/adresse" element={<C1EstimationAdresse />} />
       <Route path="/app-b1/estimation/flow" element={<C1EstimationFlow />} />
       <Route path="/app-b1/estimations" element={<C1MesEstimations />} />
       <Route path="/app-b1/estimations/:id" element={<C1EstimationDetail />} />
 
-      {/* C2 — Rapport / Dossier */}
-      <Route path="/app-b1/rapport" element={<C2DossierList />} />
+      {/* C2 — Rapport / Dossier (éditeur, hors layout tabs) */}
       <Route path="/app-b1/rapport/:id" element={<C2DossierEditor />} />
 
-      {/* Assistant IA */}
-      <Route path="/app-b1/assistant" element={<B1AssistantPage />} />
-
-      {/* Profil */}
-      <Route path="/app-b1/profil" element={<B1ProfilPage />} />
+      {/* Profil — sous-pages */}
       <Route path="/app-b1/profil/perso" element={<B1ProfilPersoPage />} />
       <Route path="/app-b1/profil/pro" element={<B1ProfilProPage />} />
       <Route path="/app-b1/profil/zones" element={<B1ProfilZonesPage />} />
@@ -284,14 +291,11 @@ const AppRouter = () => {
       <Route path="/app-b1/performances" element={<B3PerformancesPage />} />
       <Route path="/app-b1/notifications/permission" element={<B3NotifPerm />} />
 
-      {/* D1 — Écrans directeur */}
+      {/* D1 — Écrans directeur (routes legacy, hors layout tabs) */}
       <Route path="/app-b1/directeur/repartition" element={<D1DirecteurRepartitionPage />} />
       <Route path="/app-b1/directeur/equipe" element={<D1DirecteurEquipePage />} />
       <Route path="/app-b1/directeur/agence" element={<D1DirecteurAgencePage />} />
-      {/* D1 · Build 2.24 — nouvelle interface directeur (4 onglets) */}
-      <Route path="/app-b1/directeur/equipe-b224" element={<D1B224DirecteurEquipe />} />
       <Route path="/app-b1/directeur/equipe/:user_id" element={<D1B224DirecteurConseiller />} />
-      <Route path="/app-b1/directeur/perf-agence" element={<D1B224DirecteurPerf />} />
 
       {/* Paywall unifié — remplace /app-v2/settings/subscription */}
       <Route path="/app-b1/paywall" element={<B1PaywallPage />} />

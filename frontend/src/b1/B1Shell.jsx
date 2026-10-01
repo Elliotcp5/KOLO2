@@ -455,7 +455,7 @@ export function OpportunitesPage() {
             quand la pile est vide (c'est justement là qu'on va bosser).
             Placé au-dessus de la tab bar, jamais dessous. */}
         <MesMandatsButton />
-        <BottomTabPill active="opportunites" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout, retiré ici. */}
         {showTour && <GuidedTour onDone={closeTour} />}
       </div>
     </div>

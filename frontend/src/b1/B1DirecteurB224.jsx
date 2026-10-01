@@ -180,7 +180,7 @@ export function DirecteurOpportunitesPage() {
           onClose={() => !pending && setSheetOpen(false)}
           onPick={affecter}
         />
-        <BottomTabPill active="opportunites" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
       </div>
     </div>
   );
@@ -272,7 +272,7 @@ export function DirecteurMonEquipePage() {
                 {b1t('dir.equipe.inviter')}
               </button>
 
-              {loading && <div className="b1-lead" style={{ marginTop: 16 }}>{b1t('sys.un_instant')}</div>}
+              {loading && <div className="b1-loading" data-testid="d1b224-equipe-loading" style={{ marginTop: 16 }}>…</div>}
 
               {!loading && (data.conseillers || []).length === 0 && (
                 <div className="b1-card" style={{ marginTop: 16 }} data-testid="d1b224-equipe-vide">
@@ -351,7 +351,7 @@ export function DirecteurMonEquipePage() {
           </div>
         )}
 
-        <BottomTabPill active="mon_equipe" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
       </div>
     </div>
   );
@@ -390,7 +390,7 @@ export function DirecteurConseillerDetailPage() {
             </div>
             <div style={{ width: 40 }} />
           </div>
-          {loading && <div className="b1-lead">{b1t('sys.un_instant')}</div>}
+          {loading && <div className="b1-loading" data-testid="d1b224-cons-loading">…</div>}
           {!loading && (data.opportunites || []).length === 0 && (
             <div className="b1-card" style={{ marginTop: 16 }} data-testid="d1b224-detail-vide">
               <div className="b1-lead">{b1t('dir.b224.equipe.detail.vide')}</div>
@@ -466,7 +466,7 @@ export function DirecteurPerfAgencePage() {
                 ))}
               </div>
 
-              {loading && <div className="b1-lead" style={{ marginTop: 16 }}>{b1t('sys.un_instant')}</div>}
+              {loading && <div className="b1-loading" data-testid="d1b224-perf-loading" style={{ marginTop: 16 }}>…</div>}
 
               {!loading && data && (
                 <>
@@ -499,7 +499,7 @@ export function DirecteurPerfAgencePage() {
             </>
           )}
         </div>
-        <BottomTabPill active="perf_agence" />
+        {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
       </div>
     </div>
   );

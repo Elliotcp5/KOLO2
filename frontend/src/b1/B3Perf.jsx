@@ -156,7 +156,7 @@ export function PerformancesPage() {
           ))}
         </div>
 
-        {loading && <p className="b1-small" style={{ textAlign: 'center' }}>{b1t('sys.un_instant')}</p>}
+        {loading && <div className="b1-loading" data-testid="b3-perf-loading" style={{ textAlign: 'center' }}>…</div>}
         {error && <p className="b1-small" style={{ color: 'var(--b1-danger)', textAlign: 'center' }}>{error}</p>}
 
         {!loading && !error && !hasActivity && (

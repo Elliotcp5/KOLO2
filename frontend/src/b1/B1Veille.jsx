@@ -247,7 +247,7 @@ export function MesVeilleSuivisPage() {
           <div style={{ width: 40 }} />
         </div>
         <p className="b1-small">{b1t('veille.section.sous')}</p>
-        {loading && <p className="b1-small">{b1t('sys.un_instant')}</p>}
+        {loading && <div className="b1-loading" data-testid="veille-pile-loading">…</div>}
         {!loading && suivis.length === 0 && (
           <div className="b1-card" data-testid="b1-veille-suivis-vide">
             <p className="b1-lead">{b1t('veille.vide.section')}</p>
@@ -373,7 +373,7 @@ export function VeillePileDuJourPage() {
             <div className="b1-h2" style={{ fontSize: 17 }}>{b1t('veille.bandeau')}</div>
             <div style={{ width: 40 }} />
           </div>
-          {loading && <p className="b1-small" style={{ textAlign: 'center' }}>{b1t('sys.un_instant')}</p>}
+          {loading && <div className="b1-loading" data-testid="veille-suivis-loading" style={{ textAlign: 'center' }}>…</div>}
           {!loading && empty && (
             <div className="b1-card" data-testid="b1-veille-empty">
               <p className="b1-lead">{b1t('veille.vide.jour')}</p>

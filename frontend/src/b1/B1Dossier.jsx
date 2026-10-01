@@ -59,7 +59,7 @@ export function DossierListPage() {
     } catch (e) { console.error(e); }
   };
 
-  if (items === null) return <div className="b1-root b1-page" data-testid="dos-list-loading"><p>{b1t('sys.un_instant')}</p></div>;
+  if (items === null) return <div className="b1-root b1-page" data-testid="dos-list-loading"><div className="b1-loading" style={{ margin: 24 }}>…</div></div>;
 
   return (
     <div className="b1-root b1-page" style={{ padding: 'calc(env(safe-area-inset-top) + 16px) 20px calc(96px + env(safe-area-inset-bottom))' }} data-testid="dos-list-page">
@@ -139,7 +139,7 @@ export function DossierListPage() {
           )}
         </div>
       )}
-      <BottomTabPill active="rapport" />
+      {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout */}
     </div>
   );
 }
@@ -206,7 +206,7 @@ export function DossierEditorPage() {
   }, [id]);
 
   // --- Rendering ---
-  if (state.loading) return <div className="b1-root b1-page" style={{ padding: 20 }}>{b1t('sys.un_instant')}</div>;
+  if (state.loading) return <div className="b1-root b1-page" style={{ padding: 20 }} data-testid="dos-editor-loading"><div className="b1-loading">…</div></div>;
   if (!state.dossier) return <div className="b1-root b1-page" style={{ padding: 20 }}>{state.error || b1t('sys.connexion_perdue')}</div>;
 
   const dossier = state.dossier;

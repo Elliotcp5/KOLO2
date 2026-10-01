@@ -17,6 +17,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 6 — Fluidité & navigation · 2026-02-13 🔥 LATEST
+- `B1TabsLayout` : coquille unique avec `<Outlet>`, 7 routes imbriquées. BottomTabPill monté une seule fois.
+- Fondu de 200 ms sur le contenu uniquement, tab bar stable.
+- Squelettes `.b1-loading` à la place des `sys.un_instant` affichés brut (7 fichiers).
+- Preuve Playwright : `total tab-bars in DOM = 1` constant à chaque transition d'onglet.
+
+
+
 ### BLOC 5 — Directeur B2B · 2026-02-13 🔥 LATEST
 - Zones directeur : plafond UI figé à 2 remplacé par `maxZones` (99).
 - Clavier formulaire d'invitation : listener Capacitor Keyboard + padding dynamique sur la sheet, pattern identique à l'Assistant.

@@ -446,7 +446,7 @@ export function DirecteurAgencePage() {
                 <p className="b1-lead" style={{ marginTop: 8 }}>{b1t('dir.acces_refuse.sous')}</p>
               </div>
             ) : (
-              <p className="b1-lead">{b1t('sys.un_instant')}</p>
+              <div className="b1-loading" data-testid="dir-agence-loading">…</div>
             )}
           </div>
           <DirecteurTabBar active="agence" />
