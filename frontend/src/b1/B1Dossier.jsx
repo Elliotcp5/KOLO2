@@ -607,6 +607,35 @@ function SectionEditor({ dossier, sectionId, ajustement, onBack, onSave }) {
 // ============================================================================
 // Écran d'export — 3 boutons + progression + annulation + partage natif
 // ============================================================================
+// BLOC 3 point e — Rotation locale 2s entre 4 phrases produit.
+// Pas de dépendance au backend : même si `job.status` reste `pending` 30 s,
+// l'utilisateur voit du mouvement et ne pense plus que l'app plante.
+function ProgressLineRotator() {
+  const lines = [
+    b1t('dos.progress.rotate.1') || 'Nous rassemblons les comparables',
+    b1t('dos.progress.rotate.2') || 'Nous calculons la fourchette',
+    b1t('dos.progress.rotate.3') || 'Nous mettons en forme le document',
+    b1t('dos.progress.rotate.4') || 'On y est presque',
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % lines.length), 2000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div
+      className="dos-progress-lines"
+      data-testid="dos-progress-line"
+      key={i}
+      style={{ transition: 'opacity 300ms ease', opacity: 1 }}
+    >
+      {lines[i]}
+    </div>
+  );
+}
+
+
 function ExportScreen({ dossier, onBack, onToast }) {
   const [job, setJob] = useState(null);   // { job_id, status, progress }
   const [showProgress, setShowProgress] = useState(false);
@@ -670,6 +699,23 @@ function ExportScreen({ dossier, onBack, onToast }) {
     setJob((j) => (j ? { ...j, status: 'cancelled' } : j));
   }, [job, dossier.dossier_id]);
 
+  // BLOC 3 point f — bouton Visualiser : ouvre le PDF authentifié dans un
+  // nouvel onglet (web) ou via Share plugin natif (iOS).
+  const openPdf = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+      const url = b1api.dossierPdfUrl(dossier.dossier_id);
+      const r = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const blob = await r.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank');
+    } catch (e) {
+      console.error(e);
+      onToast(b1t('dos.progress.erreur') || 'Impossible d\'ouvrir le PDF');
+    }
+  }, [dossier.dossier_id, onToast]);
+
+
   const savePdfNative = useCallback(async () => {
     // Charge le blob via l'API authentifiée
     try {
@@ -719,9 +765,10 @@ function ExportScreen({ dossier, onBack, onToast }) {
   }, [dossier, savePdfNative]);
 
   if (showProgress) {
-    const progressLine = job?.status === 'pending' ? b1t('dos.progress.l1')
-      : job?.status === 'running' && (job?.progress || 0) < 90 ? b1t('dos.progress.l2')
-      : b1t('dos.progress.l3');
+    // BLOC 3 point e : rotation locale 4 phases produit toutes les 2 s.
+    // Avant : UNE ligne figée dérivée de job.status/progress (3s de pending
+    // → l'écran paraissait planté). Maintenant : phrases qui défilent même
+    // quand le backend met du temps.
     return (
       <div className="b1-root b1-page dos-editor-page" data-testid="dos-progress">
         <div className="dos-topbar">
@@ -729,7 +776,7 @@ function ExportScreen({ dossier, onBack, onToast }) {
         </div>
         <div className="dos-progress">
           <h3>{b1t('dos.progress.titre')}</h3>
-          <div className="dos-progress-lines" data-testid="dos-progress-line">{progressLine}</div>
+          <ProgressLineRotator />
           <div className="dos-progress-bar"><span style={{ width: `${job?.progress || 20}%` }} /></div>
           <button type="button" className="dos-progress-cancel" onClick={cancelGenerate} data-testid="dos-progress-cancel">
             {b1t('dos.progress.annuler')}
@@ -760,24 +807,33 @@ function ExportScreen({ dossier, onBack, onToast }) {
       )}
 
       <div className="dos-export-actions">
-        <button
-          type="button"
-          className="b1-pill b1-pill--primary"
-          onClick={startGenerate}
-          disabled={job?.status === 'pending' || job?.status === 'running'}
-          data-testid="dos-export-generer"
-        >
-          {job?.status === 'pending' || job?.status === 'running'
-            ? <><Loader2 size={16} className="dos-spin" /> {b1t('dos.progress.titre')}</>
-            : b1t('dos.export.generer')}
-        </button>
+        {/* BLOC 3 point f — Avant génération : UN seul bouton Générer.
+            Après génération (pdfReady=true) : TROIS boutons uniquement —
+            visualiser, envoyer par mail, enregistrer. Le bouton Générer
+            disparaît pour éviter le doublon qui ne fonctionnait pas. */}
+        {!pdfReady && (
+          <button
+            type="button"
+            className="b1-pill b1-pill--primary"
+            onClick={startGenerate}
+            disabled={job?.status === 'pending' || job?.status === 'running'}
+            data-testid="dos-export-generer"
+          >
+            {job?.status === 'pending' || job?.status === 'running'
+              ? <><Loader2 size={16} className="dos-spin" /> {b1t('dos.progress.titre')}</>
+              : b1t('dos.export.generer')}
+          </button>
+        )}
         {pdfReady && (
           <>
-            <button type="button" className="b1-pill b1-pill--ghost" onClick={savePdfNative} data-testid="dos-export-enregistrer">
-              {b1t('dos.export.enregistrer')}
+            <button type="button" className="b1-pill b1-pill--primary" onClick={openPdf} data-testid="dos-export-visualiser">
+              {b1t('dos.export.visualiser') || 'Visualiser'}
             </button>
             <button type="button" className="b1-pill b1-pill--ghost" onClick={sendByEmail} data-testid="dos-export-envoyer">
-              {b1t('dos.export.envoyer')}
+              {b1t('dos.export.envoyer') || 'Envoyer par mail'}
+            </button>
+            <button type="button" className="b1-pill b1-pill--ghost" onClick={savePdfNative} data-testid="dos-export-enregistrer">
+              {b1t('dos.export.enregistrer') || 'Enregistrer sur l\'appareil'}
             </button>
           </>
         )}
