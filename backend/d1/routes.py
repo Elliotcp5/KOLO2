@@ -1866,7 +1866,20 @@ async def confirmer_zones(payload: ConfirmerZonesPayload, request: Request):
             "updated_at": now_utc_iso(),
         }},
     )
-    return {"ok": True, "zones_perso": cps}
+    # Build 2.24 (BLOC 1 étape 5) : déclenche la distribution immédiatement
+    # pour ce user. Avant ce fix, il attendait le job de 06h du lendemain
+    # alors que le pool contient parfois 277 opps déjà disponibles.
+    attribuees = 0
+    try:
+        from d1.scheduler import distribuer_pour_user
+        fresh = await _db().users.find_one({"user_id": user["user_id"]})
+        attribuees = await distribuer_pour_user(_db(), fresh or user)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"confirmer_zones: distribution immédiate échouée: {e}"
+        )
+    return {"ok": True, "zones_perso": cps, "distribution": {"attribuees": attribuees}}
 
 
 # ===========================================================================

@@ -137,6 +137,44 @@ async def _run_generer_opportunites(db):
                        error=f"{type(e).__name__}: {e}")
 
 
+async def distribuer_pour_user(db, user: dict) -> int:
+    """Attribue le lot du jour à UN seul user — extrait de _run_distribuer_quotidien.
+    Utilisé par le job de 06h ET par les endpoints `onboarding/zones` et
+    `confirmer-zones` pour déclencher la distribution immédiatement quand
+    un user ajoute/confirme ses zones (sinon il attend le lendemain 06h).
+    Retourne le nombre d'opps attribuées.
+    """
+    uid = user.get("user_id")
+    role = (user.get("role") or "").lower()
+    is_directeur = role == "directeur"
+    attrib = 0
+    for cp in (user.get("zones_perso") or []):
+        pool_size = await db.opportunites.count_documents(
+            {"code_postal": cp, "statut": "pool"}
+        )
+        if pool_size == 0:
+            continue
+        if is_directeur:
+            n = pool_size
+        else:
+            n = max(1, min(5, pool_size - 3))
+        cur = db.opportunites.find(
+            {"code_postal": cp, "statut": "pool"}
+        ).limit(n)
+        async for opp in cur:
+            now = _now_iso()
+            await db.opportunites.update_one(
+                {"_id": opp["_id"]},
+                {"$set": {
+                    "user_id": uid, "assigne_a": uid,
+                    "statut": "proposee",
+                    "date_attribution": now, "updated_at": now,
+                }},
+            )
+            attrib += 1
+    return attrib
+
+
 async def _run_distribuer_quotidien(db):
     """Job 2 — attribue les opportunités du jour à chaque user actif.
 
@@ -162,37 +200,7 @@ async def _run_distribuer_quotidien(db):
         ).to_list(length=None)
         total_attrib = 0
         for u in users:
-            uid = u.get("user_id")
-            role = (u.get("role") or "").lower()
-            is_directeur = role == "directeur"
-            for cp in (u.get("zones_perso") or []):
-                pool_size = await db.opportunites.count_documents(
-                    {"code_postal": cp, "statut": "pool"}
-                )
-                if pool_size == 0:
-                    continue
-                # Cap quotidien : 5 par zone pour un agent (garde 3 en réserve
-                # pour recyclage). AUCUN cap pour un directeur — il reçoit
-                # tout ce qui est dispo ce jour-là, à charge pour lui de
-                # redistribuer via routes.attribuer-lot. build 2.22.5.
-                if is_directeur:
-                    n = pool_size
-                else:
-                    n = max(1, min(5, pool_size - 3))
-                cur = db.opportunites.find(
-                    {"code_postal": cp, "statut": "pool"}
-                ).limit(n)
-                async for opp in cur:
-                    now = _now_iso()
-                    await db.opportunites.update_one(
-                        {"_id": opp["_id"]},
-                        {"$set": {
-                            "user_id": uid, "assigne_a": uid,
-                            "statut": "proposee",
-                            "date_attribution": now, "updated_at": now,
-                        }},
-                    )
-                    total_attrib += 1
+            total_attrib += await distribuer_pour_user(db, u)
         await _log_run(db, "distribuer_quotidien", start, "done",
                        summary={"users": len(users), "attribuees": total_attrib})
     except Exception as e:

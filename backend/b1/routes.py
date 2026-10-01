@@ -168,22 +168,43 @@ async def onboarding_zones(payload: ZonesPayload, request: Request):
             au_moins_une_couverte = True
         resultats.append({"code_postal": cp, "ville": ville, "couverte": couverte})
 
-    # Mémorise les zones perso demandées par l'utilisateur (ce qu'il a saisi)
+    # Mémorise les zones perso demandées par l'utilisateur (ce qu'il a saisi).
+    # Build 2.24 (BLOC 1) : pose zones_confirmees=true dès qu'au moins une zone
+    # couverte est enregistrée — ça évite le routing vers /app-b1/reprise au
+    # prochain refresh et le symptôme « 0/5 + zone calme » alors que les opps
+    # sont attribuées. Et déclenche la distribution immédiatement pour ce user
+    # (le job 06h attendait sinon jusqu'au lendemain).
     zones_perso = [r["code_postal"] for r in resultats]
+    set_fields = {
+        "zones_perso": zones_perso,
+        "zones_derniere_verification_at": now_utc_iso(),
+        "updated_at": now_utc_iso(),
+    }
+    if au_moins_une_couverte:
+        set_fields["zones_confirmees"] = True
     await _db().users.update_one(
         {"user_id": user["user_id"]},
-        {
-            "$set": {
-                "zones_perso": zones_perso,
-                "zones_derniere_verification_at": now_utc_iso(),
-                "updated_at": now_utc_iso(),
-            }
-        },
+        {"$set": set_fields},
     )
+    distribution = {"attribuees": 0}
+    if au_moins_une_couverte:
+        try:
+            from d1.scheduler import distribuer_pour_user
+            # Re-lire le user pour avoir zones_perso à jour
+            fresh = await _db().users.find_one({"user_id": user["user_id"]})
+            attribuees = await distribuer_pour_user(_db(), fresh or user)
+            distribution["attribuees"] = attribuees
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"onboarding_zones: distribution immédiate échouée: {e}"
+            )
+            distribution["error"] = f"{type(e).__name__}: {e}"
     return {
         "ok": True,
         "resultats": resultats,
         "au_moins_une_couverte": au_moins_une_couverte,
+        "distribution": distribution,
     }
 
 
