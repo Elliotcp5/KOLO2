@@ -278,6 +278,31 @@
 .b1-pill--danger:active { transform: scale(0.97); background: var(--b1-danger-pressed); }
 .b1-pill--fullwidth { width: 100%; }
 
+/* Save confirmation toast — inline, apparait sous le bouton Enregistrer */
+.b1-save-toast {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  animation: b1-save-toast-in 220ms ease-out;
+}
+.b1-save-toast[data-kind="ok"] {
+  background: rgba(34, 197, 94, 0.08);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+.b1-save-toast[data-kind="err"] {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--b1-danger);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+}
+@keyframes b1-save-toast-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ===========================================================================
    Inputs
    =========================================================================== */

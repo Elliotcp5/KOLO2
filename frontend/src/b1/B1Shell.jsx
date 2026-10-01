@@ -723,6 +723,7 @@ export function ProfilPersoPage() {
 export function ProfilProPage() {
   const [state, setState] = useState({ infos_pro: {}, completude: 0 });
   const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(''); // '' | 'ok' | 'err'
   const [logoUrl, setLogoUrl] = useState('');
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState('');
@@ -733,12 +734,22 @@ export function ProfilProPage() {
       setLogoUrl(r.user?.logo_url || '');
     }).catch(() => {});
   }, []);
+  // Toast auto-hide (2.4s) après feedback de sauvegarde
+  useEffect(() => {
+    if (!savedMsg) return;
+    const t = setTimeout(() => setSavedMsg(''), 2400);
+    return () => clearTimeout(t);
+  }, [savedMsg]);
   const setF = (k, v) => setState((s) => ({ ...s, infos_pro: { ...s.infos_pro, [k]: v } }));
   const save = async () => {
     setSaving(true);
+    setSavedMsg('');
     try {
       const r = await b1api.patchProfil({ infos_pro: state.infos_pro });
       setState({ infos_pro: r.user?.infos_pro || state.infos_pro, completude: r.infos_pro_completude || 0 });
+      setSavedMsg('ok');
+    } catch (e) {
+      setSavedMsg('err');
     } finally { setSaving(false); }
   };
   const onLogoPick = async (ev) => {
@@ -748,6 +759,7 @@ export function ProfilProPage() {
     try {
       const r = await b1api.uploadLogo(f, f.name);
       setLogoUrl(r?.url || '');
+      setSavedMsg('ok');
     } catch (e) {
       setLogoError(String(e?.message || e));
     } finally { setLogoBusy(false); ev.target.value = ''; }
@@ -847,6 +859,17 @@ export function ProfilProPage() {
         <button className="b1-pill b1-pill--primary b1-pill--fullwidth" data-testid="b1-pro-save" onClick={save} disabled={saving}>
           {b1t('profil.perso.enregistrer')}
         </button>
+        {savedMsg && (
+          <div
+            className="b1-save-toast"
+            data-testid={savedMsg === 'ok' ? 'b1-pro-save-ok' : 'b1-pro-save-err'}
+            data-kind={savedMsg}
+            role="status"
+            aria-live="polite"
+          >
+            {savedMsg === 'ok' ? b1t('profil.enregistre') : b1t('profil.enregistre.erreur')}
+          </div>
+        )}
       </div>
     </div>
   );
