@@ -13,6 +13,7 @@ import { FinDePileScreen } from './B1FinDePile';
 import { MesMandatsButton } from './B1MesMandats';
 import OppVignette from './B1OppVignette';
 import B1GuidedTour from './B1GuidedTour';
+import { b1Haptic } from './b1haptic';
 import './b1.css';
 
 // ============================================================================
@@ -97,7 +98,7 @@ function _BottomTabPill({ active }) {
           className="b1-tab"
           data-active={active === t.id}
           data-testid={`b1-tab-${t.id}`}
-          onClick={() => navigate(t.to)}
+          onClick={() => { b1Haptic('light'); navigate(t.to); }}
           aria-label={t.label}
           style={{ position: 'relative' }}
         >
@@ -208,6 +209,9 @@ export function OpportunitesPage() {
   const swipe = async (sens) => {
     if (pending) return;
     setSwipeError(null);
+    // Bloc 11 — retour haptique systématique au swipe validé (droite = medium,
+    // gauche = light). Déclencheur UI qui donne vraiment l'impression d'app.
+    b1Haptic(sens === 'droite' ? 'medium' : 'light');
     // premier_swipe distinct de swipe — clé métrique d'activation
     try {
       if (!localStorage.getItem('kolo_b1_first_swipe_done')) {
@@ -285,7 +289,7 @@ export function OpportunitesPage() {
       try {
         const r = await b1api.getMesMandats();
         if (cancelled) return;
-        const arr = Array.isArray(r?.mandats) ? r.mandats : (Array.isArray(r) ? r : []);
+        const arr = Array.isArray(r?.items) ? r.items : (Array.isArray(r?.mandats) ? r.mandats : (Array.isArray(r) ? r : []));
         setMandatsCount(arr.filter((m) => m.statut === 'a_demarcher').length);
       } catch (_e) { /* ignore */ }
     })();
@@ -319,6 +323,15 @@ export function OpportunitesPage() {
             <div className="b1-loading" data-testid="b1-opp-loading">…</div>
           ) : cur ? (
             <>
+            <div className="b1-stack-wrap" data-testid="b1-opp-stack-wrap">
+              {/* Ghost card -2 (plus loin) */}
+              {items[idx + 2] && (
+                <div className="b1-stack-ghost b1-stack-ghost--2" aria-hidden="true" />
+              )}
+              {/* Ghost card -1 */}
+              {items[idx + 1] && (
+                <div className="b1-stack-ghost b1-stack-ghost--1" aria-hidden="true" />
+              )}
             <SwipeCard
               onSwipeLeft={() => swipe('gauche')}
               onSwipeRight={() => swipe('droite')}
@@ -377,31 +390,35 @@ export function OpportunitesPage() {
                   });
                 }}
               />
-              <OppVignette opp={cur} height={160} />
-              <h3 className="b1-opp-address">{cur.adresse}</h3>
-              <div className="b1-opp-details">
-                DPE : {cur.dpe} · {cur.note}<br />
-                Superficie : {cur.superficie} m²<br />
-                Source : {cur.source}
-              </div>
-              <div>
-                <span className="b1-opp-chip">{b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}</span>
+              <OppVignette opp={cur} height={176} />
+              <div className="b1-opp-body">
+                <h3 className="b1-opp-address">{cur.adresse}</h3>
+                <div className="b1-opp-specs">
+                  <span>{cur.superficie} m²</span>
+                  <span className="b1-opp-sep">·</span>
+                  <span>DPE {cur.dpe}</span>
+                </div>
+                <div className="b1-opp-note">{cur.note}</div>
+                <div className="b1-opp-meta">
+                  {b1t('sys.aucune_annonce')} · {cur.demo ? 'Démo' : 'Détails partiels'}
+                </div>
               </div>
             </SwipeCard>
-            {/* CTA « Mes opportunités » visible au-dessus de la ligne de
-                flottaison, contrasté, avec le compteur d'opps a_demarcher.
-                Solution au « bouton ton sur ton, quasi invisible ». */}
-            <button
-              type="button"
-              className="b1-cta-mes-opps"
-              data-testid="b1-home-cta-mes-opps"
-              onClick={() => navigate('/app-b1/mes-mandats')}
-            >
-              <span>{b1t('opp.mes_mandats.cta') || 'Mes opportunités de mandats'}</span>
-              {typeof mandatsCount === 'number' && mandatsCount > 0 && (
+            </div>
+            {/* CTA « Mes opportunités » — Bloc 11 refonte :
+                visible UNIQUEMENT quand mandatsCount > 0 (sinon c'est un bouton
+                mort qui dilue l'écran). Bouton plein contrasté avec le compteur. */}
+            {typeof mandatsCount === 'number' && mandatsCount > 0 && (
+              <button
+                type="button"
+                className="b1-cta-mes-opps b1-cta-mes-opps--primary"
+                data-testid="b1-home-cta-mes-opps"
+                onClick={() => { b1Haptic('light'); navigate('/app-b1/mes-mandats'); }}
+              >
+                <span>{b1t('opp.mes_mandats.cta') || 'Mes opportunités à démarcher'}</span>
                 <span className="b1-cta-mes-opps-badge">{mandatsCount}</span>
-              )}
-            </button>
+              </button>
+            )}
             </>
           ) : (
             // Fin de pile : si veille dispo → pile veille directement (Bloc 8).
@@ -420,10 +437,9 @@ export function OpportunitesPage() {
             </div>
           )}
         </div>
-        {/* Bouton PERMANENT « Mes opportunités de mandats » — visible même
-            quand la pile est vide (c'est justement là qu'on va bosser).
-            Placé au-dessus de la tab bar, jamais dessous. */}
-        <MesMandatsButton />
+        {/* Bloc 11 — plus de duplicate `MesMandatsButton` ici : le CTA
+            `b1-cta-mes-opps--primary` ci-dessus est le seul rendu lorsqu'il
+            y a des mandats à démarcher. Fin du "bouton ton sur ton". */}
         {/* Bloc 6 : BottomTabPill monté dans B1TabsLayout, retiré ici. */}
         {showTour && <B1GuidedTour onDone={closeTour} />}
       </div>

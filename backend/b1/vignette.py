@@ -118,7 +118,14 @@ async def opportunite_vignette(opp_id: str, request: Request):
     key = f"opp:{opp_id}"
     existing = await db.static_map_cache.find_one({"key": key})
     if existing and existing.get("status") == "ready":
-        return Response(bytes(existing["data"]), media_type=existing.get("content_type", "image/png"))
+        return Response(
+            bytes(existing["data"]),
+            media_type=existing.get("content_type", "image/png"),
+            headers={
+                "Cache-Control": "public, max-age=86400, immutable",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
     if existing and existing.get("status") == "error":
         raise HTTPException(status_code=404, detail="mapbox_previous_error")
 
@@ -128,7 +135,14 @@ async def opportunite_vignette(opp_id: str, request: Request):
             await asyncio.sleep(0.2)
             existing = await db.static_map_cache.find_one({"key": key})
             if existing and existing.get("status") == "ready":
-                return Response(bytes(existing["data"]), media_type=existing.get("content_type", "image/png"))
+                return Response(
+                    bytes(existing["data"]),
+                    media_type=existing.get("content_type", "image/png"),
+                    headers={
+                        "Cache-Control": "public, max-age=86400, immutable",
+                        "Access-Control-Allow-Origin": "*",
+                    },
+                )
             if existing and existing.get("status") == "error":
                 raise HTTPException(status_code=404, detail="mapbox_previous_error")
         raise HTTPException(status_code=503, detail="vignette_in_progress")
@@ -160,7 +174,14 @@ async def opportunite_vignette(opp_id: str, request: Request):
             {"key": key},
             {"$set": {"status": "ready", "data": Binary(r.content), "content_type": ctype}},
         )
-        return Response(r.content, media_type=ctype)
+        return Response(
+            r.content,
+            media_type=ctype,
+            headers={
+                "Cache-Control": "public, max-age=86400, immutable",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
     except HTTPException:
         raise
     except Exception as e:

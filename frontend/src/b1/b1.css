@@ -23,8 +23,20 @@
   --b1-shadow-card: 0 8px 24px -4px rgba(236, 134, 144, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
   --b1-shadow-cta: 0 10px 25px -5px rgba(236, 134, 144, 0.40), 0 4px 10px -2px rgba(236, 134, 144, 0.20);
   --b1-shadow-pressed: inset 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+  /* Bloc 11 — système d'ombre à 3 niveaux, interdit d'inventer. */
+  --b1-shadow-rest: 0 12px 32px -8px rgba(20, 20, 30, 0.14), 0 2px 6px -1px rgba(20, 20, 30, 0.06);
+  --b1-shadow-hover: 0 18px 40px -8px rgba(20, 20, 30, 0.18), 0 4px 10px -2px rgba(20, 20, 30, 0.08);
+  --b1-shadow-active: 0 4px 12px -4px rgba(20, 20, 30, 0.14), 0 1px 3px 0 rgba(20, 20, 30, 0.04);
   --b1-radius-card: 24px;
   --b1-radius-pill: 9999px;
+  --b1-radius-field: 12px;
+  /* Bloc 11 — échelle de spacing stricte (4) : 8, 12, 16, 20, 24, 32. */
+  --b1-sp-xs: 8px;
+  --b1-sp-sm: 12px;
+  --b1-sp-md: 16px;
+  --b1-sp-lg: 20px;
+  --b1-sp-xl: 24px;
+  --b1-sp-2xl: 32px;
   --b1-radius-input: 16px;
 
   min-height: 100vh;
@@ -1552,12 +1564,24 @@ button.b1-opp-action-btn:disabled {
    Écran de fin de pile — sablier + décompte 03h00 Paris
    ============================================================ */
 .b1-fin-pile {
-  padding: 40px 24px 60px;
+  padding: 24px 24px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 22px;
+  gap: 16px;
+}
+/* Resserrement + sablier plus petit (56 au lieu de 96).
+   Bloc 11 refonte — remonter dans le tiers supérieur, pas de vide. */
+.b1-fin-pile-sablier svg,
+.b1-fin-pile-sablier > * {
+  width: 56px !important;
+  height: 56px !important;
+  opacity: 0.75;
+}
+.b1-fin-pile-sablier {
+  margin-top: 0;
+  filter: drop-shadow(0 6px 16px rgba(236, 134, 144, 0.22));
 }
 /* Bloc 8 — variante veille : moins de padding haut, titre + pile swipeable
    collée en dessous, pas de centrage sablier. */
@@ -1576,7 +1600,7 @@ button.b1-opp-action-btn:disabled {
   letter-spacing: -0.01em;
 }
 .b1-fin-pile-sablier {
-  filter: drop-shadow(0 8px 22px rgba(236, 134, 144, 0.28));
+  margin-top: 0;
 }
 .b1-fin-pile-texte {
   font-size: 16px;
@@ -2129,3 +2153,237 @@ button.b1-opp-action-btn:disabled {
   line-height: 1.35;
 }
 .b1-procta--compact .b1-pill { flex-shrink: 0; padding: 8px 14px; font-size: 13px; }
+
+/* ============================================================================
+   Bloc 11 — Refonte visuelle écran swipe
+   Ghost cards + ombre premium + typo hiérarchie + :active + scroll iOS
+   ============================================================================ */
+
+/* Pile avec ghost cards. Interdit à Tailwind de l'écraser → `.b1-root` prefix. */
+.b1-root .b1-stack-wrap {
+  position: relative;
+  margin: 16px 20px 16px;
+}
+
+.b1-root .b1-stack-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background: #FFFFFF;
+  border-radius: var(--b1-radius-card);
+  box-shadow: var(--b1-shadow-rest);
+  z-index: 1;
+  transition: transform 240ms ease, opacity 240ms ease;
+  /* Hauteur approchée du vrai swipe card (vignette 176 + body ~160) */
+  height: 336px;
+}
+.b1-root .b1-stack-ghost--1 {
+  top: 8px;
+  transform: scale(0.96);
+  opacity: 0.55;
+  z-index: 1;
+}
+.b1-root .b1-stack-ghost--2 {
+  top: 16px;
+  transform: scale(0.92);
+  opacity: 0.28;
+  z-index: 0;
+}
+
+/* La carte principale par-dessus les ghost. Ombre premium. */
+.b1-root .b1-stack-wrap .b1-swipe-card,
+.b1-root .b1-stack-wrap > [data-testid="b1-opp-swipe"] {
+  position: relative;
+  z-index: 2;
+  box-shadow: var(--b1-shadow-rest);
+  border-radius: var(--b1-radius-card);
+  background: #FFFFFF;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* Body de la carte opp — spacing strict, typo hiérarchisée */
+.b1-root .b1-opp-body {
+  padding: 20px 20px 16px;
+}
+.b1-root .b1-opp-address {
+  font-family: "League Spartan", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--b1-text-primary);
+  margin: 0 0 12px;
+  letter-spacing: -0.015em;
+}
+.b1-root .b1-opp-specs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--b1-text-primary);
+  margin: 0 0 8px;
+}
+.b1-root .b1-opp-specs .b1-opp-sep { color: var(--b1-text-muted); font-weight: 400; }
+.b1-root .b1-opp-note {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--b1-text-secondary);
+  margin: 0 0 12px;
+}
+.b1-root .b1-opp-meta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--b1-accent);
+  background: var(--b1-accent-light);
+  padding: 6px 10px;
+  border-radius: var(--b1-radius-pill);
+  display: inline-block;
+}
+
+/* ============================================================================
+   :active states sur TOUS les éléments tactiles (impression d'app, pas de web)
+   Spec : transform scale(0.97) + ombre réduite, transition 120ms.
+   ============================================================================ */
+.b1-root .b1-pill,
+.b1-root button:not([disabled]),
+.b1-root [role="button"]:not([aria-disabled="true"]),
+.b1-root .b1-tab,
+.b1-root .b1-card[data-tap="1"],
+.b1-root .b1-cta-mes-opps,
+.b1-root .b1-opp-swipe-btn,
+.b1-root .b1-mes-mandats-btn {
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, background-color 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.b1-root .b1-pill:active,
+.b1-root button:not([disabled]):active,
+.b1-root [role="button"]:not([aria-disabled="true"]):active,
+.b1-root .b1-tab:active,
+.b1-root .b1-card[data-tap="1"]:active,
+.b1-root .b1-cta-mes-opps:active,
+.b1-root .b1-opp-swipe-btn:active,
+.b1-root .b1-mes-mandats-btn:active {
+  transform: scale(0.97);
+  box-shadow: var(--b1-shadow-active);
+}
+
+/* ============================================================================
+   Scroll iOS natif : rebond + pas de propagation à la page.
+   À appliquer sur TOUS les conteneurs qui défilent (listes, drawers).
+   ============================================================================ */
+.b1-root,
+.b1-root .b1-tab-content,
+.b1-root [data-scroll="1"],
+.b1-root .b1-list-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ============================================================================
+   Apparition en cascade des listes — 40ms de décalage par élément, 200ms.
+   Appliquer `data-stagger-idx="N"` ou laisser le CSS compter.
+   ============================================================================ */
+@keyframes b1-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.b1-root .b1-stagger > * {
+  animation: b1-stagger-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.b1-root .b1-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.b1-root .b1-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+.b1-root .b1-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+.b1-root .b1-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+.b1-root .b1-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+.b1-root .b1-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+.b1-root .b1-stagger > *:nth-child(7)  { animation-delay: 240ms; }
+.b1-root .b1-stagger > *:nth-child(8)  { animation-delay: 280ms; }
+.b1-root .b1-stagger > *:nth-child(9)  { animation-delay: 320ms; }
+.b1-root .b1-stagger > *:nth-child(10) { animation-delay: 360ms; }
+
+/* ============================================================================
+   Fin de pile resserrée — remonter dans le tiers supérieur
+   ============================================================================ */
+.b1-root .b1-fin-pile {
+  padding-top: 24px;
+}
+.b1-root .b1-fin-pile--vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 24px 24px;
+  gap: 16px;
+}
+.b1-root .b1-fin-pile--vide .b1-sablier {
+  width: 56px;      /* était 96 */
+  height: 56px;
+  opacity: 0.6;
+  margin: 0;
+}
+.b1-root .b1-fin-pile--vide h3 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+.b1-root .b1-fin-pile--vide p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--b1-text-secondary);
+}
+
+/* ============================================================================
+   CTA « Mes opportunités de mandats » — Bloc 11
+   Bouton plein contrasté avec compteur en évidence. Hiérarchie claire.
+   ============================================================================ */
+.b1-root .b1-cta-mes-opps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: calc(100% - 40px);
+  margin: 12px 20px 0;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAF9FD 100%);
+  border: 1.5px solid var(--b1-accent);
+  color: var(--b1-accent);
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: var(--b1-radius-pill);
+  min-height: 48px;
+  box-shadow: var(--b1-shadow-rest);
+}
+.b1-root .b1-cta-mes-opps--primary {
+  background: linear-gradient(180deg, #F39DA6 0%, #EC8690 100%) !important;
+  background-image: linear-gradient(180deg, #F39DA6 0%, #EC8690 100%) !important;
+  background-color: #EC8690;
+  border: 1.5px solid transparent !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 10px 25px -5px rgba(236, 134, 144, 0.45), 0 4px 12px -2px rgba(236, 134, 144, 0.25) !important;
+}
+.b1-root .b1-cta-mes-opps--primary .b1-cta-mes-opps-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+.b1-root .b1-cta-mes-opps-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: var(--b1-accent);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 800;
+  margin-left: 6px;
+}
+
