@@ -22,6 +22,21 @@ class EstimationInput(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     type_bien: Optional[Literal["Appartement", "Maison"]] = None
+
+    # Bloc 10 PB5 — tolère les variantes de casse envoyées par le front
+    # (certaines opportunités stockent `type_batiment` en minuscule depuis
+    # le DPE source). Rejeter 422 au submit pour une majuscule serait
+    # une mauvaise expérience : on normalise avant validation Literal.
+    @field_validator("type_bien", mode="before")
+    @classmethod
+    def _normalize_type_bien(cls, v):  # noqa: D401
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s == "appartement":
+                return "Appartement"
+            if s == "maison":
+                return "Maison"
+        return v
     surface_habitable: Optional[float] = Field(default=None, ge=1, le=5000)
     classe_dpe: Optional[Literal["A", "B", "C", "D", "E", "F", "G"]] = None
     annee_construction: Optional[int] = None

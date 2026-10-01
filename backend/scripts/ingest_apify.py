@@ -102,12 +102,41 @@ def _map_item_to_listing(row: dict, last_seen_at_iso: str, portal_default: str =
         return None
     portal = (row.get("source") or row.get("portal") or portal_default or "").lower() or portal_default
     postal_code = str(row.get("postalCode") or row.get("postal_code") or "").strip() or None
+    # Bloc 10 PB4 — élargir la couverture : seloger utilise `images[]` ou
+    # `imageUrls[]` selon la version de l'actor Apify. Avant, le champ
+    # thumbnail restait vide pour 11 cartes seloger sur 14. On teste
+    # maintenant toutes les variantes connues.
+    def _first_url(v):
+        if isinstance(v, str) and v.startswith("http"):
+            return v
+        if isinstance(v, list) and v:
+            for x in v:
+                if isinstance(x, str) and x.startswith("http"):
+                    return x
+                if isinstance(x, dict):
+                    for key in ("url", "src", "href", "large", "medium"):
+                        u = x.get(key)
+                        if isinstance(u, str) and u.startswith("http"):
+                            return u
+        if isinstance(v, dict):
+            for key in ("url", "src", "href", "large", "medium"):
+                u = v.get(key)
+                if isinstance(u, str) and u.startswith("http"):
+                    return u
+        return None
+
     thumbnail_url = (
-        row.get("main_photo_url")
-        or row.get("thumbnail_url")
-        or ((row.get("photos") or [None])[0] if isinstance(row.get("photos"), list) and row.get("photos") else None)
-        or row.get("photo")
-        or row.get("image")
+        _first_url(row.get("main_photo_url"))
+        or _first_url(row.get("thumbnail_url"))
+        or _first_url(row.get("photos"))
+        or _first_url(row.get("photo"))
+        or _first_url(row.get("image"))
+        or _first_url(row.get("images"))        # seloger / bienici
+        or _first_url(row.get("imageUrls"))     # certains actors
+        or _first_url(row.get("pictures"))
+        or _first_url(row.get("mainImage"))
+        or _first_url(row.get("coverImage"))
+        or _first_url(row.get("media"))
         or ""
     )
     kind = "pro" if (

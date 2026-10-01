@@ -305,7 +305,7 @@ export function VeilleStackInline({ cards = [] }) {
   const sendStatut = async (statut) => {
     setPendingErr('');
     try {
-      await veilleApi.setStatut(cur.listing_id, statut);
+      await veilleApi.patchStatut(cur.listing_id, statut);
       setIdx((i) => i + 1);
     } catch (e) {
       setPendingErr(e?.message || 'Erreur');

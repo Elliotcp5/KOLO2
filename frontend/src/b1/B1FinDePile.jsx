@@ -166,10 +166,18 @@ export function FinDePileScreen({ veilleCards = [], veilleSlot = null }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Bloc 8 étape 2+3 — Veille dans la pile DIRECTEMENT quand elle est dispo.
-  // Pas de décompte, pas de bouton intermédiaire. Titre dédié au-dessus.
-  // Priorité absolue : si veille → veille, QUEL que soit l'état du pool opps.
-  if (hasVeille) {
+  // Bloc 10 PB3 — Veille apparaît UNIQUEMENT dans deux cas :
+  //   1. Le quota du jour est entièrement consommé (swipes_du_jour >= 5)
+  //   2. OU aucune opportunité n'est disponible (pool_zones_perso === 0)
+  // Tant qu'il reste des opportunités dans le pool, l'utilisateur voit la
+  // pile d'opportunités (ou le décompte vers la prochaine attribution 03h
+  // Paris si le scheduler ne lui a pas encore attribué sa part).
+  const quota = state.quota || {};
+  const quotaConsomme = (quota.opportunites_swipees_aujourdhui || 0) >= 5;
+  const poolVide = quota.pool_zones_perso === 0;
+  const peutAfficherVeille = hasVeille && (quotaConsomme || poolVide);
+
+  if (peutAfficherVeille) {
     return (
       <div className="b1-fin-pile b1-fin-pile--veille" data-testid="b1-fin-pile-veille-stack">
         <h2

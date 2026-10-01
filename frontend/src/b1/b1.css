@@ -299,10 +299,15 @@
 
 /* Bloc 6 — fondu de contenu au changement d'onglet. 200 ms max, jamais de saut.
    La tab bar vit dans <B1TabsLayout> et n'est JAMAIS remontée — seul .b1-tab-content
-   est re-rendue à chaque route, portée par key={pathname}. */
+   est re-rendue à chaque route, portée par key={pathname}.
+   Bloc 10 fix PB1 : réserve l'espace de la tab bar en bas (hauteur pill 64 + 20
+   d'offset + safe-area). Sans ce padding, le contenu passe DERRIÈRE la tab bar
+   et l'utilisateur voit la tab bar « flotter » par-dessus la fiche. */
 .b1-tab-content {
   animation: b1-tab-fade-in 200ms ease-out;
   min-height: 100dvh;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom) + 20px);
+  box-sizing: border-box;
 }
 @keyframes b1-tab-fade-in {
   from { opacity: 0; }

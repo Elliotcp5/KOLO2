@@ -300,9 +300,16 @@ export function OpportunitesPage() {
             onStats={() => navigate('/app-b1/performances')}
           />
           <div className="b1-opp-header">
-            <div className="b1-opp-count" data-testid="b1-opp-count">{Math.min(idx + 1, items.length)}/{items.length || 5}</div>
+            {/* Bloc 10 PB3 : compteur honnête — si rien à swiper, affiche
+                `0/0` plutôt que `0/5`, pour ne pas mentir à l'utilisateur
+                qui n'a pas encore reçu d'attribution. */}
+            <div className="b1-opp-count" data-testid="b1-opp-count">
+              {items.length === 0
+                ? '0/0'
+                : `${Math.min(idx + 1, items.length)}/${items.length}`}
+            </div>
             <div className="b1-progress-track" style={{ margin: '8px 40px' }}>
-              <div className="b1-progress-fill" style={{ width: `${(Math.min(idx + 1, items.length) / Math.max(items.length, 1)) * 100}%` }} />
+              <div className="b1-progress-fill" style={{ width: items.length === 0 ? '0%' : `${(Math.min(idx + 1, items.length) / Math.max(items.length, 1)) * 100}%` }} />
             </div>
             <div className="b1-opp-title">{b1t('opp.titre_quotidien')}</div>
           </div>

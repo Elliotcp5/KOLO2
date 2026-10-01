@@ -248,12 +248,23 @@ export function EstimationFlowPage() {
       // sur stationnement/etat/etage/exterieur — c'était la cause racine du
       // symptôme signalé « erreur étape 3 quel que soit le choix retenu ».
       const emptyToUndef = (v) => (v === '' ? undefined : v);
+      // Bloc 10 PB5 — type_bien doit être `"Appartement"` ou `"Maison"`
+      // (Literal Pydantic côté backend). Les opportunités stockent
+      // `type_batiment` en minuscule. Avant, le payload partait brut et
+      // retournait une 422 à l'étape du stationnement.
+      const normType = (t) => {
+        if (!t) return undefined;
+        const s = String(t).trim().toLowerCase();
+        if (s === 'appartement') return 'Appartement';
+        if (s === 'maison') return 'Maison';
+        return t; // laisse passer les valeurs déjà capitalisées
+      };
       const payload = {
         opportunite_id: oppId,
         adresse: bien.adresse,
         code_postal: bien.code_postal,
         lat: bien.lat, lng: bien.lng,
-        type_bien: bien.type_bien,
+        type_bien: normType(bien.type_bien),
         surface_habitable: bien.surface_habitable,
         classe_dpe: bien.classe_dpe,
         annee_construction: bien.annee_construction,
