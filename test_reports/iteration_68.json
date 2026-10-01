@@ -1,0 +1,43 @@
+{
+  "summary": "Bloc 11 (TestFlight bugs KOLO) fully verified end-to-end: 4/4 backend tests + 6/6 UI tests pass. Pro user has unlimited quota (quota_quotidien=None), 10 opps loaded, 100% veille cards with thumbnail, pick-estimation mode works, tab bar fixed + backdrop-blur.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "B1MesMandats detail (StatutSelect)", "issues": ["Console hydration warning: '<span> cannot be a child of <option>/<select>'. b1t() returning React element wrapped in <span> is being rendered inside <option> at line ~117 (b1t(`opp.statut.${o.key}`)). Non-blocking but should be fixed by coercing to String()."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bloc11.py",
+    "/app/test_reports/pytest/bloc11_results.xml"
+  ],
+  "action_items": [
+    "(nice-to-have) In B1MesMandats.jsx StatutSelect, wrap `{b1t(...)}` with String() to prevent React hydration warning when b1t returns a span-wrapped element.",
+    "(nice-to-have) UI shows '1/5' for Pro user because frontend requests limit=5 by default — consider raising to limit=10 to match the pool for more swipe depth."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/b1/routes.py L834: `is_illimite = isinstance(limite_raw, str) and limite_raw.lower().startswith('illim')` — robust (handles 'illimite'/'illimité'/'illimité(e)'). ✓",
+    "/app/backend/b1/routes.py L881: seuil_recharge logic: `pre_count <= seuil_recharge` for Pro means recharge when pile ≤ effectif. OK but could lead to redundant distribuer_pour_user calls on each GET — monitor DB load.",
+    "/app/frontend/src/b1/B1MesMandats.jsx L128-148: cardTapAction prop is well isolated and defaults safely to 'toggle'. Clean implementation. ✓",
+    "/app/frontend/src/b1/B1Estimation.jsx L73-77: goOpp() checks quota and routes to paywall or pick-estimation. Correct. ✓",
+    "Backend confirmed: pressardelliot@gmail.com returns plan='pro', zones=['13008'], quota=None, 10 items loaded, 5/5 veille cards with http thumbnail."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "100% (6/6)"},
+  "test_credentials": "pressardelliot@gmail.com via /api/v2/auth/send-email-code + verify-email-code (dev_code returned in preview).",
+  "seed_data_creation": "None — used existing seeded user and pool (283 opps in 13008, 5 veille cards).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bloc 11 fixes verified on preview URL. Key verifications: (1) GET /api/opportunites/du-jour?limit=10 for Pro user returns {quota_quotidien:None, reste_du_jour:None, count:10}; (2) GET /api/me/veille returns 5/5 cards with thumbnail_url starting with http (100%); (3) attribution à la demande: 2 consecutive calls both return count>=1 even without distribuer_quotidien cron; (4) Frontend /app-b1/estimation → click est-home-cta-opp → navigates to /app-b1/mes-mandats?mode=pick-estimation; (5) In pick mode, clicking card body (b1-mm-card-address) navigates directly to /app-b1/estimation/flow (not toggle); (6) Without ?mode query, card tap opens details (toggle) without navigation; (7) Tab bar: class='b1-tabbar', position:fixed, bottom:20px, backdrop-filter:'saturate(1.8) blur(22px)' = verre dépoli ✓. Known non-blocking console warning: hydration error `<span> cannot be child of <option>` in StatutSelect (B1MesMandats.jsx ~L117) — b1t() returns an element wrapped in span. Fix: wrap with String(b1t(...)).",
+  "verification_details": {
+    "T1_opp_pile_count": "b1-opp-count = '1/5' visible, b1-opp-swipe visible — Pro user sees pile ✓",
+    "T2_backend_quota_unlimited": "quota_quotidien=None, reste_du_jour=None, count=10 ✓",
+    "T3_veille_thumbnails": "5/5 cards with thumbnail_url (100% > 80% threshold) ✓",
+    "T4_estimation_to_pick": "est-home-cta-opp → /app-b1/mes-mandats?mode=pick-estimation ✓",
+    "T5_card_tap_pick_mode": "Click on b1-mm-card-address in pick-estimation → /app-b1/estimation/flow (direct, no toggle) ✓",
+    "T6_card_tap_default_toggle": "Without ?mode, card tap toggles body visibility, no navigation ✓",
+    "T7_tabbar_glass": "position:fixed, bottom:20px, backdrop-filter: saturate(1.8) blur(22px) ✓",
+    "T8_attribution_ondemand": "Call1 count=5, Call2 count=5 (recharge continues) ✓"
+  }
+}
