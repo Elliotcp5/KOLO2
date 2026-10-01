@@ -72,7 +72,8 @@ export function EstimationHomePage() {
 
   const goOpp = () => {
     if (quotaEpuise) { navigate('/app-b1/paywall'); return; }
-    navigate('/app-b1/mes-mandats');
+    // Bloc 11 PB4 — mode pick : clic sur carte = estimer directement.
+    navigate('/app-b1/mes-mandats?mode=pick-estimation');
   };
   const goAdresse = () => {
     if (quotaEpuise) { navigate('/app-b1/paywall'); return; }

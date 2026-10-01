@@ -847,8 +847,13 @@ async def _process_zone(
         best_v_breakdown: Optional[dict] = None
         for ann in cand_v:
             r = await _score_and_track(ann)
-            if r["score"] > best_v_score:
-                best_v_score = r["score"]
+            # Bloc 11 PB3 — bonus annonces avec photo. Préfère systématiquement
+            # une annonce avec thumbnail à une sans, à score matching proche.
+            score = r["score"]
+            if (ann.get("thumbnail_url") or "").startswith("http"):
+                score += 0.5
+            if score > best_v_score:
+                best_v_score = score
                 best_v_annonce = ann
                 best_v_breakdown = r["breakdown"]
 

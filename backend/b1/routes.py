@@ -825,6 +825,14 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
     user = await _current_user_doc(request)
     uid = user["user_id"]
     is_directeur = (user.get("role") or "").lower() == "directeur"
+    # Bloc 11 PB1 — quota lu depuis config (ne plus hard-coder 5/jour).
+    from a2.config import get_config
+    cfg = await get_config(_db())
+    plan = _plan_effectif(user)
+    plan_quota = ((cfg or {}).get("quotas", {}).get(plan, {}).get("opportunite") or {})
+    limite_raw = plan_quota.get("limite", 5)
+    is_illimite = isinstance(limite_raw, str) and limite_raw.lower().startswith("illim")
+    quota_jour = None if (is_directeur or is_illimite) else int(limite_raw or 5)
 
     # Fenêtre journalière : 03h Paris (aligné sur le job distribuer_quotidien).
     from datetime import datetime, timedelta, timezone as _tz
@@ -847,25 +855,21 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
         })
 
     # Plafond effectif
-    if is_directeur:
+    if is_directeur or quota_jour is None:
         effectif = max(1, min(limit, 50))
     else:
-        reste = max(0, 5 - n_swipes)
+        reste = max(0, quota_jour - n_swipes)
         effectif = min(reste, max(1, min(limit, 20)))
 
     if effectif == 0:
         return {"ok": True, "items": [], "count": 0,
-                "quota_quotidien": 5, "swipes_du_jour": n_swipes,
+                "quota_quotidien": quota_jour, "swipes_du_jour": n_swipes,
                 "reste_du_jour": 0}
 
-    # ------------------------------------------------------------------
-    # Bloc 10 — attribution à la demande.
-    # TestFlight 2026-02-14 : utilisateur à Marseille, 220+ opps en pool
-    # sur 13008, mais écran « 0/0 + veille » parce que le scheduler
-    # `distribuer_quotidien` de 06h n'avait rien attribué (serveur
-    # redémarré après l'heure, ou user hors timezone). On n'attend plus
-    # le lendemain : si le user n'a RIEN dans sa pile et que son pool
-    # perso n'est pas vide, on attribue immédiatement, puis on relit.
+    # Bloc 11 PB1 — attribution continue tant que pool>0.
+    # Pour un plan Pro/illimité, on recharge dès que la pile tombe en-dessous
+    # du quota demandé (`limit`). Pour Découverte (quota strict), on ne
+    # réattribue que si la pile est vide.
     pre_count = await _db().opportunites.count_documents({
         "assigne_a": uid,
         "$or": [
@@ -873,7 +877,8 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
             {"statut": "a_demarcher", "affectation_notif_flag": True},
         ],
     })
-    if pre_count == 0 and not is_directeur:
+    seuil_recharge = effectif if (quota_jour is None or is_directeur) else 0
+    if pre_count <= seuil_recharge and not is_directeur:
         pool_perso = await _db().opportunites.count_documents({
             "code_postal": {"$in": user.get("zones_perso") or []},
             "statut": "pool",
@@ -936,9 +941,9 @@ async def get_opportunites_du_jour(request: Request, limit: int = 5):
             "en_agence": bool(opp.get("organisation_id")) or bool(user.get("organisation_id")),
         })
     return {"ok": True, "items": items, "count": len(items),
-            "quota_quotidien": None if is_directeur else 5,
+            "quota_quotidien": None if is_directeur else quota_jour,
             "swipes_du_jour": n_swipes,
-            "reste_du_jour": None if is_directeur else max(0, 5 - n_swipes - len(items))}
+            "reste_du_jour": None if (is_directeur or quota_jour is None) else max(0, quota_jour - n_swipes)}
 
 
 def _oid_or_400(raw: str):

@@ -15,7 +15,7 @@
 //
 // ============================================================================
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, MapPin, Check, Award,
 } from 'lucide-react';
@@ -125,13 +125,27 @@ function StatutSelect({ current, onSelect }) {
 // ============================================================================
 // MandatCard — ligne dépliable
 // ============================================================================
-function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer }) {
+function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer, cardTapAction = 'toggle' }) {
   const [open, setOpen] = useState(false);
   const caracs = opp.caracteristiques || {};
+  // Bloc 11 PB4 — en mode "pick-estimation", clic sur la carte entière lance
+  // l'estimation. Le chevron reste cliquable pour voir les détails sans
+  // partir vers l'estimation. En mode "toggle" (défaut, écran Mes mandats
+  // standalone), clic sur la carte = ouvre/ferme les détails.
+  const handleCardTap = () => {
+    if (cardTapAction === 'estimer') onEstimer(opp);
+    else setOpen((v) => !v);
+  };
   return (
     <div className="b1-mm-card"
          data-testid={`b1-mm-card-${opp.id}`}
-         data-statut={opp.statut}>
+         data-statut={opp.statut}
+         data-tap="1"
+         role="button"
+         tabIndex={0}
+         onClick={handleCardTap}
+         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardTap()}
+         style={{ cursor: 'pointer' }}>
       <div className="b1-mm-card-header">
         <div className="b1-mm-card-header-main">
           <div className="b1-mm-card-address">
@@ -148,7 +162,7 @@ function MandatCard({ opp, onStatutChange, onAbandon, onDejaEnVente, onEstimer }
         <button
           className="b1-mm-card-toggle"
           data-testid={`b1-mm-card-toggle-${opp.id}`}
-          onClick={() => setOpen((v) => !v)}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
           aria-label={open ? 'Fermer' : 'Ouvrir'}
         >
           {open ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -249,6 +263,11 @@ function AbandonModal({ oppId, onConfirm, onCancel }) {
 // ============================================================================
 export function MesMandatsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Bloc 11 PB4 — mode "pick-estimation" : clic sur une carte lance direct
+  // l'estimation sans passer par le toggle. Déclenché par l'écran
+  // EstimationHome qui navigate avec ?mode=pick-estimation.
+  const cardTapAction = searchParams.get('mode') === 'pick-estimation' ? 'estimer' : 'toggle';
   const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -351,6 +370,7 @@ export function MesMandatsPage() {
                     <MandatCard
                       key={opp.id}
                       opp={opp}
+                      cardTapAction={cardTapAction}
                       onStatutChange={doPatch}
                       onAbandon={setAbandonId}
                       onDejaEnVente={(id) => doPatch(id, 'deja_en_vente')}
