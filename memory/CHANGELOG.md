@@ -1,5 +1,16 @@
 # KOLO - Changelog
 
+## Build 2.25 — Bloc 3 finitions (c) + (d) · 2026-02-13
+
+### Dossier PDF / Profil Pro
+- **(c) Logo agence déplacé** vers l'onglet « Informations professionnelles » (`/app-b1/profil/pro`), en tête de page, label « Logo de l'agence » + hint « Affiché sur le dossier d'estimation généré. ». La page « Informations personnelles » n'a plus aucun bloc logo (vérifié par testing agent — `b1-pro-logo-card` présent sur Pro, absent sur Perso).
+- **(d) Toast de confirmation à l'enregistrement** des infos pro : `b1-pro-save-ok` (vert pâle) ou `b1-pro-save-err` (rouge pâle), auto-dismiss 2,4 s. Clés i18n `profil.enregistre` + `profil.enregistre.erreur` en FR/EN/IT/DE.
+- Toast également déclenché sur upload logo réussi (zéro régression).
+- CSS `.b1-save-toast` dans `b1.css` (animation entrée 220 ms).
+
+Vérifié via screenshots + testing agent (iteration_66.json, success 100%).
+
+
 ## Build 2.24 — Chemin Pro + Photos PDF (fork 12 fév 2026)
 
 ### Chemin de conversion vers Pro

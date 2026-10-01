@@ -1,0 +1,34 @@
+{
+  "summary": "Verified Bloc 3 (c) + (d) on Pro Profile page: logo card moved to Pro tab + save confirmation toast. All checks pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/app-b1/profil/pro", "issues": ["Pre-existing React hydration warnings: <span> wrapping <option>/<select> injected by dynamic framework instrumentation (x-ve-dynamic). Not caused by this change but should be flagged — may cause SSR/hydration issues."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "B1Shell.jsx is ~1175 lines — consider splitting ProfilProPage/PersoPage/ZonesPage into separate files for maintainability.",
+    "Hydration warning about <span> as child of <select>/<option> — framework instrumentation injecting span wrappers around <option>."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "applereview@trykolo.io with static code 424242",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bloc 3 points (c) logo card on Pro tab and (d) save confirmation toast fully verified. Logo card renders at top (before completeness bar) with data-testid b1-pro-logo-card, upload button b1-pro-logo-upload. Perso page confirmed clean of any logo testid. Save triggers green toast 'Changes saved' (EN) via data-testid b1-pro-save-ok, auto-dismisses after 2.4s. No 500 errors on PATCH /profil. Scope limited to Pro profile per request.",
+  "verification_details": {
+    "logo_card_present": true,
+    "logo_card_before_completeness_bar": true,
+    "logo_upload_testid_present": true,
+    "perso_page_no_logo": true,
+    "save_toast_text": "Changes saved",
+    "save_toast_testid": "b1-pro-save-ok",
+    "toast_auto_dismiss_2_4s": true,
+    "no_5xx_errors": true
+  }
+}

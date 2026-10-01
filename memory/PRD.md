@@ -17,6 +17,15 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 3 finitions — Dossier PDF (c) + (d) · 2026-02-13 🔥 LATEST
+- **(c)** Logo agence déplacé dans « Informations professionnelles » (en-tête de page, label « Logo de l'agence »). Perso ne contient plus aucun bloc logo.
+- **(d)** Toast de confirmation visible lors du save sur la page Pro (`b1-pro-save-ok` succès vert, `b1-pro-save-err` erreur rouge, auto-dismiss 2,4 s). Même toast déclenché sur upload logo réussi.
+- Clés i18n `profil.enregistre` / `profil.enregistre.erreur` ajoutées FR/EN/IT/DE.
+- CSS `.b1-save-toast` dans `b1.css`.
+- Vérification : screenshot + testing agent (iteration_66.json, 100% frontend).
+
+
+
 ### BLOC F · Build 2.24 batch 3 — Chaîne push token APNs réparée + A2 schéma acteur lu (Fév 8, 2026) 🔥 LATEST
 
 **Contexte**
