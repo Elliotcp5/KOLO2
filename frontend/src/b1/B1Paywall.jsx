@@ -4,6 +4,16 @@
 // redirect vers /app-b1 → « au clic il ne se passe rien » remonté par l'user.
 // Hiérarchie demandée : chiffre de la zone > phrase bénéfice > bouton IAP.
 // Conforme Apple : aucun prix affiché, aucun lien externe, achat via IAP.
+//
+// Bloc 4 étape 6 — correctif récupération produit Apple :
+// Avant, le code appelait `iap.initIapStore?.()` et `iap.orderProduct?.()`
+// qui N'EXISTENT PAS dans ../services/iapStore.js. Les vrais noms sont
+// `initIAP` et `purchasePlan`. L'optional chaining masquait l'absence et
+// le click ne faisait littéralement rien. On appelle maintenant les BONS
+// noms, on vérifie `areProductsReady()`, on affiche en toutes lettres le
+// code renvoyé (`product_not_found`, `product_unavailable`, `no_offer`,
+// `not_initialized`, `apple_timeout`, etc.) et on journalise dans la
+// console avec un marqueur [paywall-iap].
 // -----------------------------------------------------------------------------
 
 import React, { useEffect, useState } from 'react';
@@ -20,6 +30,7 @@ export default function B1Paywall() {
   const [pool, setPool] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
 
   useEffect(() => {
     b1api.getPoolZones().then(setPool).catch(() => setPool({ zones: [], total: 0, top_zone: null }));
@@ -30,23 +41,55 @@ export default function B1Paywall() {
   }, []);
 
   const acheter = async () => {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setErrorCode('');
     try {
       if (!Capacitor.isNativePlatform()) {
+        setErrorCode('not_ios');
         setError(b1t('paywall.err.pas_ios') || "Achat disponible uniquement dans l'app iOS.");
+        console.warn('[paywall-iap] not_ios — preview web : CdvPurchase indisponible.');
         return;
       }
       const iap = await import('../services/iapStore');
-      await iap.initIapStore?.();
-      const r = await iap.orderProduct?.('pro', 'monthly');
+      // Récupérer user + token pour l'init
+      let userId = ''; let token = '';
+      try {
+        token = localStorage.getItem('kolo_v2_session') || localStorage.getItem('kolo_token') || '';
+        const prof = await b1api.getProfil().catch(() => null);
+        userId = prof?.user?.user_id || '';
+      } catch (_) {}
+      const initRes = await iap.initIAP({ userId, token });
+      console.info('[paywall-iap] initIAP →', initRes);
+      if (!initRes?.ok) {
+        setErrorCode(initRes?.reason || 'init_failed');
+        setError(`${b1t('paywall.err.init') || 'Impossible de contacter l\'App Store'} (code: ${initRes?.reason || 'init_failed'}).`);
+        return;
+      }
+      // Diag : log le produit avant de commander
+      const products = iap.getProducts?.() || null;
+      const ready = iap.areProductsReady?.() === true;
+      console.info('[paywall-iap] product_id interrogé =', IAP_PRODUCT_ID,
+                   '| areProductsReady =', ready,
+                   '| products =', products);
+      if (!ready) {
+        setErrorCode('product_not_loaded');
+        setError(`${b1t('paywall.err.produit') || 'Produit non récupéré depuis l\'App Store'} (code: product_not_loaded, id: ${IAP_PRODUCT_ID}). Vérifiez App Store Connect.`);
+        return;
+      }
+      const r = await iap.purchasePlan('pro_plus', 'monthly');
+      console.info('[paywall-iap] purchasePlan →', r);
       if (r?.success) {
-        // Le webhook back-end valide le receipt, on rentre chez soi.
         navigate('/app-b1', { replace: true });
+      } else if (r?.userCancelled) {
+        setErrorCode('user_cancelled');
       } else {
-        setError(r?.error || b1t('paywall.err.echec') || 'Achat impossible pour le moment.');
+        setErrorCode(r?.error || 'echec_inconnu');
+        setError(`${b1t('paywall.err.echec') || 'Achat impossible pour le moment'} (code: ${r?.error || 'echec_inconnu'}).`);
       }
     } catch (e) {
-      setError(String(e?.message || e));
+      const msg = String(e?.message || e);
+      setErrorCode('exception');
+      setError(`${msg} (code: exception)`);
+      console.error('[paywall-iap] exception', e);
     } finally { setBusy(false); }
   };
 
@@ -126,6 +169,12 @@ export default function B1Paywall() {
           {error && (
             <div data-testid="b1-paywall-error" style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: 'var(--b1-danger, #B91C1C)' }}>
               {error}
+              {errorCode && (
+                <div style={{ marginTop: 4, fontFamily: 'DM Mono, monospace', fontSize: 11, opacity: 0.7 }}
+                     data-testid="b1-paywall-error-code">
+                  code technique : {errorCode} · produit : {IAP_PRODUCT_ID}
+                </div>
+              )}
             </div>
           )}
           <div style={{ marginTop: 12, textAlign: 'center', fontSize: 11, opacity: 0.5 }}>

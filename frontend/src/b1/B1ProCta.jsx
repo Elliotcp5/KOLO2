@@ -46,27 +46,32 @@ export function B1ProCta({ context, compact = false, testid = 'b1-pro-cta' }) {
   const top = pool?.top_zone;
   const total = pool?.total || 0;
 
-  // Hero contextuel — chiffre RÉEL de la zone de l'user
+  // Bloc 4 étape 3 — chiffre RÉEL par contexte, PAS de formulation vague
+  // si aucun chiffre n'est disponible côté serveur.
+  // Carte des chiffres :
+  //   fin_pile      → top.count (pool d'opportunités de mandat dans la zone)
+  //   veille        → top.veille_count (biens à surveiller dans la zone)
+  //   dossier_pdf   → pas de chiffre réel (le besoin est quota-driven)
+  //   estimation    → pas de chiffre réel (quota lifetime=1)
+  //   assistant     → pas de chiffre réel (fonction transversale)
   let headline;
-  if (top && top.count > 0) {
-    if (context === 'fin_pile') {
-      headline = b1t('procta.fin_pile.hero', { n: top.count, cp: top.code_postal })
-        || `Vous en avez traité 3 aujourd'hui. ${top.count} autres opportunités vous attendent en ${top.code_postal} — accessibles en Pro.`;
-    } else if (context === 'veille') {
-      headline = b1t('procta.veille.hero', { n: top.count, cp: top.code_postal })
-        || `${top.count} biens déjà en vente à surveiller en ${top.code_postal} — accessible en Pro.`;
-    } else if (context === 'dossier_pdf') {
-      headline = b1t('procta.dossier.hero', { n: total })
-        || `Après votre premier dossier gratuit, la génération PDF illimitée est réservée aux Pro.`;
-    } else if (context === 'estimation') {
-      headline = b1t('procta.estimation.hero')
-        || `Vous disposez d'une estimation offerte. Passez Pro pour estimer sans limite.`;
-    } else if (context === 'assistant') {
-      headline = b1t('procta.assistant.hero')
-        || `L'assistant KOLO répond à vos questions terrain — réservé aux Pro.`;
-    }
+  if (context === 'fin_pile' && top && top.count > 0) {
+    headline = b1t('procta.fin_pile.hero', { n: top.count, cp: top.code_postal })
+      || `Vous en avez traité 3 aujourd'hui. ${top.count} autres opportunités vous attendent en ${top.code_postal} — accessibles en Pro.`;
+  } else if (context === 'veille' && top && top.veille_count > 0) {
+    headline = b1t('procta.veille.hero', { n: top.veille_count, cp: top.code_postal })
+      || `${top.veille_count} biens déjà en vente à surveiller en ${top.code_postal} — accessible en Pro.`;
+  } else if (context === 'dossier_pdf') {
+    headline = b1t('procta.dossier.hero')
+      || `Après votre premier dossier gratuit, la génération PDF illimitée est réservée aux Pro.`;
+  } else if (context === 'estimation') {
+    headline = b1t('procta.estimation.hero')
+      || `Vous disposez d'une estimation offerte. Passez Pro pour estimer sans limite.`;
+  } else if (context === 'assistant') {
+    headline = b1t('procta.assistant.hero')
+      || `L'assistant KOLO répond à vos questions terrain — réservé aux Pro.`;
   } else {
-    // Fallback sans zone chargée
+    // Fallback neutre (pas de zone chargée ou chiffre=0)
     headline = b1t('procta.generic.hero')
       || 'Passez Pro pour débloquer toutes les opportunités, l\'estimation illimitée et la veille.';
   }

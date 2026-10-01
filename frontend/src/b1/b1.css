@@ -278,7 +278,24 @@
 .b1-pill--danger:active { transform: scale(0.97); background: var(--b1-danger-pressed); }
 .b1-pill--fullwidth { width: 100%; }
 
-/* Save confirmation toast — inline, apparait sous le bouton Enregistrer */
+/* Lien secondaire discret — utilisé pour "Gérer mes zones" / "Voir mes mandats"
+   quand le CTA Pro prend la place du bouton plein principal (Bloc 4). */
+.b1-link-secondaire {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  color: var(--b1-text-secondary);
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.b1-link-secondaire:hover { color: var(--b1-text-primary); }
 .b1-save-toast {
   margin-top: 12px;
   padding: 12px 16px;
@@ -673,6 +690,28 @@
   background: var(--b1-accent, #EC8690);
   color: #fff;
   box-shadow: 0 6px 18px rgba(236, 134, 144, 0.32);
+}
+/* Liste des limites du plan Découverte (Bloc 4 étape 4) */
+.b1-profil-plan-limites {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  opacity: 0.78;
+}
+.b1-profil-plan-limites li {
+  position: relative;
+  padding-left: 14px;
+}
+.b1-profil-plan-limites li::before {
+  content: "·";
+  position: absolute;
+  left: 4px;
+  top: -2px;
+  font-weight: 700;
 }
 
 .b1-profil-menu {

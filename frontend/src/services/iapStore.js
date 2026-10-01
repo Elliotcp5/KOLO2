@@ -19,7 +19,8 @@ import 'cordova-plugin-purchase';
 const API_URL = 'https://trykolo.io';
 
 export const PRODUCT_IDS = {
-  // Un seul produit IAP actif Apple = "PRO_Plus" affiché "KOLO PRO" 24,99€/mois
+  // Un seul produit IAP actif Apple = "PRO_Plus" affiché "KOLO PRO" (prix 100%
+  // dynamique via StoreKit — jamais hard-codé côté app, conforme Apple 2.3.11)
   pro_monthly: 'PRO_Plus',
   pro_plus_monthly: 'PRO_Plus',
   pro_yearly: 'PRO_Plus',

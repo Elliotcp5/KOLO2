@@ -163,15 +163,31 @@ export function FinDePileScreen({ veilleSlot = null }) {
         <div className="b1-fin-pile-texte" style={{ maxWidth: 320 }}>
           {state.quota.message}
         </div>
-        <button
-          className="b1-pill b1-pill--primary b1-pill--fullwidth"
-          style={{ marginTop: 24 }}
-          data-testid="b1-fin-pile-zones"
-          onClick={() => navigate('/app-b1/profil/zones')}
-        >
-          Gérer mes zones de prospection
-        </button>
-        {!isPro && <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />}
+        {/* Bloc 4 étape 3 — Hiérarchie inversée pour Découverte :
+            CTA plein principal = "Passer Pro" via B1ProCta, lien discret pour les zones.
+            Pour Pro : "Gérer mes zones" reste le CTA plein principal. */}
+        {isPro ? (
+          <button
+            className="b1-pill b1-pill--primary b1-pill--fullwidth"
+            style={{ marginTop: 24 }}
+            data-testid="b1-fin-pile-zones"
+            onClick={() => navigate('/app-b1/profil/zones')}
+          >
+            Gérer mes zones de prospection
+          </button>
+        ) : (
+          <>
+            <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />
+            <button
+              type="button"
+              className="b1-link-secondaire"
+              data-testid="b1-fin-pile-zones"
+              onClick={() => navigate('/app-b1/profil/zones')}
+            >
+              Gérer mes zones de prospection
+            </button>
+          </>
+        )}
       </div>
     );
   }
@@ -194,15 +210,30 @@ export function FinDePileScreen({ veilleSlot = null }) {
           dont <strong>{recap.retenues}</strong> retenue{recap.retenues > 1 ? 's' : ''}.
         </div>
       )}
-      <button
-        className="b1-pill b1-pill--primary b1-pill--fullwidth"
-        style={{ marginTop: 20 }}
-        data-testid="b1-fin-pile-voir-mandats"
-        onClick={() => navigate('/app-b1/mes-mandats')}
-      >
-        Voir mes opportunités de mandats
-      </button>
-      {!isPro && <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />}
+      {/* Bloc 4 étape 3 — Hiérarchie inversée pour Découverte :
+          CTA plein principal = "Passer Pro", "Voir mes mandats" en lien discret. */}
+      {isPro ? (
+        <button
+          className="b1-pill b1-pill--primary b1-pill--fullwidth"
+          style={{ marginTop: 20 }}
+          data-testid="b1-fin-pile-voir-mandats"
+          onClick={() => navigate('/app-b1/mes-mandats')}
+        >
+          Voir mes opportunités de mandats
+        </button>
+      ) : (
+        <>
+          <B1ProCta context="fin_pile" testid="b1-fin-pile-pro" />
+          <button
+            type="button"
+            className="b1-link-secondaire"
+            data-testid="b1-fin-pile-voir-mandats"
+            onClick={() => navigate('/app-b1/mes-mandats')}
+          >
+            Voir mes opportunités de mandats
+          </button>
+        </>
+      )}
       {veilleSlot && (
         <div className="b1-fin-pile-veille" data-testid="b1-fin-pile-veille">
           {veilleSlot}

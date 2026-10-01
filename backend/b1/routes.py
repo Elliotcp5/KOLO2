@@ -1007,23 +1007,37 @@ async def me_pool_zones(request: Request):
 
     Le chiffre vient du POOL RÉEL (`statut:"pool"` limité à la zone du user).
     Jamais inventé. Aucun prix, conforme Apple.
+
+    Bloc 4 étape 3 — ajoute aussi `veille_total` et `top_zone.veille_count`
+    (comptage des cartes de veille actives dans les zones de l'user), pour
+    que l'encart Pro de la Veille affiche le vrai chiffre « N biens à
+    surveiller dans le 13008 » (et non celui du pool opportunités de
+    mandats, qui est un autre indicateur).
     """
     user = await _current_user_doc(request)
     zones = user.get("zones_perso") or []
     if not zones:
-        return {"ok": True, "zones": [], "total": 0, "top_zone": None}
+        return {"ok": True, "zones": [], "total": 0, "top_zone": None, "veille_total": 0}
     breakdown = []
     total = 0
+    veille_total = 0
     top = None
     for cp in zones:
         n = await _db().opportunites.count_documents({
             "code_postal": str(cp), "statut": "pool",
         })
-        breakdown.append({"code_postal": str(cp), "count": n})
+        n_veille = await _db().veille_cards.count_documents({
+            "code_postal": str(cp),
+        })
+        breakdown.append({"code_postal": str(cp), "count": n, "veille_count": n_veille})
         total += n
+        veille_total += n_veille
         if not top or n > top["count"]:
-            top = {"code_postal": str(cp), "count": n}
-    return {"ok": True, "zones": breakdown, "total": total, "top_zone": top}
+            top = {"code_postal": str(cp), "count": n, "veille_count": n_veille}
+    return {
+        "ok": True, "zones": breakdown,
+        "total": total, "veille_total": veille_total, "top_zone": top,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import { Bot, Send, Trash2, X, History, PenSquare } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
 import { BottomTabPill } from './B1Shell';
+import { B1ProCta } from './B1ProCta';
 
 export function AssistantPage() {
   const navigate = useNavigate();
@@ -120,11 +121,13 @@ export function AssistantPage() {
   if (status && !status.access) {
     return (
       <div className="b1-root b1-page" style={{ padding: 24 }} data-testid="as-wall">
-        <div style={{ textAlign: 'center', maxWidth: 480, margin: '48px auto' }}>
-          <Bot size={56} color="var(--b1-accent)" style={{ marginBottom: 16 }} />
-          <h1 className="b1-h1" style={{ fontSize: 22, marginBottom: 8 }}>{b1t('as.wall.titre')}</h1>
-          <p style={{ color: 'var(--b1-text-secondary)', marginBottom: 24 }}>{b1t('as.wall.sous')}</p>
-          <button type="button" className="b1-pill b1-pill--primary" onClick={() => navigate('/app-b1/paywall')} data-testid="as-upgrade">{b1t('as.wall.cta')}</button>
+        <div style={{ textAlign: 'center', maxWidth: 480, margin: '32px auto 0' }}>
+          <Bot size={56} color="var(--b1-accent)" style={{ marginBottom: 20 }} />
+          {/* Bloc 4 étape 3 — homogénéisé via B1ProCta : chiffre réel → bénéfice → bouton.
+              NB : pour le contexte 'assistant', il n'y a PAS de chiffre réel dérivé
+              de la zone (l'assistant est une fonction transversale) — B1ProCta affiche
+              alors la phrase bénéfice générique dédiée. */}
+          <B1ProCta context="assistant" testid="as-upgrade" />
         </div>
         <BottomTabPill active="assistant" />
       </div>

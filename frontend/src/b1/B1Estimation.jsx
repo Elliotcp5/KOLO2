@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, Home, MapPin, Building2, TrendingUp 
 import b1t from './b1i18n';
 import b1api from './b1api';
 import { BottomTabPill } from './B1Shell';
+import { B1ProCta } from './B1ProCta';
 import { track, EVENTS } from './b3tracking';
 import { saveDraft, loadDraft, clearDraft } from './b3offline';
 import './b1.css';
@@ -50,6 +51,33 @@ function BackHeader({ label }) {
 export function EstimationHomePage() {
   const navigate = useNavigate();
   useNoIndex();
+  // Bloc 4 étape 3 — Mur AVANT la saisie : si Découverte a déjà consommé son
+  // estimation offerte à vie, on charge le quota au mount. Au clic sur "Choisir
+  // une opportunité" ou "Estimer depuis une adresse", si le quota est épuisé,
+  // on redirige directement vers /app-b1/paywall. La redirection 402 au submit
+  // reste comme filet de sécurité serveur.
+  const [quotaOk, setQuotaOk] = useState(null); // null = inconnu, true = ok, false = épuisé
+  const [me, setMe] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [q, p] = await Promise.all([b1api.getQuotas(), b1api.getProfil()]);
+        setQuotaOk(!!q?.quotas?.estimation?.autorise);
+        setMe(p?.user || null);
+      } catch { setQuotaOk(true); /* ne bloque pas si l'API tombe */ }
+    })();
+  }, []);
+  const isPro = !!me && (me.plan === 'pro' || me.plan === 'pro_plus' || me.plan === 'pro_lifetime' || me.subscription_status === 'active' || me.pro_lifetime === true);
+  const quotaEpuise = quotaOk === false && !isPro;
+
+  const goOpp = () => {
+    if (quotaEpuise) { navigate('/app-b1/paywall'); return; }
+    navigate('/app-b1/mes-mandats');
+  };
+  const goAdresse = () => {
+    if (quotaEpuise) { navigate('/app-b1/paywall'); return; }
+    navigate('/app-b1/estimation/adresse');
+  };
 
   return (
     <div className="b1-root">
@@ -61,17 +89,23 @@ export function EstimationHomePage() {
             <p className="b1-lead" style={{ marginTop: 8 }}>{b1t('est.home.sous')}</p>
           </div>
 
+          {quotaEpuise && (
+            <div data-testid="est-home-procta-wrapper" style={{ marginTop: 24 }}>
+              <B1ProCta context="estimation" testid="est-home-pro" />
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 32 }}>
             <button
               data-testid="est-home-cta-opp"
               className="b1-pill b1-pill--primary b1-pill--fullwidth"
-              onClick={() => navigate('/app-b1/mes-mandats')}>
+              onClick={goOpp}>
               {b1t('est.home.cta_opp')}
             </button>
             <button
               data-testid="est-home-cta-adr"
               className="b1-pill b1-pill--ghost b1-pill--fullwidth"
-              onClick={() => navigate('/app-b1/estimation/adresse')}>
+              onClick={goAdresse}>
               {b1t('est.home.cta_adr')}
             </button>
           </div>

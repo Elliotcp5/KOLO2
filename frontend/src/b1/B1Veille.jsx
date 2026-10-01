@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Eye, ExternalLink, Clock, TrendingDown, ArrowLeft, Home } from 'lucide-react';
 import b1t from './b1i18n';
 import b1api from './b1api';
+import { B1ProCta } from './B1ProCta';
 import './b1.css';
 import './b1Veille.css';
 
@@ -177,33 +178,27 @@ export function VeilleIntercalaire({ onOuvrir, onPlusTard }) {
 
 // ---------------------------------------------------------------------------
 // Paywall (Découverte → deeplink)
+// Bloc 4 étape 3 — homogénéisé : affiche d'abord le chiffre réel de la zone
+// (via B1ProCta context="veille"), puis le bénéfice en une phrase, puis le bouton.
 // ---------------------------------------------------------------------------
 export function VeillePaywall() {
   const navigate = useNavigate();
   return (
     <div className="b1-root">
-      <div className="b1-screen">
-        <div style={{ textAlign: 'center', paddingTop: 60 }}>
+      <div className="b1-screen" style={{ padding: 'calc(env(safe-area-inset-top) + 24px) 20px 32px' }}>
+        <div style={{ textAlign: 'center', paddingTop: 40, marginBottom: 24 }}>
           <div style={{
             width: 96, height: 96, borderRadius: 999,
             background: 'var(--veille-amber-tint)', color: 'var(--veille-amber-dark)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Eye size={44} />
           </div>
-          <h1 className="b1-h1">{b1t('veille.paywall.titre')}</h1>
-          <p className="b1-lead" style={{ marginTop: 8 }}>{b1t('veille.paywall.sous')}</p>
         </div>
-        <div style={{ flex: 1 }} />
+        <B1ProCta context="veille" testid="b1-veille-paywall" />
         <button
-          className="b1-veille-inter-cta"
-          data-testid="b1-veille-paywall-cta"
-          onClick={() => navigate('/app-b1/paywall')}
-        >
-          {b1t('veille.paywall.cta')}
-        </button>
-        <button
-          className="b1-veille-inter-lien"
+          type="button"
+          className="b1-link-secondaire"
           data-testid="b1-veille-paywall-retour"
           onClick={() => navigate('/app-b1')}
         >

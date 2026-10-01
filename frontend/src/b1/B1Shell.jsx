@@ -1129,6 +1129,16 @@ export function ProfilPaiementPage() {
             {isPro && <Crown size={30} strokeWidth={2.2} />}
             {isPro ? (b1t('profil.plan.pro') || 'Pro') : (b1t('profil.plan.decouverte') || 'Découverte')}
           </div>
+          {/* Bloc 4 étape 4 — mention explicite des limites du plan Découverte */}
+          {!isPro && (
+            <ul className="b1-profil-plan-limites" data-testid="b1-paiement-plan-limites">
+              <li>{b1t('profil.plan.limites.opps') || '1 opportunité par semaine'}</li>
+              <li>{b1t('profil.plan.limites.est') || '1 estimation offerte à vie'}</li>
+              <li>{b1t('profil.plan.limites.dos') || '1 dossier PDF à vie'}</li>
+              <li>{b1t('profil.plan.limites.veille') || 'Pas de veille concurrentielle'}</li>
+              <li>{b1t('profil.plan.limites.as') || "Pas d'assistant KOLO"}</li>
+            </ul>
+          )}
           {isPro && me?.subscription_ends_at && (
             <div className="b1-profil-plan-renouv">
               {b1t('profil.plan.renouv', { date: new Date(me.subscription_ends_at).toLocaleDateString() })}

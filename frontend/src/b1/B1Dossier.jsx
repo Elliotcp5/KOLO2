@@ -31,12 +31,18 @@ export function DossierListPage() {
   const [items, setItems] = useState(null);
   const [creating, setCreating] = useState(false);
   const [estimations, setEstimations] = useState([]);
+  const [me, setMe] = useState(null);
   useEffect(() => { (async () => {
     try {
       const r = await b1api.getDossiers();
       setItems(r?.dossiers || []);
     } catch { setItems([]); }
+    try {
+      const p = await b1api.getProfil();
+      setMe(p?.user || null);
+    } catch { setMe(null); }
   })(); }, []);
+  const isPro = !!me && (me.plan === 'pro' || me.plan === 'pro_plus' || me.plan === 'pro_lifetime' || me.subscription_status === 'active' || me.pro_lifetime === true);
 
   const openCreate = async () => {
     try {
@@ -58,6 +64,14 @@ export function DossierListPage() {
   return (
     <div className="b1-root b1-page" style={{ padding: 'calc(env(safe-area-inset-top) + 16px) 20px calc(96px + env(safe-area-inset-bottom))' }} data-testid="dos-list-page">
       <h1 className="b1-h1" style={{ marginBottom: 12 }}>{b1t('nav.rapport')}</h1>
+      {/* Bloc 4 étape 3 — ProCta sur /app-b1/rapport pour tout Découverte,
+          même sans dossier généré. Un gratuit doit comprendre dès l'ouverture
+          de l'onglet ce que Pro lui apporte. */}
+      {!isPro && (
+        <div data-testid="dos-list-procta-wrapper" style={{ marginBottom: 16 }}>
+          <B1ProCta context="dossier_pdf" testid="dos-list-pro" />
+        </div>
+      )}
       {items.length === 0 && !creating && (
         <div className="b1-card" style={{ padding: 20 }} data-testid="dos-list-empty">
           <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>{b1t('dos.liste.vide.titre')}</h3>
