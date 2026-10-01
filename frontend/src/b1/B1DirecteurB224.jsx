@@ -14,6 +14,7 @@ import b1t from './b1i18n';
 import b1api from './b1api';
 import { SwipeCard } from './B1Nav';
 import { BottomTabPill } from './B1Shell';
+import OppVignette from './B1OppVignette';
 import './b1.css';
 
 // ---------------------------------------------------------------------------
@@ -152,11 +153,7 @@ export function DirecteurOpportunitesPage() {
               disabled={pending}
               testid="d1b224-swipe"
             >
-              <div className="b1-opp-illus">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /><rect x="9" y="14" width="6" height="6" />
-                </svg>
-              </div>
+              <OppVignette opp={cur} height={160} />
               <h3 className="b1-opp-address">{cur.adresse}</h3>
               <div className="b1-opp-details">
                 DPE : {cur.dpe} · {cur.note || ''}<br />

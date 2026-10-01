@@ -17,6 +17,17 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 7 — Cartes d'opportunité · 2026-02-13 🔥 LATEST
+- Vignette Mapbox Static Images 300×160 @2x (Retina), pin rose KOLO, zoom 15.
+- Env : `MAPBOX_ACCESS_TOKEN` posé en backend/.env, `MAPBOX_STYLE_URL` optionnel (fallback `mapbox/light-v11`).
+- Cache Mongo `static_map_cache` keyé par `opp:{opp_id}`, 1 seul appel externe à vie par opp. Hit 2 = 114 ms vs hit 1 = 570 ms.
+- Fallback complet si token/coords/erreur Mapbox → aplat couleur + icône + pastille DPE + rue seule.
+- Hiérarchie typo : rue seule 13 px blanc 90 % sur vignette (ellipsis), adresse complète 26 px rose dessous.
+- Pile de cartes, animations, haptic : OK.
+- Prochaine action user : créer le style brandé KOLO sur Mapbox Studio et me fournir `mapbox://styles/{username}/{style_id}` pour poser `MAPBOX_STYLE_URL`.
+
+
+
 ### BLOC 6 — Fluidité & navigation · 2026-02-13 🔥 LATEST
 - `B1TabsLayout` : coquille unique avec `<Outlet>`, 7 routes imbriquées. BottomTabPill monté une seule fois.
 - Fondu de 200 ms sur le contenu uniquement, tab bar stable.

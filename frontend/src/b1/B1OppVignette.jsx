@@ -61,26 +61,16 @@ function pickTypeIcon(type_bien) {
  */
 export function OppVignette({ opp, height = 160 }) {
   const [imgOk, setImgOk] = useState(false);
-  const [imgUrl, setImgUrl] = useState(null);
+
+  // On tente directement un <img src=...>. Si 404 (token absent, opp sans
+  // coords, erreur Mapbox) → onError bascule sur le fallback aplat. 1 seule
+  // requête GET, pas de probe HEAD préalable.
+  const base = process.env.REACT_APP_BACKEND_URL || '';
+  const imgUrl = opp?.id ? `${base}/api/opportunites/${opp.id}/vignette` : null;
 
   useEffect(() => {
-    // Tente l'image carto ; en cas d'échec (provider off, 404, réseau)
-    // reste sur le fallback. Aucune requête inutile après un premier échec
-    // — on n'active la carto que si `KOLO_MAP_PROVIDER` est mis côté serveur.
-    let cancelled = false;
-    (async () => {
-      try {
-        const base = process.env.REACT_APP_BACKEND_URL || '';
-        const url = `${base}/api/opportunites/${opp.id}/vignette`;
-        const r = await fetch(url, { method: 'HEAD' });
-        if (cancelled) return;
-        if (r.ok) {
-          setImgUrl(url);
-          setImgOk(true);
-        }
-      } catch (_e) { /* fallback silencieux */ }
-    })();
-    return () => { cancelled = true; };
+    // reset quand l'opp change (nouveau swipe)
+    setImgOk(false);
   }, [opp?.id]);
 
   const bg = pickColor(opp?.adresse);
@@ -100,17 +90,21 @@ export function OppVignette({ opp, height = 160 }) {
         background: bg,
       }}
     >
-      {imgOk && imgUrl && (
+      {imgUrl && (
         <img
           src={imgUrl}
           alt=""
           loading="lazy"
+          onLoad={() => setImgOk(true)}
           onError={() => { setImgOk(false); }}
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',
             objectFit: 'cover',
+            opacity: imgOk ? 1 : 0,
+            transition: 'opacity 240ms ease-out',
           }}
+          data-testid="b1-opp-vignette-img"
         />
       )}
 
@@ -144,17 +138,22 @@ export function OppVignette({ opp, height = 160 }) {
         </span>
       )}
 
-      {/* Adresse en bas à gauche + dégradé sombre pour la lisibilité */}
+      {/* Adresse en bas à gauche + dégradé sombre pour la lisibilité.
+          Spec Bloc 7 : rue SEULE (sans CP ni ville), 13 px, blanc 90 %,
+          une seule ligne avec ellipsis plutôt que wrap. */}
       <div style={{
         position: 'absolute', left: 0, right: 0, bottom: 0,
         padding: '28px 16px 12px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0) 100%)',
-        color: '#fff',
+        color: 'rgba(255,255,255,0.90)',
         fontSize: 13, fontWeight: 700, letterSpacing: 0.2,
         textShadow: '0 1px 2px rgba(0,0,0,0.35)',
         pointerEvents: 'none',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       }}>
-        {opp?.adresse || ''}
+        {streetOnly(opp?.adresse)}
       </div>
     </div>
   );
@@ -168,6 +167,20 @@ function dpeBg(dpe) {
     D: '#F7B32B', E: '#F58220', F: '#E8493B', G: '#C1272D',
   };
   return map[c] || '#8C9EBE';
+}
+
+/**
+ * Extrait la rue seule depuis une adresse complète.
+ * « 20 Avenue elsa triolet 13008 Marseille »  →  « 20 Avenue elsa triolet »
+ * On supprime tout bloc contenant un code postal (5 chiffres FR) et ce qui suit.
+ * Si aucun CP détecté, on renvoie la chaîne entière.
+ */
+function streetOnly(adresse) {
+  const s = String(adresse || '').trim();
+  if (!s) return '';
+  // regex : coupe au premier code postal 5 chiffres (avec espace avant)
+  const m = s.match(/^(.*?)[,\s]+\d{5}\b.*$/);
+  return m ? m[1].trim() : s;
 }
 
 export default OppVignette;

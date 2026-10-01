@@ -8517,6 +8517,13 @@ try:
     from b1.routes import router as b1_router, ensure_b1_bootstrap
     app.include_router(b1_router)
     logger.info("KOLO B1 router mounted (onboarding + me + ville)")
+    # Bloc 7 étape 2 — Vignette carto Mapbox (fallback 404 si token absent)
+    try:
+        from b1.vignette import router as b1_vignette_router
+        app.include_router(b1_vignette_router)
+        logger.info("KOLO B1 vignette router mounted (Mapbox Static Images)")
+    except Exception as _ve:
+        logger.warning("B1 vignette router NOT mounted: %s", _ve)
 
     @app.on_event("startup")
     async def _b1_bootstrap_zones():  # noqa

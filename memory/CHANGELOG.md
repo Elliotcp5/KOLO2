@@ -1,5 +1,26 @@
 # KOLO - Changelog
 
+## Build 2.29 — Bloc 7 Design cartes d'opportunité · 2026-02-13
+
+### Vignette carto Mapbox (étape 2)
+- Nouvel endpoint `GET /api/opportunites/{opp_id}/vignette` (`backend/b1/vignette.py`).
+- Interroge Mapbox Static Images API 600×320 Retina avec pin rose KOLO `#EC8690`, zoom 15, format `@2x.png`.
+- Env vars : `MAPBOX_ACCESS_TOKEN` (posé) + `MAPBOX_STYLE_URL` (optionnel, fallback `mapbox/light-v11` tant que le style brandé KOLO n'est pas créé dans Mapbox Studio).
+- **Cache Mongo** `static_map_cache` keyé `opp:{opp_id}`, index unique, 3 états (`fetching`/`ready`/`error`). Un seul appel Mapbox à vie par opp — vérifié : hit 1 = 570 ms (Mapbox), hit 2 = 114 ms (cache), hash identique.
+- Fallback complet : si token absent, coords manquantes, ou erreur Mapbox → 404 côté API, le composant `B1OppVignette` tombe sur l'aplat de couleur + icône type bien + pastille DPE + rue seule en overlay.
+- Token NE SORT JAMAIS côté client. Attribution Mapbox + OpenStreetMap visible en bas de l'image (ToS).
+
+### Carte d'opportunité (étapes 3-5, essentiellement déjà en CSS)
+- `.b1-opp-vignette` bleede au bord de la carte (margin négatif -16px pour annuler le padding).
+- Adresse sur la vignette : rue SEULE (sans CP ni ville) via `streetOnly()` qui coupe au premier code postal 5 chiffres. 13 px, blanc 90 %, `white-space: nowrap` + `text-overflow: ellipsis` (jamais 2 lignes).
+- Pile : 2 cartes fantômes derrière via `.b1-opp-stack-slot--1/2` (déjà dans `SwipeCard`, confirmées à `translate 8/16 px scale 0.96/0.92 opacity 0.55/0.28`).
+- Typo : adresse 26 px bold rose, détails 15 px, chip 12 px uppercase letterspacing 0.06em. Ombre `0 12px 32px -8px rgba(20,20,30,0.12)` (plus riche que spec initiale).
+- Animation entrée `b1-card-in 200ms cubic-bezier`. Ressort swipe `transform 220ms cubic-bezier(.22,.9,.3,1)`.
+- Haptic : léger sur tap-to-estimate (nouveau), déjà sur commit swipe.
+
+Preuve : capture iPhone 390×844 avec `naturalW=600, naturalH=320, opacity=1`.
+
+
 ## Build 2.28 — Bloc 6 Fluidité & navigation · 2026-02-13
 
 ### Architecture persistante

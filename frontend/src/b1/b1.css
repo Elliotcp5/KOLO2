@@ -845,6 +845,15 @@
 }
 .b1-opp-stack-slot--1 { transform: translateY(8px) scale(0.96); opacity: 0.55; z-index: 1; }
 .b1-opp-stack-slot--2 { transform: translateY(16px) scale(0.92); opacity: 0.28; z-index: 0; }
+/* Bloc 7 étape 2 — Vignette en TÊTE DE CARTE pleine largeur (160 px).
+   La carte a `padding: 16px 16px 20px` ; la vignette ignore ce padding
+   avec `margin: -16px -16px 0` et épouse la radius du haut via inherit. */
+.b1-opp-vignette {
+  margin: -16px -16px 0;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
 .b1-opp-illus {
   aspect-ratio: 1 / 0.55;         /* moins haut pour laisser voir ✕/♥ au-dessus de la tab bar */
   background: var(--b1-accent);

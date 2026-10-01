@@ -11,6 +11,7 @@ import B1BuildStamp from './B1BuildStamp';
 import { SwipeCard } from './B1Nav';
 import { FinDePileScreen } from './B1FinDePile';
 import { MesMandatsButton } from './B1MesMandats';
+import OppVignette from './B1OppVignette';
 import './b1.css';
 
 // ============================================================================
@@ -382,6 +383,14 @@ export function OpportunitesPage() {
                          zIndex: 2, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  // Bloc 7 étape 5 — retour haptique léger au tap
+                  try {
+                    if (window.Capacitor?.Plugins?.Haptics?.impact) {
+                      window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' });
+                    } else if (navigator.vibrate) {
+                      navigator.vibrate(8);
+                    }
+                  } catch (_) {}
                   navigate('/app-b1/estimation/flow', {
                     state: {
                       bien: {
@@ -396,13 +405,7 @@ export function OpportunitesPage() {
                   });
                 }}
               />
-              <div className="b1-opp-illus">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12l9-9 9 9" />
-                  <path d="M5 10v10h14V10" />
-                  <rect x="9" y="14" width="6" height="6" />
-                </svg>
-              </div>
+              <OppVignette opp={cur} height={160} />
               <h3 className="b1-opp-address">{cur.adresse}</h3>
               <div className="b1-opp-details">
                 DPE : {cur.dpe} · {cur.note}<br />
