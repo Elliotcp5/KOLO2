@@ -199,6 +199,25 @@ export function DirecteurMonEquipePage() {
   const [invSending, setInvSending] = useState(false);
   const [toast, setToast] = useState('');
   const [forbidden, setForbidden] = useState(false);
+  // Bloc 5 étape 2e — même correctif clavier que l'Assistant.
+  // Sur iOS natif, le plugin Capacitor Keyboard pousse la sheet d'invitation
+  // vers le haut quand le clavier s'ouvre pour que le champ email reste visible.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    // eslint-disable-next-line no-undef
+    const isNative = !!(window?.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+    // eslint-disable-next-line no-undef
+    const Kb = window?.Capacitor?.Plugins?.Keyboard;
+    if (!isNative || !Kb || !Kb.addListener) return () => {};
+    const p1 = Kb.addListener('keyboardWillShow', (info) => {
+      setKbHeight(Number(info?.keyboardHeight) || 300);
+    });
+    const p2 = Kb.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => {
+      try { Promise.resolve(p1).then((h) => h?.remove?.()).catch(() => {}); } catch {}
+      try { Promise.resolve(p2).then((h) => h?.remove?.()).catch(() => {}); } catch {}
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -293,7 +312,12 @@ export function DirecteurMonEquipePage() {
 
         {inviteOpen && (
           <div className="b1-sheet-backdrop" onClick={() => !invSending && setInviteOpen(false)}>
-            <div className="b1-sheet" onClick={(e) => e.stopPropagation()} data-testid="d1b224-invite-sheet">
+            <div
+              className="b1-sheet"
+              onClick={(e) => e.stopPropagation()}
+              data-testid="d1b224-invite-sheet"
+              style={{ paddingBottom: `calc(24px + env(safe-area-inset-bottom) + ${kbHeight}px)`, transition: 'padding-bottom 0.2s ease' }}
+            >
               <div className="b1-sheet-handle" />
               <h2 className="b1-h2">{b1t('dir.equipe.modal.titre')}</h2>
               <p className="b1-lead" style={{ marginTop: 6 }}>{b1t('dir.equipe.modal.sous')}</p>

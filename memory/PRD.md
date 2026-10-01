@@ -17,6 +17,14 @@ KOLO transforme le suivi commercial avec : multi-tenant org/super-admin, communi
 
 
 
+### BLOC 5 — Directeur B2B · 2026-02-13 🔥 LATEST
+- Zones directeur : plafond UI figé à 2 remplacé par `maxZones` (99).
+- Clavier formulaire d'invitation : listener Capacitor Keyboard + padding dynamique sur la sheet, pattern identique à l'Assistant.
+- Affectation + invitation + bandeau conseiller : déjà conformes, aucun correctif.
+- Preuve bout-en-bout avec compte directeur + conseiller + orga de test, API 200 OK, bandeau visible sur la carte côté conseiller.
+
+
+
 ### BLOC 4 — Chemin vers Pro + IAP · 2026-02-13 🔥 LATEST
 - Les 5 murs (fin de pile, veille, estimation, dossier liste, assistant) atterrissent sur `/app-b1/paywall`.
 - Mur Estimation posé AVANT la saisie (quota lifetime 1).

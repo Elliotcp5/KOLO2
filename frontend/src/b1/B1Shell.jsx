@@ -979,7 +979,7 @@ export function ProfilZonesPage() {
                 </button>
               </div>
             ))}
-            {cps.length < 2 && (
+            {cps.length < maxZones && (
               <div>
                 <input
                   className="b1-input"

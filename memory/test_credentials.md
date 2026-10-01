@@ -75,3 +75,9 @@
   - user_id: `u_646a40c35f2c479a`, role: conseiller (auto-rattaché), plan: agence
 - **Découverte pour test paywall** : `test.decouverte.paywall@example.com` — email-code
   - user_id: `u_dd93d293bf1c40c9`, plan: decouverte, zones: [75017]
+
+## Bloc 5 — Directeur B2B test (créé 2026-02-13)
+- Directeur : `bloc5_dir_1790852721@trykolo.io` (user_id=u_2d3ab1d28ae54e19, role=directeur, plan=pro, agence=Agence Bloc5 Test)
+- Conseiller : `bloc5_cons_1790852721@trykolo.io` (user_id=u_a6672496d99a43ef, role=conseiller, plan=agence)
+- Organisation : `_id=6abe3e72d22323f7dd016c77` · nom="Agence Bloc5 Test" · sieges=3 · zones=["13008"]
+- Auth : email-code (dev_code via /api/v2/auth/send-email-code)

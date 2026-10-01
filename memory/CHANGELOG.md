@@ -1,5 +1,19 @@
 # KOLO - Changelog
 
+## Build 2.27 — Bloc 5 Directeur B2B · 2026-02-13
+
+### Fixes
+- **Zones directeur (B1Shell.jsx:982)** : la condition de rendu de l'input d'ajout était figée à `cps.length < 2`, contredisant le `maxZones=99` déclaré ligne 924. Un directeur ne pouvait pas dépasser 2 CP. Remplacé par `cps.length < maxZones`.
+- **Clavier formulaire d'invitation (B1DirecteurB224.jsx)** : ajout d'un listener Capacitor Keyboard + padding-bottom dynamique sur la sheet `d1b224-invite-sheet`, identique à ce qui existait sur l'Assistant. Testé : attribut style de la sheet affiche bien `calc(24px + env(safe-area-inset-bottom) + {kbHeight}px)`.
+
+### État des composants déjà conformes (aucun correctif requis)
+- Affectation au swipe directeur : `swipeDroite()` ouvre la sheet, « Garder pour moi » en tête, liste conseillers avec compteur en cours, puis `setIdx(i+1)`.
+- Invitation / rattachement : `attach_conseiller_if_invited` appelée à la fois à la création (`v2_router.py:1356`) ET au login d'un compte existant (`v2_router.py:1322`). Idempotent.
+- Vue agent d'agence : swipe désactivé par `pending || !!cur?.affectation_notif_flag || cur?.en_agence`. Bandeau « Nouvelle opportunité affectée » rendu si `affectation_notif_flag`.
+
+Preuve bout-en-bout : compte directeur `bloc5_dir_1790852721` + conseiller `bloc5_cons_1790852721` + orga `6abe3e72d22323f7dd016c77`. Affectation API 200 OK. Carte reçue côté conseiller avec bandeau visible, boutons swipe absents, drag gauche sans effet.
+
+
 ## Build 2.26 — Bloc 4 Chemin vers Pro + IAP · 2026-02-13
 
 ### Les 5 murs vers Pro
